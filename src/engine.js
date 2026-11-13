@@ -20,7 +20,7 @@ function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Pracovní denní rytmus: ranní špička, klidnější poledne, menší odpolední vlna.
 // Hodinový profil upraven podle výzev v říjnovém vzorku; součet denní/noční
 // části zůstává zachovaný, takže se nemění celková obtížnost ani počet případů.
-const TOD = [0.428, 0.365, 0.345, 0.257, 0.325, 0.375, 0.466, 0.921, 1.278, 1.312, 1.397, 1.135, 1.081, 1.073, 1.112, 1.095, 1.067, 1.168, 1.011, 0.877, 0.816, 0.642, 0.594, 0.529];
+const TOD = [0.551,0.479,0.455,0.335,0.431,0.503,0.623,1.078,1.509,1.533,1.653,1.341,1.269,1.269,1.317,1.293,1.246,1.365,1.198,1.15,1.078,0.838,0.79,0.695]; // hodinový profil z říjnového vzorku (průměr = 1)
 const BUSY = ['call', 'enroute', 'onscene', 'transport', 'handover'];
 const DEPT = { okresni: 'Urgentní příjem', iktove: 'Iktové centrum', trauma: 'Traumacentrum', kcc: 'KCC – katetrizační sál', popaleniny: 'Popáleninové centrum' };
 const FIRST = ['Jan', 'Petr', 'Pavel', 'Tomáš', 'Martin', 'Jiří', 'Karel', 'Lukáš', 'Michal', 'David', 'Marie', 'Jana', 'Eva', 'Hana', 'Anna', 'Lenka', 'Petra', 'Lucie', 'Alena', 'Zuzana'];
@@ -701,9 +701,28 @@ class Sim {
     if (text.includes('OHLEDÁNÍ') || text.includes('TANR NELZE')) return false;
     return text.includes('NEDÝCHÁ') && (text.includes('BEZVĚDOMÍ') || text.includes('AVPU-U'));
   }
+  // paměť posledních míst: blízko po sobě (do ~700 m) a stejné místo se neopakuje
+  _tooClose(lat, lon, name) {
+    const mem = this.s.ev.recentSpots || (this.s.ev.recentSpots = []);
+    for (const m of mem) { if ((name && m[2] === name) || (Math.abs(m[0] - lat) < 0.0063 && Math.abs(m[1] - lon) < 0.0095)) return true; }
+    return false;
+  }
+  _remember(lat, lon, name) {
+    const mem = this.s.ev.recentSpots || (this.s.ev.recentSpots = []);
+    mem.push([lat, lon, name || '']); if (mem.length > 25) mem.shift();
+  }
   _randomAddress(A) {
     const a = A.a, S = A.s, count = Math.floor(a.length / 8);
     if (!count) return null;
+    for (let tries = 0; tries < 12; tries++) {
+      const r = this._randomAddress1(A, count);
+      if (r && !this._tooClose(r.lat, r.lon)) return r;
+      if (tries === 11) return r;
+    }
+    return null;
+  }
+  _randomAddress1(A, count) {
+    const a = A.a, S = A.s;
     const history = this.s.ev.addressHistory || (this.s.ev.addressHistory = []);
     const used = new Set(history);
     const start = Math.floor(this.rnd() * count);
@@ -789,7 +808,16 @@ class Sim {
     const minAge = isChild ? 0 : symptomText.includes('DOSPĚLÝ') ? Math.max(18, ind.age[0]) : ind.age[0];
     const maxAge = isChild ? 17 : ind.age[1];
     const age = minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
-    const whKey = this._pickWhere(ind, age), wd = D.where[whKey];
+    const whKey = this._pickWhere(ind, age);
+    // veřejná místa pod „ulicí“: nádraží, úřady, obchody, sport, ubytování (reálná místa z OSM)
+    let poiKey = whKey;
+    if (whKey === 'ulice' && typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi) {
+      const h = this.hour();
+      const wk = { verejne: 1.4, sport: age >= 6 && age <= 60 ? (h >= 15 && h < 21 ? 0.6 : 0.2) : 0.05, ubytovani: age >= 15 ? (h >= 18 || h < 8 ? 0.3 : 0.12) : 0.03 };
+      const tot = Object.values(wk).reduce((x, y) => x + y, 0), r = this.rnd() * (tot + 1.6);
+      let acc = 0; for (const [k, v] of Object.entries(wk)) { acc += v; if (r < acc && ZOS_POI.poi[k] && ZOS_POI.poi[k].length) { poiKey = k; break; } }
+    }
+    const wd = D.where[poiKey] || D.where[whKey];
     let lat, lon, addr, townN, okres = null, cast = '';
     const A = typeof ZOS_ADDR !== 'undefined' && ZOS_ADDR && ZOS_ADDR.a ? ZOS_ADDR : null;
     const nearTown = (la, lo) => { let b = null, bd = 1e9; for (const tw of D.towns) { const d = hav(la, lo, tw.lat, tw.lon) / Math.sqrt(tw.w); if (d < bd) { bd = d; b = tw; } } return b; };
@@ -799,9 +827,11 @@ class Sim {
       const tw = nearTown(lat, lon); townN = tw.n;
       const nm = { 0: 'dálnice D3', 1: 'silnice I. třídy', 2: 'silnice I. třídy', 3: 'silnice II. třídy', 4: 'silnice III. třídy', 5: 'místní komunikace', 6: 'polní / lesní cesta' }[p.cls];
       addr = `${nm}, okolí obce ${tw.n}`;
-    } else if (typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi && ZOS_POI.poi[whKey] && ZOS_POI.poi[whKey].length && this.rnd() < 0.9) {
-      // reálné místo z OSM (domov pro seniory, škola, ordinace, provozovna)
-      const p = this.pick(ZOS_POI.poi[whKey]);
+    } else if (typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi && ZOS_POI.poi[poiKey] && ZOS_POI.poi[poiKey].length && this.rnd() < 0.9) {
+      // reálné místo z OSM (domov pro seniory, škola, ordinace, provozovna, veřejné místo, sport, ubytování)
+      const list = ZOS_POI.poi[poiKey];
+      let p = this.pick(list);
+      for (let tries = 0; tries < 14 && this._tooClose(p[0] / 1e5, p[1] / 1e5, p[2]); tries++) p = this.pick(list);
       lat = p[0] / 1e5 + this.rr(-0.00015, 0.00015); lon = p[1] / 1e5 + this.rr(-0.00015, 0.00015);
       townN = p[4]; okres = ZOS_POI.okresy[p[5]] || null; cast = '';
       addr = p[2] ? `${p[3]} (${p[2].replace(/\u00a0/g, ' ')})` : p[3];
@@ -814,6 +844,7 @@ class Sim {
       lat = town.lat + Math.sin(ang) * km / 111; lon = town.lon + Math.cos(ang) * km / 72.8;
       addr = `${this.pick(D.streets)} ${this.ri(1, 80)}, ${town.n}`; townN = town.n;
     }
+    this._remember(lat, lon, '');
     const town = { n: townN };
     const isRoadAccident = ind.id === 'dn_poly' || ind.id === 'dn_lehke';
     const patientCount = !isRoadAccident ? 1 : symptomText.includes('VÍCE ZRANĚNÝCH') ? this.ri(2, 4) : this.rnd() < 0.025 ? this.ri(2, 3) : 1;

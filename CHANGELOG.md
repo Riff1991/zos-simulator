@@ -8,6 +8,15 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.17.0 – vývoj
+
+- Mnohem větší sada adres: 175 tisíc adresních bodů z OSM (dříve 70 tisíc).
+- Víc reálných míst z OSM: 23 tisíc (domovy, školy, ordinace, provozovny, nádraží a úřady, sportoviště, ubytování). Jména jednotlivců se z míst odstraňují.
+- Případy se neopakují na stejném místě ani blízko po sobě (posledních 25 míst, okruh zhruba 700 m).
+- Hodinový profil výjezdů podle říjnového vzorku (špička od 7 do 11 h).
+
+---
+
 ## v0.16.0 – 2026-11-13
 
 - Nová úvodní obrazovka: Pokračovat ve směně, Nová směna, Nastavení, Co je nového, kontrola aktualizace.

@@ -229,6 +229,9 @@ const ZOS_DATA = {
     silnice: { txt: ['Silnice, osobní vozidlo', 'Silnice, vozidlo mimo vozovku', 'Silnice, omezený průjezd'], ch: 1 },
     priroda: { txt: ['Lesní cesta, přístup pěšky', 'Příroda, mimo zástavbu', 'Turistická trasa, přístup z cesty'], ch: 1 },
     ordinace: { txt: ['Ordinace, čekárna', 'Ordinace praktického lékaře'], ch: 2 },
+    verejne: { txt: ['Veřejná budova, vstup z ulice', 'Nádraží / zastávka, nástupiště', 'Restaurace nebo obchod, vstup z ulice', 'Před budovou, pacient na lavičce', 'Veřejné prostranství před objektem'], ch: 0 },
+    sport: { txt: ['Sportoviště, pacient na hřišti', 'Sportovní hala, vstup z parkoviště', 'Bazén / koupaliště, u vody', 'Fitness, recepce'], ch: 1 },
+    ubytovani: { txt: ['Ubytování, recepce', 'Hotel, pokoj v patře', 'Penzion, vstup z dvora', 'Kemp, pacient u karavanu'], ch: 0 },
     zz: { txt: ['Zdravotnické zařízení, ambulance', 'Zdravotnické zařízení, lůžkové oddělení'], ch: 2 },
   },
 
