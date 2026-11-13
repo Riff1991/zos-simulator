@@ -73,7 +73,14 @@ find_python() {
   return 1
 }
 if ! PYTHON_BIN="$(find_python)"; then echo "Python 3 chybi. Spustte znovu instalator z puvodni slozky."; read -r -p "Enter ukonci okno. " _; exit 1; fi
-PORT="$("$PYTHON_BIN" -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1]);s.close()')"
+# pevný port 8765 (stejná adresa = uložená směna i offline režim zůstanou zachované), jinak volný port
+PORT="$("$PYTHON_BIN" -c 'import socket
+for p in (8765, 8766, 8767, 0):
+    s=socket.socket()
+    try:
+        s.bind(("127.0.0.1",p)); print(s.getsockname()[1]); break
+    except OSError: pass
+    finally: s.close()')"
 LOG="${TMPDIR:-/tmp}/zos-simulator-server.log"
 "$PYTHON_BIN" -m http.server "$PORT" --bind 127.0.0.1 --directory "$APP_DIR/site" >"$LOG" 2>&1 &
 SERVER_PID=$!

@@ -6,6 +6,17 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v14 – 2026-11-13
+
+### Nové
+- **Hra na webu a instalace jako aplikace** (Mac, Windows, Android, iPhone): https://riff1991.github.io/zos-simulator/ – v Chrome/Edge ikonou instalace v adresním řádku (nebo tlačítkem „Nainstalovat jako aplikaci“ na úvodní obrazovce), v Safari na Macu Soubor → Přidat do Docku, na iPhonu Sdílet → Přidat na plochu.
+- **Automatické aktualizace:** při spuštění aplikace si sama zkontroluje novou verzi a nainstaluje ji. Když vyjde nová verze během hry, objeví se lišta „Aktualizovat“ (směna se uloží a po aktualizaci ji obnovíš).
+- **Offline provoz:** po prvním spuštění funguje bez internetu (mapa v místech, která už jsi viděl/a).
+- Ikona aplikace.
+
+### Opravy
+- Mac (ZIP): spouštěč používal pokaždé jiný port, takže se mezi spuštěními ztrácela uložená směna. Nově pevný port 8765.
+
 ## v13 – 2026-11-13
 
 ### Nové

@@ -700,7 +700,7 @@ ${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('st
 <b>Mimořádná událost (MU)</b><div class="opts">${b('muEnabled', 'true', 'Povoleno')}${b('muEnabled', 'false', 'Vypnuto')}</div>
 <label style="display:block;margin:8px 0 2px">Pravděpodobnost MU během směny: <b id="mu-prob-value">${Number(o.muProbability)} %</b></label><input id="mu-probability" type="range" min="0" max="100" step="5" value="${Number(o.muProbability)}" style="width:min(380px,90%)" ${o.muEnabled === 'false' ? 'disabled' : ''}>
 <p style="font-size:12px">Tip: čekající případy jsou v seznamu vlevo. Klikni na případ, otevři „Navrhnout posádku“ a vyšli nejbližší. N1 vždy s lékařem (RV). N3 jede RZP, lékař jen na vyžádání posádky. Doporučené rychlosti 5× až 30×.</p>
-<p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p><button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button>${saved ? ' <button class="btn" data-act="resume">Pokračovat v uložené</button>' : ''}</div>`);
+<p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button>${saved ? ' <button class="btn" data-act="resume">Pokračovat v uložené</button>' : ''}</div>`);
 }
 function endModal() {
   const sm = sim.summary(), s = sim.s;
@@ -848,6 +848,7 @@ function act(a, el) {
       alertHidden.add(d.key);
       if (d.case && d.report) sim.acknowledge112(d.case, d.report);
       break;
+    case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) startModal(); }); } break;
     case 'start': newGame(); break;
     case 'open-map': openPanelWindow('map'); break;
     case 'open-radio': openPanelWindow('radio'); break;
@@ -1017,6 +1018,45 @@ $('btn-end').addEventListener('click', () => { if (sim) { sim.s.ended = true; sp
 window.addEventListener('keydown', ev => { if (ev.key === ' ' && sim && !modalOpen) { ev.preventDefault(); speed = speed ? 0 : savedSpeed; } });
 window.__zos = { get sim() { return sim; }, step: s => sim && sim.step(s) }; Object.defineProperty(window, '__zosMap', { get: () => GL });
 setInterval(frame, 100);
+// ---------- aplikace (PWA): instalace, offline provoz a aktualizace při spuštění ----------
+let installPrompt = null, swWaiting = null;
+const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+function appInstallHtml() {
+  if (isStandalone() || location.protocol === 'file:') return '';
+  if (installPrompt) return '<p style="margin:6px 0"><button class="btn" data-act="install-app">⬇ Nainstalovat jako aplikaci</button> <span style="font-size:12px;color:#5a6a7a">ikona v Docku / nabídce Start, funguje offline a sama se aktualizuje</span></p>';
+  const ua = navigator.userAgent || '';
+  const hint = /iPhone|iPad/.test(ua) ? 'Sdílet → Přidat na plochu' : /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Edg/.test(ua) ? 'v Safari: Soubor → Přidat do Docku' : 'ikonou instalace v adresním řádku prohlížeče';
+  return `<p style="font-size:12px;color:#5a6a7a;margin:6px 0">Tip: hru lze nainstalovat jako aplikaci (${hint}).</p>`;
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; if (!sim && modalOpen) startModal(); });
+window.addEventListener('appinstalled', () => { installPrompt = null; toast('Aplikace nainstalována. Příště ji spustíš ikonou.', ''); });
+function showUpdateBar(worker) {
+  swWaiting = worker;
+  fetch('version.json', { cache: 'no-store' }).then(r => r.json()).then(v => { $('update-text').textContent = `Je připravena nová verze v${v.version}. Rozehraná směna se uloží.`; }).catch(() => {});
+  $('update-bar').classList.add('on');
+}
+$('update-btn').addEventListener('click', () => {
+  if (!swWaiting) return;
+  try { if (sim && !sim.s.ended) doSave(); } catch (e) {}
+  swWaiting.postMessage('skipWaiting');
+});
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController || reloading) return; reloading = true; location.reload(); });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    const onWaiting = w => {
+      if (!navigator.serviceWorker.controller) return;            // první instalace – není co aktualizovat
+      if (!sim) w.postMessage('skipWaiting');                       // při spuštění (ještě se nehraje) → rovnou nová verze
+      else showUpdateBar(w);                                        // během hry → nabídnout tlačítko
+    };
+    if (reg.waiting) onWaiting(reg.waiting);
+    reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed') onWaiting(w); }); });
+    reg.update().catch(() => {});
+    setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+  }).catch(e => console.warn('service worker', e));
+}
+
 // načtení dat: dlaždice, silniční síť, adresy
 let assetsState = 'načítám mapová data…';
 Promise.all([

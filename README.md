@@ -6,7 +6,15 @@ Webová hra: hráč je **primární dispečer** zdravotnického operačního st�
 - Reálná síť základen a počty posádek (den/noc), reálné nemocnice, **plná mapa OpenStreetMap** (vlastní vektorové dlaždice, MapLibre), posádky jezdí **po skutečných silnicích** (vlastní router), případy na **skutečných adresách** z OSM. Případy, osoby a telefony jsou vymyšlené.
 - Rozhraní napodobuje monitory dispečera: seznam případů („Dispečer ZZS“), panel vybraného případu s návrhem posádek a ETA, přehledový panel posádek (dlaždice dle oblastí, barvy stavů), mapa, rádio, tisk „Výzva k výjezdu“. Dlaždici posádky lze přetáhnout na případ (vyslání / přesměrování).
 
-## Stažení (Mac)
+## Hrát / nainstalovat (doporučeno)
+
+**https://riff1991.github.io/zos-simulator/** – hra běží v prohlížeči a dá se nainstalovat jako aplikace. Aktualizuje se sama a funguje i offline.
+
+- **Windows / Mac – Chrome nebo Edge:** ikona instalace v adresním řádku, nebo tlačítko „Nainstalovat jako aplikaci“ na úvodní obrazovce hry.
+- **Mac – Safari:** Soubor → Přidat do Docku.
+- **iPhone / iPad:** Safari → Sdílet → Přidat na plochu. **Android:** Chrome → Nainstalovat aplikaci.
+
+## Stažení offline balíčku (Mac)
 
 Nejnovější balíček pro Mac je v **[Releases](../../releases/latest)** (`zos-simulator-mac-vXX.zip`). Návod je v `README-MAC.txt` v balíčku. Co je nového, najdeš v [CHANGELOG.md](CHANGELOG.md).
 

@@ -24,7 +24,8 @@ Projekt: **webový simulátor primárního dispečera ZOS ZZS Jihočeského kraj
 
 - Každá změna, kterou hráč uvidí, zvyšuje číslo v `VERSION` a má sekci v `CHANGELOG.md` (česky, stručně: Nové / Opravy).
 - Push změny `VERSION` na `main` spustí workflow `release.yml`: sestaví ZIP pro Mac, vytvoří tag `vXX` a GitHub Release s poznámkami z `CHANGELOG.md`. Tagy se ručně nepushují.
-- `site/index.html` je v repozitáři – po změně `src/` vždy spustit `python3 build.py`.
+- `site/index.html` je v repozitáři – po změně `src/` vždy spustit `python3 build.py` (generuje i `site/sw.js` a `site/version.json`; service worker se tím aktualizuje u všech hráčů).
+- Push na `main` nasadí `site/` na GitHub Pages (`pages.yml`): https://riff1991.github.io/zos-simulator/
 
 ## Kontroly před odevzdáním (povinné)
 
