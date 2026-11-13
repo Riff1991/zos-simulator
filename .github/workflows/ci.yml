@@ -1,0 +1,27 @@
+name: Kontroly
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: ESLint (nedefinované funkce)
+        run: npx --yes eslint@9 src/data.js src/people.js src/engine.js src/router.js src/ui.js
+      - name: Sestavení
+        run: python3 build.py && git diff --exit-code -- site/index.html || (echo "site/index.html neodpovídá src/ – spusť python3 build.py a commitni" && exit 1)
+      - name: Testy enginu
+        run: node tests/test.js
+      - name: Audit obsahu výzev
+        run: node tests/content_audit.js
+      - name: Test v prohlížeči
+        run: |
+          pip install playwright && python3 -m playwright install --with-deps chromium
+          python3 -m http.server -d site 8765 &
+          sleep 2 && python3 tests/browser_smoke.py

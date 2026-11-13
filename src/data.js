@@ -1,0 +1,256 @@
+// ZOS simulátor – data (síť základen vychází z veřejné tabulky ZZS JčK, listopad 2026).
+// Souřadnice jsou přibližné. Případy, jména a adresy jsou vymyšlené.
+
+const ZOS_DATA = {
+  oblasti: [
+    // číslování oblastí podle dispečerského systému ZZS JčK (11 = LZS)
+    { id: 'ČB', name: 'České Budějovice', radio: 1 },
+    { id: 'JH', name: 'Jindřichův Hradec', radio: 2 },
+    { id: 'PI', name: 'Písek', radio: 3 },
+    { id: 'PT', name: 'Prachatice', radio: 4 },
+    { id: 'ST', name: 'Strakonice', radio: 5 },
+    { id: 'TA', name: 'Tábor', radio: 6 },
+    { id: 'ČK', name: 'Český Krumlov', radio: 7 },
+  ],
+
+  // day / night = { rzp, rv }. zzum = superzáchranáři (zzumConfirmed false = nepotvrzeno).
+  // flexRlp = RZP, které může jet jako RLP po přibrání lékaře (v prototypu bez dopadu).
+  stations: [
+    { id: 'cb', oblast: 'ČB', name: 'České Budějovice', short: 'ČB', lat: 48.96638, lon: 14.47035, day: { rzp: 3, rv: 2 }, night: { rzp: 3, rv: 2 } },
+    { id: 'cbpr', oblast: 'ČB', name: 'ČB – Pražská', short: 'ČB Pražská', lat: 48.99902, lon: 14.48112, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'cbpl', oblast: 'ČB', name: 'ČB – Planá', short: 'ČB Planá', lat: 48.945, lon: 14.435, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'cbvl', oblast: 'ČB', name: 'ČB – Vltava', short: 'ČB Vltava', lat: 48.99162, lon: 14.45038, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'kaplice', oblast: 'ČB', name: 'Kaplice', short: 'Kaplice', lat: 48.7396, lon: 14.4953, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'tyn', oblast: 'ČB', name: 'Týn nad Vltavou', short: 'Týn n. V.', lat: 49.2222, lon: 14.4217, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'tsviny', oblast: 'ČB', name: 'Trhové Sviny', short: 'T. Sviny', lat: 48.8385, lon: 14.63607, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true },
+
+    { id: 'ck', oblast: 'ČK', name: 'Český Krumlov', short: 'ČK', lat: 48.81123, lon: 14.32487, day: { rzp: 2, rv: 1 }, night: { rzp: 2, rv: 1 } },
+    { id: 'hplana', oblast: 'ČK', name: 'Horní Planá', short: 'H. Planá', lat: 48.7686, lon: 14.0319, day: { rzp: 1, rv: 0 }, night: { rzp: 0, rv: 0 } },
+    { id: 'vbrod', oblast: 'ČK', name: 'Vyšší Brod', short: 'V. Brod', lat: 48.62, lon: 14.3086, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true },
+    { id: 'frymburk', oblast: 'ČK', name: 'Frymburk', short: 'Frymburk', lat: 48.66557, lon: 14.16538, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true },
+
+    { id: 'jh', oblast: 'JH', name: 'Jindřichův Hradec', short: 'JH', lat: 49.1444, lon: 15.0033, day: { rzp: 3, rv: 1 }, night: { rzp: 2, rv: 1 } },
+    { id: 'kunzak', oblast: 'JH', name: 'Kunžak', short: 'Kunžak', lat: 49.11736, lon: 15.1895, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'dacice', oblast: 'JH', name: 'Dačice', short: 'Dačice', lat: 49.0817, lon: 15.4358, day: { rzp: 1, rv: 1 }, night: { rzp: 1, rv: 1 } },
+    { id: 'trebon', oblast: 'JH', name: 'Třeboň', short: 'Třeboň', lat: 49.00496, lon: 14.7614, day: { rzp: 2, rv: 1 }, night: { rzp: 1, rv: 1 } },
+    { id: 'suchdol', oblast: 'JH', name: 'Suchdol nad Lužnicí', short: 'Suchdol', lat: 48.8892, lon: 14.8978, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+
+    { id: 'pt', oblast: 'PT', name: 'Prachatice', short: 'PT', lat: 49.0128, lon: 13.997, day: { rzp: 2, rv: 1 }, night: { rzp: 2, rv: 1 } },
+    { id: 'vimperk', oblast: 'PT', name: 'Vimperk', short: 'Vimperk', lat: 49.0561, lon: 13.7708, day: { rzp: 2, rv: 0 }, night: { rzp: 2, rv: 0 }, flexRlp: true },
+    { id: 'volary', oblast: 'PT', name: 'Volary', short: 'Volary', lat: 48.9094, lon: 13.8947, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true, zzumConfirmed: false },
+    { id: 'vacov', oblast: 'PT', name: 'Vacov', short: 'Vacov', lat: 49.1467, lon: 13.6797, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'lhenice', oblast: 'PT', name: 'Lhenice', short: 'Lhenice', lat: 49.0042, lon: 14.1665, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+
+    { id: 'st', oblast: 'ST', name: 'Strakonice', short: 'ST', lat: 49.2614, lon: 13.9022, day: { rzp: 3, rv: 1 }, night: { rzp: 2, rv: 1 } },
+    { id: 'blatna', oblast: 'ST', name: 'Blatná', short: 'Blatná', lat: 49.4247, lon: 13.8844, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, flexRlp: true },
+    { id: 'vodnany', oblast: 'ST', name: 'Vodňany', short: 'Vodňany', lat: 49.14646, lon: 14.1767, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true, zzumConfirmed: false },
+
+    { id: 'pi', oblast: 'PI', name: 'Písek', short: 'PI', lat: 49.3088, lon: 14.1475, day: { rzp: 3, rv: 1 }, night: { rzp: 2, rv: 1 } },
+    { id: 'milevsko', oblast: 'PI', name: 'Milevsko', short: 'Milevsko', lat: 49.4506, lon: 14.3606, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, flexRlp: true },
+    { id: 'cimelice', oblast: 'PI', name: 'Čimelice', short: 'Čimelice', lat: 49.465, lon: 14.0319, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+
+    { id: 'ta', oblast: 'TA', name: 'Tábor', short: 'TA', lat: 49.40632, lon: 14.69382, day: { rzp: 3, rv: 1 }, night: { rzp: 3, rv: 1 } },
+    { id: 'sobeslav', oblast: 'TA', name: 'Soběslav', short: 'Soběslav', lat: 49.2594, lon: 14.7194, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'mvozice', oblast: 'TA', name: 'Mladá Vožice', short: 'M. Vožice', address: 'Plaňková 420', lat: 49.5321, lon: 14.80855, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'oparany', oblast: 'TA', name: 'Opařany', short: 'Opařany', lat: 49.4361, lon: 14.4958, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'veseli', oblast: 'TA', name: 'Veselí nad Lužnicí', short: 'Veselí', lat: 49.1853, lon: 14.6931, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true },
+  ],
+
+  lzs: {
+    id: 'lzs', name: 'LZS Planá', short: 'LZS', oblast: 'ČB', lat: 48.9467, lon: 14.4258,
+    speedKnots: 130, activationDay: [150, 210], activationNight: [360, 480],
+    // LKCC, aktuálně publikovaný heliport u NEM ČB; souřadnice z VFR příručky AIM.
+    heliport: { name: 'Heliport NEM ČB (LKCC)', lat: 48.962036, lon: 14.462650 },
+  },
+  // Modelované žádosti o výpomoc; letištní/heliportové souřadnice jsou veřejné orientační body.
+  lzsSupport: [
+    { id: 'lzs-jihlava', name: 'LZS Jihlava (výpomoc)', code: 'KR12', oblast: 'JH', lat: 49.39853, lon: 15.56794, dayOnly: true, activationDay: [150, 210] },
+    { id: 'lzs-praha', name: 'LZS Praha (výpomoc)', code: 'KR01', oblast: 'ČB', lat: 50.1008, lon: 14.26, activationDay: [150, 210], activationNight: [360, 480] },
+    { id: 'lzs-plzen', name: 'LZS Plzeň (výpomoc)', code: 'KR07', oblast: 'ST', lat: 49.6753, lon: 13.2744, activationDay: [150, 210], activationNight: [360, 480] },
+  ],
+
+  // Sady MU (vozidla pro řešení následků mimořádných událostí), dislokace ČB, Tábor, Strakonice, J. Hradec.
+  mu: [
+    { id: 'mu-cb', name: 'MU ČB', oblast: 'ČB', stationId: 'cb' },
+    { id: 'mu-ta', name: 'MU Tábor', oblast: 'TA', stationId: 'ta' },
+    { id: 'mu-st', name: 'MU Strakonice', oblast: 'ST', stationId: 'st' },
+    { id: 'mu-jh', name: 'MU J. Hradec', oblast: 'JH', stationId: 'jh' },
+  ],
+
+  // Záložní vozy (fialové, nepřihlášené). Po aktivaci dispečerem jedou jako RZP.
+
+  // Názvy výjezdových skupin ve formátu dispečerského systému (podle říjnového přehledu výjezdů).
+  crewNames: {
+    cb: { rzp: ['RZP1', 'RZP2', 'RZP3'], rv: ['RV1', 'RV2'] }, cbpr: { rzp: ['CB PRAŽSKÁ RZP'] }, cbpl: { rzp: ['CB PLANÁ RZP'] }, cbvl: { rzp: ['CB VLTAVA RZP'] },
+    kaplice: { rzp: ['KAPLICE_RZP'] }, tyn: { rzp: ['TYN N. VLT.'] }, tsviny: { rzp: ['T. SVINY'] },
+    ck: { rzp: ['CK_RZP1', 'CK_RZP2'], rv: ['CK_RV'] }, hplana: { rzp: ['H. PLANÁ RZP'] }, vbrod: { rzp: ['V. BROD_RZP'] }, frymburk: { rzp: ['FRYMBURK'] },
+    jh: { rzp: ['JH_RZP1', 'JH_RZP2', 'JH_RZP3'], rv: ['JH_RV'] }, kunzak: { rzp: ['KUNZAK_RZP'] }, dacice: { rzp: ['DACICE'], rv: ['DACICE_RV'] },
+    trebon: { rzp: ['TREBON', 'TREBON 2'], rv: ['TREBON_RV'] }, suchdol: { rzp: ['SUCHDOL'] },
+    pt: { rzp: ['PT_RZP1', 'PT_RZP2'], rv: ['PT_RV'] }, vimperk: { rzp: ['VIMPERK', 'VIMPERK 2'] }, volary: { rzp: ['VOLARY_RZP'] }, vacov: { rzp: ['VACOV_RZP'] }, lhenice: { rzp: ['LHENICE'] },
+    st: { rzp: ['ST_RZP1', 'ST_RZP2', 'ST_RZP3'], rv: ['ST_RV'] }, blatna: { rzp: ['BLATNA'] }, vodnany: { rzp: ['VODNANY'] },
+    pi: { rzp: ['PISEK_RZP1', 'PISEK_RZP2', 'PISEK_RZP3'], rv: ['PISEK_RV'] }, milevsko: { rzp: ['MILEVSKO'] }, cimelice: { rzp: ['CIMELICE_RZP'] },
+    ta: { rzp: ['TA_RZP1', 'TA_RZP2', 'TA_RZP3'], rv: ['TA_RV'] }, sobeslav: { rzp: ['SOBESLAV'] }, mvozice: { rzp: ['VOZICE_RZP'] }, oparany: { rzp: ['OPARANY_RZP'] }, veseli: { rzp: ['VESELI'] },
+  },
+  // LIBERO: volný lékař na základně, jen přes den a ne vždy. Lze ho přidat do RZP téže základny → dočasně RLP.
+  libero: [
+    { id: 'lib-cb', name: 'CB LIBERO', oblast: 'ČB', stationId: 'cb' },
+    { id: 'lib-ta', name: 'TA LIBERO', oblast: 'TA', stationId: 'ta' },
+    { id: 'lib-vi', name: 'VI LIBERO', oblast: 'PT', stationId: 'vimperk' },
+  ],
+  liberoPresence: 0.7,
+  reserves: [
+    { id: 'z-cb1', name: 'CB_Z 1', oblast: 'ČB', stationId: 'cb' },
+    { id: 'z-cb2', name: 'CB_Z 2', oblast: 'ČB', stationId: 'cb' },
+    { id: 'z-ck', name: 'CK_Z', oblast: 'ČK', stationId: 'ck' },
+    { id: 'z-jh', name: 'JH_Z', oblast: 'JH', stationId: 'jh' },
+    { id: 'z-pt', name: 'PT_Z', oblast: 'PT', stationId: 'pt' },
+    { id: 'z-st', name: 'ST_Z', oblast: 'ST', stationId: 'st' },
+    { id: 'z-pi', name: 'PISEK_Z', oblast: 'PI', stationId: 'pi' },
+    { id: 'z-ta', name: 'TA_Z', oblast: 'TA', stationId: 'ta' },
+  ],
+
+  // types: okresni = běžný příjem, iktove = iktové centrum, trauma = traumacentrum, kcc = komplexní centrum / PCI
+  hospitals: [
+    { id: 'h-cb', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'kcc'] },
+    { id: 'h-ta', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'] },
+    { id: 'h-jh', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'] },
+    { id: 'h-pi', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'] },
+    { id: 'h-st', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'] },
+    { id: 'h-pt', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'] },
+    { id: 'h-ck', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'] },
+    { id: 'h-fnkv', name: 'Fakultní nemocnice Královské Vinohrady', short: 'FNKV Praha', lat: 50.074618, lon: 14.482014, heliport: true, types: ['popaleniny'] },
+  ],
+
+  // Města pro generování případů a výpočet pokrytí. w = přibližná velikost v tisících obyvatel.
+  towns: [
+    { n: 'České Budějovice', lat: 48.975, lon: 14.474, w: 94 },
+    { n: 'Tábor', lat: 49.414, lon: 14.658, w: 34 },
+    { n: 'Písek', lat: 49.309, lon: 14.148, w: 30 },
+    { n: 'Strakonice', lat: 49.261, lon: 13.902, w: 23 },
+    { n: 'Jindřichův Hradec', lat: 49.144, lon: 15.003, w: 21 },
+    { n: 'Český Krumlov', lat: 48.813, lon: 14.318, w: 13 },
+    { n: 'Prachatice', lat: 49.013, lon: 13.997, w: 11 },
+    { n: 'Třeboň', lat: 49.004, lon: 14.771, w: 8 },
+    { n: 'Týn nad Vltavou', lat: 49.222, lon: 14.422, w: 8 },
+    { n: 'Milevsko', lat: 49.451, lon: 14.361, w: 8 },
+    { n: 'Dačice', lat: 49.082, lon: 15.436, w: 7.5 },
+    { n: 'Vimperk', lat: 49.056, lon: 13.771, w: 7.5 },
+    { n: 'Sezimovo Ústí', lat: 49.384, lon: 14.687, w: 7.5 },
+    { n: 'Soběslav', lat: 49.259, lon: 14.719, w: 7 },
+    { n: 'Vodňany', lat: 49.148, lon: 14.171, w: 7 },
+    { n: 'Kaplice', lat: 48.74, lon: 14.495, w: 7 },
+    { n: 'Veselí nad Lužnicí', lat: 49.185, lon: 14.693, w: 7 },
+    { n: 'Blatná', lat: 49.425, lon: 13.884, w: 6.5 },
+    { n: 'Trhové Sviny', lat: 48.842, lon: 14.639, w: 5 },
+    { n: 'Bechyně', lat: 49.296, lon: 14.469, w: 5 },
+    { n: 'Hluboká nad Vltavou', lat: 49.053, lon: 14.434, w: 5 },
+    { n: 'Protivín', lat: 49.198, lon: 14.22, w: 4.8 },
+    { n: 'Planá nad Lužnicí', lat: 49.35, lon: 14.714, w: 4 },
+    { n: 'Volary', lat: 48.909, lon: 13.895, w: 3.7 },
+    { n: 'Volyně', lat: 49.16, lon: 13.882, w: 3.7 },
+    { n: 'Borovany', lat: 48.898, lon: 14.641, w: 3.7 },
+    { n: 'Zliv', lat: 49.069, lon: 14.36, w: 3.5 },
+    { n: 'Lišov', lat: 49.024, lon: 14.609, w: 3.2 },
+    { n: 'Nová Bystřice', lat: 49.015, lon: 15.105, w: 3.2 },
+    { n: 'Nové Hrady', lat: 48.791, lon: 14.785, w: 3 },
+    { n: 'Netolice', lat: 49.044, lon: 14.2, w: 2.7 },
+    { n: 'Kunžak', lat: 49.121, lon: 15.206, w: 2.7 },
+    { n: 'Mladá Vožice', lat: 49.644, lon: 14.824, w: 2.7 },
+    { n: 'Lomnice nad Lužnicí', lat: 49.082, lon: 14.713, w: 2.6 },
+    { n: 'Slavonice', lat: 49.0, lon: 15.352, w: 2.5 },
+    { n: 'Vyšší Brod', lat: 48.62, lon: 14.309, w: 2.5 },
+    { n: 'Chýnov', lat: 49.41, lon: 14.817, w: 2.5 },
+    { n: 'Horní Planá', lat: 48.769, lon: 14.032, w: 2.2 },
+    { n: 'Suchdol nad Lužnicí', lat: 48.889, lon: 14.898, w: 2.3 },
+    { n: 'Kardašova Řečice', lat: 49.192, lon: 14.855, w: 2 },
+    { n: 'Lhenice', lat: 49.004, lon: 14.167, w: 2 },
+    { n: 'Čimelice', lat: 49.465, lon: 14.032, w: 1.7 },
+    { n: 'Bavorov', lat: 49.107, lon: 14.046, w: 1.7 },
+    { n: 'Opařany', lat: 49.436, lon: 14.496, w: 1.5 },
+    { n: 'Vacov', lat: 49.147, lon: 13.68, w: 1.3 },
+    { n: 'Frymburk', lat: 48.653, lon: 14.164, w: 1.2 },
+    { n: 'Lipno nad Vltavou', lat: 48.636, lon: 14.229, w: 0.8 },
+  ],
+
+  // Klasifikace přesně podle názvů v systému. Příznaky čerpá engine výhradně ze src/symptoms.json.
+  // n = váhy naléhavosti, dyn = podíl dynamických N2 (RZP bez lékaře, lékař na vyžádání),
+  // rvP = orientační pravděpodobnost žádosti o lékaře při události, kalibrovaná podle vzorku výjezdů;
+  // jde o herní baseline, nikoli pevné pravidlo. zzum = N2 zvládne ZZUM bez lékaře,
+  // n a dyn jsou orientačně kalibrovány z anonymního souhrnu dodaných výjezdů; N2 dynamika je zde odhad podle vyslané RZP bez RV.
+  // Neidentifikované skupiny se do odhadu dyn nezapočítávají. Jde o simulaci, ne o závazný triážní algoritmus.
+  // trans = pravděpodobnost transportu, hosp = typ cíle (nebo [[typ, pravděpodobnost], ...]),
+  // scene = doba u pacienta v minutách (RZP), w = váha výskytu, where = typy míst.
+  // Četnosti a délky pobytu jsou nastavené podle anonymních agregátů říjnového vzorku.
+  // Parametry n, dyn, rvP a klinické scénáře zůstávají herním odhadem, ne pravidlem JčK.
+  indications: [
+    { id: 'resus', klasif: 'Resuscitace', symptomKey: '__resuscitace__', n: { 1: 1 }, rvP: 1, trans: 0.4, hosp: 'okresni', scene: [20, 38], w: 0.5, where: ['rd', 'byt', 'ulice', 'domov'], age: [0, 90] },
+    { id: 'nzo', klasif: 'NZO – spatřená', n: { 1: 1 }, rvP: 1, trans: 0.55, hosp: 'okresni', scene: [22, 38], w: 4, where: ['ulice', 'prov', 'rd', 'priroda'], age: [30, 85] },
+    { id: 'porucha', klasif: 'Porucha vědomí', n: { 1: 0.2, 2: 0.425, 3: 0.375 }, dyn: 0.53, rvP: 0.29, trans: 0.85, hosp: 'okresni', scene: [12, 28], w: 713, where: ['rd', 'byt', 'ulice', 'domov'], age: [25, 90] },
+    { id: 'dusnost', klasif: 'Dušnost', n: { 1: 0.053, 2: 0.749, 3: 0.198 }, dyn: 0.63, rvP: 0.24, trans: 0.92, hosp: 'okresni', scene: [11, 26], w: 714, where: ['rd', 'byt', 'domov', 'ulice'], age: [30, 90] },
+    { id: 'hrudnik', klasif: 'Bolesti na hrudi', n: { 2: 0.789, 3: 0.211 }, dyn: 0.55, rvP: 0.27, trans: 0.95, hosp: [['kcc', 0.3], ['okresni', 0.7]], scene: [12, 28], w: 440, where: ['rd', 'byt', 'prov', 'ulice'], age: [40, 88] },
+    { id: 'cmp', klasif: 'CMP', n: { 2: 0.88, 3: 0.12 }, dyn: 0.96, rvP: 0.03, zzum: true, trans: 0.97, hosp: 'iktove', scene: [13, 29], w: 185, where: ['rd', 'byt', 'ulice', 'domov'], age: [55, 92] },
+    { id: 'kreceU', klasif: 'Křečové stavy', n: { 2: 0.763, 3: 0.237 }, dyn: 0.48, rvP: 0.34, trans: 0.7, hosp: 'okresni', scene: [11, 25], w: 131, where: ['rd', 'byt', 'ulice', 'prov'], age: [15, 80] },
+    { id: 'pedi', klasif: 'Pediatrické stavy', symptomKey: '__pediatric__', n: { 1: 0.1, 2: 0.6, 3: 0.3 }, dyn: 0.5, rvP: 0.35, trans: 0.92, hosp: 'okresni', scene: [11, 25], w: 1, where: ['rd', 'byt', 'skola'], age: [0, 14], child: true },
+    { id: 'alerg', klasif: 'Alergické reakce', n: { 2: 0.462, 3: 0.538 }, dyn: 0.6, rvP: 0.15, trans: 0.75, hosp: 'okresni', scene: [10, 25], w: 75, where: ['rd', 'byt', 'priroda', 'prov'], age: [5, 80] },
+    { id: 'diab', klasif: 'Diabetické stavy', n: { 2: 0.5, 3: 0.5 }, dyn: 0.8, rvP: 0.01, zzum: true, trans: 0.55, hosp: 'okresni', scene: [13, 31], w: 44, where: ['rd', 'byt', 'domov'], age: [20, 85] },
+    { id: 'aryt', klasif: 'Arytmie', n: { 1: 0.032, 2: 0.413, 3: 0.556 }, dyn: 0.5, rvP: 0.21, trans: 0.85, hosp: 'okresni', scene: [11, 27], w: 131, where: ['rd', 'byt', 'ulice'], age: [40, 90] },
+    { id: 'hypert', klasif: 'Hypertenze', n: { 2: 0.25, 3: 0.75 }, dyn: 0.7, rvP: 0.02, trans: 0.7, hosp: 'okresni', scene: [11, 27], w: 137, where: ['rd', 'byt', 'domov'], age: [50, 90] },
+    { id: 'intox', klasif: 'Intoxikace', n: { 2: 0.295, 3: 0.705 }, dyn: 0.64, rvP: 0.15, trans: 0.8, hosp: 'okresni', scene: [9, 25], w: 150, where: ['ulice', 'byt', 'prov', 'rd'], age: [16, 70] },
+    { id: 'krvac', klasif: 'Neúrazové krvácení', n: { 2: 0.188, 3: 0.812 }, dyn: 0.5, rvP: 0.10, trans: 0.9, hosp: 'okresni', scene: [10, 26], w: 176, where: ['rd', 'byt', 'domov'], age: [30, 90] },
+    { id: 'neuro', klasif: 'Neurologické stavy', n: { 2: 0.028, 3: 0.972 }, dyn: 0.7, rvP: 0.03, trans: 0.75, hosp: 'okresni', scene: [11, 26], w: 310, where: ['rd', 'byt', 'ulice'], age: [30, 90] },
+    { id: 'psych', klasif: 'Psychiatrické stavy', n: { 2: 0.354, 3: 0.646 }, dyn: 0.49, rvP: 0.12, trans: 0.6, hosp: 'okresni', scene: [8, 29], w: 295, where: ['byt', 'rd', 'ulice'], age: [18, 70] },
+    { id: 'horecka', klasif: 'Horečka', n: { 3: 1 }, rvP: 0.01, trans: 0.5, hosp: 'okresni', scene: [9, 23], w: 98, where: ['rd', 'byt'], age: [1, 85] },
+    { id: 'zvraceni', klasif: 'Zvracení/průjem', n: { 3: 1 }, rvP: 0.01, trans: 0.65, hosp: 'okresni', scene: [9, 22], w: 215, where: ['rd', 'byt', 'domov'], age: [20, 90] },
+    { id: 'bolest', klasif: 'Bolest', n: { 2: 0.032, 3: 0.968 }, dyn: 0.58, rvP: 0.02, trans: 0.85, hosp: 'okresni', scene: [8, 21], w: 913, where: ['rd', 'byt', 'domov', 'ulice'], age: [20, 92] },
+    { id: 'gyn', klasif: 'Gynekologické stavy', n: { 1: 0.136, 2: 0.318, 3: 0.545 }, dyn: 0.4, rvP: 0.09, trans: 1, hosp: 'okresni', scene: [4, 15], w: 58, where: ['rd', 'byt'], age: [18, 42], sex: 'Ž' },
+    { id: 'dn_poly', klasif: 'Dopravní nehoda', n: { 1: 1 }, rvP: 1, trans: 1, hosp: 'trauma', scene: [13, 36], w: 10, where: ['silnice'], age: [0, 90] },
+    { id: 'dn_lehke', klasif: 'Dopravní nehoda', n: { 2: 0.603, 3: 0.397 }, dyn: 0.53, rvP: 0.19, trans: 0.85, hosp: 'okresni', scene: [10, 27], w: 267, where: ['silnice', 'ulice'], age: [0, 90] },
+    { id: 'trauma', klasif: 'Trauma', symptomKey: '__adult_trauma__', n: { 1: 0.022, 2: 0.103, 3: 0.875 }, dyn: 0.56, rvP: 0.04, trans: 0.9, hosp: 'okresni', scene: [8, 20], w: 1109, where: ['rd', 'byt', 'domov', 'ulice', 'prov'], age: [25, 92] },
+    { id: 'trauma_dite', klasif: 'Trauma', symptomKey: '__pediatric_trauma__', n: { 2: 0.35, 3: 0.65 }, dyn: 0.6, rvP: 0.04, trans: 0.9, hosp: 'okresni', scene: [8, 20], w: 123, where: ['ulice', 'rd', 'skola'], age: [1, 15], child: true },
+    { id: 'popal', klasif: 'Popálení, poleptání', n: { 2: 0.6, 3: 0.4 }, dyn: 0.37, rvP: 0.2, trans: 0.9, hosp: 'okresni', scene: [13, 30], w: 26, where: ['rd', 'byt', 'prov'], age: [2, 70] },
+    { id: 'tonuti', klasif: 'Tonutí', n: { 1: 1 }, rvP: 1, trans: 1, hosp: 'okresni', scene: [18, 32], w: 1, where: ['priroda', 'prov'], age: [3, 65] },
+    { id: 'obeseni', klasif: 'Oběšení', n: { 1: 1 }, rvP: 1, trans: 0.5, hosp: 'okresni', scene: [14, 28], w: 5, where: ['rd', 'byt', 'priroda'], age: [18, 70] },
+    { id: 'amput', klasif: 'Amputace', symptomKey: '__amputace__', n: { 1: 0.4, 2: 0.6 }, rvP: 0.7, dyn: 0.2, trans: 1, hosp: 'trauma', scene: [12, 28], w: 1, where: ['prov', 'rd'], age: [0, 90] },
+    { id: 'asist', klasif: 'Asistence', n: { 3: 1 }, rvP: 0.11, trans: 0.7, hosp: 'okresni', scene: [8, 25], w: 51, where: ['byt', 'silnice', 'prov'], age: [30, 92] },
+    { id: 'czs', klasif: 'CZS', n: { 3: 1 }, rvP: 0.02, trans: 0.9, hosp: 'okresni', scene: [12, 27], w: 230, where: ['rd', 'byt', 'domov'], age: [50, 92] },
+  ],
+
+  where: {
+    rd: { txt: ['Rodinný dům, přístup hlavním vchodem', 'Rodinný dům, vstup ze dvora', 'Rodinný dům, pacient v přízemí'], ch: 0 },
+    byt: { txt: ['Bytový dům, 2. patro, výtah', 'Bytový dům, 3. patro, bez výtahu', 'Byt, zvonek nefunguje', 'Bytový dům, vchod z pavlače'], ch: 0 },
+    domov: { txt: ['Domov pro seniory, pokoj', 'Domov pro seniory, společenská místnost'], ch: 0 },
+    prov: { txt: ['Provozovna, vstup z ulice', 'Provozovna, zadní vchod', 'Pracoviště, výrobní hala'], ch: 0 },
+    skola: { txt: ['Škola, učebna', 'Školní hřiště'], ch: 0 },
+    ulice: { txt: ['Ulice, před domem', 'Chodník u zastávky', 'Veřejné prostranství'], ch: 1 },
+    silnice: { txt: ['Silnice, osobní vozidlo', 'Silnice, vozidlo mimo vozovku', 'Silnice, omezený průjezd'], ch: 1 },
+    priroda: { txt: ['Lesní cesta, přístup pěšky', 'Příroda, mimo zástavbu', 'Turistická trasa, přístup z cesty'], ch: 1 },
+    ordinace: { txt: ['Ordinace, čekárna', 'Ordinace praktického lékaře'], ch: 2 },
+    zz: { txt: ['Zdravotnické zařízení, ambulance', 'Zdravotnické zařízení, lůžkové oddělení'], ch: 2 },
+  },
+
+  // Charakter výzvy. Do hry zatím vstupují první tři. Ostatní jsou připravené pro další režimy.
+  charaktery: [
+    'Tísňová výzva v budově',
+    'Tísňová výzva v terénu',
+    'Tísňová výzva ve zdrav. zařízení',
+  ],
+  charakteryJine: [
+    'Převoz z/do vrtulníku',
+    'Sekundární převoz',
+    'Sekundární převoz mezikrajský',
+    'TECHNICKÁ JÍZDA',
+    'Vstřícná jízda',
+  ],
+  klasifikaceVsechny: [
+    'Alergické reakce', 'Amputace', 'Arytmie', 'Asistence', 'Bolest', 'Bolesti na hrudi', 'CMP', 'CZS',
+    'Diabetické stavy', 'Dopravní nehoda', 'Dušnost', 'Gynekologické stavy', 'Horečka', 'Hypertenze',
+    'Intoxikace', 'Křečové stavy', 'MU - MATRA 722', 'Neúrazové krvácení', 'Neurologické stavy',
+    'NZO – spatřená', 'Oběšení', 'Pediatrické stavy', 'Popálení, poleptání', 'Porucha vědomí',
+    'Převoz', 'Psychiatrické stavy', 'Resuscitace', 'Technická jízda', 'Tonutí',
+    'Trauma', 'Vstřícná jízda', 'Zvracení/průjem',
+  ],
+
+  streets: ['Nádražní', 'Školní', 'Zahradní', 'Lipová', 'Polní', 'Sídliště', 'Husova', 'Komenského', 'Jiráskova', 'Pražská', 'Na Výsluní', 'Dlouhá', 'Příčná', 'Mírová', 'Okružní', 'Větrná'],
+};
+
+if (typeof module !== "undefined") module.exports = ZOS_DATA;

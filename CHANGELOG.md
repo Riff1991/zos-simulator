@@ -1,0 +1,56 @@
+# Changelog – ZOS simulátor
+
+Hra/simulátor práce primárního dispečera ZOS ZZS Jihočeského kraje. Nejde o nástroj pro ostrý provoz. Osoby, kontakty a události jsou generované.
+
+Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekci **Releases** na GitHubu (`zos-simulator-mac-vXX.zip`).
+
+---
+
+## v13 – 2026-11-13
+
+### Nové
+- **LIBERO** (ČB, Tábor, Vimperk): volný lékař na základně, jen přes den a ne každý den. Dispečer ho přidá do RZP téže základny (tlačítko „+ LIBERO“ v návrhu posádek nebo v panelu posádky). Posádka je pak dočasně RLP a počítá se jako lékař u výzvy. Po návratu na základnu lékař vystoupí.
+- **Předání na FNKV (Praha):** LZS přistane na heliportu FNKV, pacienta převezme posádka ZZS HMP. Posádka LZS ho doprovází na popáleninové centrum (vyložení, ~2 min jízda, předání, návrat na heliport, příprava k letu; celkem asi 20–30 min) a pak letí zpět. Převozní RZP z kraje se už neposílá.
+- **Upozornění nahoře** (hlášení 112, žádost o lékaře): zmizí samo nejpozději po 40 s, nebo je lze zavřít křížkem ✕ bez otevírání případu. Zpráva zůstává v rádiovém logu.
+- **Generátor osob:** jména se správným rodem (Novák/Nováková, Černý/Černá, Sedláček/Sedláčková), ~100 příjmení podle četnosti, křestní jména podle ročníku. Oznamovatel má vztah k pacientovi („volá dcera“, „volá ošetřovatelka domova“, „volá kolemjdoucí“, PČR, HZS, 112).
+- **Reálná místa z OpenStreetMap:** domovy pro seniory, školy, ordinace a provozovny mají skutečnou adresu a název.
+- **Místo podle věku a denní doby:** domov pro seniory jen u starších, škola u dětí ve školní době, provozovna v pracovní době.
+- **Katalog příznaků z reálných dat:** 42 383 výjezdů (leden–květen a říjen 2026), 537 příznaků, 7 444 skutečných kombinací. Jen standardizované kódy, žádná osobní data.
+- **Reálné názvy posádek a číslování oblastí** podle dispečerského systému: RZP1, RV1, CB VLTAVA RZP, TA_RZP2, PISEK_RV, TREBON 2, CB_Z 1…; oblasti 1 ČB, 2 JH, 3 PI, 4 PT, 5 ST, 6 TA, 7 ČK.
+- Věk v tisku výzvy většinou jako ročník; telefon ve formátu systému (fiktivní rozsah 0999…).
+- Číslo verze v hlavičce hry.
+
+### Opravy
+- Kliknutí na výzvu nepřesunulo mapu a hlášení 112 nešlo odkliknout: chybějící funkce `syncSelectionToMain` shodila obsluhu kliknutí.
+- Na mobilu měla mapa nulovou výšku.
+- Ikony základen a vrtulníku se nenačítaly (nekompatibilní API MapLibre 4).
+- „zbývá 704 h“ v hlavičce místo zbývajícího času směny.
+- RZP na místě vezla pacienta po zemi, i když ho současně převzala LZS (pacient převážen dvakrát).
+- Případ, kde místo RV letěla LZS, se nikdy neuzavřel.
+- „DYNAMICKÁ INDIKACE“ zůstávala u výzvy i po eskalaci na N1.
+- Ohledání zemřelého („koroner nedostupný, TANR nelze“) se už nepřepisuje na N1.
+- Instalátor pro Mac: při aktualizaci smaže starou verzi webu a nevytváří duplicitní zástupce na ploše.
+
+### Pro vývoj
+- Nové kontroly: `npm run lint` (ESLint), `tests/content_audit.js` (obsah výzev), `tests/browser_smoke.py` (proklik v prohlížeči), GitHub Actions.
+
+## v12 – 2026-11-13
+- Kliknutí na výzvu má přesunout mapu na místo zásahu (pokus o opravu přes `jumpTo`; plně opraveno až ve v13).
+
+## v9 – 2026-11-13
+- Opravena chyba v rozložení více monitorů, která zastavila JavaScript před otevřením úvodní nabídky.
+
+## v8 – 2026-11-13
+- Mapování rádiových kódů LZS: Planá KR13, Jihlava KR12, Praha KR01, Plzeň KR07 (aktualizuje se i v uložených směnách).
+
+## v7 – 2026-11-13
+- Otevření mapy nebo rádia bokem je skryje na hlavní obrazovce; tlačítky lze panel znovu zobrazit.
+- Zbývající panely se přeskupí, aby využily hlavní monitor; rozložení se pamatuje v prohlížeči.
+
+## v6 – 2026-11-13
+- Mapu a rádio lze otevřít v samostatných oknech na druhém monitoru; sdílí stav simulace.
+- Mapa na celou obrazovku; upravené mobilní rozložení mapy.
+- Jediná, čitelnější ikona vrtulníku LZS v dlaždicích.
+
+## Starší
+- Prototyp (12. 11. 2026): síť základen ZZS JčK, simulace směny, návrh posádek, rádio, tisk výzvy, mapa OpenStreetMap s trasami po silnicích, reálné adresy.

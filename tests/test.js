@@ -1,0 +1,392 @@
+global.ZOS_DATA = require('../src/data.js');
+global.ZOS_PEOPLE = require('../src/people.js');
+global.ZOS_SYMPTOMS = require('../src/symptoms.json');
+global.ROUTER = require('../src/router.js');
+{ const b = require('fs').readFileSync(__dirname + '/../site/graph.wasm'); ROUTER.init(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); }
+global.ZOS_POI = JSON.parse(require('fs').readFileSync(__dirname + '/../site/poi.json', 'utf8'));
+global.ZOS_ADDR = JSON.parse(require('fs').readFileSync(__dirname + '/../site/addr.json', 'utf8'));
+const { Sim } = require('../src/engine.js');
+
+function bot(sim) {
+  const s = sim.s;
+  for (const c of s.cases) {
+    if (c.status === 'waiting') {
+      if (c.mu) {
+        const m = sim.suggest(c.id, 'MU')[0]; if (m && !c.crews.length) sim.assign(c.id, m.crewId);
+        const r = sim.suggest(c.id, 'RZP').slice(0, 2); r.forEach(x => sim.assign(c.id, x.crewId));
+        const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId);
+        const l = sim.suggest(c.id, 'LZS')[0]; if (l) sim.assign(c.id, l.crewId);
+        continue;
+      }
+      const r = sim.suggest(c.id, 'RZP')[0];
+      if (r) sim.assign(c.id, r.crewId);
+      if (c.rvNeed) { const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId); }
+    }
+    if ((c.status === 'active') && c.mu && c.mu.left > 0) {
+      const r = sim.suggest(c.id, 'RZP')[0]; if (r && c.crews.length < 8) sim.assign(c.id, r.crewId);
+    }
+    if (c.status === 'active' && c.rvReq && !c.rvReq.cancelled && !c.rvReq.satT && !c.docAssigned) {
+      const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId);
+    }
+    if (c.status === 'active' && c.rvNeed && !c.docAssigned) {
+      const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId);
+    }
+  }
+}
+function invariants(sim) {
+  const s = sim.s;
+  for (const c of s.crews) {
+    const p = sim.pos(c);
+    if (!isFinite(p.lat) || !isFinite(p.lon)) throw new Error('NaN pos ' + c.id);
+    if (['call', 'enroute', 'onscene', 'transport', 'handover'].includes(c.state)) {
+      const cs = sim.caseOf(c.caseId);
+      if (!cs) throw new Error('crew without case ' + c.id + ' ' + c.state);
+      if (cs.status === 'closed') throw new Error('crew on closed case ' + c.id);
+      if (!cs.crews.includes(c.id)) throw new Error('case lacks crew ' + c.id);
+    } else if (c.caseId) throw new Error('idle crew has case ' + c.id + c.state);
+  }
+  for (const cs of s.cases) {
+    const busy = s.crews.filter(c => c.caseId === cs.id);
+    if (cs.status === 'closed' && busy.length) throw new Error('closed case with crews');
+    if (cs.status === 'waiting' && busy.length) throw new Error('waiting case with crews ' + cs.num);
+  }
+}
+for (const seed of [1, 2, 3, 42]) {
+  const sim = new Sim({ seed, mode: 'shift', startHour: seed % 2 ? 7 : 19 });
+  let n = 0;
+  while (!sim.s.ended) {
+    sim.step(10); bot(sim); invariants(sim);
+    if (++n === 2000 && seed === 1) { const j = sim.serialize(); const r = Sim.restore(j); if (r.serialize() !== j) throw new Error('restore mismatch'); }
+  }
+  const sm = sim.summary();
+  const open = sim.s.cases.filter(c => c.status !== 'closed').length;
+  console.log('seed', seed, 'cases', sm.cases, 'closed', sm.closed, 'unserved', sm.unserved, 'open', open,
+    'score', sm.total.toFixed(1), 'cov', sm.coverage.toFixed(0), 'N1 avg min', sm.avgN1 && (sm.avgN1 / 60).toFixed(1),
+    'legal%', sm.legalPct && sm.legalPct.toFixed(0), 'mu', sim.s.cases.some(c => c.mu));
+}
+// determinism
+const a = new Sim({ seed: 7 }), b = new Sim({ seed: 7 });
+a.step(3000); b.step(3000);
+console.log('deterministic', a.serialize() === b.serialize());
+const morningSchedule = new Sim({ seed: 23, mode: 'shift', startHour: 7 });
+morningSchedule.s.ev.nextSpawn = 999999; morningSchedule.s.ev.nextMU = null; morningSchedule.step(5);
+const morningJobs = morningSchedule.s.cases.filter(c => c.typ === 'sekundární');
+if (morningJobs.length !== 2 || morningJobs.some(c => c.scheduledAt < 3600 || c.scheduledAt > 7200)) throw new Error('morning N4 schedule failed');
+const nightSchedule = new Sim({ seed: 24, mode: 'shift', startHour: 19 });
+nightSchedule.s.ev.nextSpawn = 999999; nightSchedule.s.ev.nextMU = null; nightSchedule.step(5);
+if (nightSchedule.s.cases.some(c => c.typ === 'sekundární')) throw new Error('night shift generated N4 transfer');
+console.log('day-only morning N4 schedule true');
+// N4 secondary transfers are dispatcher-controlled and complete through the transport lifecycle.
+const secondarySim = new Sim({ seed: 99, mode: 'free' });
+secondarySim.s.ev.nextSpawn = secondarySim.s.ev.nextSecond = 999999;
+secondarySim.s.ev.nextMU = null;
+const primaryOpen = secondarySim._spawn();
+primaryOpen.status = 'waiting'; primaryOpen.n = primaryOpen.nOrig = 3;
+primaryOpen.readyAt = secondarySim.s.t; primaryOpen.waitSince = secondarySim.s.t; primaryOpen.escAt = 999999;
+const secondary = secondarySim._spawnSecondary();
+if (!(secondarySim.summary().total > 0)) throw new Error('N4 transfer corrupted primary shift scoring');
+const secondaryRzp = secondarySim.suggest(secondary.id, 'RZP')[0];
+if (!secondaryRzp || !secondarySim.assign(secondary.id, secondaryRzp.crewId).ok) throw new Error('N4 transfer assignment failed');
+secondarySim.step(6 * 3600);
+if (secondary.status !== 'closed' || !secondary.score || !isFinite(secondary.score.total)) throw new Error('N4 transfer lifecycle failed');
+console.log('secondary transfer lifecycle true');
+// N1 departure alarm fires once when turnout exceeds two minutes.
+const alarmSim = new Sim({ seed: 101, mode: 'free' });
+alarmSim.s.ev.nextSpawn = alarmSim.s.ev.nextSecond = 999999; alarmSim.s.ev.nextMU = null;
+const alarmCase = alarmSim._spawn(); alarmCase.n = alarmCase.nOrig = 1; alarmCase.status = 'waiting'; alarmCase.readyAt = alarmSim.s.t;
+const alarmRzp = alarmSim.s.crews.find(c => c.type === 'RZP' && alarmSim.avail(c));
+alarmSim._turnout = () => 130;
+if (!alarmSim.assign(alarmCase.id, alarmRzp.id).ok) throw new Error('N1 alarm setup failed');
+alarmSim.step(125);
+if (alarmSim.s.log.filter(e => e.kind === 'deadline').length !== 1) throw new Error('N1 deadline alarm missing or repeated');
+console.log('N1 departure alarm true');
+// A field request for a doctor stays pending until an RV is assigned.
+const rvRequestSim = new Sim({ seed: 102, mode: 'free' });
+rvRequestSim.s.ev.nextSpawn = rvRequestSim.s.ev.nextSecond = 999999; rvRequestSim.s.ev.nextMU = null;
+const rvCase = rvRequestSim._spawn(); rvCase.status = 'waiting'; rvCase.readyAt = rvRequestSim.s.t; rvCase.rvReqAt = 1;
+rvCase.rvAfterRzp = false;
+rvRequestSim.step(5);
+if (!rvCase.rvReq || rvCase.rvReq.satT != null) throw new Error('doctor request did not remain visibly pending');
+const rv = rvRequestSim.suggest(rvCase.id, 'RV')[0];
+if (!rv || !rvRequestSim.assign(rvCase.id, rv.crewId).ok || rvCase.rvReq.satT == null) throw new Error('doctor request did not clear on RV assignment');
+console.log('field doctor request lifecycle true');
+if (ZOS_DATA.indications.some(ind => ind.klasif === 'Posouzení stavu') || ZOS_DATA.klasifikaceVsechny.includes('Posouzení stavu')) throw new Error('standalone assessment call must not be generated');
+const assessmentSim = new Sim({ seed: 106, mode: 'free' });
+assessmentSim.s.ev.nextSpawn = assessmentSim.s.ev.nextSecond = 999999; assessmentSim.s.ev.nextMU = null;
+const assessmentCase = assessmentSim._spawn(); assessmentCase.status = 'waiting'; assessmentCase.readyAt = assessmentSim.s.t;
+assessmentCase.rvNeed = false; assessmentCase.rvLater = true; assessmentCase.rvReqKind = 'posouzení stavu';
+const assessmentRzp = assessmentSim.suggest(assessmentCase.id, 'RZP')[0];
+if (!assessmentRzp || !assessmentSim.assign(assessmentCase.id, assessmentRzp.crewId).ok) throw new Error('assessment RZP dispatch failed');
+for (let i = 0; i < 600 && !assessmentCase.rvReq; i++) assessmentSim.step(30);
+if (!assessmentCase.rvReq || assessmentCase.rvReq.kind !== 'posouzení stavu' || !assessmentSim.suggest(assessmentCase.id, 'RV').length) throw new Error('RZP did not request RV assessment after arrival');
+console.log('assessment is only an RZP field request true');
+// Morning demand peaks above the midday trough under the same seeded Poisson draw.
+const rhythm = new Sim({ seed: 103, mode: 'free', startHour: 8 });
+rhythm.rnd = () => 0.5;
+const morningGap = rhythm._gap(); rhythm.s.startHour = 13;
+const middayGap = rhythm._gap();
+if (!(morningGap < middayGap)) throw new Error('morning call-volume peak missing');
+console.log('morning call-volume peak true');
+const symptomCase = rhythm._spawn();
+if (!Array.isArray(symptomCase.symptoms) || symptomCase.symptoms.join(', ') !== symptomCase.up) throw new Error('call symptoms are not stored as selected items');
+const symptomCatalog = new Set(ZOS_SYMPTOMS.symptomCatalog);
+if (symptomCase.symptoms.some(x => !symptomCatalog.has(x))) throw new Error('generated symptom is not in the source symptom database');
+if (ZOS_SYMPTOMS.symptomCatalog.includes('TĚŽKÁ DUŠNOST') || ZOS_SYMPTOMS.symptomCatalog.includes('NEREAGUJE ADEKVÁTNĚ')) throw new Error('unverified sample symptom remains in the source database');
+for (const ind of ZOS_DATA.indications) {
+  const profiles = ZOS_SYMPTOMS.symptomProfiles[ind.symptomKey || ind.klasif];
+  if (!profiles || !Object.values(profiles).some(x => x.length)) throw new Error(`missing symptom profile for ${ind.id}`);
+  for (const n of Object.keys(ind.n)) {
+    const terms = rhythm._symptomSet(ind.symptomKey || ind.klasif, Number(n));
+    if (!terms.length || terms.some(x => !symptomCatalog.has(x))) throw new Error(`invalid source symptoms for ${ind.id} / N${n}`);
+  }
+}
+if (rhythm._symptomSet('MU - MATRA 722', 1).some(x => !symptomCatalog.has(x))) throw new Error('MU symptoms are not from the source database');
+if (!Array.isArray(Sim.restore(rhythm.serialize()).caseOf(symptomCase.id).symptoms)) throw new Error('symptom selections did not survive save/restore');
+console.log('structured call symptoms true');
+// Apneic unresponsiveness is always immediate N1 and never a dynamic indication.
+const apneaSim = new Sim({ seed: 108, mode: 'free' });
+apneaSim.s.ev.nextSpawn = apneaSim.s.ev.nextSecond = 999999; apneaSim.s.ev.nextMU = null;
+const poruchaInd = ZOS_DATA.indications.find(x => x.id === 'porucha');
+const originalWpick = apneaSim.wpick.bind(apneaSim);
+apneaSim.wpick = (values, weight) => {
+  if (values === ZOS_DATA.indications) return poruchaInd;
+  if (values.length === 3 && values.every(x => typeof x === 'number')) return 3;
+  if (values.length && Array.isArray(values[0]) && Array.isArray(values[0][0])) {
+    const apneicDynamic = values.find(x => {
+      const text = x[0].map(i => ZOS_SYMPTOMS.symptomCatalog[i]).join(' ').toLocaleUpperCase('cs-CZ');
+      return text.includes('NEDÝCHÁ') && text.includes('AVPU-U') && text.includes('DYNAMICKÁ INDIKACE');
+    });
+    if (apneicDynamic) return apneicDynamic;
+    // reálná data takovou kombinaci u N3 nemají – sestavit ji uměle z katalogu
+    const cat = ZOS_SYMPTOMS.symptomCatalog, ix = s => cat.indexOf(s);
+    const synth = ['$AVPU-U', 'bezvědomí', 'nedýchá', 'Dospělý', 'DYNAMICKÁ INDIKACE'].map(ix);
+    if (synth.every(i => i >= 0) && values.some(x => x[0].some(i => cat[i] && cat[i].startsWith('$')))) return [synth, 1];
+  }
+  return originalWpick(values, weight);
+};
+const apneaCase = apneaSim._spawn();
+if (apneaCase.n !== 1 || apneaCase.dyn || !apneaCase.rvNeed || !apneaCase.symptoms.some(x => x.toLocaleUpperCase('cs-CZ').includes('NEDÝCHÁ')) || apneaCase.symptoms.some(x => x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE'))) throw new Error('apneic unresponsiveness was not corrected to direct non-dynamic N1');
+console.log('apneic unresponsiveness forced to direct N1 true');
+// Recent generated addresses are not repeated, and Mladá Vožice uses the supplied real station.
+const addressSim = new Sim({ seed: 109, mode: 'free' });
+const recentAddressSet = new Set();
+for (let i = 0; i < 1000; i++) {
+  const location = addressSim._randomAddress(ZOS_ADDR);
+  if (recentAddressSet.has(location.address)) throw new Error('an address repeated inside the recent-address window');
+  recentAddressSet.add(location.address);
+}
+const mvozice = ZOS_DATA.stations.find(x => x.id === 'mvozice');
+if (!mvozice || mvozice.address !== 'Plaňková 420' || Math.abs(mvozice.lat - 49.5321) > 1e-5 || Math.abs(mvozice.lon - 14.80855) > 1e-5) throw new Error('Mladá Vožice station location is incorrect');
+console.log('address variety and Mladá Vožice base location true');
+// Cancelling an optional RV request releases RZP to transport the patient.
+const cancelRvSim = new Sim({ seed: 110, mode: 'free' });
+cancelRvSim.s.ev.nextSpawn = cancelRvSim.s.ev.nextSecond = 999999; cancelRvSim.s.ev.nextMU = null;
+const cancelRvCase = cancelRvSim._spawn();
+cancelRvCase.status = 'waiting'; cancelRvCase.readyAt = cancelRvSim.s.t; cancelRvCase.n = cancelRvCase.nOrig = 3;
+cancelRvCase.rvNeed = false; cancelRvCase.rvLater = false; cancelRvCase.rvReqAt = null;
+cancelRvCase.rvReq = { t: cancelRvSim.s.t, satT: null, kind: 'posouzení stavu', cancelled: false };
+cancelRvCase.initialDispatchRequired = ['RZP']; cancelRvCase.initialDispatchSent = [];
+const cancelRzp = cancelRvSim.suggest(cancelRvCase.id, 'RZP')[0];
+const cancelRv = cancelRvSim.suggest(cancelRvCase.id, 'RV')[0];
+if (!cancelRzp || !cancelRv || !cancelRvSim.assign(cancelRvCase.id, cancelRzp.crewId).ok || !cancelRvSim.assign(cancelRvCase.id, cancelRv.crewId).ok) throw new Error('RV cancellation setup failed');
+const cancelRzpCrew = cancelRvSim.crewOf(cancelRzp.crewId);
+cancelRzpCrew.state = 'onscene'; cancelRzpCrew.until = cancelRvSim.s.t; cancelRzpCrew.arrivedAt = cancelRvSim.s.t;
+cancelRvCase.arrived = true; cancelRvCase.trans = true; cancelRvCase.scene = [1, 1];
+if (!cancelRvSim.cancelAssignment(cancelRvCase.id, cancelRv.crewId).ok) throw new Error('RV cancellation failed');
+cancelRvSim.step(5);
+if (!cancelRvCase.rvReq.cancelled || cancelRzpCrew.state !== 'transport') throw new Error('cancelled RV request continued to block RZP transport');
+console.log('cancelled field RV request no longer blocks RZP transport true');
+// When one patient is transported by RZP, an assigned RV returns from scene or en route.
+const rvTransportSim = new Sim({ seed: 111, mode: 'free' });
+rvTransportSim.s.ev.nextSpawn = rvTransportSim.s.ev.nextSecond = 999999; rvTransportSim.s.ev.nextMU = null;
+const rvTransportCase = rvTransportSim._spawn(); rvTransportCase.status = 'active'; rvTransportCase.patientCount = 1; rvTransportCase.pocet = 1; rvTransportCase.trans = true;
+const transportRzp = rvTransportSim.suggest(rvTransportCase.id, 'RZP')[0], transportRv = rvTransportSim.suggest(rvTransportCase.id, 'RV')[0];
+if (!transportRzp || !transportRv || !rvTransportSim.assign(rvTransportCase.id, transportRzp.crewId).ok || !rvTransportSim.assign(rvTransportCase.id, transportRv.crewId).ok) throw new Error('single-patient RV transport setup failed');
+const transportRzpCrew = rvTransportSim.crewOf(transportRzp.crewId), transportRvCrew = rvTransportSim.crewOf(transportRv.crewId);
+transportRzpCrew.state = transportRvCrew.state = 'onscene'; transportRzpCrew.until = transportRvCrew.until = rvTransportSim.s.t; transportRzpCrew.arrivedAt = transportRvCrew.arrivedAt = rvTransportSim.s.t;
+rvTransportSim._startTransport(transportRzpCrew, rvTransportCase);
+if (transportRvCrew.caseId || transportRvCrew.state !== 'free') throw new Error('RV remained attached at scene after single-patient RZP transport');
+const multiCase = rvTransportSim._spawn(); multiCase.status = 'active'; multiCase.patientCount = 2; multiCase.pocet = 2; multiCase.trans = true;
+const multiRzp = rvTransportSim.suggest(multiCase.id, 'RZP')[0], multiRv = rvTransportSim.suggest(multiCase.id, 'RV')[0];
+if (!multiRzp || !multiRv || !rvTransportSim.assign(multiCase.id, multiRzp.crewId).ok || !rvTransportSim.assign(multiCase.id, multiRv.crewId).ok) throw new Error('multi-patient RV setup failed');
+const multiRzpCrew = rvTransportSim.crewOf(multiRzp.crewId), multiRvCrew = rvTransportSim.crewOf(multiRv.crewId); multiRzpCrew.state = 'onscene'; multiRzpCrew.until = rvTransportSim.s.t;
+rvTransportSim._startTransport(multiRzpCrew, multiCase);
+if (multiRvCrew.caseId !== multiCase.id) throw new Error('RV was released from multi-patient event');
+console.log('single-patient RV release and multi-patient retention true');
+// LZS receives a penalty after the planned handover plus a five-minute grace period.
+const lzsWaitSim = new Sim({ seed: 112, mode: 'free' }); lzsWaitSim.s.ev.nextSpawn = lzsWaitSim.s.ev.nextSecond = 999999; lzsWaitSim.s.ev.nextMU = null;
+const lzsWaitCase = lzsWaitSim._spawn(); lzsWaitCase.status = 'active'; lzsWaitCase.lzsLandedAt = 0; lzsWaitCase.lzsTransferCrewArrived = null; lzsWaitCase.lzsWaitPenaltyCount = 0;
+const waitingLzs = lzsWaitSim.crewOf('lzs'); waitingLzs.caseId = lzsWaitCase.id; waitingLzs.caseRole = null; waitingLzs.state = 'handover'; waitingLzs.lzsLeg = 'handover'; waitingLzs.until = 0; waitingLzs.hoStart = 0; lzsWaitCase.crews.push(waitingLzs.id);
+lzsWaitSim.s.t = 480; lzsWaitSim._crewStep(waitingLzs);
+if (lzsWaitSim.summary().opsPoints !== -2) throw new Error('long LZS heliport wait penalty did not apply after grace period');
+lzsWaitSim.s.t = 780; lzsWaitSim._crewStep(waitingLzs);
+if (lzsWaitSim.summary().opsPoints !== -4) throw new Error('LZS heliport wait penalty did not repeat after five minutes');
+console.log('LZS heliport waiting penalties true');
+const heliAlertSim = new Sim({ seed: 118, mode: 'free' });
+heliAlertSim.s.ev.nextSpawn = heliAlertSim.s.ev.nextSecond = 999999; heliAlertSim.s.ev.nextMU = null;
+const heliAlertCase = heliAlertSim._spawn(); heliAlertCase.status = 'active'; heliAlertCase.lzsHeliportAlerted = false;
+const alertLzs = heliAlertSim.crewOf('lzs'); alertLzs.caseId = heliAlertCase.id; alertLzs.state = 'transport'; alertLzs.lzsLeg = 'to-heliport'; alertLzs.until = 1000; heliAlertCase.crews.push(alertLzs.id);
+heliAlertSim.s.t = 699; heliAlertSim._crewStep(alertLzs);
+if (heliAlertCase.lzsHeliportAlerted) throw new Error('LZS heliport alert fired before five-minute threshold');
+heliAlertSim.s.t = 700; heliAlertSim._crewStep(alertLzs);
+if (!heliAlertCase.lzsHeliportAlerted || !heliAlertSim.s.log.some(e => e.txt.includes('přistání za 5 min'))) throw new Error('LZS heliport alert did not fire five minutes before landing');
+console.log('LZS heliport alert at five minutes true');
+// A distant, suitable single-patient transport can be handed over to a local RZP en route.
+const vjSim = new Sim({ seed: 113, mode: 'free', startHour: 10, muEnabled: false });
+vjSim.s.ev.nextSpawn = vjSim.s.ev.nextSecond = vjSim.s.ev.nextMU = 999999;
+const vjCase = vjSim._spawn(); vjCase.status = 'active'; vjCase.n = 3; vjCase.dyn = true; vjCase.klasif = 'Bolest'; vjCase.trans = true; vjCase.patientCount = 1; vjCase.pocet = 1;
+vjCase.lat = ZOS_DATA.stations.find(x => x.id === 'dacice').lat; vjCase.lon = ZOS_DATA.stations.find(x => x.id === 'dacice').lon; vjCase.hospType = 'okresni'; vjCase.targetHospitalId = 'h-jh';
+const vjPrimary = vjSim.crewOf('dacice-r0'), vjHelper = vjSim.crewOf('jh-r0');
+if (!vjPrimary || !vjHelper || !vjSim.avail(vjPrimary) || !vjSim.avail(vjHelper)) throw new Error('Vstřícná jízda test setup did not have local crews');
+vjPrimary.caseId = vjCase.id; vjPrimary.state = 'onscene'; vjCase.crews.push(vjPrimary.id);
+vjSim.rnd = () => 0;
+vjSim._startTransport(vjPrimary, vjCase);
+if (!vjCase.vstricna || vjCase.vstricna.state !== 'offered') throw new Error('suitable distant transport did not offer Vstřícná jízda');
+const vjDispatch = vjSim.assignVstricna(vjCase.id, vjHelper.id);
+if (!vjDispatch.ok || vjPrimary.caseRole !== 'vstricna-primary' || vjHelper.caseRole !== 'vstricna-support') throw new Error('Vstřícná jízda dispatch did not route both crews to rendezvous');
+for (let i = 0; i < 1200 && vjCase.vstricna.state !== 'completed'; i++) vjSim.step(30);
+if (vjCase.vstricna.state !== 'completed' || vjPrimary.caseId || vjHelper.state !== 'transport' || vjHelper.caseRole !== 'vstricna-destination') throw new Error('Vstřícná jízda did not transfer the patient and release the originating crew');
+console.log('Vstřícná jízda rendezvous, handover and destination transport true');
+const muDisabled = new Sim({ seed: 114, mode: 'shift', muEnabled: false, muProbability: 100 });
+const muZero = new Sim({ seed: 115, mode: 'shift', muEnabled: true, muProbability: 0 });
+const muCertain = new Sim({ seed: 116, mode: 'shift', muEnabled: true, muProbability: 100 });
+if (muDisabled.s.ev.nextMU != null || muZero.s.ev.nextMU != null || !(muCertain.s.ev.nextMU > 0)) throw new Error('MU enable/probability settings were not applied');
+console.log('MU startup toggle and shift probability true');
+// LZS activation, aerial route, heliport handoff, RZP hospital transfer, and return.
+const airSim = new Sim({ seed: 104, mode: 'free', startHour: 10 });
+airSim.s.ev.nextSpawn = airSim.s.ev.nextSecond = 999999; airSim.s.ev.nextMU = null;
+const airCase = airSim._spawn(); airCase.status = 'waiting'; airCase.readyAt = airSim.s.t;
+airCase.n = airCase.nOrig = 1; airCase.lat = 48.970; airCase.lon = 14.480; airCase.hospType = 'trauma';
+const lzs = airSim.crewOf('lzs');
+if (!airSim.assign(airCase.id, lzs.id).ok) throw new Error('LZS dispatch failed');
+const sceneRzp = airSim.suggest(airCase.id, 'RZP')[0];
+const sceneRv = airSim.suggest(airCase.id, 'RV')[0];
+if (!sceneRzp || !airSim.assign(airCase.id, sceneRzp.crewId).ok) throw new Error('LZS scene RZP dispatch failed');
+if (!sceneRv || !airSim.assign(airCase.id, sceneRv.crewId).ok) throw new Error('LZS scene RV dispatch failed');
+if (airSim.suggest(airCase.id, 'RZP', 'heli-transfer').length) throw new Error('heliport transfer offered before LZS patient flight');
+for (let i = 0; i < 600 && !airCase.lzsPatientToHospital; i++) airSim.step(30);
+if (!airCase.lzsPatientToHospital) throw new Error('LZS patient flight did not start');
+const airRzp = airSim.suggest(airCase.id, 'RZP', 'heli-transfer')[0];
+if (!airRzp || !airSim.assign(airCase.id, airRzp.crewId, 'heli-transfer').ok) throw new Error('LZS transfer RZP dispatch failed');
+for (let i = 0; i < 600 && airCase.status !== 'closed'; i++) airSim.step(30);
+if (airCase.status !== 'closed' || !airCase.lzsTransferred || !airCase.transported || !airCase.dest.includes('Traumatologické')) throw new Error('LZS patient transfer lifecycle failed');
+if (airSim.crewOf(airRzp.crewId).caseId || lzs.caseId || !['base', 'free'].includes(lzs.state)) throw new Error('LZS or RZP did not clear the case or LZS failed to return');
+const airRzpCrew = airSim.crewOf(airRzp.crewId);
+if (!airRzpCrew.hospitalRun || airRzpCrew.hospitalRun.phase !== 'return' || airRzpCrew.hospitalRun.availableAt !== airRzpCrew.until) throw new Error('hospital transport board did not retain the crew until return-to-base completion');
+console.log('LZS heliport transfer lifecycle true');
+const burnSim = new Sim({ seed: 107, mode: 'free', startHour: 10 });
+burnSim.s.ev.nextSpawn = burnSim.s.ev.nextSecond = 999999; burnSim.s.ev.nextMU = null;
+const burnCase = burnSim._spawn(); burnCase.status = 'waiting'; burnCase.readyAt = burnSim.s.t; burnCase.burnCenterCandidate = true;
+if (!burnSim.assign(burnCase.id, burnSim.crewOf('lzs').id).ok) throw new Error('burn LZS dispatch failed');
+const burnRzp = burnSim.suggest(burnCase.id, 'RZP')[0];
+if (!burnRzp || !burnSim.assign(burnCase.id, burnRzp.crewId).ok) throw new Error('burn scene RZP dispatch failed');
+for (let i = 0; i < 600 && !burnCase.lzsPatientToHospital; i++) burnSim.step(30);
+if (!burnCase.lzsPatientToHospital || burnCase.lzsTargetHospitalId !== 'h-fnkv') throw new Error('severe burn did not route LZS to FNKV');
+// FNKV: předání zajistí ZZS HMP, převozní RZP z kraje se nenabízí ani neposílá
+if (burnSim.suggest(burnCase.id, 'RZP', 'heli-transfer').length) throw new Error('FNKV must not offer a JčK transfer RZP');
+const burnLzs = burnSim.crewOf('lzs');
+let burnLanded = null, burnBack = null;
+for (let i = 0; i < 900 && burnCase.status !== 'closed'; i++) {
+  burnSim.step(30);
+  if (burnLanded == null && burnCase.lzsLandedAt != null) burnLanded = burnCase.lzsLandedAt;
+  if (burnBack == null && burnCase.lzsTransferred) burnBack = burnSim.s.t;
+}
+if (burnCase.status !== 'closed' || !burnCase.dest.includes('FNKV Praha') || !burnCase.dest.includes('Popáleninové centrum')) throw new Error('burn patient was not handed over at FNKV');
+const burnHandoverMin = (burnBack - burnLanded) / 60;
+if (burnHandoverMin < 18 || burnHandoverMin > 32) throw new Error('FNKV handover duration out of range: ' + burnHandoverMin);
+if (burnCase.crews.some(id => burnSim.crewOf(id).type === 'RZP' && burnSim.crewOf(id).caseRole === 'heli-transfer')) throw new Error('unexpected heli-transfer RZP at FNKV');
+console.log('severe burn LZS route to FNKV true');
+// Shift start can be clean or inherit a small active workload; operational points are persistent.
+const cleanStart = new Sim({ seed: 201, mode: 'shift', startState: 'clean' });
+const runningStart = new Sim({ seed: 201, mode: 'shift', startState: 'running' });
+if (cleanStart.s.cases.length !== 0) throw new Error('clean shift must start with zero cases');
+if (runningStart.s.cases.length !== 3 || !runningStart.s.cases.some(c => c.crews.length)) throw new Error('running shift must start with three cases and a dispatched crew');
+runningStart._opsScore(2, 'test bonus'); runningStart._opsScore(-3, 'test penalty');
+const scoreRestore = Sim.restore(runningStart.serialize());
+if (scoreRestore.summary().opsPoints !== -1 || scoreRestore.summary().opsLog.length !== 2) throw new Error('operational score did not survive save/restore');
+console.log('clean/running shift starts and operational score persistence true');
+const reportScore = new Sim({ seed: 202, mode: 'free' });
+reportScore.s.ev.nextSpawn = reportScore.s.ev.nextSecond = reportScore.s.ev.nextMU = 999999;
+const reportCase = reportScore._spawn(); reportCase.status = 'waiting'; reportCase.readyAt = 0;
+reportCase.radioReports = [
+  { id: 'test-112', at: 0, received: true, receivedAt: 0, acknowledged: false, scoreApplied: false, text: 'syntetická zkouška' },
+  { id: 'test-112-2', at: 0, received: true, receivedAt: 0, acknowledged: false, scoreApplied: false, text: 'druhá syntetická zkouška' },
+];
+reportScore.s.t = 60; reportScore.acknowledge112(reportCase.id, 'test-112');
+if (reportScore.summary().opsPoints !== 1 || !reportCase.radioReports[0].acknowledged || reportCase.radioReports[1].acknowledged) throw new Error('individual timely 112 acknowledgement did not dismiss only the clicked alert');
+console.log('timely 112 acknowledgement score true');
+// idle (no dispatcher) should score badly
+const idle = new Sim({ seed: 5 }); idle.step(12 * 3600);
+console.log('idle score', idle.summary().total.toFixed(1), 'unserved', idle.summary().unserved);
+// Selecting a case from the list must reveal the map first and pass its coordinates to focusOn.
+{
+  const fs = require('fs'), vm = require('vm');
+  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const fn = ui.match(/function selectCaseFromElement\(caseElement, clickedElement\) \{[\s\S]*?\n\}/);
+  if (!fn) throw new Error('case selection handler not found');
+  const selected = { id: 'case-test', lat: 49.2, lon: 14.4 };
+  let focus = null, renders = 0, acknowledged = null;
+  const ctx = {
+    sel: { c: null }, view: 'cases',
+    sim: { caseOf: id => id === selected.id ? selected : null, acknowledge112: (...args) => { acknowledged = args; } },
+    syncSelectionToMain() {}, render() { renders++; }, focusOn(lat, lon) { focus = [lat, lon]; },
+  };
+  vm.runInNewContext(fn[0] + `\nselectCaseFromElement({dataset:{case:'case-test'}},{closest:()=>null});`, ctx);
+  if (ctx.view !== 'map' || !focus || focus[0] !== selected.lat || focus[1] !== selected.lon || renders !== 1) throw new Error('case list click did not switch to and focus the map');
+}
+console.log('case selection focuses map true');
+// Case focus must issue a real MapLibre camera update, not only select the case.
+{
+  const fs = require('fs'), vm = require('vm');
+  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const fn = ui.match(/function applyMapFocus\(target, attempt = 0\) \{[\s\S]*?\n\}/);
+  if (!fn) throw new Error('map focus handler not found');
+  let camera = null;
+  const ctx = {
+    GL: { stop() {}, resize() {}, getZoom: () => 8, jumpTo: value => { camera = value; } },
+    glReady: true,
+    document: { getElementById: () => ({ clientWidth: 800, clientHeight: 500 }) },
+    requestAnimationFrame() {}, console,
+  };
+  vm.runInNewContext(fn[0] + '\napplyMapFocus({lat:49.2,lon:14.4});', ctx);
+  if (!camera || camera.center[0] !== 14.4 || camera.center[1] !== 49.2 || camera.zoom < 13.5) throw new Error('case click did not move map camera to event coordinates');
+}
+console.log('case click moves map camera true');
+{
+  const fs = require('fs'), vm = require('vm');
+  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const fn = ui.match(/function pollLog\(\) \{[\s\S]*?\n\}/);
+  if (!fn) throw new Error('radio polling function not found');
+  let toneCount = 0;
+  const ctx = {
+    sim: { s: { log: [
+      { id: 1, kind: 'crew', txt: 'Žádáme o vstřícnou jízdu.' },
+      { id: 2, kind: 'crew', txt: 'Vstřícná jízda přijata.' },
+    ] } }, seenLog: 0,
+    isVstricnaRadioMessage: text => /vstřícn|vstricn/i.test(String(text || '')),
+    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {},
+  };
+  vm.runInNewContext(fn[0] + '\npollLog(); pollLog();', ctx);
+  if (toneCount !== 1 || ctx.seenLog !== 2) throw new Error('vstřícná jízda radio tone repeated or was missed');
+}
+console.log('vstřícná jízda radio highlight tone fires once true');
+// LIBERO: lékař ze základny nastoupí do RZP → dočasně RLP, po návratu na základnu vystoupí
+{
+  const ls = new Sim({ seed: 303, mode: 'free', startHour: 9 });
+  ls.s.ev.nextSpawn = ls.s.ev.nextSecond = 999999; ls.s.ev.nextMU = null;
+  const lib = ls.crewOf('lib-ta'); lib.liberoPresent = true; if (lib.state === 'off') { lib.state = 'base'; }
+  const rzp = ls.s.crews.find(k => k.st === 'ta' && k.type === 'RZP' && !k.res && k.state === 'base');
+  const cs = ls._spawn(); cs.status = 'waiting'; cs.readyAt = ls.s.t; cs.n = 2; cs.dyn = false; cs.rvNeed = true; cs.initialDispatchRequired = ['RZP', 'RV']; cs.initialDispatchSent = [];
+  cs.lat = 49.40; cs.lon = 14.68; cs.trans = false;
+  if (!ls.attachLibero(rzp.id).ok) throw new Error('LIBERO attach failed');
+  if (!rzp.rlp || lib.state !== 'attached' || !rzp.name.includes('LIBERO')) throw new Error('LIBERO not attached to RZP');
+  if (!ls.assign(cs.id, rzp.id).ok) throw new Error('LIBERO RZP dispatch failed');
+  if (!cs.docAssigned || !cs.initialDispatchSent.includes('RV')) throw new Error('LIBERO RZP not counted as doctor dispatch');
+  for (let i = 0; i < 400 && cs.status !== 'closed'; i++) ls.step(30);
+  if (cs.status !== 'closed' || !cs.docArrived) throw new Error('LIBERO case did not close with doctor on scene');
+  for (let i = 0; i < 200 && rzp.state !== 'base'; i++) ls.step(30);
+  if (rzp.rlp || lib.state !== 'base' || rzp.name.includes('LIBERO')) throw new Error('LIBERO did not leave the vehicle at base');
+  const night = new Sim({ seed: 304, mode: 'free', startHour: 21 });
+  if (night.s.crews.filter(k => k.libero).some(k => k.state !== 'off')) throw new Error('LIBERO must be off at night');
+  console.log('LIBERO day doctor attach / dispatch / detach true');
+}
