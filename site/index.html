@@ -142,9 +142,9 @@ td.nn small{display:block;font:400 10px var(--mono);color:var(--mut)}
 .assigned-crew{display:inline-flex;align-items:center;gap:3px;margin:2px 5px 2px 0}.assigned-crew .chip{margin:0}
 .empty{padding:16px;color:var(--mut);text-align:center}
 /* crew tiles */
-.oblast{padding:4px 8px 2px;font:600 11px var(--sans);color:#33475a;display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);background:#dfe6ec}
+.oblast{padding:5px 8px 3px;font:700 14px var(--sans);color:#33475a;display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);background:#dfe6ec}
 .oblast:first-child{border-top:0}
-.oblast span{font:400 11px var(--mono);color:var(--mut)}
+.oblast span{font:400 12px var(--mono);color:var(--mut)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:4px;padding:5px 6px}
 .tile{display:grid;grid-template-columns:minmax(0,1fr) 40px;grid-template-rows:1fr 1fr;align-items:center;gap:2px 5px;padding:4px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.38);text-align:left;min-height:46px;position:relative;background:#fff;color:#15202b;box-shadow:inset 0 1px #ffffff80}
 .tile .tn{font:600 10px var(--sans);letter-spacing:-.25px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;grid-column:1;grid-row:1}
@@ -293,14 +293,14 @@ tr.crow.drop td{background:#fff0a8!important}
 
 const ZOS_DATA = {
   oblasti: [
-    // číslování oblastí podle dispečerského systému ZZS JčK (11 = LZS)
+    // pořadí a číslování oblastí jako v přehledovém panelu posádek ZOS (radio = první číslice volacího čísla; LZS 0013)
     { id: 'ČB', name: 'České Budějovice', radio: 1 },
-    { id: 'JH', name: 'Jindřichův Hradec', radio: 2 },
-    { id: 'PI', name: 'Písek', radio: 3 },
+    { id: 'ČK', name: 'Český Krumlov', radio: 5 },
+    { id: 'JH', name: 'Jindřichův Hradec', radio: 3 },
     { id: 'PT', name: 'Prachatice', radio: 4 },
-    { id: 'ST', name: 'Strakonice', radio: 5 },
-    { id: 'TA', name: 'Tábor', radio: 6 },
-    { id: 'ČK', name: 'Český Krumlov', radio: 7 },
+    { id: 'ST', name: 'Strakonice', radio: 6 },
+    { id: 'PI', name: 'Písek', radio: 7 },
+    { id: 'TA', name: 'Tábor', radio: 2 },
   ],
 
   // day / night = { rzp, rv }. zzum = superzáchranáři (zzumConfirmed false = nepotvrzeno).
@@ -361,33 +361,33 @@ const ZOS_DATA = {
 
   // Sady MU (vozidla pro řešení následků mimořádných událostí), dislokace ČB, Tábor, Strakonice, J. Hradec.
   mu: [
-    { id: 'mu-cb', name: 'MU ČB', oblast: 'ČB', stationId: 'cb' },
-    { id: 'mu-ta', name: 'MU Tábor', oblast: 'TA', stationId: 'ta' },
-    { id: 'mu-st', name: 'MU Strakonice', oblast: 'ST', stationId: 'st' },
-    { id: 'mu-jh', name: 'MU J. Hradec', oblast: 'JH', stationId: 'jh' },
+    { id: 'mu-cb', no: 810, name: 'MU ČB', oblast: 'ČB', stationId: 'cb' },
+    { id: 'mu-ta', no: 820, name: 'MU Tábor', oblast: 'TA', stationId: 'ta' },
+    { id: 'mu-st', no: 840, name: 'MU Strakonice', oblast: 'ST', stationId: 'st' },
+    { id: 'mu-jh', no: 830, name: 'MU J. Hradec', oblast: 'JH', stationId: 'jh' },
   ],
 
   // Záložní vozy (fialové, nepřihlášené). Po aktivaci dispečerem jedou jako RZP.
 
-  // Názvy výjezdových skupin ve formátu dispečerského systému (podle říjnového přehledu výjezdů).
+  // Názvy výjezdových skupin a volací čísla (rzpNo/rvNo) podle dispečerského systému ZZS JčK.
   crewNames: {
-    cb: { rzp: ['RZP1', 'RZP2', 'RZP3'], rv: ['RV1', 'RV2'] }, cbpr: { rzp: ['CB PRAŽSKÁ RZP'] }, cbpl: { rzp: ['CB PLANÁ RZP'] }, cbvl: { rzp: ['CB VLTAVA RZP'] },
-    kaplice: { rzp: ['KAPLICE_RZP'] }, tyn: { rzp: ['TYN N. VLT.'] }, tsviny: { rzp: ['T. SVINY'] },
-    ck: { rzp: ['CK_RZP1', 'CK_RZP2'], rv: ['CK_RV'] }, hplana: { rzp: ['H. PLANÁ RZP'] }, vbrod: { rzp: ['V. BROD_RZP'] }, frymburk: { rzp: ['FRYMBURK'] },
-    jh: { rzp: ['JH_RZP1', 'JH_RZP2', 'JH_RZP3'], rv: ['JH_RV'] }, kunzak: { rzp: ['KUNZAK_RZP'] }, dacice: { rzp: ['DACICE'], rv: ['DACICE_RV'] },
-    trebon: { rzp: ['TREBON', 'TREBON 2'], rv: ['TREBON_RV'] }, suchdol: { rzp: ['SUCHDOL'] },
-    pt: { rzp: ['PT_RZP1', 'PT_RZP2'], rv: ['PT_RV'] }, vimperk: { rzp: ['VIMPERK', 'VIMPERK 2'] }, volary: { rzp: ['VOLARY_RZP'] }, vacov: { rzp: ['VACOV_RZP'] }, lhenice: { rzp: ['LHENICE'] },
-    st: { rzp: ['ST_RZP1', 'ST_RZP2', 'ST_RZP3'], rv: ['ST_RV'] }, blatna: { rzp: ['BLATNA'] }, vodnany: { rzp: ['VODNANY'] },
-    pi: { rzp: ['PISEK_RZP1', 'PISEK_RZP2', 'PISEK_RZP3'], rv: ['PISEK_RV'] }, milevsko: { rzp: ['MILEVSKO'] }, cimelice: { rzp: ['CIMELICE_RZP'] },
-    ta: { rzp: ['TA_RZP1', 'TA_RZP2', 'TA_RZP3'], rv: ['TA_RV'] }, sobeslav: { rzp: ['SOBESLAV'] }, mvozice: { rzp: ['VOZICE_RZP'] }, oparany: { rzp: ['OPARANY_RZP'] }, veseli: { rzp: ['VESELI'] },
+    cb: { rzp: ['RZP1', 'RZP2', 'RZP3'], rv: ['RV1', 'RV2'], rzpNo: [127, 135, 126], rvNo: [149, 139] }, cbpr: { rzp: ['CB PRAŽSKÁ RZP'], rzpNo: [118] }, cbpl: { rzp: ['CB PLANÁ RZP'], rzpNo: [114] }, cbvl: { rzp: ['CB VLTAVA RZP'], rzpNo: [123] },
+    kaplice: { rzp: ['KAPLICE_RZP'], rzpNo: [117] }, tyn: { rzp: ['TYN N. VLT.'], rzpNo: [121] }, tsviny: { rzp: ['T. SVINY'], rzpNo: [115] },
+    ck: { rzp: ['CK_RZP1', 'CK_RZP2'], rv: ['CK_RV'], rzpNo: [518, 513], rvNo: [529] }, hplana: { rzp: ['H. PLANÁ RZP'], rzpNo: [134] }, vbrod: { rzp: ['V. BROD_RZP'], rzpNo: [514] }, frymburk: { rzp: ['FRYMBURK'], rzpNo: [517] },
+    jh: { rzp: ['JH_RZP1', 'JH_RZP2', 'JH_RZP3'], rv: ['JH_RV'], rzpNo: [313, 312, 314], rvNo: [319] }, kunzak: { rzp: ['KUNZAK_RZP'], rzpNo: [318] }, dacice: { rzp: ['DACICE'], rv: ['DACICE_RV'], rzpNo: [311], rvNo: [309] },
+    trebon: { rzp: ['TREBON', 'TREBON 2'], rv: ['TREBON_RV'], rzpNo: [322, 321], rvNo: [329] }, suchdol: { rzp: ['SUCHDOL'], rzpNo: [320] },
+    pt: { rzp: ['PT_RZP1', 'PT_RZP2'], rv: ['PT_RV'], rzpNo: [411, 412], rvNo: [429] }, vimperk: { rzp: ['VIMPERK', 'VIMPERK 2'], rzpNo: [421, 422] }, volary: { rzp: ['VOLARY_RZP'], rzpNo: [415] }, vacov: { rzp: ['VACOV_RZP'], rzpNo: [417] }, lhenice: { rzp: ['LHENICE'], rzpNo: [413] },
+    st: { rzp: ['ST_RZP1', 'ST_RZP2', 'ST_RZP3'], rv: ['ST_RV'], rzpNo: [614, 613, 611], rvNo: [629] }, blatna: { rzp: ['BLATNA'], rzpNo: [616] }, vodnany: { rzp: ['VODNANY'], rzpNo: [618] },
+    pi: { rzp: ['PISEK_RZP1', 'PISEK_RZP2', 'PISEK_RZP3'], rv: ['PISEK_RV'], rzpNo: [713, 715, 711], rvNo: [719] }, milevsko: { rzp: ['MILEVSKO'], rzpNo: [716] }, cimelice: { rzp: ['CIMELICE_RZP'], rzpNo: [718] },
+    ta: { rzp: ['TA_RZP1', 'TA_RZP2', 'TA_RZP3'], rv: ['TA_RV'], rzpNo: [218, 215, 214], rvNo: [219] }, sobeslav: { rzp: ['SOBESLAV'], rzpNo: [224] }, mvozice: { rzp: ['VOZICE_RZP'], rzpNo: [220] }, oparany: { rzp: ['OPARANY_RZP'], rzpNo: [212] }, veseli: { rzp: ['VESELI'], rzpNo: [225] },
   },
   // LIBERO: volný lékař na základně, jen přes den a ne vždy. Lze ho přidat do RZP téže základny → dočasně RLP.
   libero: [
-    { id: 'lib-cb', name: 'CB LIBERO', oblast: 'ČB', stationId: 'cb' },
+    { id: 'lib-cb', name: 'CB LIBERO', oblast: 'ČB', stationId: 'cb', no: 176 },
     { id: 'lib-ta', name: 'TA LIBERO', oblast: 'TA', stationId: 'ta' },
-    { id: 'lib-vi', name: 'VI LIBERO', oblast: 'PT', stationId: 'vimperk' },
+    { id: 'lib-vi', name: 'VI LIBERO', oblast: 'PT', stationId: 'vimperk', no: 440 },
   ],
-  liberoPresence: 0.7,
+  liberoPresence: 0.9,
   reserves: [
     { id: 'z-cb1', name: 'CB_Z 1', oblast: 'ČB', stationId: 'cb' },
     { id: 'z-cb2', name: 'CB_Z 2', oblast: 'ČB', stationId: 'cb' },
@@ -401,13 +401,13 @@ const ZOS_DATA = {
 
   // types: okresni = běžný příjem, iktove = iktové centrum, trauma = traumacentrum, kcc = komplexní centrum / PCI
   hospitals: [
-    { id: 'h-cb', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'kcc'] },
-    { id: 'h-ta', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'] },
-    { id: 'h-jh', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'] },
-    { id: 'h-pi', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'] },
-    { id: 'h-st', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'] },
-    { id: 'h-pt', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'] },
-    { id: 'h-ck', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'] },
+    { id: 'h-cb', oblast: 'ČB', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'kcc'] },
+    { id: 'h-ta', oblast: 'TA', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'] },
+    { id: 'h-jh', oblast: 'JH', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'] },
+    { id: 'h-pi', oblast: 'PI', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'] },
+    { id: 'h-st', oblast: 'ST', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'] },
+    { id: 'h-pt', oblast: 'PT', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'] },
+    { id: 'h-ck', oblast: 'ČK', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'] },
     { id: 'h-fnkv', name: 'Fakultní nemocnice Královské Vinohrady', short: 'FNKV Praha', lat: 50.074618, lon: 14.482014, heliport: true, types: ['popaleniny'] },
   ],
 
@@ -881,6 +881,8 @@ function travelSec(a, b, c, d, mult) {
   return Math.max(25, km / speedFor(km) * 3600 * (mult || 1));
 }
 function heliSec(a, b, c, d) { return hav(a, b, c, d) / (130 * 1.852) * 3600; }
+// Jízda k události s výstražnými zařízeními je rychlejší než běžný provoz (faktor času jízdy).
+const EMERG = 0.85;
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Pracovní denní rytmus: ranní špička, klidnější poledne, menší odpolední vlna.
 // Hodinový profil upraven podle výzev v říjnovém vzorku; součet denní/noční
@@ -1078,12 +1080,12 @@ class Sim {
       const maxR = Math.max(st.day.rzp, st.night.rzp), maxV = Math.max(st.day.rv, st.night.rv);
       for (let i = 0; i < maxR; i++) s.crews.push(this._mk({
         id: st.id + '-r' + i, type: 'RZP', name: (D.crewNames && D.crewNames[st.id] && D.crewNames[st.id].rzp && D.crewNames[st.id].rzp[i]) || st.short + (maxR > 1 ? ' RZP ' + (i + 1) : ' RZP'),
-        code: code(st.oblast, 'RZP'), oblast: st.oblast, st: st.id, lat: st.lat, lon: st.lon,
+        code: (D.crewNames && D.crewNames[st.id] && D.crewNames[st.id].rzpNo && D.crewNames[st.id].rzpNo[i] != null) ? String(D.crewNames[st.id].rzpNo[i]) : code(st.oblast, 'RZP'), oblast: st.oblast, st: st.id, lat: st.lat, lon: st.lon,
         dayOn: i < st.day.rzp, nightOn: i < st.night.rzp, zzum: !!st.zzum,
       }));
       for (let i = 0; i < maxV; i++) s.crews.push(this._mk({
         id: st.id + '-v' + i, type: 'RV', name: (D.crewNames && D.crewNames[st.id] && D.crewNames[st.id].rv && D.crewNames[st.id].rv[i]) || st.short + (maxV > 1 ? ' RV ' + (i + 1) : ' RV'),
-        code: code(st.oblast, 'RV'), oblast: st.oblast, st: st.id, lat: st.lat, lon: st.lon,
+        code: (D.crewNames && D.crewNames[st.id] && D.crewNames[st.id].rvNo && D.crewNames[st.id].rvNo[i] != null) ? String(D.crewNames[st.id].rvNo[i]) : code(st.oblast, 'RV'), oblast: st.oblast, st: st.id, lat: st.lat, lon: st.lon,
         dayOn: i < st.day.rv, nightOn: i < st.night.rv,
       }));
     }
@@ -1096,11 +1098,11 @@ class Sim {
     }));
     for (const m of D.mu) {
       const st = D.stations.find(x => x.id === m.stationId);
-      s.crews.push(this._mk({ id: m.id, type: 'MU', name: m.name, code: m.name.replace('MU ', 'MU-'), oblast: m.oblast, st: m.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: true, fixed: true }));
+      s.crews.push(this._mk({ id: m.id, type: 'MU', name: m.name, code: m.no ? String(m.no) : m.name.replace('MU ', 'MU-'), oblast: m.oblast, st: m.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: true, fixed: true }));
     }
     for (const l of D.libero || []) {
       const st = D.stations.find(x => x.id === l.stationId);
-      s.crews.push(this._mk({ id: l.id, type: 'LIB', name: l.name, code: 'LIB', oblast: l.oblast, st: l.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: false, libero: true, members: [this._name(this.rnd() < 0.4 ? 'Ž' : 'M', 30 + this.ri(0, 25))] }));
+      s.crews.push(this._mk({ id: l.id, type: 'LIB', name: l.name, code: l.no ? String(l.no) : 'LIB', oblast: l.oblast, st: l.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: false, libero: true, members: [this._name(this.rnd() < 0.4 ? 'Ž' : 'M', 30 + this.ri(0, 25))] }));
     }
     for (const r of D.reserves) {
       const st = D.stations.find(x => x.id === r.stationId);
@@ -1188,8 +1190,8 @@ class Sim {
   etaFor(c, lat, lon) {
     const p = this.pos(c);
     if (c.type === 'LZS') return this._lzActivationExpected(c) + heliSec(p.lat, p.lon, lat, lon);
-    if (c.type === 'MU') return 330 + this._eta(p.lat, p.lon, lat, lon);
-    return (c.state === 'base' ? 78 : 25) + this._eta(p.lat, p.lon, lat, lon);
+    if (c.type === 'MU') return 330 + this._eta(p.lat, p.lon, lat, lon) * EMERG;
+    return (c.state === 'base' ? 78 : 25) + this._eta(p.lat, p.lon, lat, lon) * EMERG;
   }
   _eta(a, b, c, d) {
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) { const v = ROUTER.eta(a, b, c, d); if (v != null) return v; }
@@ -1352,6 +1354,7 @@ class Sim {
     if (role === 'heli-transfer' && cs.lzsTransferCrewId) return { ok: false, msg: 'Převoz z heliportu už má přidělenou posádku.' };
     if (cs.lzsPatientToHospital && c.type === 'RZP' && role !== 'heli-transfer') return { ok: false, msg: 'Pacient už letí na cílový heliport; lze vyslat jen převozní RZP.' };
     if (c.type === 'MU' && !cs.mu) return { ok: false, msg: 'MU jen na mimořádnou událost.' };
+    if (!role && c.type === 'RZP' && cs.vstricna && cs.vstricna.state === 'offered' && c.oblast === cs.vstricna.area) return this.assignVstricna(caseId, crewId);
     const target = role === 'heli-transfer' ? ZOS_DATA.lzs.heliport : { lat: cs.lat, lon: cs.lon };
     const eta = this.etaFor(c, target.lat, target.lon);
     const doc = c.type === 'RV' || c.type === 'LZS' || !!c.rlp;
@@ -2088,7 +2091,7 @@ class Sim {
         if (c.type === 'LZS') dur = this._goAir(c, cs.lat, cs.lon);
         else {
           const target = c.caseRole === 'heli-transfer' ? ZOS_DATA.lzs.heliport : c.caseRole === 'vstricna-support' ? c.vstricnaMeet : { lat: cs.lat, lon: cs.lon };
-          dur = this._go(c, target.lat, target.lon, 1);
+          dur = this._go(c, target.lat, target.lon, EMERG);
         }
         c.until = t + dur; c.state = 'enroute';
         this.L('crew', `${c.name}: výjezd, ETA ${Math.round(dur / 60)} min`, cs.id, c.id);
@@ -2342,6 +2345,11 @@ class Sim {
       const d = hav(c.lat, c.lon, h.lat, h.lon);
       if (d < bd) { bd = d; best = h; }
     }
+    // posádka veze pacienta do nemocnice své oblasti (vrátí se domů), pokud tam mají potřebné pracoviště
+    if (best && !cs.targetHospitalId && !cs.mu && best.oblast && best.oblast !== c.oblast) {
+      const own = D.hospitals.find(h => h.oblast === c.oblast && h.types.includes(type));
+      if (own) best = own;
+    }
     best = best || D.hospitals[0];
     const dur = this._go(c, best.lat, best.lon, 1.1);
     let dept = DEPT[type];
@@ -2401,28 +2409,60 @@ class Sim {
       cs.vstricna.state = 'expired';
       return { ok: false, msg: 'RZP už je příliš blízko nemocnici; pokračuje sama.' };
     }
-    const meet = this._meetPoint(primary.mv, 0.68);
-    const current = this.pos(primary), remaining = Math.max(0, Math.min(1, (t - primary.mv.t0) / Math.max(1, primary.mv.t1 - primary.mv.t0)));
-    if (remaining >= 0.68 || hav(current.lat, current.lon, meet.lat, meet.lon) < 0.8) { cs.vstricna.state = 'expired'; return { ok: false, msg: 'Místo setkání už RZP minula; pokračuje sama.' }; }
+    const current = this.pos(primary);
+    const meet = this._balancedMeet(primary, helper);
+    if (!meet || hav(current.lat, current.lon, meet.lat, meet.lon) < 0.8) { cs.vstricna.state = 'expired'; return { ok: false, msg: 'RZP už je příliš blízko nemocnici; pokračuje sama.' }; }
     primary.lat = current.lat; primary.lon = current.lon; primary.mv = null;
     primary.dest = { name: 'Místo setkání se vstřícnou RZP' };
-    primary.caseRole = 'vstricna-primary'; primary.until = t + this._go(primary, meet.lat, meet.lon, 1);
+    primary.caseRole = 'vstricna-primary'; primary.until = t + this._go(primary, meet.lat, meet.lon, 1.1);
     primary.state = 'transport';
+    const helperWasBase = helper.state === 'base';
     const pos = this.pos(helper); helper.lat = pos.lat; helper.lon = pos.lon; helper.mv = null;
-    helper.caseId = cs.id; helper.caseRole = 'vstricna-support'; helper.vstricnaMeet = meet; helper.state = 'call'; helper.dispatchAt = t; helper.turn = this.rr(35, 90); helper.until = t + helper.turn; helper.turnoutAlerted = true;
+    helper.caseId = cs.id; helper.caseRole = 'vstricna-support'; helper.vstricnaMeet = meet; helper.state = 'call'; helper.dispatchAt = t; helper.turn = helperWasBase ? this.rr(60, 120) : this.rr(20, 45); helper.until = t + helper.turn; helper.turnoutAlerted = true;
     helper.dest = { name: 'Místo vstřícné jízdy' };
     cs.crews.push(helper.id); cs.asg.push({ crewId: helper.id, t, eta: helper.turn + this._eta(helper.lat, helper.lon, meet.lat, meet.lon), role: 'vstricna-support' });
     cs.vstricna.meet = meet; cs.vstricna.helperCrewId = helper.id; cs.vstricna.state = 'dispatched';
     this.L('crew', `ZCB101 rozumí, naproti posádka ZCB${helper.code} z ${cs.vstricna.areaName}.`, cs.id, helper.id);
     this.L('crew', `ZCB${primary.code}: rozumí, naproti ZCB${helper.code} z ${cs.vstricna.areaName}, díky konec.`, cs.id, primary.id);
-    this.L('crew', `${helper.name}: vstřícná jízda, místo setkání na trase do ${cs.vstricna.areaName}.`, cs.id, helper.id);
+    this.L('crew', `${helper.name}: vstřícná jízda, místo setkání ${meet.place || 'na trase'} (bezpečné odstavení).`, cs.id, helper.id);
     return { ok: true, eta: helper.until - t + this._eta(helper.lat, helper.lon, meet.lat, meet.lon) };
+  }
+  // Místo setkání na trase primární RZP: obě posádky tam mají dorazit přibližně současně (časově „na půli cesty“).
+  _balancedMeet(primary, helper) {
+    const mv = primary.mv, t = this.s.t;
+    if (!mv) return null;
+    const total = Math.max(1, mv.t1 - mv.t0), now = clamp01((t - mv.t0) / total);
+    const hp = this.pos(helper), turn = helper.state === 'base' ? 90 : 30;
+    const pts = [];
+    if (mv.path && mv.frac && mv.frac.length) { for (let i = 0; i < mv.frac.length; i++) if (mv.frac[i] > now + 0.02 && mv.frac[i] < 0.97) pts.push({ f: mv.frac[i], lat: mv.path[i * 2], lon: mv.path[i * 2 + 1] }); }
+    else for (let f = Math.ceil((now + 0.02) * 40) / 40; f < 0.97; f += 0.025) pts.push({ f, lat: mv.a[0] + (mv.b[0] - mv.a[0]) * f, lon: mv.a[1] + (mv.b[1] - mv.a[1]) * f });
+    if (!pts.length) return null;
+    const step = Math.max(1, Math.floor(pts.length / 60));
+    let best = null, bd = Infinity;
+    for (let i = 0; i < pts.length; i += step) {
+      const p = pts[i], tp = (p.f - now) * total, th = turn + this._eta(hp.lat, hp.lon, p.lat, p.lon) * EMERG;
+      const d = Math.abs(tp - th) + Math.max(tp, th) * 0.05;
+      if (d < bd) { bd = d; best = p; }
+    }
+    if (!best) return null;
+    let place = '';
+    try { let tw = null, tdist = 1e9; for (const x of ZOS_DATA.towns || []) { const dd = hav(best.lat, best.lon, x.lat, x.lon); if (dd < tdist) { tdist = dd; tw = x; } } if (tw) place = tdist < 2 ? `v obci ${tw.n}` : `u obce ${tw.n}`; } catch (_) {}
+    return { lat: best.lat, lon: best.lon, f: best.f, place };
   }
   _completeVstricna(cs) {
     const plan = cs && cs.vstricna, primary = plan && this.crewOf(plan.primaryCrewId), helper = plan && this.crewOf(plan.helperCrewId);
     if (!plan || plan.state !== 'dispatched' || !primary || !helper || primary.state !== 'onscene' || helper.state !== 'onscene') return false;
     const hospital = ZOS_DATA.hospitals.find(h => h.id === plan.hospitalId);
     if (!hospital) return false;
+    const t = this.s.t;
+    // předání pacienta mezi vozy: 2–5 min
+    if (plan.handoverEnd == null) {
+      plan.handoverEnd = t + this.rr(120, 300);
+      primary.until = helper.until = plan.handoverEnd;
+      this.L('crew', `ZCB${primary.code} a ZCB${helper.code} na místě setkání, probíhá předání pacienta.`, cs.id, primary.id);
+      return true;
+    }
+    if (t < plan.handoverEnd) { primary.until = helper.until = plan.handoverEnd; return true; }
     plan.state = 'completed';
     this.L('crew', `ZCB${primary.code}: pacient předán posádce ZCB${helper.code}, vstřícná jízda dokončena.`, cs.id, primary.id);
     this._release(primary);
@@ -2537,6 +2577,7 @@ class Sim {
       tot += tw.w;
       let best = times ? times[i] : 1e9;
       if (!times) for (const p of crews) { const e2 = travelSec(p.lat, p.lon, tw.lat, tw.lon) + 60; if (e2 < best) best = e2; }
+      best *= EMERG;
       ok += tw.w * (best <= 900 ? 1 : best <= 1200 ? 0.5 : 0);
     });
     cv.n++; cv.sum += tot ? ok / tot : 1; cv.last = tot ? ok / tot : 1;
@@ -2919,10 +2960,10 @@ function applyMapFocus(target, attempt = 0) {
     // Při výběru výzvy musí být změna středu spolehlivá i během běžného
     // překreslování panelu. Animované easeTo se v některých stavech MapLibre
     // zrušilo dřív, než změnilo kameru; dispečer potřebuje okamžitý přesun.
-    GL.jumpTo({ center: [target.lon, target.lat], zoom: Math.max(GL.getZoom(), 13.5) });
+    GL.jumpTo({ center: [target.lon, target.lat], zoom: GL.getZoom() < 10 ? 11 : Math.min(GL.getZoom(), 12.5) });
   } catch (err) {
     console.warn('map focus', err);
-    try { GL.jumpTo({ center: [target.lon, target.lat], zoom: Math.max(GL.getZoom(), 13.5) }); } catch (_) {}
+    try { GL.jumpTo({ center: [target.lon, target.lat], zoom: GL.getZoom() < 10 ? 11 : Math.min(GL.getZoom(), 12.5) }); } catch (_) {}
   }
 }
 function chunk(name) {
@@ -3048,7 +3089,8 @@ function glInit() {
         if (GL.getLayer('crews-heli')) return;
         GL.addLayer({ id: 'crews-heli', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'LZS'], layout: { 'icon-image': 'zos-heli', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.38, 13, 0.68], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, GL.getLayer('cases') ? 'cases' : undefined);
       });
-      GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 9, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-offset': [0.9, -0.9], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
+      GL.addLayer({ id: 'crews-base-l', type: 'symbol', source: 'crews', minzoom: 10.5, filter: ['all', ['in', ['get', 'state'], ['literal', ['base', 'second']]], ['!', ['get', 'sel']], ['!=', ['get', 'type'], 'LIB']], layout: { 'text-field': ['get', 'code'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0.7, -0.7], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#33475a', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
+      GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 7.5, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['step', ['zoom'], ['get', 'code'], 12, ['concat', ['get', 'code'], ' ', ['get', 'name']]], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 13, 12], 'text-offset': [0.8, -0.8], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
       GL.addLayer({ id: 'cases', type: 'circle', source: 'cases', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 9, 14, 13], 'circle-color': ['match', ['get', 'n'], 1, '#d9342b', 2, '#ee8a1b', 4, '#7892a6', '#e8c02a'], 'circle-stroke-color': ['case', ['get', 'sel'], '#111', ['get', 'rvReq'], '#d9342b', '#fff'], 'circle-stroke-width': ['case', ['get', 'sel'], 3.5, ['get', 'rvReq'], 4, 1.6], 'circle-opacity': ['case', ['any', ['get', 'wait'], ['get', 'rvReq']], ['get', 'blink'], 1] } });
       GL.addLayer({ id: 'cases-t', type: 'symbol', source: 'cases', layout: { 'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#111' } });
       GL.addLayer({ id: 'cases-l', type: 'symbol', source: 'cases', minzoom: 11, layout: { 'text-field': ['get', 'num'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
@@ -3078,7 +3120,7 @@ function glApplyLayers() {
   if (!glReady) return;
   const vis = (ids, on) => ids.forEach(id => GL.getLayer(id) && GL.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   vis(['stations', 'stations-l', 'stations-house'], layers.base); vis(['hosp', 'hosp-t', 'hosp-l', 'heliport', 'heliport-l'], layers.hosp);
-  vis(['crews', 'crews-base', 'crews-t', 'crews-heli', 'crews-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
+  vis(['crews', 'crews-base', 'crews-t', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
@@ -3100,7 +3142,7 @@ function glUpdate(force) {
   for (const k of sim.s.crews) {
     if (k.state === 'off' || k.type === 'LIB') continue;
     const p = sim.pos(k);
-    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, state: k.state, type: k.type, sel: sel.k === k.id } });
+    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id } });
   }
   const c = sel.c && sim.caseOf(sel.c), k = sel.k && sim.crewOf(sel.k);
   const selectedCrews = new Set(c ? c.crews : []);
@@ -3429,7 +3471,7 @@ function act(a, el) {
     case 'again': try { localStorage.removeItem(SAVE_KEY); } catch (e) {} startModal(); break;
     case 'close': closeModal(); break;
     case 'sug': sugOpen = !sugOpen; break;
-    case 'assign': { const r = sim.assign(d.case, d.crew, d.role || undefined); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; tabCase = missingInitialDispatch(sim.caseOf(d.case)).length ? 'waiting' : 'active'; beep(520); } break; }
+    case 'assign': { const r = sim.assign(d.case, d.crew, d.role || undefined); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; beep(520); } break; }
     case 'reassign': { const r = sim.reassign(d.crew, d.case); if (!r.ok) toast(r.msg, 'warn'); break; }
     case 'cancel': { const r = sim.cancelAssignment(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else toast('Posádka odvolána.', ''); break; }
     case 'prealert': { const r = sim.prealert(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Předpoplach: ' + r.crews.join(', ') + '. Posádky nevyjíždějí.', 'alert'); break; }

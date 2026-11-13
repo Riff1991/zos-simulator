@@ -247,6 +247,54 @@ if (!vjDispatch.ok || vjPrimary.caseRole !== 'vstricna-primary' || vjHelper.case
 for (let i = 0; i < 1200 && vjCase.vstricna.state !== 'completed'; i++) vjSim.step(30);
 if (vjCase.vstricna.state !== 'completed' || vjPrimary.caseId || vjHelper.state !== 'transport' || vjHelper.caseRole !== 'vstricna-destination') throw new Error('Vstřícná jízda did not transfer the patient and release the originating crew');
 console.log('Vstřícná jízda rendezvous, handover and destination transport true');
+// Běžné „Vyslat“ RZP z cílové oblasti musí spustit vstřícnou jízdu (ne jízdu na místo události);
+// posádky se potkají přibližně současně a předání trvá nejvýš 5 min.
+{
+  const sim = new Sim({ seed: 113, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = sim.s.ev.nextMU = 999999;
+  const cs = sim._spawn(); cs.status = 'active'; cs.n = 3; cs.dyn = true; cs.klasif = 'Bolest'; cs.trans = true; cs.patientCount = 1; cs.pocet = 1;
+  const dc = ZOS_DATA.stations.find(x => x.id === 'dacice'); cs.lat = dc.lat; cs.lon = dc.lon; cs.hospType = 'okresni'; cs.targetHospitalId = 'h-jh';
+  const pr = sim.crewOf('dacice-r0'), he = sim.crewOf('jh-r0');
+  pr.caseId = cs.id; pr.state = 'onscene'; cs.crews.push(pr.id);
+  const rnd = sim.rnd; sim.rnd = () => 0; sim._startTransport(pr, cs); sim.rnd = rnd;
+  sim.step(60);
+  const r = sim.assign(cs.id, he.id);
+  if (!r.ok || he.caseRole !== 'vstricna-support' || pr.caseRole !== 'vstricna-primary') throw new Error('plain assign did not start Vstřícná jízda');
+  let tP = null, tH = null, tDone = null;
+  for (let i = 0; i < 2000 && cs.vstricna.state !== 'completed'; i++) {
+    sim.step(10);
+    if (tP == null && pr.state === 'onscene') tP = sim.s.t;
+    if (tH == null && he.state === 'onscene') tH = sim.s.t;
+  }
+  tDone = sim.s.t;
+  if (cs.vstricna.state !== 'completed') throw new Error('Vstřícná jízda after plain assign never completed');
+  const wait = Math.abs(tP - tH), ho = tDone - Math.max(tP, tH);
+  if (wait > 8 * 60) throw new Error('Vstřícná jízda crews met with too large time gap: ' + Math.round(wait / 60) + ' min');
+  if (ho > 5 * 60 + 20 || ho < 100) throw new Error('Vstřícná jízda handover duration out of range: ' + ho + ' s');
+  console.log('Vstřícná jízda via plain assign, balanced meet (gap ' + Math.round(wait / 60) + ' min), handover ' + Math.round(ho / 60) + ' min true');
+}
+// Posádka mimo svou oblast veze pacienta do nemocnice své oblasti (pokud má potřebné pracoviště).
+{
+  const sim = new Sim({ seed: 120, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = sim.s.ev.nextMU = 999999;
+  const cs = sim._spawn(); cs.status = 'active'; cs.n = 3; cs.trans = true; cs.patientCount = 1; cs.pocet = 1; cs.hospType = 'okresni'; cs.targetHospitalId = null;
+  const pi = ZOS_DATA.hospitals.find(h => h.id === 'h-pi'); cs.lat = pi.lat + 0.02; cs.lon = pi.lon;
+  const k = sim.crewOf('cb-r0'); k.caseId = cs.id; k.state = 'onscene'; k.lat = cs.lat; k.lon = cs.lon; cs.crews.push(k.id);
+  sim._startTransport(k, cs);
+  if (!k.dest || k.dest.hid !== 'h-cb') throw new Error('ČB crew in Písek district did not return to NEM ČB: ' + (k.dest && k.dest.hid));
+  const k2 = sim.crewOf('pi-r0'); const cs2 = sim._spawn(); cs2.status = 'active'; cs2.trans = true; cs2.patientCount = 1; cs2.hospType = 'okresni'; cs2.targetHospitalId = null; cs2.lat = cs.lat; cs2.lon = cs.lon;
+  k2.caseId = cs2.id; k2.state = 'onscene'; k2.lat = cs.lat; k2.lon = cs.lon; cs2.crews.push(k2.id);
+  sim._startTransport(k2, cs2);
+  if (!k2.dest || k2.dest.hid !== 'h-pi') throw new Error('Písek crew did not go to NEM Písek');
+  console.log('crew transports to own-district hospital true');
+}
+// Volací čísla podle oblastí (JH 3xx, TA 2xx …)
+{
+  const sim = new Sim({ seed: 1 });
+  const c = id => sim.crewOf(id).code;
+  if (c('jh-v0') !== '319' || c('jh-r0') !== '313' || c('ta-v0') !== '219' || c('cb-r0') !== '127' || c('dacice-v0') !== '309') throw new Error('crew radio numbers do not match dispatch numbering');
+  console.log('crew radio numbers by area true');
+}
 const muDisabled = new Sim({ seed: 114, mode: 'shift', muEnabled: false, muProbability: 100 });
 const muZero = new Sim({ seed: 115, mode: 'shift', muEnabled: true, muProbability: 0 });
 const muCertain = new Sim({ seed: 116, mode: 'shift', muEnabled: true, muProbability: 100 });
@@ -349,7 +397,7 @@ console.log('case selection focuses map true');
     requestAnimationFrame() {}, console,
   };
   vm.runInNewContext(fn[0] + '\napplyMapFocus({lat:49.2,lon:14.4});', ctx);
-  if (!camera || camera.center[0] !== 14.4 || camera.center[1] !== 49.2 || camera.zoom < 13.5) throw new Error('case click did not move map camera to event coordinates');
+  if (!camera || camera.center[0] !== 14.4 || camera.center[1] !== 49.2 || camera.zoom < 10.5 || camera.zoom > 12.5) throw new Error('case click did not move map camera to event coordinates');
 }
 console.log('case click moves map camera true');
 {

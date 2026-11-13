@@ -3,14 +3,14 @@
 
 const ZOS_DATA = {
   oblasti: [
-    // číslování oblastí podle dispečerského systému ZZS JčK (11 = LZS)
+    // pořadí a číslování oblastí jako v přehledovém panelu posádek ZOS (radio = první číslice volacího čísla; LZS 0013)
     { id: 'ČB', name: 'České Budějovice', radio: 1 },
-    { id: 'JH', name: 'Jindřichův Hradec', radio: 2 },
-    { id: 'PI', name: 'Písek', radio: 3 },
+    { id: 'ČK', name: 'Český Krumlov', radio: 5 },
+    { id: 'JH', name: 'Jindřichův Hradec', radio: 3 },
     { id: 'PT', name: 'Prachatice', radio: 4 },
-    { id: 'ST', name: 'Strakonice', radio: 5 },
-    { id: 'TA', name: 'Tábor', radio: 6 },
-    { id: 'ČK', name: 'Český Krumlov', radio: 7 },
+    { id: 'ST', name: 'Strakonice', radio: 6 },
+    { id: 'PI', name: 'Písek', radio: 7 },
+    { id: 'TA', name: 'Tábor', radio: 2 },
   ],
 
   // day / night = { rzp, rv }. zzum = superzáchranáři (zzumConfirmed false = nepotvrzeno).
@@ -71,33 +71,33 @@ const ZOS_DATA = {
 
   // Sady MU (vozidla pro řešení následků mimořádných událostí), dislokace ČB, Tábor, Strakonice, J. Hradec.
   mu: [
-    { id: 'mu-cb', name: 'MU ČB', oblast: 'ČB', stationId: 'cb' },
-    { id: 'mu-ta', name: 'MU Tábor', oblast: 'TA', stationId: 'ta' },
-    { id: 'mu-st', name: 'MU Strakonice', oblast: 'ST', stationId: 'st' },
-    { id: 'mu-jh', name: 'MU J. Hradec', oblast: 'JH', stationId: 'jh' },
+    { id: 'mu-cb', no: 810, name: 'MU ČB', oblast: 'ČB', stationId: 'cb' },
+    { id: 'mu-ta', no: 820, name: 'MU Tábor', oblast: 'TA', stationId: 'ta' },
+    { id: 'mu-st', no: 840, name: 'MU Strakonice', oblast: 'ST', stationId: 'st' },
+    { id: 'mu-jh', no: 830, name: 'MU J. Hradec', oblast: 'JH', stationId: 'jh' },
   ],
 
   // Záložní vozy (fialové, nepřihlášené). Po aktivaci dispečerem jedou jako RZP.
 
-  // Názvy výjezdových skupin ve formátu dispečerského systému (podle říjnového přehledu výjezdů).
+  // Názvy výjezdových skupin a volací čísla (rzpNo/rvNo) podle dispečerského systému ZZS JčK.
   crewNames: {
-    cb: { rzp: ['RZP1', 'RZP2', 'RZP3'], rv: ['RV1', 'RV2'] }, cbpr: { rzp: ['CB PRAŽSKÁ RZP'] }, cbpl: { rzp: ['CB PLANÁ RZP'] }, cbvl: { rzp: ['CB VLTAVA RZP'] },
-    kaplice: { rzp: ['KAPLICE_RZP'] }, tyn: { rzp: ['TYN N. VLT.'] }, tsviny: { rzp: ['T. SVINY'] },
-    ck: { rzp: ['CK_RZP1', 'CK_RZP2'], rv: ['CK_RV'] }, hplana: { rzp: ['H. PLANÁ RZP'] }, vbrod: { rzp: ['V. BROD_RZP'] }, frymburk: { rzp: ['FRYMBURK'] },
-    jh: { rzp: ['JH_RZP1', 'JH_RZP2', 'JH_RZP3'], rv: ['JH_RV'] }, kunzak: { rzp: ['KUNZAK_RZP'] }, dacice: { rzp: ['DACICE'], rv: ['DACICE_RV'] },
-    trebon: { rzp: ['TREBON', 'TREBON 2'], rv: ['TREBON_RV'] }, suchdol: { rzp: ['SUCHDOL'] },
-    pt: { rzp: ['PT_RZP1', 'PT_RZP2'], rv: ['PT_RV'] }, vimperk: { rzp: ['VIMPERK', 'VIMPERK 2'] }, volary: { rzp: ['VOLARY_RZP'] }, vacov: { rzp: ['VACOV_RZP'] }, lhenice: { rzp: ['LHENICE'] },
-    st: { rzp: ['ST_RZP1', 'ST_RZP2', 'ST_RZP3'], rv: ['ST_RV'] }, blatna: { rzp: ['BLATNA'] }, vodnany: { rzp: ['VODNANY'] },
-    pi: { rzp: ['PISEK_RZP1', 'PISEK_RZP2', 'PISEK_RZP3'], rv: ['PISEK_RV'] }, milevsko: { rzp: ['MILEVSKO'] }, cimelice: { rzp: ['CIMELICE_RZP'] },
-    ta: { rzp: ['TA_RZP1', 'TA_RZP2', 'TA_RZP3'], rv: ['TA_RV'] }, sobeslav: { rzp: ['SOBESLAV'] }, mvozice: { rzp: ['VOZICE_RZP'] }, oparany: { rzp: ['OPARANY_RZP'] }, veseli: { rzp: ['VESELI'] },
+    cb: { rzp: ['RZP1', 'RZP2', 'RZP3'], rv: ['RV1', 'RV2'], rzpNo: [127, 135, 126], rvNo: [149, 139] }, cbpr: { rzp: ['CB PRAŽSKÁ RZP'], rzpNo: [118] }, cbpl: { rzp: ['CB PLANÁ RZP'], rzpNo: [114] }, cbvl: { rzp: ['CB VLTAVA RZP'], rzpNo: [123] },
+    kaplice: { rzp: ['KAPLICE_RZP'], rzpNo: [117] }, tyn: { rzp: ['TYN N. VLT.'], rzpNo: [121] }, tsviny: { rzp: ['T. SVINY'], rzpNo: [115] },
+    ck: { rzp: ['CK_RZP1', 'CK_RZP2'], rv: ['CK_RV'], rzpNo: [518, 513], rvNo: [529] }, hplana: { rzp: ['H. PLANÁ RZP'], rzpNo: [134] }, vbrod: { rzp: ['V. BROD_RZP'], rzpNo: [514] }, frymburk: { rzp: ['FRYMBURK'], rzpNo: [517] },
+    jh: { rzp: ['JH_RZP1', 'JH_RZP2', 'JH_RZP3'], rv: ['JH_RV'], rzpNo: [313, 312, 314], rvNo: [319] }, kunzak: { rzp: ['KUNZAK_RZP'], rzpNo: [318] }, dacice: { rzp: ['DACICE'], rv: ['DACICE_RV'], rzpNo: [311], rvNo: [309] },
+    trebon: { rzp: ['TREBON', 'TREBON 2'], rv: ['TREBON_RV'], rzpNo: [322, 321], rvNo: [329] }, suchdol: { rzp: ['SUCHDOL'], rzpNo: [320] },
+    pt: { rzp: ['PT_RZP1', 'PT_RZP2'], rv: ['PT_RV'], rzpNo: [411, 412], rvNo: [429] }, vimperk: { rzp: ['VIMPERK', 'VIMPERK 2'], rzpNo: [421, 422] }, volary: { rzp: ['VOLARY_RZP'], rzpNo: [415] }, vacov: { rzp: ['VACOV_RZP'], rzpNo: [417] }, lhenice: { rzp: ['LHENICE'], rzpNo: [413] },
+    st: { rzp: ['ST_RZP1', 'ST_RZP2', 'ST_RZP3'], rv: ['ST_RV'], rzpNo: [614, 613, 611], rvNo: [629] }, blatna: { rzp: ['BLATNA'], rzpNo: [616] }, vodnany: { rzp: ['VODNANY'], rzpNo: [618] },
+    pi: { rzp: ['PISEK_RZP1', 'PISEK_RZP2', 'PISEK_RZP3'], rv: ['PISEK_RV'], rzpNo: [713, 715, 711], rvNo: [719] }, milevsko: { rzp: ['MILEVSKO'], rzpNo: [716] }, cimelice: { rzp: ['CIMELICE_RZP'], rzpNo: [718] },
+    ta: { rzp: ['TA_RZP1', 'TA_RZP2', 'TA_RZP3'], rv: ['TA_RV'], rzpNo: [218, 215, 214], rvNo: [219] }, sobeslav: { rzp: ['SOBESLAV'], rzpNo: [224] }, mvozice: { rzp: ['VOZICE_RZP'], rzpNo: [220] }, oparany: { rzp: ['OPARANY_RZP'], rzpNo: [212] }, veseli: { rzp: ['VESELI'], rzpNo: [225] },
   },
   // LIBERO: volný lékař na základně, jen přes den a ne vždy. Lze ho přidat do RZP téže základny → dočasně RLP.
   libero: [
-    { id: 'lib-cb', name: 'CB LIBERO', oblast: 'ČB', stationId: 'cb' },
+    { id: 'lib-cb', name: 'CB LIBERO', oblast: 'ČB', stationId: 'cb', no: 176 },
     { id: 'lib-ta', name: 'TA LIBERO', oblast: 'TA', stationId: 'ta' },
-    { id: 'lib-vi', name: 'VI LIBERO', oblast: 'PT', stationId: 'vimperk' },
+    { id: 'lib-vi', name: 'VI LIBERO', oblast: 'PT', stationId: 'vimperk', no: 440 },
   ],
-  liberoPresence: 0.7,
+  liberoPresence: 0.9,
   reserves: [
     { id: 'z-cb1', name: 'CB_Z 1', oblast: 'ČB', stationId: 'cb' },
     { id: 'z-cb2', name: 'CB_Z 2', oblast: 'ČB', stationId: 'cb' },
@@ -111,13 +111,13 @@ const ZOS_DATA = {
 
   // types: okresni = běžný příjem, iktove = iktové centrum, trauma = traumacentrum, kcc = komplexní centrum / PCI
   hospitals: [
-    { id: 'h-cb', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'kcc'] },
-    { id: 'h-ta', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'] },
-    { id: 'h-jh', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'] },
-    { id: 'h-pi', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'] },
-    { id: 'h-st', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'] },
-    { id: 'h-pt', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'] },
-    { id: 'h-ck', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'] },
+    { id: 'h-cb', oblast: 'ČB', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'kcc'] },
+    { id: 'h-ta', oblast: 'TA', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'] },
+    { id: 'h-jh', oblast: 'JH', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'] },
+    { id: 'h-pi', oblast: 'PI', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'] },
+    { id: 'h-st', oblast: 'ST', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'] },
+    { id: 'h-pt', oblast: 'PT', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'] },
+    { id: 'h-ck', oblast: 'ČK', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'] },
     { id: 'h-fnkv', name: 'Fakultní nemocnice Královské Vinohrady', short: 'FNKV Praha', lat: 50.074618, lon: 14.482014, heliport: true, types: ['popaleniny'] },
   ],
 

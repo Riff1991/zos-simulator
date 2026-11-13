@@ -349,10 +349,10 @@ function applyMapFocus(target, attempt = 0) {
     // Při výběru výzvy musí být změna středu spolehlivá i během běžného
     // překreslování panelu. Animované easeTo se v některých stavech MapLibre
     // zrušilo dřív, než změnilo kameru; dispečer potřebuje okamžitý přesun.
-    GL.jumpTo({ center: [target.lon, target.lat], zoom: Math.max(GL.getZoom(), 13.5) });
+    GL.jumpTo({ center: [target.lon, target.lat], zoom: GL.getZoom() < 10 ? 11 : Math.min(GL.getZoom(), 12.5) });
   } catch (err) {
     console.warn('map focus', err);
-    try { GL.jumpTo({ center: [target.lon, target.lat], zoom: Math.max(GL.getZoom(), 13.5) }); } catch (_) {}
+    try { GL.jumpTo({ center: [target.lon, target.lat], zoom: GL.getZoom() < 10 ? 11 : Math.min(GL.getZoom(), 12.5) }); } catch (_) {}
   }
 }
 function chunk(name) {
@@ -478,7 +478,8 @@ function glInit() {
         if (GL.getLayer('crews-heli')) return;
         GL.addLayer({ id: 'crews-heli', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'LZS'], layout: { 'icon-image': 'zos-heli', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.38, 13, 0.68], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, GL.getLayer('cases') ? 'cases' : undefined);
       });
-      GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 9, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-offset': [0.9, -0.9], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
+      GL.addLayer({ id: 'crews-base-l', type: 'symbol', source: 'crews', minzoom: 10.5, filter: ['all', ['in', ['get', 'state'], ['literal', ['base', 'second']]], ['!', ['get', 'sel']], ['!=', ['get', 'type'], 'LIB']], layout: { 'text-field': ['get', 'code'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0.7, -0.7], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#33475a', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
+      GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 7.5, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['step', ['zoom'], ['get', 'code'], 12, ['concat', ['get', 'code'], ' ', ['get', 'name']]], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 13, 12], 'text-offset': [0.8, -0.8], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
       GL.addLayer({ id: 'cases', type: 'circle', source: 'cases', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 9, 14, 13], 'circle-color': ['match', ['get', 'n'], 1, '#d9342b', 2, '#ee8a1b', 4, '#7892a6', '#e8c02a'], 'circle-stroke-color': ['case', ['get', 'sel'], '#111', ['get', 'rvReq'], '#d9342b', '#fff'], 'circle-stroke-width': ['case', ['get', 'sel'], 3.5, ['get', 'rvReq'], 4, 1.6], 'circle-opacity': ['case', ['any', ['get', 'wait'], ['get', 'rvReq']], ['get', 'blink'], 1] } });
       GL.addLayer({ id: 'cases-t', type: 'symbol', source: 'cases', layout: { 'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#111' } });
       GL.addLayer({ id: 'cases-l', type: 'symbol', source: 'cases', minzoom: 11, layout: { 'text-field': ['get', 'num'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
@@ -508,7 +509,7 @@ function glApplyLayers() {
   if (!glReady) return;
   const vis = (ids, on) => ids.forEach(id => GL.getLayer(id) && GL.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   vis(['stations', 'stations-l', 'stations-house'], layers.base); vis(['hosp', 'hosp-t', 'hosp-l', 'heliport', 'heliport-l'], layers.hosp);
-  vis(['crews', 'crews-base', 'crews-t', 'crews-heli', 'crews-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
+  vis(['crews', 'crews-base', 'crews-t', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
@@ -530,7 +531,7 @@ function glUpdate(force) {
   for (const k of sim.s.crews) {
     if (k.state === 'off' || k.type === 'LIB') continue;
     const p = sim.pos(k);
-    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, state: k.state, type: k.type, sel: sel.k === k.id } });
+    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id } });
   }
   const c = sel.c && sim.caseOf(sel.c), k = sel.k && sim.crewOf(sel.k);
   const selectedCrews = new Set(c ? c.crews : []);
@@ -859,7 +860,7 @@ function act(a, el) {
     case 'again': try { localStorage.removeItem(SAVE_KEY); } catch (e) {} startModal(); break;
     case 'close': closeModal(); break;
     case 'sug': sugOpen = !sugOpen; break;
-    case 'assign': { const r = sim.assign(d.case, d.crew, d.role || undefined); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; tabCase = missingInitialDispatch(sim.caseOf(d.case)).length ? 'waiting' : 'active'; beep(520); } break; }
+    case 'assign': { const r = sim.assign(d.case, d.crew, d.role || undefined); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; beep(520); } break; }
     case 'reassign': { const r = sim.reassign(d.crew, d.case); if (!r.ok) toast(r.msg, 'warn'); break; }
     case 'cancel': { const r = sim.cancelAssignment(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else toast('Posádka odvolána.', ''); break; }
     case 'prealert': { const r = sim.prealert(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Předpoplach: ' + r.crews.join(', ') + '. Posádky nevyjíždějí.', 'alert'); break; }

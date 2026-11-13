@@ -12,6 +12,17 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ### Nové
 - Nové číslování verzí (hlavní.menší.oprava) a testovací web …/zos-simulator/dev/ s vlastní uloženou směnou.
+- **Volací čísla posádek podle dispečerského systému:** ČB 1xx, TA 2xx, JH 3xx, PT 4xx, ČK 5xx, ST 6xx, PI 7xx (např. JH RV 319, JH 1 RZP 313, Dačice RV 309). Oblasti v panelu posádek seřazené jako na ZOS.
+- **Číslo posádky u ikony na mapě** (při přiblížení i název, vozy na základně od bližšího přiblížení).
+- **Nemocnice podle oblasti posádky:** RZP vyslaná mimo svůj okres veze pacienta do nemocnice své oblasti (pokud má potřebné pracoviště), aby se vracela domů.
+- LIBERO je přes den k dispozici častěji (~90 % dní).
+
+### Opravy
+- **Vstřícná jízda:** posádka vyslaná tlačítkem „Vyslat“ jela místo setkání na adresu události. Nově se obě posádky potkají na trase v místě, kam dorazí přibližně současně (časově na půli cesty), předání trvá 2–5 min a pak každá pokračuje.
+- Rychlejší jízda k události s výstražnými zařízeními (≈ o 15 % kratší dojezdy; promítá se i do ETA a pokrytí).
+- Klik na událost už mapu nepřibližuje tolik (přehled okolí ~15 km).
+- Větší písmo názvů oblastí v přehledovém panelu posádek.
+- Vyslání posádky z panelu případu nepřepíná seznam z „Čekající“ na „Právě řešené“; případ se jen přesune.
 
 ## v14 – 2026-11-13
 
