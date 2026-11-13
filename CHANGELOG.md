@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.15.0 – rozpracováno (testovací verze)
+## v0.15.0 – 2026-11-13
 
 ### Nové
 - Nové číslování verzí (hlavní.menší.oprava) a testovací web …/zos-simulator/dev/ s vlastní uloženou směnou.
