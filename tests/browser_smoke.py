@@ -24,7 +24,7 @@ with sync_playwright() as p:
         pg = b.new_page(viewport={'width': w, 'height': h}); errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.goto(URL, wait_until='domcontentloaded'); pg.wait_for_timeout(3000)
-        pg.click('[data-act=start]'); pg.evaluate('window.__zos.step(900)'); pg.wait_for_timeout(1500)
+        pg.click('[data-act=newshift]'); pg.click('[data-act=start]'); pg.evaluate('window.__zos.step(900)'); pg.wait_for_timeout(1500)
         check(pg.evaluate('!!window.__zosMap'), f'{w}px: MapLibre mapa existuje')
         ids = [e.get_attribute('data-case') for e in pg.query_selector_all('article.case-card')][:3]
         check(len(ids) > 0, f'{w}px: v seznamu jsou výzvy')

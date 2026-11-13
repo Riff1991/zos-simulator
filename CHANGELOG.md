@@ -8,6 +8,15 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.16.0 – 2026-11-13
+
+- Nová úvodní obrazovka: Pokračovat ve směně, Nová směna, Nastavení, Co je nového, kontrola aktualizace.
+- Nastavení i ve hře (tlačítko ⚙ v záhlaví; hra se při otevření pozastaví): světlý/tmavý/automatický vzhled včetně mapy, velikost písma, zvuk a hlasitost, výchozí rychlost, pauza při nové N1.
+- Obtížnost: volitelné nápovědy (★ u doporučené posádky a rada v detailu případu).
+- Smazání uložené směny a návrat k výchozímu nastavení.
+
+---
+
 ## v0.15.0 – 2026-11-13
 
 ### Nové

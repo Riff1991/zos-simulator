@@ -2,7 +2,7 @@
 const shared = {
   ZOS_DATA: 'readonly', ZOS_PEOPLE: 'readonly', ZOS_SYMPTOMS: 'readonly', ZOS_ADDR: 'readonly', ZOS_POI: 'readonly',
   ROUTER: 'readonly', Sim: 'readonly', BASEMAP: 'readonly', GLMASK: 'readonly', maplibregl: 'readonly',
-  hav: 'readonly', travelSec: 'readonly', heliSec: 'readonly', FIRST: 'readonly', LAST: 'readonly',
+  hav: 'readonly', ZOS_VERSION: 'readonly', ZOS_CHANGELOG: 'readonly', ZOS_OUTLINE: 'readonly', travelSec: 'readonly', heliSec: 'readonly', FIRST: 'readonly', LAST: 'readonly',
 };
 const browser = ['window', 'document', 'location', 'navigator', 'localStorage', 'sessionStorage', 'performance', 'requestAnimationFrame',
   'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'fetch', 'console', 'URL', 'Blob', 'Response', 'DecompressionStream', 'Image',

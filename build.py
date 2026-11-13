@@ -11,6 +11,23 @@ u = rd('src/ui.js')
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
 t = t.replace('ZOS JčK · DISPEČER', 'ZOS JčK · DISPEČER · v' + ver, 1)
+# verze, changelog (posledních 6 verzí) a obrys kraje pro úvodní obrazovku
+import json as _j
+cl = rd('CHANGELOG.md') if os.path.exists('CHANGELOG.md') else ''
+secs = [x.strip() for x in re.split(r'\n## ', cl)[1:]][:6]
+changelog = []
+for x in secs:
+    head, _, body = x.partition('\n')
+    items = [ln for ln in body.split('\n') if ln.strip()]
+    changelog.append({'h': head.strip(), 'l': items})
+mk = _j.loads(rd('src/mask.geojson'))['geometry']['coordinates'][0][1]
+lo = [p[0] for p in mk]; la = [p[1] for p in mk]
+x0, x1, y0, y1 = min(lo), max(lo), min(la), max(la)
+sc = 1000 / (x1 - x0) / 1.0; kx = 0.66
+pts = [((p[0] - x0) / (x1 - x0) * 1000, (y1 - p[1]) / (y1 - y0) * 1000 * (y1 - y0) / (x1 - x0) / 0.66) for p in mk[::max(1, len(mk) // 160)]]
+outline = 'M' + 'L'.join('%.1f %.1f' % q for q in pts) + 'Z'
+meta = 'const ZOS_VERSION = ' + _j.dumps(ver) + ';\nconst ZOS_CHANGELOG = ' + _j.dumps(changelog, ensure_ascii=False) + ';\nconst ZOS_OUTLINE = ' + _j.dumps(outline) + ';\n'
+d = d + meta
 t = t.replace('/*DATA*/', d).replace('/*SYMPTOMS*/', symptoms).replace('/*BASEMAP*/', m).replace('/*ENGINE*/', e).replace('/*UI*/', u)
 open('site/index.html', 'w', encoding='utf8').write(t)
 print('site/index.html', len(t))

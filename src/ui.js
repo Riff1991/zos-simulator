@@ -11,6 +11,73 @@ const SPEEDS = [0, 1, 5, 10, 20, 30, 60];
 const OPT_KEY = 'zos_jck_opts_v1';
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window._opt || {})); } catch (_) {} }
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
+// ---------- nastavení (vzhled, písmo, zvuk, hra) ----------
+const SET_KEY = 'zos_jck_settings_v1';
+const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false };
+let settings = Object.assign({}, SET_DEF);
+try { settings = Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (_) {}
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (_) {} }
+const isDark = () => settings.theme === 'dark' || (settings.theme === 'auto' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+function applyTheme() {
+  const dark = isDark();
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.style.setProperty('--fz', String(settings.font));
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#0d131a' : '#18242f';
+  applyMapTheme();
+}
+if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', () => { if (settings.theme === 'auto') applyTheme(); }); }
+// tmavá mapa: barvy základní mapy se převedou (obrácená světlost), přepíná se bez znovunačtení stylu
+function colorParts(c) {
+  let m;
+  if (typeof c !== 'string') return null;
+  if ((m = /^#([0-9a-f]{3,8})$/i.exec(c))) {
+    let h = m[1]; if (h.length === 3 || h.length === 4) h = h.split('').map(x => x + x).join('');
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1 };
+  }
+  if ((m = /^rgba?\(([^)]+)\)$/i.exec(c))) { const p = m[1].split(',').map(x => parseFloat(x)); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; }
+  return null;
+}
+function remapColor(c, mode) {
+  const q = colorParts(c); if (!q) return c;
+  const r = q.r / 255, g = q.g / 255, b = q.b / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0, sat = 0, l = (mx + mn) / 2;
+  if (d) { sat = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+  l = mode === 'road' ? 0.24 + l * 0.2 : mode === 'casing' ? 0.07 : mode === 'text' ? 0.64 + (1 - l) * 0.3 : 0.09 + (1 - l) * 0.64;
+  sat *= mode === 'text' ? 0.7 : 0.75;
+  const f = (n) => { const k = (n + h * 12) % 12, a = sat * Math.min(l, 1 - l); return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255); };
+  return `rgba(${f(0)},${f(8)},${f(4)},${q.a.toFixed(2)})`;
+}
+function remapValue(v, mode) { return typeof v === 'string' ? remapColor(v, mode) : Array.isArray(v) ? v.map(x => remapValue(x, mode)) : v; }
+function darkenStyle(st) {
+  const out = Object.assign({}, st);
+  out.layers = st.layers.map(L => {
+    if (!L.paint) return L;
+    const isRoad = L.type === 'line' && /^(road|rail|bridge|tunnel)/.test(L.id), casing = isRoad && /-case$/.test(L.id);
+    const paint = {};
+    for (const [k, v] of Object.entries(L.paint)) {
+      const isCol = /color$/.test(k);
+      paint[k] = isCol ? remapValue(v, casing ? 'casing' : isRoad && k === 'line-color' ? 'road' : /^text/.test(k) && k === 'text-color' ? 'text' : 'inv') : v;
+    }
+    return Object.assign({}, L, { paint });
+  });
+  return out;
+}
+let mapThemeApplied = null; const overlayLight = {};
+function applyMapTheme() {
+  if (!GL || !glReady) return;
+  const dark = isDark(); if (mapThemeApplied === dark) return; mapThemeApplied = dark;
+  const base = glStyle(), st = dark ? darkenStyle(base) : base;
+  for (const L of st.layers) {
+    if (!GL.getLayer(L.id)) continue;
+    for (const [k, v] of Object.entries(L.paint || {})) { try { GL.setPaintProperty(L.id, k, v); } catch (_) {} }
+  }
+  for (const id of ['stations-l', 'hosp-l', 'heliport-l', 'crews-l', 'crews-base-l', 'cases-l']) {
+    if (!GL.getLayer(id)) continue;
+    const o = overlayLight[id] || (overlayLight[id] = { tc: GL.getPaintProperty(id, 'text-color'), hc: GL.getPaintProperty(id, 'text-halo-color') });
+    GL.setPaintProperty(id, 'text-color', dark ? remapColor(o.tc, 'text') : o.tc);
+    GL.setPaintProperty(id, 'text-halo-color', dark ? 'rgba(14,26,36,0.92)' : o.hc);
+  }
+}
 const COL = { base: '#f3f5f7', free: '#3cb54a', call: '#2f7de1', enroute: '#d9372c', onscene: '#d9372c', transport: '#d9372c', handover: '#d9372c', off: '#8e5bd6', activating: '#b79af0', second: '#7b8794', attached: '#169c8f' };
 const X = lon => (lon - 13.55) / 1.95 * 1000, Y = lat => (49.78 - lat) / 1.28 * 1000;
 
@@ -257,13 +324,23 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
   h += '</div><div class="dc2">';
   if (c.status === 'waiting' || c.status === 'active') {
     h += `<div><button class="btn pri" data-act="sug">Navrhnout posádku ${sugOpen ? '▴' : '▾'}</button></div>`;
+    if (settings.hints) {
+      const mt = missingInitialDispatch(c);
+      const best = (kind, role) => { const l = sim.suggest(c.id, kind, role).slice(0, 1)[0]; const k = l && sim.crewOf(l.crewId); return k ? `${esc(k.name)} (${Math.round(l.eta / 60)} min)` : ''; };
+      const parts = [];
+      if (mt.length) parts.push(`Chybí vyslat: <b>${mt.join(' + ')}</b>.`);
+      else if (!c.crews.length) parts.push(`N${c.n}: ${c.n <= 2 ? 'vyšli nejbližší volnou posádku, u N1 hned.' : 'vyšli nejbližší volnou RZP.'}`);
+      const r = best('RZP'); if (r && !c.crews.length) parts.push(`Nejrychlejší RZP: <b>${r}</b>.`);
+      if (c.n === 1 && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) { const v = best('RV'); if (v) parts.push(`Zvaž RV: <b>${v}</b>.`); }
+      if (parts.length) h += `<div class="hint">💡 ${parts.join(' ')}</div>`;
+    }
     if (sugOpen) {
       const sect = (title, kind, n, role) => {
         const list = sim.suggest(c.id, kind, role).slice(0, n);
         if (!list.length) return `<div class="sug"><h4>${title}</h4><div class="row" style="color:#5a6a7a">Nikdo volný.</div></div>`;
-        return `<div class="sug"><h4>${title}</h4>${list.map(x => {
-          const k = sim.crewOf(x.crewId);
-          return `<div class="row"><span class="chip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state === 'base' || k.state === 'free' ? '#111' : '#fff'}">${esc(k.name)}</span><span>${esc(STLAB[k.state])}</span><span class="km">${x.km.toFixed(0)} km</span><span class="eta">${Math.round(x.eta / 60)} min</span><button class="btn pri" data-act="assign" data-case="${c.id}" data-crew="${k.id}" data-role="${role || ''}">Vyslat</button>${!role && k.type === 'RZP' && k.state === 'base' && sim.liberoFor(k) ? `<button class="btn" title="Přidat lékaře LIBERO ze základny – dočasně RLP" data-act="assign-libero" data-case="${c.id}" data-crew="${k.id}">+ LIBERO</button>` : ''}</div>`;
+        return `<div class="sug"><h4>${title}</h4>${list.map((x, i) => {
+          const k = sim.crewOf(x.crewId), rec = settings.hints && i === 0;
+          return `<div class="row${rec ? ' rec' : ''}">${rec ? '<span class="recstar" title="Doporučeno">★</span>' : ''}<span class="chip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state === 'base' || k.state === 'free' ? '#111' : '#fff'}">${esc(k.name)}</span><span>${esc(STLAB[k.state])}</span><span class="km">${x.km.toFixed(0)} km</span><span class="eta">${Math.round(x.eta / 60)} min</span><button class="btn pri" data-act="assign" data-case="${c.id}" data-crew="${k.id}" data-role="${role || ''}">Vyslat</button>${!role && k.type === 'RZP' && k.state === 'base' && sim.liberoFor(k) ? `<button class="btn" title="Přidat lékaře LIBERO ze základny – dočasně RLP" data-act="assign-libero" data-case="${c.id}" data-crew="${k.id}">+ LIBERO</button>` : ''}</div>`;
         }).join('')}</div>`;
       };
       if (c.typ === 'sekundární') h += sect('RZP', 'RZP', 6);
@@ -434,7 +511,7 @@ function glInit() {
     document.getElementById('map').style.display = 'none';
     const el = document.createElement('div'); el.id = 'gl'; el.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
     const mapWrap = document.getElementById('mapwrap'); mapWrap.prepend(el);
-    GL = new maplibregl.Map({ container: el, style: glStyle(), bounds: [[13.53, 48.55], [15.61, 49.63]], fitBoundsOptions: { padding: 10 }, maxZoom: 18.5, minZoom: 6, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false, touchPitch: false });
+    GL = new maplibregl.Map({ container: el, style: isDark() ? darkenStyle(glStyle()) : glStyle(), bounds: [[13.53, 48.55], [15.61, 49.63]], fitBoundsOptions: { padding: 10 }, maxZoom: 18.5, minZoom: 6, attributionControl: { compact: true }, dragRotate: false, pitchWithRotate: false, touchPitch: false });
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => { if (GL) requestAnimationFrame(() => GL.resize()); }).observe(mapWrap);
     // MapLibre obsluhuje vlastní tažení; společný pointer handler níže je jen
     // pro SVG fallback (pointer capture na wrapperu by blokoval drag MapLibre).
@@ -500,7 +577,7 @@ function glInit() {
       };
       GL.on('click', pick);
       for (const l of ['cases', 'crews', 'crews-base']) { GL.on('mouseenter', l, () => GL.getCanvas().style.cursor = 'pointer'); GL.on('mouseleave', l, () => GL.getCanvas().style.cursor = ''); }
-      glReady = true; glApplyLayers(); glUpdate(true);
+      glReady = true; mapThemeApplied = null; applyMapTheme(); glApplyLayers(); glUpdate(true);
       if (pendingMapFocus) {
         const target = pendingMapFocus; pendingMapFocus = null;
         applyMapFocus(target);
@@ -665,7 +742,8 @@ function toast(txt, kind) {
   while ($('toasts').children.length > 3) $('toasts').firstChild.remove();
 }
 function beep(f, delay = 0, length = 0.12) {
-  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = f; g.gain.value = 0.05; o.connect(g); g.connect(audio.destination); o.start(audio.currentTime + delay); o.stop(audio.currentTime + delay + length); } catch (e) {}
+  if (!settings.sound || !settings.volume) return;
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = f; g.gain.value = 0.085 * settings.volume / 100; o.connect(g); g.connect(audio.destination); o.start(audio.currentTime + delay); o.stop(audio.currentTime + delay + length); } catch (e) {}
 }
 function newCallTone() { beep(620, 0, 0.16); beep(790, 0.2, 0.16); beep(1040, 0.4, 0.24); }
 function alarmBeep() { beep(1040); setTimeout(() => beep(780), 170); setTimeout(() => beep(1040), 340); }
@@ -681,7 +759,7 @@ function pollLog() {
       continue;
     }
     const newCall = e.kind === 'case' && e.txt.startsWith('Nový případ ');
-    if (newCall) { toast(e.txt, /: N1\b/.test(e.txt) ? 'alert' : ''); newCallTone(); }
+    if (newCall) { toast(e.txt, /: N1\b/.test(e.txt) ? 'alert' : ''); newCallTone(); if (settings.autoPauseN1 && /: N1\b/.test(e.txt) && speed > 0) { speed = 0; toast('Pauza: nová N1. Pokračuj mezerníkem nebo rychlostí nahoře.', 'alert'); } }
     else if (e.kind === 'req' || e.kind === 'alert' || e.kind === 'deadline' || e.kind === 'warn' || (e.kind === 'case' && /: N1/.test(e.txt))) { toast(e.txt, e.kind === 'case' || e.kind === 'deadline' || e.kind === 'req' ? 'alert' : e.kind); if (e.kind === 'deadline') alarmBeep(); else beep(e.kind === 'req' ? 660 : 880); }
   }
   if (vstricnaIncoming) vstricnaTone();
@@ -690,7 +768,53 @@ function pollLog() {
 // ---------- modal ----------
 function modal(html) { $('modal').innerHTML = html; $('modal').classList.add('on'); modalOpen = true; }
 function closeModal() { $('modal').classList.remove('on'); modalOpen = false; lastT = performance.now(); }
-function startModal() {
+
+function homeModal() {
+  let saved = null; try { saved = localStorage.getItem(SAVE_KEY); } catch (e) {}
+  let when = '';
+  try { if (saved) { const r = Sim.restore(saved); when = ' · ' + r.clockAt(r.s.t); } } catch (e) { when = ''; }
+  const upd = `<button class="btn" data-act="check-update">Zkontrolovat aktualizaci</button>`;
+  const inst = installPrompt ? ' <button class="btn" data-act="install-app">Nainstalovat aplikaci</button>' : '';
+  modal(`<div class="card home"><svg class="home-bg" viewBox="0 0 1000 660" aria-hidden="true"><path d="${typeof ZOS_OUTLINE === 'string' ? ZOS_OUTLINE : ''}"/></svg>
+    <h1>ZOS ZZS JčK</h1><p class="sub">Simulátor primárního dispečera · Jihočeský kraj</p>
+    <svg class="ecg" viewBox="0 0 300 28" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="#d6453d" stroke-width="1.6" points="0,15 60,15 70,15 76,5 82,24 88,9 94,15 150,15 160,15 166,5 172,24 178,9 184,15 240,15 250,15 256,5 262,24 268,9 274,15 300,15"/></svg>
+    <div class="menu">
+      ${saved ? `<button class="mbtn pri" data-act="resume">▶ Pokračovat ve směně<small>Uložená rozehraná směna${esc(when)}</small></button>` : ''}
+      <button class="mbtn${saved ? '' : ' pri'}" data-act="newshift">＋ Nová směna<small>Obtížnost, LIBERO, nastavení směny</small></button>
+      <div class="mrow"><button class="mbtn" data-act="settings">⚙ Nastavení<small>Vzhled, zvuk, hra</small></button><button class="mbtn" data-act="changelog">✦ Co je nového<small>Verze ${esc(ZOS_VERSION)}</small></button></div>
+    </div>
+    <div class="foot"><span>v${esc(ZOS_VERSION)}</span>${upd}${inst}<span>Mapa © přispěvatelé OpenStreetMap · fiktivní případy</span></div></div>`);
+}
+function settingsModal(fromGame) {
+  const seg = (key, opts) => opts.map(([v, l]) => `<button class="btn${String(settings[key]) === String(v) ? ' pri' : ''}" data-set="${key}" data-val="${v}">${l}</button>`).join(' ');
+  modal(`<div class="card home" style="max-width:520px"><h2 style="margin:0 0 8px">Nastavení</h2>
+    <div class="setrow"><b>Vzhled</b><span>${seg('theme', [['auto', 'Auto'], ['light', 'Světlý'], ['dark', 'Tmavý']])}</span></div>
+    <div class="setrow"><b>Velikost písma</b><span>${seg('font', [[0.92, 'Menší'], [1, 'Normální'], [1.12, 'Větší'], [1.25, 'Velké']])}</span></div>
+    <div class="setrow"><b>Zvuk</b><span>${seg('sound', [[true, 'Zapnutý'], [false, 'Vypnutý']])} <button class="btn" data-act="test-sound">Vyzkoušet</button></span></div>
+    <div class="setrow"><b>Hlasitost</b><span>${seg('volume', [[30, 'Tichá'], [60, 'Střední'], [100, 'Hlasitá']])}</span></div>
+    <div class="setrow"><b>Výchozí rychlost</b><span>${seg('speed', [[1, '1×'], [2, '2×'], [5, '5×'], [10, '10×']])}</span></div>
+    <div class="setrow"><b>Pauza při nové N1</b><span>${seg('autoPauseN1', [[true, 'Ano'], [false, 'Ne']])}</span></div>
+    <div class="setrow"><b>Nápověda (obtížnost)</b><span>${seg('hints', [[false, 'Realistická'], [true, 'S nápovědami']])}</span></div>
+    <div class="foot" style="margin-top:14px"><button class="btn" data-act="reset-settings">Výchozí nastavení</button><button class="btn" data-act="del-save">Smazat uloženou směnu</button><button class="btn pri" data-act="${fromGame ? 'close' : 'home'}">${fromGame ? 'Zavřít' : '‹ Zpět'}</button></div></div>`);
+  window._setFromGame = !!fromGame;
+}
+function changelogModal() {
+  const L = typeof ZOS_CHANGELOG !== 'undefined' ? ZOS_CHANGELOG : [];
+  modal(`<div class="card home" style="max-width:560px;max-height:80vh;overflow:auto"><h2 style="margin:0 0 8px">Co je nového</h2>${L.map(x => `<h3 style="margin:10px 0 3px;font-size:14px">${esc(x.h)}</h3><ul style="margin:0;padding-left:18px;font-size:12.5px">${x.l.map(t => `<li>${esc(t.replace(/^[-*]\s*/, ''))}</li>`).join('')}</ul>`).join('')}
+    <div class="foot" style="margin-top:12px"><button class="btn pri" data-act="home">‹ Zpět</button></div></div>`);
+}
+async function checkUpdate(btn) {
+  const set = t => { if (btn) btn.textContent = t; };
+  set('Kontroluji…');
+  try {
+    const r = await fetch('version.json?_=' + Date.now(), { cache: 'no-store' }); const j = await r.json();
+    if (j.version && j.version !== ZOS_VERSION) {
+      set('Nová verze ' + j.version + ' – aktualizuji…');
+      try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) { await reg.update(); if (reg.waiting) reg.waiting.postMessage('skipWaiting'); else setTimeout(() => location.reload(), 1500); } else location.reload(); } catch (e) { location.reload(); }
+    } else set('Máš nejnovější verzi ✓');
+  } catch (e) { set('Kontrola se nepovedla (offline?)'); }
+}
+function shiftModal() {
   let saved = null; try { saved = localStorage.getItem(SAVE_KEY); } catch (e) {}
   let stored = {}; try { stored = JSON.parse(localStorage.getItem(OPT_KEY) || '{}') || {}; } catch (_) {}
   const o = window._opt = Object.assign({ mode: 'shift', hour: 7, diff: 1, secondaryEnabled: 'true', startState: 'clean', muEnabled: 'true', muProbability: 10 }, stored, window._opt || {});
@@ -713,7 +837,7 @@ ${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('st
 <label style="display:block;margin:8px 0 2px">Pravděpodobnost MU během směny: <b id="mu-prob-value">${Number(o.muProbability)} %</b></label><input id="mu-probability" type="range" min="0" max="100" step="5" value="${Number(o.muProbability)}" style="width:min(380px,90%)" ${o.muEnabled === 'false' ? 'disabled' : ''}>
 ${liberoHtml}
 <p style="font-size:12px">Tip: čekající případy jsou v seznamu vlevo. Klikni na případ, otevři „Navrhnout posádku“ a vyšli nejbližší. N1 vždy s lékařem (RV). N3 jede RZP, lékař jen na vyžádání posádky. Doporučené rychlosti 5× až 30×.</p>
-<p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button>${saved ? ' <button class="btn" data-act="resume">Pokračovat v uložené</button>' : ''}</div>`);
+<p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button> <button class="btn" data-act="home">‹ Zpět</button></div>`);
 }
 function endModal() {
   const sm = sim.summary(), s = sim.s;
@@ -753,12 +877,12 @@ function newGame() {
   const o = window._opt;
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
   sim = new Sim({ mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, seed: (Math.random() * 1e9) | 0 });
-  afterLoad(); speed = 5; savedSpeed = 5;
+  afterLoad(); speed = settings.speed; savedSpeed = settings.speed;
   closeModal(); toast(o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
 function afterLoad() { sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
 function doSave() { try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
-function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = 5; closeModal(); } catch (e) { startModal(); } }
+function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); } catch (e) { homeModal(); } }
 function render() {
   if (!sim) return;
   renderTop(); renderCases(); renderDetail(); renderCrews(); renderMap(); renderRadio();
@@ -861,15 +985,23 @@ function act(a, el) {
       alertHidden.add(d.key);
       if (d.case && d.report) sim.acknowledge112(d.case, d.report);
       break;
-    case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) startModal(); }); } break;
+    case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) homeModal(); }); } break;
     case 'start': newGame(); break;
+    case 'home': homeModal(); break;
+    case 'newshift': window._opt = null; shiftModal(); break;
+    case 'settings': settingsModal(!!sim); break;
+    case 'changelog': changelogModal(); break;
+    case 'check-update': checkUpdate(el); break;
+    case 'test-sound': beep(660); beep(880, 0.15); break;
+    case 'reset-settings': settings = Object.assign({}, SET_DEF); saveSettings(); applyTheme(); settingsModal(window._setFromGame); break;
+    case 'del-save': if (confirm('Opravdu smazat uloženou směnu?')) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} homeModal(); } break;
     case 'open-map': openPanelWindow('map'); break;
     case 'open-radio': openPanelWindow('radio'); break;
     case 'toggle-map-main': toggleMainPanel('map'); break;
     case 'toggle-radio-main': toggleMainPanel('radio'); break;
     case 'fullscreen-map': toggleMapFullscreen(); break;
     case 'resume': resume(); break;
-    case 'again': try { localStorage.removeItem(SAVE_KEY); } catch (e) {} startModal(); break;
+    case 'again': try { localStorage.removeItem(SAVE_KEY); } catch (e) {} shiftModal(); break;
     case 'close': closeModal(); break;
     case 'sug': sugOpen = !sugOpen; break;
     case 'assign': { const r = sim.assign(d.case, d.crew, d.role || undefined); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; beep(520); } break; }
@@ -964,8 +1096,10 @@ document.addEventListener('input', ev => {
 document.addEventListener('click', ev => {
   if (suppressClick) { ev.preventDefault(); return; }
   const t = ev.target;
-  const o = t.closest('[data-opt]'); if (o) { window._opt[o.dataset.opt] = o.dataset.val; startModal(); return; }
-  const lm = t.closest('[data-libmode]'); if (lm) { window._opt.libero.modes[lm.dataset.libmode] = lm.dataset.val; window._libOpen = true; startModal(); return; }
+  const se = t.closest('[data-set]');
+  if (se) { const k = se.dataset.set, v = se.dataset.val; settings[k] = v === 'true' ? true : v === 'false' ? false : isNaN(Number(v)) ? v : Number(v); saveSettings(); applyTheme(); if (k === 'speed' && sim) { speed = settings.speed; savedSpeed = speed; } settingsModal(window._setFromGame); return; }
+  const o = t.closest('[data-opt]'); if (o) { window._opt[o.dataset.opt] = o.dataset.val; shiftModal(); return; }
+  const lm = t.closest('[data-libmode]'); if (lm) { window._opt.libero.modes[lm.dataset.libmode] = lm.dataset.val; window._libOpen = true; shiftModal(); return; }
   const ls = t.closest('[data-libset]'); if (ls) { const r = sim.setLiberoMode(ls.dataset.libset, ls.dataset.val); if (!r.ok) toast(r.msg, 'warn'); else { if (window._opt && window._opt.libero) { window._opt.libero.modes[ls.dataset.libset] = ls.dataset.val; saveOpts(); } render(); } return; }
   const sm = t.closest('summary'); if (sm && sm.parentElement && sm.parentElement.classList.contains('opt-details')) window._libOpen = !sm.parentElement.open;
   const a = t.closest('[data-act]'); if (a) { ev.preventDefault(); act(a.dataset.act, a); return; }
@@ -1045,7 +1179,7 @@ function appInstallHtml() {
   const hint = /iPhone|iPad/.test(ua) ? 'Sdílet → Přidat na plochu' : /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Edg/.test(ua) ? 'v Safari: Soubor → Přidat do Docku' : 'ikonou instalace v adresním řádku prohlížeče';
   return `<p style="font-size:12px;color:#5a6a7a;margin:6px 0">Tip: hru lze nainstalovat jako aplikaci (${hint}).</p>`;
 }
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; if (!sim && modalOpen) startModal(); });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; if (!sim && modalOpen && !window._opt) homeModal(); });
 window.addEventListener('appinstalled', () => { installPrompt = null; toast('Aplikace nainstalována. Příště ji spustíš ikonou.', ''); });
 function showUpdateBar(worker) {
   swWaiting = worker;
@@ -1081,6 +1215,6 @@ Promise.all([
   fetch('graph.wasm').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(b => ROUTER.init(b)).catch(e => console.warn('graph', e)),
   fetch('poi.json').then(r => r.json()).then(j => { window.ZOS_POI = j; }).catch(e => console.warn('poi', e)),
   fetch('addr.json').then(r => r.json()).then(j => { window.ZOS_ADDR = j; }).catch(e => console.warn('addr', e)),
-]).then(() => { assetsState = ROUTER.ready ? 'mapa a silniční síť načteny' : 'mapová data se nenačetla, běží zjednodušená mapa'; if (!sim && !satellitePanel) startModal(); });
-if (!satellitePanel) startModal();
+]).then(() => { assetsState = ROUTER.ready ? 'mapa a silniční síť načteny' : 'mapová data se nenačetla, běží zjednodušená mapa'; if (!sim && !satellitePanel) homeModal(); });
+if (!satellitePanel) { applyTheme(); homeModal(); }
 })();
