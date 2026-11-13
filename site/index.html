@@ -2935,7 +2935,7 @@ function renderCases() {
   const by = st => s.cases.filter(c => c.status === st);
   const pendingDispatch = c => c.status === 'active' && missingInitialDispatch(c).length > 0;
   const act = by('active').filter(c => !pendingDispatch(c)), wait = s.cases.filter(c => c.status === 'waiting' || pendingDispatch(c)), intake = by('intake'), closed = by('closed');
-  const tabs = [['waiting', 'Čekající', wait.length], ['active', 'Právě řešené', act.length], ['intake', 'Nabrané', intake.length], ['closed', 'Uzavřené', closed.length]];
+  const tabs = [['waiting', 'Čekající', wait.length], ['active', 'Právě řešené', act.length], ['intake', 'Nabírá se', intake.length], ['closed', 'Uzavřené', closed.length]];
   setHTML($('tabs-cases'), tabs.map(([k, l, n]) => {
     const classes = [tabCase === k ? 'on' : '', k === 'waiting' && wait.length > 0 && tabCase !== 'waiting' ? 'waiting-alert' : ''].filter(Boolean).join(' ');
     return `<button data-tabcase="${k}" class="${classes}">${l}<span class="cnt">${n}</span></button>`;
