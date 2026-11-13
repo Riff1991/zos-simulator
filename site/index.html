@@ -265,7 +265,7 @@ tr.crow.drop td{background:#fff0a8!important}
 <body>
 <div id="app">
   <header>
-    <span class="brand">ZOS JčK · DISPEČER · v14</span>
+    <span class="brand">ZOS JčK · DISPEČER · v0.15.0-dev</span>
     <span id="clock">--:--:--</span>
     <div class="speeds" id="speeds"></div>
     <div class="kpi" id="kpi"></div>
@@ -2578,7 +2578,7 @@ const missingInitialDispatch = c => (c.initialDispatchRequired || []).filter(typ
 const isVstricnaRadioMessage = text => /vstřícn|vstricn/i.test(String(text || ''));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const SPEEDS = [0, 1, 5, 10, 20, 30, 60];
-const SAVE_KEY = 'zos_jck_save_v1';
+const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 const COL = { base: '#f3f5f7', free: '#3cb54a', call: '#2f7de1', enroute: '#d9372c', onscene: '#d9372c', transport: '#d9372c', handover: '#d9372c', off: '#8e5bd6', activating: '#b79af0', second: '#7b8794', attached: '#169c8f' };
 const X = lon => (lon - 13.55) / 1.95 * 1000, Y = lat => (49.78 - lat) / 1.28 * 1000;
 

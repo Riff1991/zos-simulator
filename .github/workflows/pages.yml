@@ -1,9 +1,13 @@
 name: Web (GitHub Pages)
-# Každý push na main nasadí složku site/ na https://riff1991.github.io/zos-simulator/
-# Jednorázově: Settings → Pages → Build and deployment → Source: GitHub Actions.
+# Nasadí hlavní verzi (větev main) na https://riff1991.github.io/zos-simulator/
+# a testovací verzi (větev dev) na https://riff1991.github.io/zos-simulator/dev/
+# Spouští se po úspěšných Kontrolách na main nebo dev (workflow_run běží v kontextu main,
+# takže projde ochranou prostředí github-pages).
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: [Kontroly]
+    types: [completed]
+    branches: [main, dev]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,14 +18,23 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with: { ref: main, path: main }
+      - name: Testovací verze (dev)
+        run: |
+          mkdir -p out && cp -r main/site/. out/
+          if git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}" dev >/dev/null; then
+            git clone --depth 1 --branch dev "https://github.com/${{ github.repository }}" devsrc
+            rm -rf out/dev && cp -r devsrc/site out/dev
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with: { path: site }
+        with: { path: out }
       - id: deployment
         uses: actions/deploy-pages@v4

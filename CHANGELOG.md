@@ -2,9 +2,16 @@
 
 Hra/simulátor práce primárního dispečera ZOS ZZS Jihočeského kraje. Nejde o nástroj pro ostrý provoz. Osoby, kontakty a události jsou generované.
 
-Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekci **Releases** na GitHubu (`zos-simulator-mac-vXX.zip`).
+Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekci **Releases** na GitHubu (`zos-simulator-mac-vX.Y.Z.zip`).
+
+Číslování od v0.15.0: `hlavní.menší.oprava` (0.15.1 = drobná oprava, 1.0.0 = oficiální vydání). Testovací verze z větve `dev` (…`-dev`) běží na https://riff1991.github.io/zos-simulator/dev/.
 
 ---
+
+## v0.15.0 – rozpracováno (testovací verze)
+
+### Nové
+- Nové číslování verzí (hlavní.menší.oprava) a testovací web …/zos-simulator/dev/ s vlastní uloženou směnou.
 
 ## v14 – 2026-11-13
 
