@@ -12,7 +12,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ### Nové
 - Nové číslování verzí (hlavní.menší.oprava) a testovací web …/zos-simulator/dev/ s vlastní uloženou směnou.
-- **Volací čísla posádek podle dispečerského systému:** ČB 1xx, TA 2xx, JH 3xx, PT 4xx, ČK 5xx, ST 6xx, PI 7xx (např. JH RV 319, JH 1 RZP 313, Dačice RV 309). Oblasti v panelu posádek seřazené jako na ZOS.
+- **Volací čísla posádek podle dispečerského systému:** ČB 1xx, TA 2xx, JH 3xx, PT 4xx, ČK 5xx, ST 6xx, PI 7xx (např. JH RV 319, JH 1 RZP 313, Dačice RV 309). V panelu posádek jsou nahoře pod sebou ČB, JH a TA.
 - **Číslo posádky u ikony na mapě** (při přiblížení i název, vozy na základně od bližšího přiblížení).
 - **Nemocnice podle oblasti posádky:** RZP vyslaná mimo svůj okres veze pacienta do nemocnice své oblasti (pokud má potřebné pracoviště), aby se vracela domů.
 - **LIBERO na 7 základnách** (ČB, JH, PT, Vimperk, ST, Písek, Tábor), jen přes den a ne každý den. **Nastavení LIBERA** na úvodní obrazovce: pravděpodobnost obsazení (výchozí 75 %) a u každého Náhodně / Vždy / Nikdy; volba se pamatuje. Během hry lze obsazení změnit v panelu posádky LIBERO.
