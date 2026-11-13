@@ -1534,7 +1534,10 @@ class Sim {
     const nearest = ZOS_DATA.stations.reduce((a, x) => !a || hav(x.lat, x.lon, hospital.lat, hospital.lon) < hav(a.lat, a.lon, hospital.lat, hospital.lon) ? x : a, null);
     const area = nearest && nearest.oblast;
     const receiver = this.s.crews.filter(k => k.type === 'RZP' && k.oblast === area && this.avail(k) && !k.res && k.caseId !== cs.id);
-    const canOffer = suitable && distanceSec >= 35 * 60 && receiver.length > 0 && routeDuration > 7 * 60;
+    const canOffer = suitable && receiver.length > 0 && routeDuration > 12 * 60;
+    // Vstřícnou řeší jen periferní posádky (daleko od cílové nemocnice). Posádky u okresní/krajské nemocnice nic nehlásí.
+    const homeSec = rzp.home ? this._eta(rzp.home.lat, rzp.home.lon, hospital.lat, hospital.lon) : distanceSec;
+    if (homeSec < 20 * 60 || distanceSec < 20 * 60) { cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec }; return; }
     const common = `ZCB${rzp.code}: pacienta máme ve voze, směřujeme ${hospital.name};`;
     this.L('crew', 'ZCB101 na příjmu.', cs.id, rzp.id);
     if (!suitable) {
@@ -1544,9 +1547,6 @@ class Sim {
       this.L('crew', `${common} pacient je vhodný k překladu. Žádáme o vstřícnou jízdu z oblasti ${nearest.oblast}.`, cs.id, rzp.id);
       this.L('crew', `ZCB101 rozumí, vstřícná jízda přijata; naproti bude vyslána vhodná volná posádka z oblasti ${nearest.oblast}.`, cs.id, rzp.id);
       cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(120, routeDuration * 0.68) };
-    } else if (distanceSec < 35 * 60) {
-      this.L('crew', `${common} pacient je schopen překladu, vstřícná jízda není vzhledem ke vzdálenosti potřeba; jedeme sami, konec.`, cs.id, rzp.id);
-      cs.vstricna = { state: 'self-near', hospitalId: hospital.id, area, distanceSec };
     } else {
       this.L('crew', `${common} pacient je vhodný k překladu, žádost o vstřícnou jízdu nelze přijmout: v oblasti ${nearest ? nearest.short : 'cílové nemocnice'} není volná posádka; jedeme sami, konec.`, cs.id, rzp.id);
       cs.vstricna = { state: 'self-unavailable', hospitalId: hospital.id, area, distanceSec };

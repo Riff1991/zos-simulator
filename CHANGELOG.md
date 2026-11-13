@@ -19,6 +19,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ### Opravy
 - **Vstřícná jízda:** posádka vyslaná tlačítkem „Vyslat“ jela místo setkání na adresu události. Nově se obě posádky potkají na trase v místě, kam dorazí přibližně současně (časově na půli cesty), předání trvá 2–5 min a pak každá pokračuje.
+- Vstřícnou jízdu hlásí jen periferní posádky (≥ 20 min od cílové nemocnice, např. Suchdol, Dačice, Týn). Posádky u okresní nebo krajské nemocnice (ČB, Tábor a okolí) ji neřeší; zmizelo hlášení „schopen překladu, ale není potřeba“.
 - Rychlejší jízda k události s výstražnými zařízeními (≈ o 15 % kratší dojezdy; promítá se i do ETA a pokrytí).
 - Klik na událost už mapu nepřibližuje tolik (přehled okolí ~15 km).
 - Větší písmo názvů oblastí v přehledovém panelu posádek.
