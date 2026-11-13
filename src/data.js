@@ -94,10 +94,14 @@ const ZOS_DATA = {
   // LIBERO: volný lékař na základně, jen přes den a ne vždy. Lze ho přidat do RZP téže základny → dočasně RLP.
   libero: [
     { id: 'lib-cb', name: 'CB LIBERO', oblast: 'ČB', stationId: 'cb', no: 176 },
-    { id: 'lib-ta', name: 'TA LIBERO', oblast: 'TA', stationId: 'ta' },
+    { id: 'lib-jh', name: 'JH LIBERO', oblast: 'JH', stationId: 'jh' },
+    { id: 'lib-pt', name: 'PT LIBERO', oblast: 'PT', stationId: 'pt' },
     { id: 'lib-vi', name: 'VI LIBERO', oblast: 'PT', stationId: 'vimperk', no: 440 },
+    { id: 'lib-st', name: 'ST LIBERO', oblast: 'ST', stationId: 'st', no: 658 },
+    { id: 'lib-pi', name: 'PI LIBERO', oblast: 'PI', stationId: 'pi', no: 755 },
+    { id: 'lib-ta', name: 'TA LIBERO', oblast: 'TA', stationId: 'ta' },
   ],
-  liberoPresence: 0.9,
+  liberoPresence: 0.75,   // výchozí pravděpodobnost, že je LIBERO daný den obsazené (nastavitelné na úvodní obrazovce)
   reserves: [
     { id: 'z-cb1', name: 'CB_Z 1', oblast: 'ČB', stationId: 'cb' },
     { id: 'z-cb2', name: 'CB_Z 2', oblast: 'ČB', stationId: 'cb' },

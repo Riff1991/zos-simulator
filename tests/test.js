@@ -288,6 +288,19 @@ console.log('Vstřícná jízda rendezvous, handover and destination transport t
   if (!k2.dest || k2.dest.hid !== 'h-pi') throw new Error('Písek crew did not go to NEM Písek');
   console.log('crew transports to own-district hospital true');
 }
+// LIBERO: nastavení obsazení (vždy / nikdy / náhodně) a změna během hry
+{
+  const on = new Sim({ seed: 5, startHour: 7, libero: { presence: 0, modes: { 'lib-jh': 'on', 'lib-cb': 'off' } } });
+  const st = id => on.crewOf(id).state;
+  if (st('lib-jh') !== 'base' || st('lib-cb') !== 'off' || st('lib-pi') !== 'off') throw new Error('LIBERO settings not applied at start');
+  on.setLiberoMode('lib-pi', 'on'); if (st('lib-pi') !== 'base') throw new Error('LIBERO in-game enable failed');
+  on.setLiberoMode('lib-jh', 'off'); if (st('lib-jh') !== 'off') throw new Error('LIBERO in-game disable failed');
+  const all = new Sim({ seed: 6, startHour: 7, libero: { presence: 100 } });
+  if (ZOS_DATA.libero.some(l => all.crewOf(l.id).state !== 'base')) throw new Error('LIBERO presence 100 % not all present');
+  const night = new Sim({ seed: 7, startHour: 19, libero: { presence: 100 } });
+  if (ZOS_DATA.libero.some(l => night.crewOf(l.id).state !== 'off')) throw new Error('LIBERO must not be on duty at night');
+  console.log('LIBERO settings (7 stations, always/never/random, in-game change) true');
+}
 // Volací čísla podle oblastí (JH 3xx, TA 2xx …)
 {
   const sim = new Sim({ seed: 1 });

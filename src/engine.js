@@ -60,6 +60,8 @@ class Sim {
         lat: support.lat, lon: support.lon, dayOn: false, nightOn: false, externalLzs: true,
         externalDayOnly: !!support.dayOnly, activationDay: support.activationDay || [150, 210], activationNight: support.activationNight || [360, 480],
       }));
+      if (!this.s.libero) this.s.libero = Sim.liberoSettings();
+      for (const l of ZOS_DATA.libero || []) if (!existing.has(l.id)) this._addLibero(l);
       const lzsCodes = { lzs: 'KR13', 'lzs-jihlava': 'KR12', 'lzs-praha': 'KR01', 'lzs-plzen': 'KR07' };
       for (const crew of this.s.crews) if (lzsCodes[crew.id]) crew.code = lzsCodes[crew.id];
       return;
@@ -74,6 +76,7 @@ class Sim {
       cases: [], crews: [], log: [],
       ev: { nextSpawn: 0, nextSecond: 0, nextMU: null, daySecondariesCreated: false, addressHistory: [] },
       muPlayerRole: null,
+      libero: Sim.liberoSettings(opts.libero),
       dayOfYear: Math.abs(seed) % 365 + 1,
       weather: { condition: 'clear', nextChange: 0, previousStatus: null },
       cov: { n: 0, sum: 0, next: 60 },
@@ -233,10 +236,7 @@ class Sim {
       const st = D.stations.find(x => x.id === m.stationId);
       s.crews.push(this._mk({ id: m.id, type: 'MU', name: m.name, code: m.no ? String(m.no) : m.name.replace('MU ', 'MU-'), oblast: m.oblast, st: m.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: true, fixed: true }));
     }
-    for (const l of D.libero || []) {
-      const st = D.stations.find(x => x.id === l.stationId);
-      s.crews.push(this._mk({ id: l.id, type: 'LIB', name: l.name, code: l.no ? String(l.no) : 'LIB', oblast: l.oblast, st: l.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: false, libero: true, members: [this._name(this.rnd() < 0.4 ? 'Ž' : 'M', 30 + this.ri(0, 25))] }));
-    }
+    for (const l of D.libero || []) this._addLibero(l);
     for (const r of D.reserves) {
       const st = D.stations.find(x => x.id === r.stationId);
       s.crews.push(this._mk({ id: r.id, type: 'RZP', name: r.name, code: code(r.oblast, 'Z'), oblast: r.oblast, st: r.stationId, lat: st.lat, lon: st.lon, dayOn: false, nightOn: false, res: true }));
@@ -250,13 +250,40 @@ class Sim {
       members: [this._name(this.rnd() < 0.45 ? 'Ž' : 'M', 24 + this.ri(0, 30)), this._name(this.rnd() < 0.15 ? 'Ž' : 'M', 24 + this.ri(0, 30))],
     }, o);
   }
+  // Nastavení LIBERA: presence = pravděpodobnost obsazení v %, modes[id] = 'random' | 'on' | 'off'
+  static liberoSettings(o) {
+    o = o || {};
+    const def = Math.round(((ZOS_DATA.liberoPresence != null) ? ZOS_DATA.liberoPresence : 0.75) * 100);
+    const presence = Math.max(0, Math.min(100, Number(o.presence == null ? def : o.presence)));
+    const modes = {};
+    for (const l of ZOS_DATA.libero || []) { const m = o.modes && o.modes[l.id]; modes[l.id] = m === 'on' || m === 'off' ? m : 'random'; }
+    return { presence, modes };
+  }
+  _addLibero(l) {
+    const st = ZOS_DATA.stations.find(x => x.id === l.stationId);
+    this.s.crews.push(this._mk({ id: l.id, type: 'LIB', name: l.name, code: l.no ? String(l.no) : 'LIB', oblast: l.oblast, st: l.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: false, libero: true, members: [this._name(this.rnd() < 0.4 ? 'Ž' : 'M', 30 + this.ri(0, 25))] }));
+  }
+  _liberoRoll(c) {
+    const set = this.s.libero || Sim.liberoSettings(), m = set.modes[c.id] || 'random';
+    return m === 'on' ? true : m === 'off' ? false : this.rnd() * 100 < set.presence;
+  }
+  // změna nastavení LIBERA během hry (obsazeno / neobsazeno / náhodně)
+  setLiberoMode(id, mode) {
+    const c = this.crewOf(id); if (!c || !c.libero) return { ok: false, msg: 'Neznámé LIBERO.' };
+    if (!this.s.libero) this.s.libero = Sim.liberoSettings();
+    this.s.libero.modes[id] = mode === 'on' || mode === 'off' ? mode : 'random';
+    if (mode === 'on') c.liberoPresent = true;
+    else if (mode === 'off') c.liberoPresent = false;
+    this._roster(true);
+    return { ok: true };
+  }
   _roster(announce) {
     const s = this.s, day = s.dayFlag;
     for (const c of s.crews) {
       if (c.res) continue;
       if (c.libero) {
         const dayKey = Math.floor((s.startHour * 3600 + s.t - 7 * 3600) / 86400);
-        if (c.liberoDay !== dayKey) { c.liberoDay = dayKey; c.liberoPresent = this.rnd() < ((ZOS_DATA.liberoPresence != null) ? ZOS_DATA.liberoPresence : 0.7); }
+        if (c.liberoDay !== dayKey) { c.liberoDay = dayKey; c.liberoPresent = this._liberoRoll(c); }
       }
       const want = c.libero ? day && c.liberoPresent : c.externalLzs ? !!c.supportRequested && !(c.externalDayOnly && !day) : c.fixed ? true : (day ? c.dayOn : c.nightOn);
       if (want) {

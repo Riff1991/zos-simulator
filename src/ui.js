@@ -8,6 +8,8 @@ const missingInitialDispatch = c => (c.initialDispatchRequired || []).filter(typ
 const isVstricnaRadioMessage = text => /vstřícn|vstricn/i.test(String(text || ''));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const SPEEDS = [0, 1, 5, 10, 20, 30, 60];
+const OPT_KEY = 'zos_jck_opts_v1';
+function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window._opt || {})); } catch (_) {} }
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 const COL = { base: '#f3f5f7', free: '#3cb54a', call: '#2f7de1', enroute: '#d9372c', onscene: '#d9372c', transport: '#d9372c', handover: '#d9372c', off: '#8e5bd6', activating: '#b79af0', second: '#7b8794', attached: '#169c8f' };
 const X = lon => (lon - 13.55) / 1.95 * 1000, Y = lat => (49.78 - lat) / 1.28 * 1000;
@@ -303,6 +305,7 @@ function renderCrews() {
 <dt>Uskutečněné výjezdy</dt><dd>${k.callsCompleted || 0}</dd>
 ${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${esc(cs.klasif)}</a></dd>` : ''}${k.dest ? `<dt>Cíl</dt><dd>${esc(k.dest.name)}</dd>` : ''}</dl>`;
   if (k.type === 'RZP' && (k.state === 'base' || k.state === 'call') && sim.liberoFor(k)) p += `<button class="btn pri" data-act="libero" data-crew="${k.id}">+ LIBERO (dočasně RLP)</button>`;
+  if (k.type === 'LIB') { const m = (sim.s.libero && sim.s.libero.modes[k.id]) || 'random'; p += `<div class="opts" style="margin:4px 0">Obsazení: ${[['on', 'Obsazeno'], ['off', 'Neobsazeno'], ['random', 'Náhodně']].map(([v, l]) => `<button data-libset="${k.id}" data-val="${v}" class="${m === v ? 'on' : ''}">${l}</button>`).join('')}</div>`; }
   if (k.type === 'LIB' && k.state === 'base') for (const r of sim.s.crews.filter(x => x.type === 'RZP' && x.st === k.st && !x.rlp && (x.state === 'base' || x.state === 'call'))) p += `<button class="btn" data-act="libero" data-crew="${r.id}" data-lib="${k.id}">Do vozu ${esc(r.name)}</button>`;
   if (k.type === 'LIB' && k.state === 'off') p += '<p style="color:#5a6a7a;margin:4px 0">LIBERO dnes není ve službě (jen přes den a ne vždy).</p>';
   if (k.res && k.state === 'off') p += `<button class="btn pri" data-act="resv" data-crew="${k.id}">Aktivovat zálohu</button>`;
@@ -689,7 +692,15 @@ function modal(html) { $('modal').innerHTML = html; $('modal').classList.add('on
 function closeModal() { $('modal').classList.remove('on'); modalOpen = false; lastT = performance.now(); }
 function startModal() {
   let saved = null; try { saved = localStorage.getItem(SAVE_KEY); } catch (e) {}
-  const o = window._opt = Object.assign({ mode: 'shift', hour: 7, diff: 1, secondaryEnabled: 'true', startState: 'clean', muEnabled: 'true', muProbability: 10 }, window._opt || {});
+  let stored = {}; try { stored = JSON.parse(localStorage.getItem(OPT_KEY) || '{}') || {}; } catch (_) {}
+  const o = window._opt = Object.assign({ mode: 'shift', hour: 7, diff: 1, secondaryEnabled: 'true', startState: 'clean', muEnabled: 'true', muProbability: 10 }, stored, window._opt || {});
+  o.libero = Sim.liberoSettings(o.libero);
+  saveOpts();
+  const lib = o.libero, libMode = (id, m, label) => `<button data-libmode="${id}" data-val="${m}" class="${lib.modes[id] === m ? 'on' : ''}">${label}</button>`;
+  const liberoHtml = `<details class="opt-details"${window._libOpen ? ' open' : ''}><summary><b>LIBERO</b> <span style="color:#5a6a7a;font-size:12px">volný lékař přes den · ${(D.libero || []).filter(l => lib.modes[l.id] !== 'off').length}/${(D.libero || []).length} povoleno · obsazení ${lib.presence} %</span></summary>
+<label style="display:block;margin:6px 0 2px">Pravděpodobnost, že je LIBERO daný den obsazené (u „Náhodně“): <b id="lib-prob-value">${lib.presence} %</b></label><input id="lib-probability" type="range" min="0" max="100" step="5" value="${lib.presence}" style="width:min(380px,90%)">
+<table class="lib-opts">${(D.libero || []).map(l => `<tr><td>${esc(l.name)}</td><td class="opts">${libMode(l.id, 'random', 'Náhodně')}${libMode(l.id, 'on', 'Vždy')}${libMode(l.id, 'off', 'Nikdy')}</td></tr>`).join('')}</table>
+<p style="font-size:12px;margin:4px 0">Během hry lze obsazení změnit v panelu posádky LIBERO.</p></details>`;
   const b = (grp, val, label) => `<button data-opt="${grp}" data-val="${val}" class="${String(o[grp]) === String(val) ? 'on' : ''}">${label}</button>`;
   modal(`<div class="card"><h1>Dispečerský simulátor ZOS JčK</h1>
 <p>Jsi primární dispečer zdravotnického operačního střediska. Calltaker nabírá výzvy, ty vysíláš posádky. Základny a skladba posádek odpovídají veřejným údajům, případy, jména a adresy jsou vymyšlené.</p>
@@ -700,6 +711,7 @@ ${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('st
 <b>Sekundární převozy</b><div class="opts">${b('secondaryEnabled', 'true', 'Zapnuté')}${b('secondaryEnabled', 'false', 'Vypnuté')}</div>
 <b>Mimořádná událost (MU)</b><div class="opts">${b('muEnabled', 'true', 'Povoleno')}${b('muEnabled', 'false', 'Vypnuto')}</div>
 <label style="display:block;margin:8px 0 2px">Pravděpodobnost MU během směny: <b id="mu-prob-value">${Number(o.muProbability)} %</b></label><input id="mu-probability" type="range" min="0" max="100" step="5" value="${Number(o.muProbability)}" style="width:min(380px,90%)" ${o.muEnabled === 'false' ? 'disabled' : ''}>
+${liberoHtml}
 <p style="font-size:12px">Tip: čekající případy jsou v seznamu vlevo. Klikni na případ, otevři „Navrhnout posádku“ a vyšli nejbližší. N1 vždy s lékařem (RV). N3 jede RZP, lékař jen na vyžádání posádky. Doporučené rychlosti 5× až 30×.</p>
 <p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button>${saved ? ' <button class="btn" data-act="resume">Pokračovat v uložené</button>' : ''}</div>`);
 }
@@ -740,7 +752,7 @@ function printModal(k) {
 function newGame() {
   const o = window._opt;
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  sim = new Sim({ mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, seed: (Math.random() * 1e9) | 0 });
+  sim = new Sim({ mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, seed: (Math.random() * 1e9) | 0 });
   afterLoad(); speed = 5; savedSpeed = 5;
   closeModal(); toast(o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
@@ -946,12 +958,16 @@ document.addEventListener('pointerup', ev => dragEnd(ev, false));
 document.addEventListener('pointercancel', ev => dragEnd(ev, true));
 document.addEventListener('input', ev => {
   if (ev.target && ev.target.id === 'case-search') { caseSearch = ev.target.value; renderCases(); }
-  if (ev.target && ev.target.id === 'mu-probability') { window._opt.muProbability = Number(ev.target.value); const out = $('mu-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
+  if (ev.target && ev.target.id === 'lib-probability') { window._opt.libero.presence = Number(ev.target.value); saveOpts(); const out = $('lib-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
+  if (ev.target && ev.target.id === 'mu-probability') { window._opt.muProbability = Number(ev.target.value); saveOpts(); const out = $('mu-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
 });
 document.addEventListener('click', ev => {
   if (suppressClick) { ev.preventDefault(); return; }
   const t = ev.target;
   const o = t.closest('[data-opt]'); if (o) { window._opt[o.dataset.opt] = o.dataset.val; startModal(); return; }
+  const lm = t.closest('[data-libmode]'); if (lm) { window._opt.libero.modes[lm.dataset.libmode] = lm.dataset.val; window._libOpen = true; startModal(); return; }
+  const ls = t.closest('[data-libset]'); if (ls) { const r = sim.setLiberoMode(ls.dataset.libset, ls.dataset.val); if (!r.ok) toast(r.msg, 'warn'); else { if (window._opt && window._opt.libero) { window._opt.libero.modes[ls.dataset.libset] = ls.dataset.val; saveOpts(); } render(); } return; }
+  const sm = t.closest('summary'); if (sm && sm.parentElement && sm.parentElement.classList.contains('opt-details')) window._libOpen = !sm.parentElement.open;
   const a = t.closest('[data-act]'); if (a) { ev.preventDefault(); act(a.dataset.act, a); return; }
   const sp = t.closest('[data-speed]'); if (sp) { speed = Number(sp.dataset.speed); if (speed) savedSpeed = speed; render(); return; }
   const v = t.closest('[data-view]'); if (v) {
