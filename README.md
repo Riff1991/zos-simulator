@@ -16,13 +16,16 @@ Webová hra: hráč je **primární dispečer** zdravotnického operačního st�
 
 ## Stažení offline balíčku (Mac)
 
-Nejnovější balíček pro Mac je v **[Releases](../../releases/latest)** (`zos-simulator-mac-vXX.zip`). Návod je v `README-MAC.txt` v balíčku. Co je nového, najdeš v [CHANGELOG.md](CHANGELOG.md).
+Nejnovější balíček pro Mac je v **[Releases](../../releases/latest)** (`zos-simulator-mac-vX.Y.Z.zip`). Návod je v `README-MAC.txt` v balíčku. Co je nového, najdeš v [CHANGELOG.md](CHANGELOG.md).
 
 ## Vydání nové verze
 
 1. Změny v `src/`, pak `python3 build.py` (výstup `site/` je v repozitáři).
-2. Zvýšit číslo v `VERSION` a doplnit sekci do `CHANGELOG.md` (`## vXX – datum`).
-3. Commit a push na `main` → GitHub Actions zkontroluje kód; změna `VERSION` automaticky vytvoří tag `vXX` a Release se ZIPem pro Mac (lze spustit i ručně v záložce Actions).
+2. Ladí se na větvi `dev` (verze `X.Y.Z-dev`, testovací web …/zos-simulator/dev/).
+3. Při vydání: merge do `main`, v `VERSION` číslo bez `-dev` (např. `0.15.0`), sekce v `CHANGELOG.md` (`## v0.15.0 – datum`).
+4. Push na `main` → Kontroly, nasazení webu a automaticky tag `v0.15.0` + Release se ZIPem pro Mac.
+
+Číslování: `hlavní.menší.oprava` – `0.15.1` drobná oprava, `0.16.0` další várka, `1.0.0` oficiální vydání.
 
 Lokálně lze balíček sestavit `bash packaging/build_mac.sh` → `dist/`.
 

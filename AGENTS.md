@@ -22,10 +22,12 @@ Projekt: **webový simulátor primárního dispečera ZOS ZZS Jihočeského kraj
 
 ## Verze, changelog a vydání (povinné při každé změně pro hráče)
 
-- Každá změna, kterou hráč uvidí, zvyšuje číslo v `VERSION` a má sekci v `CHANGELOG.md` (česky, stručně: Nové / Opravy).
-- Push změny `VERSION` na `main` spustí workflow `release.yml`: sestaví ZIP pro Mac, vytvoří tag `vXX` a GitHub Release s poznámkami z `CHANGELOG.md`. Tagy se ručně nepushují.
-- `site/index.html` je v repozitáři – po změně `src/` vždy spustit `python3 build.py` (generuje i `site/sw.js` a `site/version.json`; service worker se tím aktualizuje u všech hráčů).
-- Push na `main` nasadí `site/` na GitHub Pages (`pages.yml`): https://riff1991.github.io/zos-simulator/
+- **Číslování** `hlavní.menší.oprava` (od v14 dál): `0.15.0` = nová várka změn, `0.15.1` = drobná oprava, `1.0.0` = oficiální vydání pro kolegy. Dřívější verze v1–v14 zůstávají, jak byly.
+- **Větve:** ladí se na `dev` s verzí `X.Y.Z-dev` → testovací web https://riff1991.github.io/zos-simulator/dev/ (vlastní uložená směna i cache, nevydává se). Až uživatel schválí: merge do `main`, `VERSION` bez `-dev`, sekce v `CHANGELOG.md`.
+- Každá změna, kterou hráč uvidí, má sekci v `CHANGELOG.md` (`## v0.15.0 – datum`, česky, stručně: Nové / Opravy).
+- Push změny `VERSION` na `main` spustí `release.yml`: ZIP pro Mac, tag `vX.Y.Z` a GitHub Release s poznámkami z `CHANGELOG.md`. Verze s `-` se nevydávají. Tagy se ručně nepushují.
+- `site/index.html` je v repozitáři – po změně `src/` vždy spustit `python3 build.py` (generuje i `site/sw.js` a `site/version.json`).
+- Po úspěšných Kontrolách na `main` nebo `dev` nasadí `pages.yml` web: main → https://riff1991.github.io/zos-simulator/, dev → …/dev/
 
 ## Kontroly před odevzdáním (povinné)
 
