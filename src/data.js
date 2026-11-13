@@ -57,7 +57,7 @@ const ZOS_DATA = {
   ],
 
   lzs: {
-    id: 'lzs', name: 'LZS Planá', short: 'LZS', oblast: 'ČB', lat: 48.9467, lon: 14.4258,
+    id: 'lzs', name: 'LZS Planá', short: 'LZS', oblast: 'ČB', lat: 48.9441617, lon: 14.4448708,
     speedKnots: 130, activationDay: [150, 210], activationNight: [360, 480],
     // LKCC, aktuálně publikovaný heliport u NEM ČB; souřadnice z VFR příručky AIM.
     heliport: { name: 'Heliport NEM ČB (LKCC)', lat: 48.962036, lon: 14.462650 },
@@ -233,6 +233,48 @@ const ZOS_DATA = {
     sport: { txt: ['Sportoviště, pacient na hřišti', 'Sportovní hala, vstup z parkoviště', 'Bazén / koupaliště, u vody', 'Fitness, recepce'], ch: 1 },
     ubytovani: { txt: ['Ubytování, recepce', 'Hotel, pokoj v patře', 'Penzion, vstup z dvora', 'Kemp, pacient u karavanu'], ch: 0 },
     zz: { txt: ['Zdravotnické zařízení, ambulance', 'Zdravotnické zařízení, lůžkové oddělení'], ch: 2 },
+  },
+
+  // Popis místa: krátké obecné fráze ve stylu dispečerského zápisu (žádné texty z ostrých dat).
+  // none = podíl případů bez popisu, a = základ, b = volitelný doplněk (bp = jeho pravděpodobnost).
+  place: {
+    rd: { none: 0.42, bp: 0.28,
+      a: ['RD', 'přízemí', '1. patro', 'patro', 'podkroví', 'novostavba', 'řadovka', 'chalupa', 'statek', 'dvojdomek', 'krajní dům', 'za domem', 'na zahradě', 'na dvoře', 've dvoře', 'v garáži', 'v dílně', 've stodole', 'koupelna', 'ložnice v patře', 'kuchyně', 'obývák', 'vejminek', 'zadní trakt', 'u vrat', 'na terase', 've sklepě', 'bod', 'dům na konci obce', 'dům u hlavní silnice'],
+      b: ['bude čekat u vrat', 'bude čekat před domem', 'branka otevřená', 'vrata otevřená', 'pes zavřený', 'pes na dvoře', 'vchod z boku', 'vchod zezadu', 'vchod ze dvora', 'zvonek nefunguje', 'dveře odemčené', 'klíč má sousedka', 'úzký vjezd', 'strmé schody', 'příjezd po polní cestě', 'u domu se staví', 'svítí před domem', 'zamává'] },
+    byt: { none: 0.3, bp: 0.38,
+      a: ['bytovka', 'panelák', 'bytový dům', 'činžák', 'DPS', 'ubytovna', 'garsonka'],
+      b: ['výtah', 'bez výtahu', 'výtah nejede', 'zvonek na jméno', 'zvonek nefunguje', 'vchod ze dvora', 'vchod z boku', 'zadní vchod', 'prostřední vchod', 'poslední vchod', 'vchod A', 'vchod B', 'bude čekat u vchodu', 'dveře odemčené', 'klíče u sousedky', 'otevře soused', 'nad obchodem', 'pavlač', 'byt vlevo', 'byt vpravo', 'na chodbě', 'v koupelně'] },
+    domov: { none: 0.3, bp: 0.4,
+      a: ['DPS', 'domov seniorů', 'pokoj', 'pokoj v 1. patře', 'pokoj ve 2. patře', 'přízemí', 'oddělení B', 'jídelna', 'společenská místnost', 'pavilon A', 'pavilon C', 'zahrada areálu', 'ošetřovna'],
+      b: ['sestra čeká u vchodu', 'vstup přes recepci', 'hlavní vchod', 'boční vchod', 'výtah', 'personál u pacienta', 'personál dovede'] },
+    prov: { none: 0.3, bp: 0.35,
+      a: ['hala', 'výrobní hala', 'sklad', 'dílna', 'kancelář', 'kancelář v patře', 'šatna', 'rampa', 'dvůr areálu', 'vrátnice', 'prodejna', 'za pultem', 'zázemí prodejny', 'kuchyň provozovny', 'pila', 'kravín', 'lakovna', 'expedice', 'parkoviště firmy', 'stavba', 'lešení', 'u linky'],
+      b: ['čeká na vrátnici', 'vrátný navede', 'kolega u brány', 'vjezd hlavní bránou', 'zadní vjezd', 'vstup z rampy', 'mistr čeká venku', 'u pacienta kolegové'] },
+    skola: { none: 0.3, bp: 0.35,
+      a: ['ZŠ', 'MŠ', 'tělocvična', 'učebna', 'učebna v patře', 'sborovna', 'ředitelna', 'jídelna', 'školní hřiště', 'chodba', 'šatny', 'družina', 'dílny', 'internát'],
+      b: ['učitelka čeká u vchodu', 'školník navede', 'hlavní vchod', 'vchod od hřiště', 'boční vchod'] },
+    ulice: { none: 0.32, bp: 0.25,
+      a: ['venku', 'před domem', 'na chodníku', 'u zastávky', 'na zastávce', 'na lavičce', 'u obchodu', 'před hospodou', 'u kostela', 'na návsi', 'na náměstí', 'u pošty', 'v parku', 'na parkovišti', 'u přechodu', 'u křižovatky', 'pod mostem', 'u potoka', 'u hřbitova', 'před poštou', 'u kontejnerů', 'na cyklostezce', 'u rybníka', 'u garáží', 'u hřiště'],
+      b: ['svědek u pacienta', 'zamává', 'kolemjdoucí čeká', 'naproti obchodu', 'směr centrum', 'u bílého auta', 'hlídka MP na místě'] },
+    silnice: { none: 0.3, bp: 0.35,
+      a: ['za obcí', 'před obcí', 'v zatáčce', 'na rovince', 'u odbočky', 'u křižovatky', 'u přejezdu', 'na mostě', 'u lesa', 'u benzinky', 'v obci', 'u odpočívadla', 'sjezd z hlavní', 'v kopci', 'pod kopcem'],
+      b: ['auto v příkopu', 'auto mimo vozovku', 'auto na střeše', 'provoz stojí', 'silnice průjezdná jedním pruhem', 'svědek na místě', 'výstražný trojúhelník', 'hlídka na místě'] },
+    priroda: { none: 0.22, bp: 0.4,
+      a: ['les', 'lesní cesta', 'polní cesta', 'louka', 'pole', 'u rybníka', 'u řeky', 'u potoka', 'na hrázi', 'turistická trasa', 'cyklostezka', 'u rozcestníku', 'u posedu', 'paseka', 'chatová oblast', 'chata', 'u přehrady', 'lom', 'sjezdovka', 'u rozhledny', 'zahrádkářská kolonie', 'tábořiště'],
+      b: ['bod', 'přístup jen pěšky', 'cca 300 m od silnice', 'cca 1 km od parkoviště', 'vyjde naproti k silnici', 'zamává u cesty', 'poloha z aplikace Záchranka', 'závora', 'sjízdné jen terénním vozem'] },
+    ordinace: { none: 0.25, bp: 0.3,
+      a: ['ordinace', 'ordinace PL', 'čekárna', 'zdravotní středisko', 'ambulance', 'zubní ordinace', 'ordinace v 1. patře', 'poliklinika', 'LSPP', 'rehabilitace'],
+      b: ['lékař u pacienta', 'sestra čeká u vchodu', 'výtah', 'vchod ze dvora', 'zpráva připravena'] },
+    zz: { none: 0.3, bp: 0.2, a: ['ambulance', 'lůžkové oddělení', 'LDN', 'příjem', 'chirurgická ambulance', 'interní ambulance'], b: ['sestra předá dokumentaci', 'personál u pacienta'] },
+    verejne: { none: 0.25, bp: 0.3,
+      a: ['nádraží', 'nástupiště', 'čekárna', 'zastávka', 'restaurace', 'hospoda', 'u výčepu', 'kavárna', 'obchod', 'u pokladen', 'prodejna', 'úřad', 'chodba úřadu', 'pošta', 'knihovna', 'kostel', 'hřbitov', 'sál', 'kulturní dům', 'kino', 'benzinka', 'parkoviště', 'před budovou', 'toalety', 'lékárna', 'banka', 'tržnice'],
+      b: ['obsluha u pacienta', 'personál navede', 'svědek čeká venku', 'hlavní vchod', 'zadní vchod', 'u vchodu', 'ochranka na místě'] },
+    sport: { none: 0.25, bp: 0.3,
+      a: ['hřiště', 'fotbalové hřiště', 'kabiny', 'tělocvična', 'sportovní hala', 'zimák', 'u ledu', 'bazén', 'u bazénu', 'koupaliště', 'kurty', 'posilovna', 'šatny', 'tribuna', 'dětské hřiště', 'skatepark', 'střelnice', 'u vleku'],
+      b: ['správce navede', 'trenér u pacienta', 'plavčík u pacienta', 'vjezd na plochu možný', 'vchod od parkoviště', 'probíhá zápas'] },
+    ubytovani: { none: 0.25, bp: 0.35,
+      a: ['hotel', 'pokoj', 'pokoj v patře', 'recepce', 'penzion', 'apartmán', 'kemp', 'chatka', 'u karavanu', 'stan', 'restaurace hotelu', 'ubytovna', 'wellness', 'chata', 'chalupa'],
+      b: ['recepce navede', 'čeká na recepci', 'správce u brány', 'výtah', 'bez výtahu', 'vchod ze dvora', 'číslo chatky sdělí na místě'] },
   },
 
   // Charakter výzvy. Do hry zatím vstupují první tři. Ostatní jsou připravené pro další režimy.

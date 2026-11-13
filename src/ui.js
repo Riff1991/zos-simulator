@@ -112,25 +112,35 @@ function okresOf(c) {
 }
 
 // ---------- ikony ----------
-function car(dir, fill) {
-  const body = `<path d="M2 13V8.5h3.2L9 3h10l4 5.5h3V13z" fill="${fill}" stroke="#202a31" stroke-width="1.2" stroke-linejoin="round"/><path d="M10 4.3h4v4H7.2zM15.2 4.3h3l3 4h-6z" fill="#e8f4fc" stroke="#202a31" stroke-width=".65"/><path d="M11.8 5.1v2.4m-1.2-1.2H13" stroke="#d9342b" stroke-width=".9"/><circle cx="8" cy="13" r="2" fill="#202a31"/><circle cx="21" cy="13" r="2" fill="#202a31"/>`;
-  return `<svg class="ic" viewBox="0 0 28 16" aria-hidden="true">${dir < 0 ? `<g transform="translate(28,0) scale(-1,1)">${body}</g>` : body}</svg>`;
+const flip = (dir, w, body) => dir < 0 ? `<g transform="translate(${w},0) scale(-1,1)">${body}</g>` : body;
+// sanitka (RZP): skříňový vůz, jede ve směru dir (1 = doprava, -1 = doleva)
+function ambBody(fill) {
+  return `<path d="M2 20V6.5C2 5.1 3.1 4 4.5 4H22v16z" fill="${fill}" stroke="#202a31" stroke-width="1.3" stroke-linejoin="round"/><path d="M22 8h6.2l5 5.6c.5.6.8 1.3.8 2.1V20H22z" fill="${fill}" stroke="#202a31" stroke-width="1.3" stroke-linejoin="round"/><path d="M24 9.8h3.6l3.4 4H24z" fill="#cfe9f7" stroke="#202a31" stroke-width=".7"/><path d="M2 14.2h20" stroke="#d9342b" stroke-width="2"/><path d="M11.2 6.2h2.6v2.4h2.4v2.6h-2.4v2.4h-2.6v-2.4H8.8V8.6h2.4z" fill="#d9342b"/><rect x="17" y="2" width="4.4" height="2.1" rx=".8" fill="#2f7de1" stroke="#202a31" stroke-width=".7"/><circle cx="9" cy="20.2" r="2.9" fill="#202a31"/><circle cx="9" cy="20.2" r="1.1" fill="#cfd6dc"/><circle cx="27.5" cy="20.2" r="2.9" fill="#202a31"/><circle cx="27.5" cy="20.2" r="1.1" fill="#cfd6dc"/>`;
 }
-function helicopter(fill = '#d9342b') {
-  return `<svg class="ic heli-icon" viewBox="0 0 64 40" aria-hidden="true"><path d="M12 20 4 14l1-2 11 5h4c2-6 8-10 17-10h9c7 0 12 4 14 11l2 2v4H15c-2 0-3-1-3-4Z" fill="${fill}" stroke="#202a31" stroke-width="2" stroke-linejoin="round"/><path d="M47 8h-8v9h18c-2-6-5-9-10-9Z" fill="#bfe5f4" stroke="#202a31" stroke-width="1.5" stroke-linejoin="round"/><path d="M31 7V4m-17 0h39M33 4v3M24 24v5m20-5v5m-24 0h29" fill="none" stroke="#202a31" stroke-width="2" stroke-linecap="round"/><path d="M10 13 7 9m-1 3-3-1" fill="none" stroke="#202a31" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+// RV: osobní vůz lékaře s majákem a písmenem L
+function rvBody(fill) {
+  return `<path d="M2.5 19v-5l3.2-.9L10 7.6c.5-.7 1.3-1.1 2.1-1.100h9.800c.9 0 1.7.4 2.2 1.100l4.3 5.5 3.6.9c.9.2 1.5 1 1.5 1.900V19z" fill="${fill}" stroke="#202a31" stroke-width="1.3" stroke-linejoin="round"/><path d="M11.6 8.300h4.700v4.500H8.300zM18.1 8.300h3.900l3.5 4.500h-7.400z" fill="#cfe9f7" stroke="#202a31" stroke-width=".7"/><rect x="14.5" y="3.7" width="5" height="2.3" rx=".9" fill="#2f7de1" stroke="#202a31" stroke-width=".7"/><path d="M3 15.800h30" stroke="#f2c200" stroke-width="1.9"/><circle cx="10" cy="19.2" r="2.9" fill="#202a31"/><circle cx="10" cy="19.2" r="1.1" fill="#cfd6dc"/><circle cx="26.5" cy="19.2" r="2.9" fill="#202a31"/><circle cx="26.5" cy="19.2" r="1.1" fill="#cfd6dc"/>`;
+}
+function car(dir, fill, type) {
+  const rv = type === 'RV' || type === 'LIB';
+  return `<svg class="ic ${rv ? 'ic-rv' : 'ic-amb'}" viewBox="0 0 36 24" aria-hidden="true">${flip(dir, 36, rv ? rvBody(fill) : ambBody(fill))}</svg>`;
+}
+const HELI_BODY = '<path d="M8 6h48" stroke="#202a31" stroke-width="2.2" stroke-linecap="round"/><path d="M32 6v5" stroke="#202a31" stroke-width="2.2"/><path d="M15 17 4.5 13.5 3 9.5" fill="none" stroke="#202a31" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 17 4.5 13.5 3 9.5" fill="none" stroke="#f5c400" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 11h13c9 0 15 4.5 16.5 11 .5 2.6-1.3 5-4 5H22c-6 0-9.5-3.5-9.5-8s3.5-8 9.5-8z" fill="#f5c400" stroke="#202a31" stroke-width="1.8" stroke-linejoin="round"/><path d="M37 13.200c5.5.3 9.5 3 11.3 7.300H37z" fill="#cfe9f7" stroke="#202a31" stroke-width="1"/><path d="M13.5 21.500h20" stroke="#d9342b" stroke-width="2.2"/><path d="M24.8 13.200h2.400v2.200h2.200v2.400h-2.200V20h-2.400v-2.200h-2.200v-2.400h2.200z" fill="#d9342b"/><path d="M24 27v4m18-4v4M17 32h31" fill="none" stroke="#202a31" stroke-width="2" stroke-linecap="round"/><circle cx="3" cy="9.5" r="3.6" fill="none" stroke="#202a31" stroke-width="1.2"/>';
+function helicopter() {
+  return `<svg class="ic heli-icon" viewBox="0 0 60 35" aria-hidden="true">${HELI_BODY}</svg>`;
 }
 function ico(state, type) {
-  if (type === 'LZS') return helicopter(state === 'free' || state === 'base' ? '#d8ffe0' : '#fff');
+  if (type === 'LZS') return helicopter();
+  if (type === 'COR') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><circle cx="18" cy="12" r="9" fill="#fff" stroke="#202a31" stroke-width="1.3"/><path d="M18 6.500v11M13.5 10h9" stroke="#202a31" stroke-width="2.2" stroke-linecap="round"/></svg>`;
   switch (state) {
-    case 'call': return car(1, '#fff');
-    case 'enroute': return car(1, '#d9342b');
-    case 'transport': case 'handover': return car(-1, '#d9342b');
-    case 'onscene': return `<svg class="ic heart-ecg" viewBox="0 0 32 24" aria-hidden="true"><path d="M16 21S3 13.5 3 7.8C3 2.3 10.1 1 16 7c5.9-6 13-4.7 13 0.8C29 13.5 16 21 16 21Z" fill="#d9342b" stroke="#8c1715" stroke-width="1.2"/><path d="M5 11h5l2.1-4.2 3.2 9 2.3-5H20l1.3-2.4 1.3 2.6H27" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    case 'free': return car(1, '#d8ffe0');
-    case 'base': return car(1, '#fff');
-    case 'second': return car(1, '#d6dde3');
-    case 'activating': return car(1, '#eee5ff');
-    default: return car(1, '#eee5ff');
+    case 'call': return car(1, '#fff', type);
+    case 'enroute': return car(1, '#e2463b', type);
+    case 'transport': case 'handover': return car(-1, '#f0962e', type);
+    case 'onscene': return `<svg class="ic heart-ecg" viewBox="0 0 32 24" aria-hidden="true"><path d="M16 21S3 13.5 3 7.8C3 2.3 10.1 1 16 7c5.9-6 13-4.7 13 0.8C29 13.5 16 21 16 21Z" fill="#d9342b" stroke="#8c1715" stroke-width="1.2"/><path d="M5 11h5l2.1-4.2 3.2 9 2.3-5H20l1.3-2.4 1.3 2.6H27" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    case 'free': return car(-1, '#bff0c6', type);
+    case 'base': return car(1, '#fff', type);
+    case 'second': return car(1, '#d6dde3', type);
+    default: return car(1, '#eee5ff', type);
   }
 }
 const STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 'Výjezd', onscene: 'Na místě', transport: 'Transport', handover: 'U ZZ', off: 'Nepřihlášena', activating: 'Aktivace', second: 'Sekundár', attached: 'Ve voze RZP' };
@@ -176,7 +186,7 @@ function renderLiveAlerts() {
 function chipHTML(k) {
   const col = COL[k.state], dark = k.state !== 'base' && k.state !== 'free';
   const ph = sim.phase(k);
-  return `<span class="chip" data-crew="${k.id}" style="background:${col};color:${dark ? '#fff' : '#111'}">${k.type === 'LZS' ? helicopter(dark ? '#fff' : '#d9342b') : ''}${esc(k.name)} · ${esc(ph)}${k.dest ? ' → ' + esc(k.dest.name) : ''}</span>`;
+  return `<span class="chip" data-crew="${k.id}" style="background:${col};color:${dark ? '#fff' : '#111'}">${k.type === 'LZS' ? helicopter() : ''}${esc(k.name)} · ${esc(ph)}${k.dest ? ' → ' + esc(k.dest.name) : ''}</span>`;
 }
 function lzsSupportHtml(c) {
   const own = sim.crewOf('lzs');
@@ -216,7 +226,9 @@ function renderCases() {
     const missing = missingInitialDispatch(c);
     const status = tabCase === 'closed'
       ? (c.unserved ? 'Neobslouženo' : c.typ === 'sekundární' ? 'Dokončeno' : `Uzavřeno · ${Math.round(c.score ? c.score.total : 0)} b.`)
-      : c.status === 'waiting' ? 'Čeká na vyslání'
+      : c.examPending && c.status === 'waiting' ? 'Prohlídka zemřelého – vyšli RV'
+        : c.exitus ? (c.coroner && c.coroner.state === 'available' ? 'Exitus · koroner' : 'Exitus')
+        : c.status === 'waiting' ? 'Čeká na vyslání'
         : missing.length ? `Doplnit: ${missing.join(' + ')}`
         : intk ? `${c.op} nabírá výzvu`
           : rvPending ? `RZP žádá RV: ${c.rvReq.kind || 'posouzení stavu'}` : 'Řeší se';
@@ -311,12 +323,14 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
     const candidates = sim.s.crews.filter(k => k.type === 'RZP' && k.oblast === c.vstricna.area && sim.avail(k) && !k.res)
       .map(k => ({ k, eta: sim.etaFor(k, c.vstricna.meet ? c.vstricna.meet.lat : c.lat, c.vstricna.meet ? c.vstricna.meet.lon : c.lon) }))
       .sort((a, b) => a.eta - b.eta).slice(0, 4);
-    h += `<div class="vstricna-panel"><b>Vstřícná jízda do ${esc(c.vstricna.areaName)}</b><p>Pacient je vhodný k překladu. Přetáhni volnou RZP z cílové oblasti na kartu tohoto případu; posádky se setkají na trase.</p>${candidates.length ? `<small>Volné posádky: ${candidates.map(x => `${esc(x.k.name)} (${Math.round(x.eta / 60)} min)`).join(' · ')}</small>` : '<small>Volná místní RZP už není k dispozici.</small>'}</div>`;
+    const freeAll = sim.s.crews.filter(k => k.type === 'RZP' && k.oblast === c.vstricna.area && sim.avail(k) && !k.res).length;
+    h += `<div class="vstricna-panel"><b>Vstřícná jízda z oblasti ${esc(c.vstricna.areaName)}</b><p>Posádka hlásí pacienta schopného překladu. Pravidlo: vstřícnou vysílej, jen když jsou v oblasti volné aspoň 2 RZP (teď ${freeAll}). Jinak odpověz „dojíždějte sami“.</p>${candidates.length ? `<small>Volné RZP: ${candidates.map(x => `${esc(x.k.name)} (${Math.round(x.eta / 60)} min)`).join(' · ')} – přetáhni na případ</small>` : '<small>Volná místní RZP není k dispozici.</small>'}<div style="margin-top:5px"><button class="btn" data-act="vj-decline" data-case="${c.id}">Dojíždějte sami</button></div></div>`;
   }
+  h += deathInfo(c);
   if (c.rvReq && !c.rvReq.cancelled && !c.docAssigned) h += `<p style="color:#b84a00;font-weight:600">Posádka na místě žádá RV: ${esc(c.rvReq.kind || 'zhoršení stavu')}.</p>`;
   const crews = c.crews.map(id => sim.crewOf(id));
   h += `<div style="margin-top:6px"><b>Zasahují:</b> ${crews.length ? crews.map(k => {
-    const canCancel = k.state === 'call' || k.state === 'enroute' || (k.type === 'LZS' && (k.state === 'onscene' || (k.state === 'transport' && k.lzsLeg === 'to-scene')));
+    const canCancel = k.state === 'call' || k.state === 'enroute' || (sim.avail(k) && k.caseId === c.id) || (k.type === 'LZS' && (k.state === 'onscene' || (k.state === 'transport' && k.lzsLeg === 'to-scene')));
     return `<span class="assigned-crew">${chipHTML(k)}${canCancel ? `<button class="btn red" data-act="cancel" data-case="${c.id}" data-crew="${k.id}">${k.type === 'LZS' ? 'Odvolat LZS' : 'Odvolat'}</button>` : ''}</span>`;
   }).join('') : '<span style="color:#5a6a7a">nikdo</span>'}</div>`;
   if (c.status === 'closed' && c.typ === 'sekundární') h += `<p>Body za dodržení času: <b>${c.score ? c.score.total : 0}/100</b></p>`;
@@ -325,7 +339,7 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
   if (c.status === 'waiting' || c.status === 'active') {
     h += `<div><button class="btn pri" data-act="sug">Navrhnout posádku ${sugOpen ? '▴' : '▾'}</button></div>`;
     if (settings.hints) {
-      const mt = missingInitialDispatch(c);
+      const mt = c.exitus ? [] : missingInitialDispatch(c);
       const best = (kind, role) => { const l = sim.suggest(c.id, kind, role).slice(0, 1)[0]; const k = l && sim.crewOf(l.crewId); return k ? `${esc(k.name)} (${Math.round(l.eta / 60)} min)` : ''; };
       const parts = [];
       if (mt.length) parts.push(`Chybí vyslat: <b>${mt.join(' + ')}</b>.`);
@@ -356,6 +370,17 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 }
 
 // ---------- posádky ----------
+function coronerTile() {
+  const cs = sim.s.cases.filter(c => c.status !== 'closed' && c.coroner && c.coroner.state === 'available');
+  if (!cs.length) return '';
+  return `<div class="tile st-coroner" title="Koroner – přiřazen k případům, není na mapě"><span class="tn">KORONER</span><i>${cs.map(c => esc(c.num)).join(', ')}</i>${ico('base', 'COR')}</div>`;
+}
+function deathInfo(c) {
+  if (!c.exitus) return '';
+  const cor = c.coroner || {}, ex = c.exam;
+  const t = cor.state === 'pending' ? 'ZOS zjišťuje koronera' : cor.state === 'available' ? 'koroner zajištěn' : ex && ex.done ? 'prohlídka zemřelého provedena' : ex && ex.crewId ? 'RV provádí prohlídku zemřelého (lze odvolat, pak se musí vrátit)' : 'koroner není – na prohlídku zemřelého vyšli RV';
+  return `<p class="death-panel"><b>Exitus</b> · ${t}${cor.state === 'available' ? ' <span class="chip cor">KORONER</span>' : ''}</p>`;
+}
 function renderCrews() {
   const s = sim.s;
   const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU') }));
@@ -368,11 +393,12 @@ function renderCrews() {
     h += `<div class="oblast">${esc(g.title)} <span>volných ${free} / ve službě ${on}</span></div><div class="grid">` +
       g.crews.map(k => {
         const prealert = s.cases.some(c => c.status === 'intake' && c.n === 1 && (c.prealertCrewIds || []).includes(k.id));
-        return `<button class="tile st-${k.state} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
-      }).join('') + '</div>';
+        const soft = k.caseRole === 'exam' ? 'exam' : k.caseRole === 'escort' ? 'escort' : '';
+        return `<button class="tile ty-${k.type} st-${k.state} ${soft ? 'soft-' + soft : ''} ${followK === k.id ? 'follow' : ''} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
+      }).join('') + (g.title.startsWith('Speciální') ? coronerTile() : '') + '</div>';
   }
   setHTML($('crews'), h);
-  setHTML($('legend'), [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + '<span>· dlaždici lze přetáhnout na případ</span>');
+  setHTML($('legend'), [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`);
   const k = sel.k && sim.crewOf(sel.k);
   if (!k) { setHTML($('crewpanel'), '<span style="color:#5a6a7a">Vyber posádku. Panel vybrané posádky.</span>'); return; }
   const cs = k.caseId && sim.caseOf(k.caseId), selCase = sel.c && sim.caseOf(sel.c);
@@ -416,6 +442,7 @@ const clampF = x => Math.max(0, Math.min(1, x));
 let GL = null, glReady = false, glLast = 0, TILEIDX = null, pendingMapFocus = null;
 const chunkCache = new Map();
 function applyMapFocus(target, attempt = 0) {
+  if (target && !target.keepFollow) followK = null;
   if (!target || !Number.isFinite(target.lat) || !Number.isFinite(target.lon)) return;
   if (!GL || !glReady) { pendingMapFocus = target; return; }
   const wrap = document.getElementById('mapwrap');
@@ -444,6 +471,8 @@ async function gunzip(buf) {
   const s = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
   return await new Response(s).arrayBuffer();
 }
+const VSTATE = { base: 'base', free: 'free', call: 'call', enroute: 'red', onscene: 'red', transport: 'tr', handover: 'tr', second: 'sec', activating: 'base' };
+const VFILL = { base: '#ffffff', free: '#8fe29b', call: '#7db4f5', red: '#e2463b', tr: '#f0962e', sec: '#b9c2ca' };
 const ST_COL = ['match', ['get', 'state'], 'base', '#f3f5f7', 'free', '#3cb54a', 'call', '#2f7de1', 'off', '#8e5bd6', 'activating', '#b79af0', 'second', '#7b8794', '#d9372c'];
 function glStyle() {
   const W = (a) => ['interpolate', ['exponential', 1.6], ['zoom'], ...a];
@@ -551,10 +580,16 @@ function glInit() {
         if (GL.getLayer('stations-house')) return;
         GL.addLayer({ id: 'stations-house', type: 'symbol', source: 'stations', layout: { 'icon-image': 'zos-house', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.48, 13, 0.78], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.base ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, 'crews-base');
       });
-      GL.addLayer({ id: 'crews', type: 'circle', source: 'crews', filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, ['case', ['get', 'sel'], 9, 6], 14, ['case', ['get', 'sel'], 12, 9]], 'circle-color': ST_COL, 'circle-stroke-color': ['case', ['get', 'sel'], '#ffd23f', '#111'], 'circle-stroke-width': ['case', ['get', 'sel'], 3, 1.4] } });
-      GL.addLayer({ id: 'crews-t', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'RV'], layout: { 'text-field': 'L', 'text-font': ['Noto Sans Bold'], 'text-size': 9, 'text-allow-overlap': true }, paint: { 'text-color': ['match', ['get', 'state'], ['base', 'free'], '#111', '#fff'] } });
-      const heliSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="32" viewBox="0 0 32 22"><path d="M6 10h14a5 5 0 0 1 5 5v1H9a5 5 0 0 1-5-5v-1h2Zm14 0 3-5h2l-2 5M13 16v3m-5 0h10m2-12h8M15 5h6M20 5v2" fill="#d9342b" stroke="#202a31" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="16" r="1.1" fill="#fff"/><circle cx="21" cy="16" r="1.1" fill="#fff"/></svg>';
-      svgIcon('zos-heli', heliSvg, 48, 32, () => {
+      // průhledný kruh drží klikací plochu a zvýraznění výběru; samotné vozidlo je symbol (sanitka / RV)
+      GL.addLayer({ id: 'crews', type: 'circle', source: 'crews', filter: ['all', ['!=', ['get', 'type'], 'LZS'], ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 9, 14, 15], 'circle-color': '#ffd23f', 'circle-opacity': ['case', ['get', 'sel'], 0.55, 0.01], 'circle-stroke-color': '#111', 'circle-stroke-width': ['case', ['get', 'sel'], 1.5, 0] } });
+      {
+        let left = 0; const done = () => { if (--left > 0 || GL.getLayer('crews-ico')) return;
+          GL.addLayer({ id: 'crews-ico', type: 'symbol', source: 'crews', filter: ['all', ['!=', ['get', 'type'], 'LZS'], ['!=', ['get', 'type'], 'MU'], ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']]], layout: { 'icon-image': ['get', 'ico'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 11, 0.72, 14, 0.95], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' } }, GL.getLayer('crews-base-l') ? 'crews-base-l' : undefined); };
+        for (const ty of ['amb', 'rv']) for (const [st, fill] of Object.entries(VFILL)) for (const dr of ['r', 'l']) { left++; svgIcon(`zv-${ty}-${st}-${dr}`, `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 36 24">${flip(dr === 'l' ? -1 : 1, 36, ty === 'rv' ? rvBody(fill) : ambBody(fill))}</svg>`, 36, 24, done); }
+      }
+      GL.addLayer({ id: 'crews-mu', type: 'circle', source: 'crews', filter: ['==', ['get', 'type'], 'MU'], paint: { 'circle-radius': 7, 'circle-color': ST_COL, 'circle-stroke-color': '#111', 'circle-stroke-width': 1.4 } });
+      const heliSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="35" viewBox="0 0 60 35">${HELI_BODY}</svg>`;
+      svgIcon('zos-heli', heliSvg, 60, 35, () => {
         if (GL.getLayer('crews-heli')) return;
         GL.addLayer({ id: 'crews-heli', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'LZS'], layout: { 'icon-image': 'zos-heli', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.38, 13, 0.68], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, GL.getLayer('cases') ? 'cases' : undefined);
       });
@@ -568,7 +603,7 @@ function glInit() {
       GL.getSource('hosp').setData({ type: 'FeatureCollection', features: D.hospitals.map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lon, h.lat] }, properties: { name: h.short } })) });
       GL.getSource('heliport').setData({ type: 'FeatureCollection', features: [D.lzs.heliport, ...D.hospitals.filter(h => h.heliport)].map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lon, h.lat] }, properties: { name: h.name } })) });
       const pick = e => {
-        const f = GL.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['cases', 'crews', 'crews-base'] });
+        const f = GL.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['cases', 'crews', 'crews-base'].concat(GL.getLayer('crews-ico') ? ['crews-ico'] : []) });
         if (!f.length) return;
         const c = f.find(x => x.layer.id === 'cases');
         if (c) sel.c = c.properties.id; else sel.k = f[0].properties.id;
@@ -577,7 +612,7 @@ function glInit() {
       };
       GL.on('click', pick);
       for (const l of ['cases', 'crews', 'crews-base']) { GL.on('mouseenter', l, () => GL.getCanvas().style.cursor = 'pointer'); GL.on('mouseleave', l, () => GL.getCanvas().style.cursor = ''); }
-      glReady = true; mapThemeApplied = null; applyMapTheme(); glApplyLayers(); glUpdate(true);
+      GL.on('dragstart', () => { followK = null; }); glReady = true; mapThemeApplied = null; applyMapTheme(); glApplyLayers(); glUpdate(true);
       if (pendingMapFocus) {
         const target = pendingMapFocus; pendingMapFocus = null;
         applyMapFocus(target);
@@ -589,7 +624,7 @@ function glApplyLayers() {
   if (!glReady) return;
   const vis = (ids, on) => ids.forEach(id => GL.getLayer(id) && GL.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   vis(['stations', 'stations-l', 'stations-house'], layers.base); vis(['hosp', 'hosp-t', 'hosp-l', 'heliport', 'heliport-l'], layers.hosp);
-  vis(['crews', 'crews-base', 'crews-t', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
+  vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
@@ -599,8 +634,18 @@ function glRoute(kk, col) {
   else co.push([m.b[1], m.b[0]]);
   return co.length > 1 ? { type: 'Feature', geometry: { type: 'LineString', coordinates: co }, properties: { col } } : null;
 }
+let followK = null, followLast = 0;
+function followStep() {
+  if (!followK || !GL || !glReady || !sim) return;
+  const k = sim.crewOf(followK); if (!k || k.state === 'off') { followK = null; return; }
+  const now = performance.now(); if (now - followLast < 900) return; followLast = now;
+  const p = sim.pos(k), c = GL.getCenter();
+  if (Math.abs(c.lat - p.lat) < 0.0004 && Math.abs(c.lng - p.lon) < 0.0006) return;
+  GL.easeTo({ center: [p.lon, p.lat], zoom: Math.max(GL.getZoom(), 11.5), duration: 800, essential: true });
+}
 function glUpdate(force) {
   if (!glReady) return;
+  followStep();
   const now = performance.now(); if (!force && now - glLast < 250) return; glLast = now;
   const blink = Math.floor(now / 500) % 2 ? 1 : 0.45;
   const cases = [], crews = [], routes = [];
@@ -611,7 +656,7 @@ function glUpdate(force) {
   for (const k of sim.s.crews) {
     if (k.state === 'off' || k.type === 'LIB') continue;
     const p = sim.pos(k);
-    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id } });
+    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id, ico: `zv-${k.type === 'RV' ? 'rv' : 'amb'}-${VSTATE[k.state] || 'red'}-${k.mv ? (k.mv.b[1] >= p.lon ? 'r' : 'l') : 'r'}` } });
   }
   const c = sel.c && sim.caseOf(sel.c), k = sel.k && sim.crewOf(sel.k);
   const selectedCrews = new Set(c ? c.crews : []);
@@ -781,7 +826,7 @@ function homeModal() {
     <div class="menu">
       ${saved ? `<button class="mbtn pri" data-act="resume">▶ Pokračovat ve směně<small>Uložená rozehraná směna${esc(when)}</small></button>` : ''}
       <button class="mbtn${saved ? '' : ' pri'}" data-act="newshift">＋ Nová směna<small>Obtížnost, LIBERO, nastavení směny</small></button>
-      <div class="mrow"><button class="mbtn" data-act="settings">⚙ Nastavení<small>Vzhled, zvuk, hra</small></button><button class="mbtn" data-act="changelog">✦ Co je nového<small>Verze ${esc(ZOS_VERSION)}</small></button></div>
+      <div class="mrow"><button class="mbtn" data-act="settings">⚙ Nastavení<small>Vzhled, zvuk, hra</small></button><button class="mbtn" data-act="rules">☰ Pravidla<small>Co se hodnotí</small></button><button class="mbtn" data-act="changelog">✦ Co je nového<small>Verze ${esc(ZOS_VERSION)}</small></button></div>
     </div>
     <div class="foot"><span>v${esc(ZOS_VERSION)}</span>${upd}${inst}<span>Mapa © přispěvatelé OpenStreetMap · fiktivní případy</span></div></div>`);
 }
@@ -795,7 +840,7 @@ function settingsModal(fromGame) {
     <div class="setrow"><b>Výchozí rychlost</b><span>${seg('speed', [[1, '1×'], [2, '2×'], [5, '5×'], [10, '10×']])}</span></div>
     <div class="setrow"><b>Pauza při nové N1</b><span>${seg('autoPauseN1', [[true, 'Ano'], [false, 'Ne']])}</span></div>
     <div class="setrow"><b>Nápověda (obtížnost)</b><span>${seg('hints', [[false, 'Realistická'], [true, 'S nápovědami']])}</span></div>
-    <div class="foot" style="margin-top:14px"><button class="btn" data-act="reset-settings">Výchozí nastavení</button><button class="btn" data-act="del-save">Smazat uloženou směnu</button><button class="btn pri" data-act="${fromGame ? 'close' : 'home'}">${fromGame ? 'Zavřít' : '‹ Zpět'}</button></div></div>`);
+    <div class="foot" style="margin-top:14px"><button class="btn" data-act="rules" data-back="${fromGame ? 'game' : ''}">Pravidla a hodnocení</button><button class="btn" data-act="reset-settings">Výchozí nastavení</button><button class="btn" data-act="del-save">Smazat uloženou směnu</button><button class="btn pri" data-act="${fromGame ? 'close' : 'home'}">${fromGame ? 'Zavřít' : '‹ Zpět'}</button></div></div>`);
   window._setFromGame = !!fromGame;
 }
 function changelogModal() {
@@ -813,6 +858,38 @@ async function checkUpdate(btn) {
       try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) { await reg.update(); if (reg.waiting) reg.waiting.postMessage('skipWaiting'); else setTimeout(() => location.reload(), 1500); } else location.reload(); } catch (e) { location.reload(); }
     } else set('Máš nejnovější verzi ✓');
   } catch (e) { set('Kontrola se nepovedla (offline?)'); }
+}
+const RULES = [
+  ['Případ (0–100 b., váha N1 3×, N2 2×, N3 1×)', [
+    '20 b. rychlost vyslání po nabrání výzvy (cíl N1 do 60 s, N2 do 120 s, N3 do 5 min).',
+    '50 b. volba posádky: plný počet za nejrychlejší dostupnou RZP. Vzdálenější posádka body nebere, pokud by nejbližší nechala svou oblast bez volné RZP. Absolutní dojezdový čas se netrestá.',
+    '15 b. lékař: RV (nebo LZS, LIBERO) tam, kde je potřeba, a včas; zbytečně vyslaný lékař body ubírá.',
+    '15 b. efektivita: posádka nejede zbytečně daleko.',
+    'Přesměrování posádky z naléhavějšího případu: −8 až −10 b. u původního případu.']],
+  ['Celkové skóre', ['75 % vážený průměr případů + 25 % pokrytí území (podíl obyvatel s volnou RZP do 15 min), k tomu provozní body níže.']],
+  ['Provozní body – plus', [
+    '+1 předpoplach při nabírání N1 a následné vyslání předem upozorněné posádky.',
+    '+1 RV vyslané k N1/N2 jako první, RZP až po něm.',
+    '+1 LZS místo RV, když je lékař v oblasti na výjezdu.',
+    '+1 využití LIBERO jako lékaře tam, kde je lékař potřeba.',
+    '+1 vstřícná jízda vyslaná při aspoň 2 volných RZP v cílové oblasti.',
+    '+1 včasné odvolání RV (do 3 min) po hlášení „jisté známky smrti, KPR nezahajujeme“.',
+    '+1 včas převzatá zpráva linky 112.']],
+  ['Provozní body – minus', [
+    '−3 vstřícná jízda vyslaná, když v cílové oblasti nejsou volné aspoň 2 RZP (ve dne i v noci; RV a LIBERO se nepočítají).',
+    '−1 neodvolaná posádka po hlášení exitu.',
+    '−1 za každou hodinu čekající prohlídky zemřelého, −3 pokud do konce směny neproběhne.',
+    '−2 přehlédnutá zpráva linky 112, −2 LZS čekající na heliportu bez RZP (za každých 5 min).',
+    '−5 opožděný výjezd N1, −8 neobsloužený případ.']],
+  ['Postupy', [
+    'Vstřícná jízda: periferní posádka ohlásí pacienta schopného překladu. Odpověz vysláním RZP z cílové oblasti („naproti z … posádka …“), nebo „dojíždějte sami“.',
+    'Exitus: je-li koroner k dispozici (ZOS to zjišťuje pár minut), posádky se vrací. Není-li, RV zůstává na prohlídku zemřelého; lze ho odvolat, ale musí se během služby vrátit.',
+    'Doprovod: po KPR RV vždy doprovází RZP do nemocnice, u N1 většinou, u N2 hlavně děti. Odvolatelný doprovod můžeš vyslat jinam.',
+    'Pacient ponechán na místě: RZP po konzultaci s lékařem ohlásí ponechání a vrací se.']],
+];
+function rulesModal(back) {
+  modal(`<div class="card home" style="max-width:620px;max-height:86vh;overflow:auto"><h2 style="margin:0 0 8px">Pravidla a hodnocení</h2>${RULES.map(([h, l]) => `<h3 style="margin:10px 0 3px;font-size:14px">${h}</h3><ul style="margin:0;padding-left:18px;font-size:12.5px">${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}
+    <div class="foot" style="margin-top:12px"><button class="btn pri" data-act="${back === 'game' ? 'close' : back === 'shift' ? 'newshift-keep' : 'home'}">${back === 'game' ? 'Zavřít' : '‹ Zpět'}</button></div></div>`);
 }
 function shiftModal() {
   let saved = null; try { saved = localStorage.getItem(SAVE_KEY); } catch (e) {}
@@ -837,20 +914,20 @@ ${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('st
 <label style="display:block;margin:8px 0 2px">Pravděpodobnost MU během směny: <b id="mu-prob-value">${Number(o.muProbability)} %</b></label><input id="mu-probability" type="range" min="0" max="100" step="5" value="${Number(o.muProbability)}" style="width:min(380px,90%)" ${o.muEnabled === 'false' ? 'disabled' : ''}>
 ${liberoHtml}
 <p style="font-size:12px">Tip: čekající případy jsou v seznamu vlevo. Klikni na případ, otevři „Navrhnout posádku“ a vyšli nejbližší. N1 vždy s lékařem (RV). N3 jede RZP, lékař jen na vyžádání posádky. Doporučené rychlosti 5× až 30×.</p>
-<p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button> <button class="btn" data-act="home">‹ Zpět</button></div>`);
+<p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button> <button class="btn" data-act="rules" data-back="shift">Pravidla a hodnocení</button> <button class="btn" data-act="home">‹ Zpět</button></div>`);
 }
 function endModal() {
   const sm = sim.summary(), s = sim.s;
   const worst = s.cases.filter(c => c.status === 'closed' && c.score).sort((a, b) => a.score.total - b.score.total).slice(0, 5);
-  const why = c => { const sc = c.score, L = [['pozdní vyslání', 20 - sc.delay], ['dlouhý příjezd', 50 - sc.arrive], ['lékař', 15 - sc.rv], ['volba posádky', 15 - sc.eff], ['přesměrování', sc.pen]].sort((a, b) => b[1] - a[1]); return c.unserved ? 'neobslouženo' : L[0][0]; };
+  const why = c => { const sc = c.score, L = [['pozdní vyslání', 20 - sc.delay], ['volba vzdálenější posádky', 50 - sc.arrive], ['lékař', 15 - sc.rv], ['volba posádky', 15 - sc.eff], ['přesměrování', sc.pen]].sort((a, b) => b[1] - a[1]); return c.unserved ? 'neobslouženo' : L[0][0]; };
   const rank = sm.total >= 92 ? 'Dispečer na jedničku' : sm.total >= 80 ? 'Spolehlivý dispečer' : sm.total >= 65 ? 'Slušný praktikant' : sm.total >= 45 ? 'Ještě potrénuj' : 'Katastrofa na lince';
   const m = (l, v) => `<tr><td style="padding:2px 14px 2px 0;color:#5a6a7a">${l}</td><td><b>${v}</b></td></tr>`;
   modal(`<div class="card"><h1>Vyhodnocení</h1><div class="big">${sm.total.toFixed(1)} <span style="font-size:15px;font-family:var(--sans)">/ 100 · ${rank}</span></div>
 <div class="bar"><i style="width:${Math.min(100, sm.total)}%"></i></div>
 <table style="margin:10px 0;width:auto">${m('Průměrné hodnocení případů', sm.caseAvg.toFixed(1))}${m('Pokrytí území', sm.coverage.toFixed(0) + ' %')}${m('Případů celkem', sm.cases)}${m('Neobslouženo', sm.unserved)}${m('N1 průměrně k pacientovi', sm.avgN1 == null ? '–' : (sm.avgN1 / 60).toFixed(1) + ' min')}${m('Příjezd do 20 min od vyslání', sm.legalPct == null ? '–' : sm.legalPct.toFixed(0) + ' %')}${m('Přesměrování posádek', sm.diversions)}${m('Dokončené sekundární převozy', sm.secondaryCompleted)}${m('Sekundární převozy v toleranci ±15 min', sm.secondaryOnTime)}${m('Průměr bodů za sekundární převoz', sm.secondaryAvg == null ? '–' : sm.secondaryAvg.toFixed(0) + ' / 100')}</table>
-${sm.opsPoints || sm.opsLog.length ? `<p>Provozní body: <b>${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints}</b> · základní skóre ${sm.baseTotal.toFixed(1)}</p>${sm.opsLog.length ? `<details><summary>Průběh bodování</summary><ul>${sm.opsLog.slice(-8).reverse().map(x => `<li>${x.delta > 0 ? '+' : ''}${x.delta} b. · ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}` : ''}
+${sm.opsPoints || sm.opsLog.length ? `<p>Provozní body: <b>${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints}</b> · základní skóre ${sm.baseTotal.toFixed(1)}</p>${sm.opsLog.length ? `<details open><summary>Za co byly provozní body (${sm.opsLog.length})</summary><ul style="max-height:180px;overflow:auto">${sm.opsLog.slice().reverse().map(x => `<li>${sim.clockAt(x.t)} · ${x.delta > 0 ? '+' : ''}${x.delta} b. · ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}` : ''}
 ${worst.length ? '<b>Nejhorší případy</b><table style="margin-top:4px">' + worst.map(c => `<tr><td style="padding:2px 10px 2px 0">${c.num} N${c.nOrig}</td><td style="padding-right:10px">${esc(c.klasif)}</td><td><b>${Math.round(c.score.total)}</b> · ${why(c)}</td></tr>`).join('') + '</table>' : ''}
-<p style="margin-top:12px"><button class="btn pri" data-act="again">Nová směna</button></p></div>`);
+<p style="margin-top:12px"><button class="btn pri" data-act="again">Nová směna</button> <button class="btn" data-act="rules" data-back="game">Pravidla a hodnocení</button></p></div>`);
 }
 function printModal(k) {
   const c = k.caseId && sim.caseOf(k.caseId); if (!c) return;
@@ -989,6 +1066,7 @@ function act(a, el) {
     case 'start': newGame(); break;
     case 'home': homeModal(); break;
     case 'newshift': window._opt = null; shiftModal(); break;
+    case 'newshift-keep': shiftModal(); break;
     case 'settings': settingsModal(!!sim); break;
     case 'changelog': changelogModal(); break;
     case 'check-update': checkUpdate(el); break;
@@ -1007,6 +1085,8 @@ function act(a, el) {
     case 'assign': { const r = sim.assign(d.case, d.crew, d.role || undefined); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; beep(520); } break; }
     case 'reassign': { const r = sim.reassign(d.crew, d.case); if (!r.ok) toast(r.msg, 'warn'); break; }
     case 'cancel': { const r = sim.cancelAssignment(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else toast('Posádka odvolána.', ''); break; }
+    case 'vj-decline': { const r = sim.declineVstricna(d.case); if (!r.ok) toast(r.msg, 'warn'); break; }
+    case 'rules': rulesModal(el && el.dataset.back); break;
     case 'prealert': { const r = sim.prealert(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Předpoplach: ' + r.crews.join(', ') + '. Posádky nevyjíždějí.', 'alert'); break; }
     case 'n2-dynamic': { const r = sim.convertN2Dynamic(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Výzva změněna na dynamickou.', ''); break; }
     case 'lzs-consult': { const r = sim.consultLzsPilot(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Čeká se na textové rozhodnutí pilota LZS.', 'alert'); break; }
@@ -1118,6 +1198,7 @@ document.addEventListener('click', ev => {
   const ck = t.closest('[data-crew]'), cc = t.closest('[data-case]');
   if (ck && !t.closest('#modal')) {
     ev.preventDefault(); sel.k = ck.dataset.crew;
+    if (t.closest('.tile')) { followK = followK === sel.k ? null : sel.k; followLast = 0; if (followK) { const fk = sim.crewOf(followK); toast(`Sleduji ${fk.name} na mapě (posunutím mapy nebo dalším klikem zrušíš).`, ''); } }
     syncSelectionToMain();
     if (ck.dataset.ptt) { const k = sim.crewOf(sel.k); toast(`${k.name}: spojení v pořádku, ${STLAB[k.state].toLowerCase()}.`, ''); }
     render(); return;

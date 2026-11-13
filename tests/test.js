@@ -18,6 +18,7 @@ function bot(sim) {
         const l = sim.suggest(c.id, 'LZS')[0]; if (l) sim.assign(c.id, l.crewId);
         continue;
       }
+      if (c.exitus) { if (c.examPending) { const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId); } continue; }
       const r = sim.suggest(c.id, 'RZP')[0];
       if (r) sim.assign(c.id, r.crewId);
       if (c.rvNeed) { const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId); }
@@ -450,4 +451,43 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   const night = new Sim({ seed: 304, mode: 'free', startHour: 21 });
   if (night.s.crews.filter(k => k.libero).some(k => k.state !== 'off')) throw new Error('LIBERO must be off at night');
   console.log('LIBERO day doctor attach / dispatch / detach true');
+}
+
+// ---- 0.17: exitus, koroner, prohlídka zemřelého, doprovod, vstřícná „dojíždějte sami“
+{
+  const run = (fate, coroner) => {
+    const sim = new Sim({ seed: 11, mode: 'shift', startHour: 7 });
+    let cs = null, recalled = false, back = false;
+    for (let i = 0; i < 3000 && !(cs && cs.status === 'closed'); i++) {
+      if (!cs) {
+        cs = sim.s.cases.find(c => c.status === 'waiting' && !c.mu && c.typ !== 'sekundární' && (c.patientCount || 1) === 1);
+        if (cs) { cs.fate = fate; cs.n = 1; cs.rvNeed = true; cs.trans = fate === 'rosc'; cs.initialDispatchRequired = ['RZP', 'RV']; }
+      }
+      if (cs && cs.coroner && cs.coroner.state === 'pending') {            // vynucení výsledku zjišťování koronera
+        cs.coroner.state = coroner; cs.coroner.until = sim.s.t + 600;
+        if (coroner === 'unavailable') cs.exam = { needed: true, done: false, remaining: 1500, since: sim.s.t, lastPen: sim.s.t };
+      }
+      if (cs && cs.exam && cs.exam.crewId && !recalled) { recalled = true; const id = cs.exam.crewId; if (!sim.cancelAssignment(cs.id, id).ok) throw new Error('exam RV not recallable'); }
+      else if (cs && recalled && cs.exam && cs.exam.crewId) back = true;
+      bot(sim); sim.step(10); invariants(sim);
+    }
+    return { sim, cs, recalled, back, log: sim.s.log.filter(e => e.cid === cs.id).map(e => e.txt).join('\n') };
+  };
+  let r = run('signs', 'available');
+  if (r.cs.status !== 'closed' || !/jisté známky smrti, KPR nezahajujeme/.test(r.log) || !/ZCB101 na příjmu/.test(r.log)) throw new Error('signs-of-death flow failed');
+  r = run('cpr-fail', 'unavailable');
+  if (r.cs.status !== 'closed' || !r.recalled || !r.back || !r.cs.exam.done || !/KPR neúspěšná, na místě exitus/.test(r.log) || !/prohlídka zemřelého ukončena/.test(r.log)) throw new Error('exam / recall flow failed: ' + JSON.stringify({ st: r.cs.status, rec: r.recalled, back: r.back }));
+  r = run('rosc', 'available');
+  if (r.cs.status !== 'closed' || !/doprovázíme/.test(r.log) || r.cs.exitus) throw new Error('ROSC escort flow failed');
+  console.log('exitus / koroner / prohlídka / doprovod true');
+
+  const sim = new Sim({ seed: 21, mode: 'shift', startHour: 7 });
+  sim.step(1200);
+  const ints = sim.s.cases.filter(c => c.typ !== 'sekundární' && !c.mu && c.intake).map(c => c.intake);
+  if (!ints.length || Math.min(...ints) < 70 || Math.max(...ints) > 200) throw new Error('intake duration out of range');
+  const cs = sim.s.cases.find(c => c.status === 'waiting');
+  const primary = sim.crewOf(sim.suggest(cs.id, 'RZP')[0].crewId);
+  cs.vstricna = { state: 'offered', primaryCrewId: primary.id, area: 'JH', areaName: 'JH', expiresAt: sim.s.t + 600 };
+  if (!sim.declineVstricna(cs.id).ok || cs.vstricna.state !== 'declined' || !sim.s.log.some(e => /dojíždějte sami/.test(e.txt))) throw new Error('declineVstricna failed');
+  console.log('vstřícná: dojíždějte sami / délka nabírání true');
 }

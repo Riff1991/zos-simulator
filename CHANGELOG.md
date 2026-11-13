@@ -8,12 +8,19 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.17.0 – vývoj
+## v0.17.0 – 2026-11-14
 
-- Mnohem větší sada adres: 175 tisíc adresních bodů z OSM (dříve 70 tisíc).
-- Víc reálných míst z OSM: 23 tisíc (domovy, školy, ordinace, provozovny, nádraží a úřady, sportoviště, ubytování). Jména jednotlivců se z míst odstraňují.
-- Případy se neopakují na stejném místě ani blízko po sobě (posledních 25 míst, okruh zhruba 700 m).
-- Hodinový profil výjezdů podle říjnového vzorku (špička od 7 do 11 h).
+- Adresy a místa: 175 tisíc adres a 23 tisíc reálných míst z OSM (nádraží, úřady, obchody, sportoviště, ubytování…). Případy se neopakují na stejném místě ani blízko po sobě.
+- Popis místa: široká sada krátkých dispečerských zápisů, často prázdný; konec věčného „rodinný dům, přístup hlavním vchodem“.
+- Hodinový profil výjezdů a délka nabírání výzvy podle říjnového vzorku (špička 7–11 h, nabírání N1 zhruba 70–150 s). Záložka „Nabrané“ je nově „Nabírá se“.
+- Spojový řád: posádky se hlásí „ZCB101, zde ZCB…, příjem“, ZOS potvrzuje.
+- Vstřícná jízda: posádka ohlásí pacienta schopného překladu, dispečer vyšle RZP z cílové oblasti, nebo odpoví „dojíždějte sami“. Pravidlo: jen při aspoň 2 volných RZP v oblasti, jinak ztráta bodů.
+- KPR a exitus: jisté známky smrti (KPR se nezahajuje, RV lze odvolat), neúspěšná KPR, častější exitus u starších. Koroner jako dlaždice u případu; když není, RV zůstává na prohlídku zemřelého, je odvolatelný a musí se vrátit.
+- RV doprovází pacienta do nemocnice podle závažnosti (po KPR vždy), nebo nechá RZP jet samotnou; odvolatelný doprovod lze vyslat jinam.
+- RZP může po konzultaci s lékařem ponechat pacienta na místě.
+- Nové hodnocení: místo absolutního času dojezdu se hodnotí volba posádky (s ohledem na pokrytí oblasti). Bonusy za předpoplach, RV vyslané jako první, LZS místo RV, LIBERO a správnou vstřícnou jízdu. Stránka „Pravidla a hodnocení“ a přehled bodů po směně.
+- Panel posádek: symbol sanitky pro RZP a vozu lékaře pro RV, směr vozu podle jízdy, stejné symboly na mapě. Klik na dlaždici sleduje vůz na mapě.
+- LZS: přesná poloha základny Kryštof 13 a nový žlutý symbol vrtulníku.
 
 ---
 

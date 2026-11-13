@@ -50,7 +50,7 @@ for (const c of P) {
   const up = c.up || '', a = c.age, place = `${c.place || ''} ${c.poznamka || ''}`;
   if (/DYNAMICKÁ INDIKACE/i.test(up) && c.n !== 2) add('DYNAMICKÁ INDIKACE mimo N2', `N${c.n} ${c.klasif}`);
   if (c.n === 2 && c.dyn && !/DYNAMICKÁ INDIKACE/i.test(up)) add('dyn. N2 bez štítku', `${c.klasif} | ${up.slice(0, 60)}`);
-  if (a < 60 && /domov pro seniory/i.test(place)) add('pod 60 let v domově pro seniory', `${a} let | ${place.slice(0, 50)}`);
+  if (a < 60 && c.where === 'domov') add('pod 60 let v domově pro seniory', `${a} let | ${place.slice(0, 50)}`);
   if (a < 15 && /provozovn/i.test(place)) add('dítě v provozovně', `${a} | ${place.slice(0, 50)}`);
   if (a < 4 && /škola/i.test(place)) add('batole ve škole', `${a} | ${place.slice(0, 50)}`);
   if (c.sex === 'M' && /Gravid|Porod|plodová|těhot/i.test(up)) add('muž s gynekologií', up.slice(0, 60));
@@ -66,7 +66,7 @@ for (const c of P) {
 const nCount = { 1: 0, 2: 0, 3: 0, 4: 0 }; for (const c of P) nCount[c.nOrig]++;
 const share = k => nCount[k] / P.length;
 const perShift = cases.length / 6;
-const dps = P.filter(c => /domov pro seniory/i.test(c.place || '')).length / P.length;
+const dps = P.filter(c => c.where === 'domov').length / P.length;
 const names = new Set(cases.map(c => c.ozn)).size / cases.length;
 const ranges = [
   ['podíl N1', share(1), 0.015, 0.08], ['podíl N2', share(2), 0.2, 0.42], ['podíl N3', share(3), 0.5, 0.75],
