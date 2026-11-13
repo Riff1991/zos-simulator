@@ -14,7 +14,7 @@ Nejnovější balíček pro Mac je v **[Releases](../../releases/latest)** (`zos
 
 1. Změny v `src/`, pak `python3 build.py` (výstup `site/` je v repozitáři).
 2. Zvýšit číslo v `VERSION` a doplnit sekci do `CHANGELOG.md` (`## vXX – datum`).
-3. Commit, push a tag `vXX` → GitHub Actions zkontroluje kód a vytvoří Release se ZIPem pro Mac.
+3. Commit a push na `main` → GitHub Actions zkontroluje kód; změna `VERSION` automaticky vytvoří tag `vXX` a Release se ZIPem pro Mac (lze spustit i ručně v záložce Actions).
 
 Lokálně lze balíček sestavit `bash packaging/build_mac.sh` → `dist/`.
 

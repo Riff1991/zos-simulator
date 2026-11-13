@@ -23,7 +23,7 @@ Projekt: **webový simulátor primárního dispečera ZOS ZZS Jihočeského kraj
 ## Verze, changelog a vydání (povinné při každé změně pro hráče)
 
 - Každá změna, kterou hráč uvidí, zvyšuje číslo v `VERSION` a má sekci v `CHANGELOG.md` (česky, stručně: Nové / Opravy).
-- Po commitu na `main` se vytvoří tag `vXX` (shodný s `VERSION`); workflow `release.yml` sestaví ZIP pro Mac a vydá ho v GitHub Releases.
+- Push změny `VERSION` na `main` spustí workflow `release.yml`: sestaví ZIP pro Mac, vytvoří tag `vXX` a GitHub Release s poznámkami z `CHANGELOG.md`. Tagy se ručně nepushují.
 - `site/index.html` je v repozitáři – po změně `src/` vždy spustit `python3 build.py`.
 
 ## Kontroly před odevzdáním (povinné)
