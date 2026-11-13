@@ -2,9 +2,28 @@
 
 Hra/simulátor práce primárního dispečera ZOS ZZS Jihočeského kraje. Nejde o nástroj pro ostrý provoz. Osoby, kontakty a události jsou generované.
 
-Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekci **Releases** na GitHubu (`zos-simulator-mac-vXX.zip`).
+Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekci **Releases** na GitHubu (`zos-simulator-mac-vX.Y.Z.zip`).
+
+Číslování od v0.15.0: `hlavní.menší.oprava` (0.15.1 = drobná oprava, 1.0.0 = oficiální vydání). Testovací verze z větve `dev` (…`-dev`) běží na https://riff1991.github.io/zos-simulator/dev/.
 
 ---
+
+## v0.15.0 – 2026-11-13
+
+### Nové
+- Nové číslování verzí (hlavní.menší.oprava) a testovací web …/zos-simulator/dev/ s vlastní uloženou směnou.
+- **Volací čísla posádek podle dispečerského systému:** ČB 1xx, TA 2xx, JH 3xx, PT 4xx, ČK 5xx, ST 6xx, PI 7xx (např. JH RV 319, JH 1 RZP 313, Dačice RV 309). Oblasti v panelu posádek seřazené jako na ZOS.
+- **Číslo posádky u ikony na mapě** (při přiblížení i název, vozy na základně od bližšího přiblížení).
+- **Nemocnice podle oblasti posádky:** RZP vyslaná mimo svůj okres veze pacienta do nemocnice své oblasti (pokud má potřebné pracoviště), aby se vracela domů.
+- **LIBERO na 7 základnách** (ČB, JH, PT, Vimperk, ST, Písek, Tábor), jen přes den a ne každý den. **Nastavení LIBERA** na úvodní obrazovce: pravděpodobnost obsazení (výchozí 75 %) a u každého Náhodně / Vždy / Nikdy; volba se pamatuje. Během hry lze obsazení změnit v panelu posádky LIBERO.
+
+### Opravy
+- **Vstřícná jízda:** posádka vyslaná tlačítkem „Vyslat“ jela místo setkání na adresu události. Nově se obě posádky potkají na trase v místě, kam dorazí přibližně současně (časově na půli cesty), předání trvá 2–5 min a pak každá pokračuje.
+- Vstřícnou jízdu hlásí jen periferní posádky (≥ 20 min od cílové nemocnice, např. Suchdol, Dačice, Týn). Posádky u okresní nebo krajské nemocnice (ČB, Tábor a okolí) ji neřeší; zmizelo hlášení „schopen překladu, ale není potřeba“.
+- Rychlejší jízda k události s výstražnými zařízeními (≈ o 15 % kratší dojezdy; promítá se i do ETA a pokrytí).
+- Klik na událost už mapu nepřibližuje tolik (přehled okolí ~15 km).
+- Větší písmo názvů oblastí v přehledovém panelu posádek.
+- Vyslání posádky z panelu případu nepřepíná seznam z „Čekající“ na „Právě řešené“; případ se jen přesune.
 
 ## v14 – 2026-11-13
 

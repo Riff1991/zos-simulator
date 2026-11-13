@@ -22,7 +22,7 @@ pre = [p for p in pre if os.path.exists('site/' + p[2:])]
 h = hashlib.sha256()
 for p in pre: h.update(open('site/' + p[2:], 'rb').read())
 build = h.hexdigest()[:10]
-sw = rd('src/sw.js').replace('__VERSION__', ver).replace('__BUILD__', build).replace('__PRECACHE__', _json.dumps(pre)).replace("'zos-tiles-v1'", "'zos-tiles-" + hashlib.sha256(open('site/tiles-index.json', 'rb').read()).hexdigest()[:8] + "'")
+sw = rd('src/sw.js').replace('__VERSION__', ver).replace('__BUILD__', build).replace('__PRECACHE__', _json.dumps(pre)).replace("PFX + 'tiles-v1'", "PFX + 'tiles-" + hashlib.sha256(open('site/tiles-index.json', 'rb').read()).hexdigest()[:8] + "'")
 open('site/sw.js', 'w', encoding='utf8').write(sw)
 _json.dump({'version': ver, 'build': build}, open('site/version.json', 'w'))
 print('site/sw.js', ver, build)

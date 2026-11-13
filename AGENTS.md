@@ -15,7 +15,7 @@ Projekt: **webový simulátor primárního dispečera ZOS ZZS Jihočeského kraj
 
 - **Žádná reálná data pacientů ani osob.** Jména, telefony (fiktivní rozsah `0999…`), čísla událostí, SPZ, členové posádek jsou vždy generované. Uživatel v minulosti poslal ukázky s reálnými osobními údaji (e-maily z dispečinku, tisk výzvy) – do repozitáře se nesmí dostat nic z nich, přebírá se jen **struktura** polí.
 - Žádná loga ani názvy reálného dispečerského software (dodavatelů). Rozhraní jen napodobuje rozložení.
-- Rádiová čísla posádek jsou fiktivní.
+- Volací čísla posádek odpovídají dispečerskému systému ZZS JčK (dodal uživatel; `crewNames.*.rzpNo/rvNo` v `src/data.js`). Pořadí oblastí ČB, ČK, JH, PT, ST, PI, TA.
 - Reálné jsou jen veřejné údaje: síť základen a počty posádek (veřejná tabulka ZZS JčK), nemocnice, mapová data OSM (licence ODbL – atribuce „© přispěvatelé OpenStreetMap“ musí zůstat viditelná).
 - Pravidla v `src/data.js → indications` jsou **ukázková**, dokud je uživatel nenahradí svými. Neměň medicínská/dispečerská pravidla bez potvrzení uživatele.
 - Simulace musí zůstat deterministická pro daný seed (test to hlídá) a stav `sim.s` musí zůstat čistý JSON (ukládání/obnova).
