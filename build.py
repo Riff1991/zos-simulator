@@ -11,14 +11,14 @@ u = strip(rd('src/voice.js')) + rd('src/ui.js')
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
 t = t.replace('ZOS JčK · DISPEČER', 'ZOS JčK · DISPEČER · v' + ver, 1)
-# verze, changelog (posledních 6 verzí) a obrys kraje pro úvodní obrazovku
+# verze, changelog (posledních 3 verzí, 2 body na verzi) a obrys kraje pro úvodní obrazovku
 import json as _j
 cl = rd('CHANGELOG.md') if os.path.exists('CHANGELOG.md') else ''
-secs = [x.strip() for x in re.split(r'\n## ', cl)[1:]][:6]
+secs = [x.strip() for x in re.split(r'\n## ', cl)[1:]][:3]
 changelog = []
 for x in secs:
     head, _, body = x.partition('\n')
-    items = [ln for ln in body.split('\n') if ln.strip()]
+    items = [ln for ln in body.split('\n') if ln.strip()][:2]
     changelog.append({'h': head.strip(), 'l': items})
 mk = _j.loads(rd('src/mask.geojson'))['geometry']['coordinates'][0][1]
 lo = [p[0] for p in mk]; la = [p[1] for p in mk]
