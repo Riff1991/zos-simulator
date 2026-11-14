@@ -8,6 +8,13 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.17.1 – 2026-11-14
+
+- Rychlosti vozidel podle směrnice Primární zásah pozemních prostředků a nové úpravy pravidel jízdy s VRZ: režim N1 bez limitu, N2, N3 a jízda s pacientem nejvýše o 30 km/h nad limit, N4 a návrat RZP bez VRZ v běžných limitech.
+- Doby jízdy k události kalibrované na říjnovém vzorku výjezdů (čas výjezd → příjezd).
+
+---
+
 ## v0.17.0 – 2026-11-14
 
 - Adresy a místa: 175 tisíc adres a 23 tisíc reálných míst z OSM (nádraží, úřady, obchody, sportoviště, ubytování…). Případy se neopakují na stejném místě ani blízko po sobě.

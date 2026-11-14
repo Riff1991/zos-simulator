@@ -885,7 +885,8 @@ const RULES = [
     'Vstřícná jízda: periferní posádka ohlásí pacienta schopného překladu. Odpověz vysláním RZP z cílové oblasti („naproti z … posádka …“), nebo „dojíždějte sami“.',
     'Exitus: je-li koroner k dispozici (ZOS to zjišťuje pár minut), posádky se vrací. Není-li, RV zůstává na prohlídku zemřelého; lze ho odvolat, ale musí se během služby vrátit.',
     'Doprovod: po KPR RV vždy doprovází RZP do nemocnice, u N1 většinou, u N2 hlavně děti. Odvolatelný doprovod můžeš vyslat jinam.',
-    'Pacient ponechán na místě: RZP po konzultaci s lékařem ohlásí ponechání a vrací se.']],
+    'Pacient ponechán na místě: RZP po konzultaci s lékařem ohlásí ponechání a vrací se.',
+    'Režimy jízdy: k události podle naléhavosti (N1 bez rychlostního limitu, N2 a N3 nejvýše +30 km/h), s pacientem v režimu N2 nebo N3 podle stavu, návrat RZP bez pacienta v režimu N4 bez majáků.']],
 ];
 function rulesModal(back) {
   modal(`<div class="card home" style="max-width:620px;max-height:86vh;overflow:auto"><h2 style="margin:0 0 8px">Pravidla a hodnocení</h2>${RULES.map(([h, l]) => `<h3 style="margin:10px 0 3px;font-size:14px">${h}</h3><ul style="margin:0;padding-left:18px;font-size:12.5px">${l.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}
