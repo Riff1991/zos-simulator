@@ -118,16 +118,18 @@ const ZOS_DATA = {
   // depts = pracoviště, kam se v dané nemocnici předává: up urgentní příjem, chir chirurgická ambulance, ikt iktové centrum,
   // kcc komplexní cerebrovaskulární centrum, aro ARO, det dětské oddělení, gyn gynekologicko-porodnické, orl ORL,
   // trauma traumacentrum, pci kardiocentrum, psy psychiatrie. ext = mimo kraj (silniční síť končí na hranici kraje).
+  // 2. pád názvu obce (oblasti) pro rádiové hlášení: „naproti z Jindřichova Hradce“
+  oblastGen: { 'ČB': 'Českých Budějovic', 'ČK': 'Českého Krumlova', 'JH': 'Jindřichova Hradce', 'PT': 'Prachatic', 'ST': 'Strakonic', 'PI': 'Písku', 'TA': 'Tábora' },
   hospitals: [
-    { id: 'h-cb', oblast: 'ČB', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'pci'], depts: ['up', 'kcc', 'trauma', 'pci', 'aro', 'det', 'gyn', 'orl', 'psy'] },
-    { id: 'h-ta', oblast: 'TA', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'], depts: ['up', 'chir', 'ikt', 'aro', 'det', 'gyn', 'orl'] },
-    { id: 'h-jh', oblast: 'JH', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'], depts: ['up', 'ikt', 'aro', 'det', 'gyn'] },
-    { id: 'h-pi', oblast: 'PI', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'], depts: ['up', 'chir', 'ikt', 'aro', 'det', 'gyn', 'orl'] },
-    { id: 'h-st', oblast: 'ST', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn', 'orl'] },
-    { id: 'h-pt', oblast: 'PT', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn'] },
-    { id: 'h-ck', oblast: 'ČK', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn'] },
-    { id: 'h-ji', name: 'Nemocnice Jihlava', short: 'NEM Jihlava', lat: 49.3961, lon: 15.579, ext: true, types: ['pci', 'psych'], depts: ['up', 'pci', 'psy'] },
-    { id: 'h-fnkv', name: 'Fakultní nemocnice Královské Vinohrady', short: 'FNKV Praha', lat: 50.074618, lon: 14.482014, heliport: true, types: ['popaleniny'] },
+    { id: 'h-cb', gen: 'Českých Budějovic', oblast: 'ČB', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'pci'], depts: ['up', 'kcc', 'trauma', 'pci', 'aro', 'det', 'gyn', 'orl', 'psy'] },
+    { id: 'h-ta', gen: 'Tábora', oblast: 'TA', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'], depts: ['up', 'chir', 'ikt', 'aro', 'det', 'gyn', 'orl'] },
+    { id: 'h-jh', gen: 'Jindřichova Hradce', oblast: 'JH', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'], depts: ['up', 'ikt', 'aro', 'det', 'gyn'] },
+    { id: 'h-pi', gen: 'Písku', oblast: 'PI', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'], depts: ['up', 'chir', 'ikt', 'aro', 'det', 'gyn', 'orl'] },
+    { id: 'h-st', gen: 'Strakonic', oblast: 'ST', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn', 'orl'] },
+    { id: 'h-pt', gen: 'Prachatic', oblast: 'PT', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn'] },
+    { id: 'h-ck', gen: 'Českého Krumlova', oblast: 'ČK', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn'] },
+    { id: 'h-ji', gen: 'Jihlavy', name: 'Nemocnice Jihlava', short: 'NEM Jihlava', lat: 49.3961, lon: 15.579, ext: true, types: ['pci', 'psych'], depts: ['up', 'pci', 'psy'] },
+    { id: 'h-fnkv', gen: 'Prahy', name: 'Fakultní nemocnice Královské Vinohrady', short: 'FNKV Praha', lat: 50.074618, lon: 14.482014, heliport: true, types: ['popaleniny'] },
   ],
 
   // Města pro generování případů a výpočet pokrytí. w = přibližná velikost v tisících obyvatel.

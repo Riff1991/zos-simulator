@@ -32,6 +32,8 @@ const BUSY = ['call', 'enroute', 'onscene', 'transport', 'handover'];
 const DEPT = { okresni: 'Urgentní příjem', iktove: 'Iktové centrum', trauma: 'Traumacentrum', pci: 'Kardiocentrum – katetrizační sál', psych: 'Psychiatrické oddělení', popaleniny: 'Popáleninové centrum' };
 const DEPTN = { up: 'Urgentní příjem', chir: 'Chirurgická ambulance', ikt: 'Iktové centrum', kcc: 'KCC – komplexní cerebrovaskulární centrum', aro: 'ARO', det: 'Dětské oddělení', gyn: 'Gynekologicko-porodnické oddělení', orl: 'ORL', trauma: 'Traumacentrum', pci: 'Kardiocentrum – katetrizační sál', psy: 'Psychiatrické oddělení' };
 // doba u ZZ (příjezd → odjezd od zařízení) podle říjnového vzorku: kvantily 0/10/25/50/75/90/100 %
+// pracoviště ve 4. pádě pro hlášení „jedeme do Tábora na chirurgickou ambulanci“
+const DEPT_ACC = { 'Urgentní příjem': 'na urgentní příjem', 'Chirurgická ambulance': 'na chirurgickou ambulanci', 'Iktové centrum': 'na iktové centrum', 'KCC – komplexní cerebrovaskulární centrum': 'na KCC', 'ARO': 'na ARO', 'Dětské oddělení': 'na dětské oddělení', 'Gynekologicko-porodnické oddělení': 'na gynekologicko-porodnické oddělení', 'ORL': 'na ORL', 'Traumacentrum': 'na traumacentrum', 'Kardiocentrum – katetrizační sál': 'na kardiocentrum', 'Psychiatrické oddělení': 'na psychiatrii', 'Popáleninové centrum': 'na popáleninové centrum' };
 const HO_Q = [[0, 240], [0.1, 304], [0.25, 430], [0.5, 605], [0.75, 891], [0.9, 1333], [1, 1900]];
 const FIRST = ['Jan', 'Petr', 'Pavel', 'Tomáš', 'Martin', 'Jiří', 'Karel', 'Lukáš', 'Michal', 'David', 'Marie', 'Jana', 'Eva', 'Hana', 'Anna', 'Lenka', 'Petra', 'Lucie', 'Alena', 'Zuzana'];
 const LAST = ['Novák', 'Svoboda', 'Dvořák', 'Černý', 'Procházka', 'Kučera', 'Veselý', 'Horák', 'Němec', 'Marek', 'Pospíšil', 'Hájek', 'Král', 'Jelínek', 'Růžička', 'Beneš', 'Fiala', 'Sedláček', 'Doležal', 'Zeman'];
@@ -1830,7 +1832,7 @@ class Sim {
           // doprovod: po KPR vždy, N1 většinou, N2 hlavně děti, N3 výjimečně
           const pEsc = cs.fate === 'rosc' ? 1 : cs.n === 1 ? 0.85 : cs.n === 2 ? (cs.child ? 0.8 : 0.35) : 0.06;
           if (this.rnd() < pEsc) escorts.push(rv);
-          else { this._radio(rv, cs, `pacient předán posádce ${c.name}, jede sama, jsme volní, vracíme se na základnu.`, true); this._release(rv); }
+          else { this._radio(rv, cs, `pacient předán posádce ${c.code}, jede sama, jsme volní, vracíme se na základnu.`, true); this._release(rv); }
         }
       }
     }
@@ -1853,7 +1855,7 @@ class Sim {
     const pmode = cs.n <= 2 || cs.fate === 'rosc' ? 'P2' : 'P3'; // NACA IV–VI v režimu N2, jinak N3
     const dur = this._go(c, best.lat, best.lon, pmode);
     const dept = this._deptFor(best, cs, type);
-    c.dest = { hid: best.id, name: best.short + ' – ' + dept, type };
+    c.dest = { hid: best.id, name: best.short + ' – ' + dept, type, say: `do ${best.gen || best.short} ${DEPT_ACC[dept] || ''}`.trim() };
     const handoverEstimate = 700;
     c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate + driveSec(this._eta(best.lat, best.lon, c.home.lat, c.home.lon), 'RET') };
     if (cs.mu && cs.mu.hospitalCapacities) {
@@ -1867,7 +1869,7 @@ class Sim {
       rv.caseRole = 'escort'; rv.escortFree = cs.fate !== 'rosc' && cs.n >= 2 && this.rnd() < 0.6;
       rv.dest = { hid: best.id, name: c.dest.name, type };
       this._go(rv, best.lat, best.lon, pmode); rv.state = 'transport'; rv.until = t + dur;
-      this._radio(rv, cs, `doprovázíme ${c.name} do ${best.short}${rv.escortFree ? ', jsme odvolatelní' : ''}.`, true);
+      this._radio(rv, cs, `doprovázíme ${c.code} do ${best.gen || best.short}${rv.escortFree ? ', jsme odvolatelní' : ''}.`, true);
     }
     if (c.type === 'RZP' && !cs.mu && cs.typ !== 'sekundární' && (cs.patientCount || 1) === 1 && !escorts.length) this._announceVstricna(c, cs, best, dur);
   }
@@ -1885,14 +1887,15 @@ class Sim {
     // Vstřícná má smysl jen u dlouhých přejezdů po pomalejších silnicích (např. Dačice → JH, Vyšší Brod → ČK),
     // ne tam, kde se jede po dálnici či rychlé silnici (Veselí, Soběslav → Tábor): čas trasy po síti s rychlostmi jízdy s VRZ.
     if (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext) { cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec }; return; }
-    const common = `ZCB${rzp.code}: pacienta máme ve voze, jedeme ${hospital.name},`;
+    const goTo = (rzp.dest && rzp.dest.say) || `do ${hospital.gen || hospital.short}`;
+    const common = `ZCB${rzp.code}: pacienta máme ve voze, jedeme ${goTo},`;
     if (this.s.radioMode === 'interactive') {
-      const head = `pacienta máme ve voze, jedeme ${hospital.name},`;
+      const head = `pacienta máme ve voze, jedeme ${goTo},`;
       if (!suitable) {
         cs.vstricna = { state: 'not-suitable', hospitalId: hospital.id, area, distanceSec };
         this._rq(rzp, cs, `${head} pacient není schopen překladu, jedeme sami.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack' }], 'info');
       } else if (canOffer) {
-        cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(240, routeDuration * 0.68) };
+        cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, areaGen: ZOS_DATA.oblastGen[area] || nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(240, routeDuration * 0.68) };
         cs.vstricna.freeAtOffer = receiver.length;
         const opts = receiver.slice(0, 3).map((k, i) => ({ k: 'vj' + i, label: `Naproti ${k.name}`, say: null, ok: true, act: 'vj-assign', crewId: k.id }));
         opts.push({ k: 'self', label: 'Dojíždějte sami', say: null, ok: true, act: 'vj-decline', def: true });
@@ -1914,7 +1917,7 @@ class Sim {
     } else if (canOffer) {
       // rozhodnutí je na dispečerovi: vyslat vstřícnou (pravidlo: aspoň 2 volné RZP v oblasti), nebo „dojíždějte sami“
       this.L('crew', `${common} pacient je schopen překladu.`, cs.id, rzp.id);
-      cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(120, routeDuration * 0.68) };
+      cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, areaGen: ZOS_DATA.oblastGen[area] || nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(120, routeDuration * 0.68) };
       cs.vstricna.freeAtOffer = receiver.length;
     } else {
       this.L('crew', `${common} pacient je schopen překladu.`, cs.id, rzp.id);
@@ -1954,8 +1957,8 @@ class Sim {
     helper.dest = { name: 'Místo vstřícné jízdy' };
     cs.crews.push(helper.id); cs.asg.push({ crewId: helper.id, t, eta: helper.turn + this._eta(helper.lat, helper.lon, meet.lat, meet.lon), role: 'vstricna-support' });
     cs.vstricna.meet = meet; cs.vstricna.helperCrewId = helper.id; cs.vstricna.state = 'dispatched';
-    this.L('crew', `ZCB101 rozumí, naproti z ${cs.vstricna.areaName} posádka ${helper.code}.`, cs.id, helper.id);
-    this.L('crew', `ZCB${primary.code} rozumí, naproti ${helper.code} z ${cs.vstricna.areaName}.`, cs.id, primary.id);
+    this.L('crew', `ZCB101 rozumí, naproti z ${cs.vstricna.areaGen || cs.vstricna.areaName} posádka ${helper.code}.`, cs.id, helper.id);
+    this.L('crew', `ZCB${primary.code} rozumí, naproti ${helper.code} z ${cs.vstricna.areaGen || cs.vstricna.areaName}.`, cs.id, primary.id);
     if (freeN < 2) this._opsScore(-3, `vstřícná jízda bez 2 volných RZP v oblasti ${cs.vstricna.areaName} (${cs.num})`, cs.id);
     else this._opsScore(1, `vstřícná jízda využita u ${cs.num}`, cs.id);
     this.L('crew', `${helper.name}: vstřícná jízda, místo setkání ${meet.place || 'na trase'} (bezpečné odstavení).`, cs.id, helper.id);

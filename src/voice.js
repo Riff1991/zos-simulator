@@ -1,7 +1,7 @@
 // Hlas rádiových relací: syntéza (Piper ve Web Workeru, site/tts/) + zvuk digitální vysílačky (Web Audio).
 // Nezávislé na systémových hlasech – stejně zní na Macu, Windows, Linuxu i mobilu.
 const ZOS_VOICE = (function () {
-  let worker = null, state = 'off', progress = 0, err = '', ctx = null, master = null, volume = 0.6;
+  let worker = null, state = 'off', progress = 0, err = '', ctx = null, master = null, volume = 0.6, tempo = 0.75;
   let reqSeq = 0; const pending = new Map(), cache = new Map(), queue = [];
   let playing = false, listeners = [];
   const emit = () => { for (const f of listeners) { try { f(status()); } catch (e) { /* ignore */ } } };
@@ -34,12 +34,15 @@ const ZOS_VOICE = (function () {
     } catch (e) { state = 'error'; err = String(e && e.message || e); emit(); }
   }
   // hlas posádky podle volacího znaku (stálý pro danou posádku), dispečer = „zos“
+  // tempo = délka řeči vůči výchozí (menší = rychlejší); výšku hlasu mění rychlost přehrávání, délka se dorovná syntézou
   function voiceOf(key) {
-    if (key === 'zos') return { rate: 1, ls: 1.0, ns: 0.6, nw: 0.7, zos: true };
+    if (key === 'zos') { const rate = 1.16; return { rate, ls: tempo * rate, ns: 0.5, nw: 0.6, zos: true }; }
     let h = 2166136261; for (const ch of String(key)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
     const r = i => ((h >>> (i * 5)) & 31) / 31;
-    return { rate: 0.9 + r(0) * 0.2, ls: 0.9 + r(1) * 0.2, ns: 0.55 + r(2) * 0.25, nw: 0.6 + r(3) * 0.3, zos: false };
+    const rate = 0.86 + r(0) * 0.18; // posádky hlouběji než dispečer, každá jinak
+    return { rate, ls: tempo * rate * (0.94 + r(1) * 0.12), ns: 0.55 + r(2) * 0.25, nw: 0.6 + r(3) * 0.3, zos: false };
   }
+  function setTempo(t) { tempo = Math.max(0.55, Math.min(1.2, Number(t) || 0.75)); }
   // text pro čtení: volací znaky, zkratky, nemocnice
   const ABBR = { RZP: 'er zet pé', RV: 'er vé', RLP: 'er el pé', LZS: 'el zet es', KPR: 'ká pé er', ARO: 'áro', ORL: 'ó er el', KCC: 'ká cé cé', PČR: 'policie', HZS: 'hasiči', ZZ: 'zdravotnické zařízení', DN: 'dopravní nehoda', RD: 'rodinný dům', NEM: 'nemocnice', ZOS: 'zet ó es', LIBERO: 'libero', TANR: 'tanr', DPS: 'dé pé es', LSPP: 'pohotovost', CB: 'Budějovice', ČB: 'Budějovice', JH: 'Jindřichův Hradec', TA: 'Tábor', PT: 'Prachatice', ST: 'Strakonice', CK: 'Krumlov', ČK: 'Krumlov', PI: 'Písek' };
   function speakable(text) {
@@ -52,7 +55,7 @@ const ZOS_VOICE = (function () {
     return t.replace(/\s+/g, ' ').trim();
   }
   function synth(text, key) {
-    const v = voiceOf(key), tx = speakable(text), ck = key + '|' + tx;
+    const v = voiceOf(key), tx = speakable(text), ck = key + '|' + tempo + '|' + tx;
     if (cache.has(ck)) return cache.get(ck);
     if (!worker || state !== 'ready') return Promise.resolve(null);
     const id = ++reqSeq;
@@ -74,9 +77,9 @@ const ZOS_VOICE = (function () {
     const oc = new OAC(1, len, SR);
     const buf = oc.createBuffer(1, pcm.length, sr); buf.getChannelData(0).set(pcm);
     const src = oc.createBufferSource(); src.buffer = buf; src.playbackRate.value = rate;
-    const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = v.zos ? 300 : 380; hp.Q.value = 0.8;
+    const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = v.zos ? 420 : 340; hp.Q.value = 0.8;
     const lp = oc.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = v.zos ? 3400 : 3000; lp.Q.value = 0.9;
-    const pk = oc.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 1900; pk.Q.value = 1.1; pk.gain.value = v.zos ? 3 : 6;
+    const pk = oc.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = v.zos ? 2400 : 1500; pk.Q.value = 1.1; pk.gain.value = v.zos ? 4 : 6;
     const pre = oc.createGain(); pre.gain.value = v.zos ? 1.4 : 2.0;
     const sh = oc.createWaveShaper(); sh.curve = shaperCurve(v.zos ? 1.6 : 2.6, v.zos ? 9 : 7);
     const comp = oc.createDynamicsCompressor(); comp.threshold.value = -26; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.12;
@@ -143,9 +146,9 @@ const ZOS_VOICE = (function () {
     for (const x of out) { all.set(x, o); o += x.length; }
     return all;
   }
-  const DEMO = [['ZCB101, zde ZCB313, příjem.', '313'], ['ZCB101 na příjmu.', 'zos'], ['ZCB313: pacienta máme ve voze, jedeme Nemocnice Jindřichův Hradec, pacient je schopen překladu.', '313'], ['ZCB101 rozumí, naproti z JH posádka 312.', 'zos'], ['ZCB313 rozumí, naproti 312.', '313']];
+  const DEMO = [['ZCB101, zde ZCB313, příjem.', '313'], ['ZCB101 na příjmu.', 'zos'], ['ZCB313: pacienta máme ve voze, jedeme do Jindřichova Hradce na urgentní příjem, pacient je schopen překladu.', '313'], ['ZCB101 rozumí, naproti z Jindřichova Hradce posádka 312.', 'zos'], ['ZCB313 rozumí, naproti 312 z Jindřichova Hradce.', '313']];
   function demo() { for (const [t, k] of DEMO) say(t.replace(/^ZCB\d+: /, ''), k); }
   function prefetch(text, key) { if (state === 'ready') synth(text, key); }
   function busy() { return playing || queue.length > 0; }
-  return { enable, unlock, setVolume, say, prefetch, status, onChange, speakable, busy, chirp: zos => chirpOnly(!!zos), demo, renderExchange, DEMO };
+  return { enable, unlock, setVolume, setTempo, say, prefetch, status, onChange, speakable, busy, chirp: zos => chirpOnly(!!zos), demo, renderExchange, DEMO };
 })();
