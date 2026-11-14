@@ -8,6 +8,8 @@ const ROUTER = (function () {
   const cache = new Map(), CACHE_MAX = 40;
   const km = (a, b, c, d) => { const x = (c - a) * KM_LAT, y = (d - b) * KM_LON; return Math.sqrt(x * x + y * y); };
   const spk = cls => 3.6 / KPH[cls]; // s/m
+  // napojení bodu na síť: krátké úseky pomalu (vjezd, dvůr), dlouhé (cíl mimo kraj, např. Jihlava) jako běžná silnice s objížďkou
+  const conn = dk => dk <= 1 ? dk / CONN_KPH * 3600 : (1 / CONN_KPH + (dk - 1) * 1.25 / 75) * 3600;
 
   function init(buf) {
     const dv = new DataView(buf); let o = 0;
@@ -105,7 +107,7 @@ const ROUTER = (function () {
     const so = snap(a, b), sd = snap(c, d); if (!so || !sd) return null;
     let t = atSnap(so, toTarget(sd).dist);
     if (so.e === sd.e) t = Math.min(t, Math.abs(so.c - sd.c) * spk(so.cls));
-    return isFinite(t) ? t + (so.d + sd.d) / CONN_KPH * 3600 : null;
+    return isFinite(t) ? t + conn(so.d) + conn(sd.d) : null;
   }
   function route(a, b, c, d) {
     if (!ready) return null;
@@ -127,7 +129,7 @@ const ROUTER = (function () {
     };
     const last = e => eptsOff[e + 1] - eptsOff[e] - 1;
     const sp0 = eptsOff[so.e] + so.i;
-    add(P[sp0 * 2], P[sp0 * 2 + 1], so.d / CONN_KPH * 3600);
+    add(P[sp0 * 2], P[sp0 * 2 + 1], conn(so.d));
     if (same <= Math.min(viaU, viaV)) edgeWalk(so.e, so.i, sd.i);
     else {
       let x;
@@ -139,7 +141,7 @@ const ROUTER = (function () {
       }
       if (eu[sd.e] === x) edgeWalk(sd.e, 0, sd.i); else edgeWalk(sd.e, last(sd.e), sd.i);
     }
-    add(c, d, sd.d / CONN_KPH * 3600);
+    add(c, d, conn(sd.d));
     const tot = tm[tm.length - 1] || 1, Pp = [], F = [];
     for (let i = 0; i < tm.length; i++) {
       if (Pp.length && i < tm.length - 1 && (tm[i] - F[F.length - 1] * tot) < 1.5) continue;
@@ -154,7 +156,7 @@ const ROUTER = (function () {
     const dist = new Float64Array(N).fill(Infinity), h = new Heap();
     for (const [la, lo, add] of sources) {
       const so = snap(la, lo); if (!so) continue;
-      const base = (add || 0) + so.d / CONN_KPH * 3600, s = spk(so.cls);
+      const base = (add || 0) + conn(so.d), s = spk(so.cls);
       const tu = base + so.c * s, tv = base + (elen[so.e] - so.c) * s;
       if (tu < dist[eu[so.e]]) { dist[eu[so.e]] = tu; h.push(tu, eu[so.e]); }
       if (tv < dist[ev[so.e]]) { dist[ev[so.e]] = tv; h.push(tv, ev[so.e]); }
@@ -162,7 +164,7 @@ const ROUTER = (function () {
     heapRun(dist, null, h);
     return targets.map(([la, lo]) => {
       const k = la + ',' + lo; let sd = tgtSnaps.get(k); if (!sd) tgtSnaps.set(k, sd = snap(la, lo));
-      return sd ? atSnap(sd, dist) + sd.d / CONN_KPH * 3600 : Infinity;
+      return sd ? atSnap(sd, dist) + conn(sd.d) : Infinity;
     });
   }
   // náhodný bod na silnici dané třídy (pro nehody)

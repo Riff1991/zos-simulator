@@ -8,6 +8,21 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.18.0 – 2026-11-14
+
+- Doplňková naléhavost: pacient nabraný jako bezvědomí / nedýchá se cestou může probrat (N1 → N2). Když posádka u N3 hlásí zhoršení a žádá lékaře, případ přejde automaticky na doplňkovou N2 a přibude příznak typický pro indikaci.
+- Datové zprávy od HZS (KOPIS), PČR (OS KŘP) a eCall: nehody, otevírání bytů, požáry, psychiatrie, napadení, oběšení, tonutí, záchrana v terénu, intoxikace na veřejnosti. Tisíce kombinací podle situace, ve směně se neopakují. Zdroj výzvy odpovídá složce (150, 158, eCall).
+- Zrušen příznak „Transport pacienta“.
+- Posádky na místě stojí na silnici vedle sebe u místa události, ne v symbolu události.
+- Upřesnění místa bez místností (žádná kuchyně, obývák), stačí RD, patro apod.
+- Doba předání v nemocnici podle říjnových výjezdů (medián ~10 min, u N1 delší).
+- Cílová pracoviště podle nemocnic: urgentní příjem, chirurgická ambulance, iktové centrum, ARO, dětské, gynekologicko-porodnické, ORL; v JH chirurgičtí pacienti přes urgentní příjem. ČB jako KCC (komplexní cerebrovaskulární centrum), iktová centra JH, Písek, Tábor.
+- Nová cílová nemocnice Jihlava: kardio nestabilní pacienti z Dačicka a odkud je blíž než do ČB, část suicidálních pacientů z Jindřichohradecka.
+- Vstřícná jízda se nabízí jen u dlouhých přejezdů po pomalejších silnicích (ne Veselí, Soběslav → Tábor po dálnici).
+- Seznam případů je kompaktní a řazený podle naléhavosti, podrobnosti po rozkliknutí.
+
+---
+
 ## v0.17.1 – 2026-11-14
 
 - Rychlosti vozidel podle směrnice Primární zásah pozemních prostředků a nové úpravy pravidel jízdy s VRZ: režim N1 bez limitu, N2, N3 a jízda s pacientem nejvýše o 30 km/h nad limit, N4 a návrat RZP bez VRZ v běžných limitech.

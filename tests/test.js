@@ -331,7 +331,7 @@ if (!airCase.lzsPatientToHospital) throw new Error('LZS patient flight did not s
 const airRzp = airSim.suggest(airCase.id, 'RZP', 'heli-transfer')[0];
 if (!airRzp || !airSim.assign(airCase.id, airRzp.crewId, 'heli-transfer').ok) throw new Error('LZS transfer RZP dispatch failed');
 for (let i = 0; i < 600 && airCase.status !== 'closed'; i++) airSim.step(30);
-if (airCase.status !== 'closed' || !airCase.lzsTransferred || !airCase.transported || !airCase.dest.includes('Traumatologické')) throw new Error('LZS patient transfer lifecycle failed');
+if (airCase.status !== 'closed' || !airCase.lzsTransferred || !airCase.transported || !airCase.dest.includes('Traumacentrum')) throw new Error('LZS patient transfer lifecycle failed');
 if (airSim.crewOf(airRzp.crewId).caseId || lzs.caseId || !['base', 'free'].includes(lzs.state)) throw new Error('LZS or RZP did not clear the case or LZS failed to return');
 const airRzpCrew = airSim.crewOf(airRzp.crewId);
 if (!airRzpCrew.hospitalRun || airRzpCrew.hospitalRun.phase !== 'return' || airRzpCrew.hospitalRun.availableAt !== airRzpCrew.until) throw new Error('hospital transport board did not retain the crew until return-to-base completion');
@@ -490,4 +490,30 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   cs.vstricna = { state: 'offered', primaryCrewId: primary.id, area: 'JH', areaName: 'JH', expiresAt: sim.s.t + 600 };
   if (!sim.declineVstricna(cs.id).ok || cs.vstricna.state !== 'declined' || !sim.s.log.some(e => /dojíždějte sami/.test(e.txt))) throw new Error('declineVstricna failed');
   console.log('vstřícná: dojíždějte sami / délka nabírání true');
+}
+// 0.18: doplňková naléhavost, cílová pracoviště, Jihlava, datové zprávy, parkování u místa
+{
+  const sim = new Sim({ seed: 181, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  let wake = null, texts = [], tp = 0;
+  for (let i = 0; i < 2500; i++) { const c = sim._spawn(); if (!wake && c.fate === 'wakes') wake = c; for (const r of c.radioReports || []) texts.push(r.text); if (/transport pacienta/i.test(c.up)) tp++; }
+  if (tp) throw new Error('příznak Transport pacienta se stále generuje');
+  if (texts.length < 200 || new Set(texts).size / texts.length < 0.95) throw new Error('datové zprávy IZS se opakují');
+  if (!wake) throw new Error('chybí případ, kdy se pacient probírá');
+  wake.status = 'active'; sim.s.cases.push(wake); sim.s.t = wake.wakeAt + 1; sim._caseStep(wake);
+  if (wake.n !== 2 || wake.nDopl !== 2) throw new Error('probírající se pacient nesnížil naléhavost na doplňkovou N2');
+  const ta = ZOS_DATA.hospitals.find(h => h.id === 'h-ta'), cb = ZOS_DATA.hospitals.find(h => h.id === 'h-cb');
+  if (sim._deptFor(ta, { ind: 'gyn', up: '' }, 'okresni') !== 'Gynekologicko-porodnické oddělení') throw new Error('gyn pracoviště');
+  if (sim._deptFor(ta, { ind: 'trauma', up: '' }, 'okresni') !== 'Chirurgická ambulance') throw new Error('chirurgická ambulance Tábor');
+  if (sim._deptFor(ZOS_DATA.hospitals.find(h => h.id === 'h-jh'), { ind: 'trauma', up: '' }, 'okresni') !== 'Urgentní příjem') throw new Error('JH chirurgie přes urgent');
+  if (!/KCC/.test(sim._deptFor(cb, { ind: 'cmp', up: '' }, 'iktove'))) throw new Error('ČB jako KCC');
+  // kardio z Dačic → Jihlava
+  const cs = sim._spawn(); cs.status = 'active'; cs.n = 2; cs.trans = true; cs.patientCount = cs.pocet = 1; cs.hospType = 'pci'; cs.targetHospitalId = null; cs.ind = 'hrudnik';
+  const dc = ZOS_DATA.stations.find(x => x.id === 'dacice'); cs.lat = dc.lat; cs.lon = dc.lon; sim.s.cases.push(cs);
+  const k = sim.crewOf('dacice-r0'); k.caseId = cs.id; k.state = 'onscene'; k.lat = dc.lat; k.lon = dc.lon; cs.crews.push(k.id);
+  sim._startTransport(k, cs);
+  if (!/Jihlava/.test(k.dest.name)) throw new Error('kardio z Dačic nejede do Jihlavy: ' + k.dest.name);
+  const ho = []; for (let i = 0; i < 400; i++) ho.push(sim._handoverSec({ n: 3 })); ho.sort((a, b) => a - b);
+  if (Math.abs(ho[200] - 605) > 90) throw new Error('medián předání neodpovídá říjnu');
+  console.log('0.18 doplňková / pracoviště / Jihlava / DZ / předání true');
 }

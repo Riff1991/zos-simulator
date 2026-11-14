@@ -113,15 +113,20 @@ const ZOS_DATA = {
     { id: 'z-ta', name: 'TA_Z', oblast: 'TA', stationId: 'ta' },
   ],
 
-  // types: okresni = běžný příjem, iktove = iktové centrum, trauma = traumacentrum, kcc = komplexní centrum / PCI
+  // types: okresni = běžný příjem, iktove = iktové centrum (v ČB komplexní cerebrovaskulární centrum – KCC),
+  // trauma = traumacentrum, pci = kardiocentrum (katetrizační sál), psych = psychiatrie (Jihlava).
+  // depts = pracoviště, kam se v dané nemocnici předává: up urgentní příjem, chir chirurgická ambulance, ikt iktové centrum,
+  // kcc komplexní cerebrovaskulární centrum, aro ARO, det dětské oddělení, gyn gynekologicko-porodnické, orl ORL,
+  // trauma traumacentrum, pci kardiocentrum, psy psychiatrie. ext = mimo kraj (silniční síť končí na hranici kraje).
   hospitals: [
-    { id: 'h-cb', oblast: 'ČB', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'kcc'] },
-    { id: 'h-ta', oblast: 'TA', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'] },
-    { id: 'h-jh', oblast: 'JH', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'] },
-    { id: 'h-pi', oblast: 'PI', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'] },
-    { id: 'h-st', oblast: 'ST', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'] },
-    { id: 'h-pt', oblast: 'PT', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'] },
-    { id: 'h-ck', oblast: 'ČK', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'] },
+    { id: 'h-cb', oblast: 'ČB', name: 'Nemocnice České Budějovice', short: 'NEM ČB', lat: 48.95927, lon: 14.46654, types: ['okresni', 'iktove', 'trauma', 'pci'], depts: ['up', 'kcc', 'trauma', 'pci', 'aro', 'det', 'gyn', 'orl', 'psy'] },
+    { id: 'h-ta', oblast: 'TA', name: 'Nemocnice Tábor', short: 'NEM Tábor', lat: 49.41681, lon: 14.6528, types: ['okresni', 'iktove'], depts: ['up', 'chir', 'ikt', 'aro', 'det', 'gyn', 'orl'] },
+    { id: 'h-jh', oblast: 'JH', name: 'Nemocnice Jindřichův Hradec', short: 'NEM JH', lat: 49.13975, lon: 15.00476, types: ['okresni', 'iktove'], depts: ['up', 'ikt', 'aro', 'det', 'gyn'] },
+    { id: 'h-pi', oblast: 'PI', name: 'Nemocnice Písek', short: 'NEM Písek', lat: 49.30223, lon: 14.15689, types: ['okresni', 'iktove'], depts: ['up', 'chir', 'ikt', 'aro', 'det', 'gyn', 'orl'] },
+    { id: 'h-st', oblast: 'ST', name: 'Nemocnice Strakonice', short: 'NEM Strakonice', lat: 49.26606, lon: 13.90708, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn', 'orl'] },
+    { id: 'h-pt', oblast: 'PT', name: 'Nemocnice Prachatice', short: 'NEM Prachatice', lat: 49.00679, lon: 14.01167, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn'] },
+    { id: 'h-ck', oblast: 'ČK', name: 'Nemocnice Český Krumlov', short: 'NEM ČK', lat: 48.81202, lon: 14.32541, types: ['okresni'], depts: ['up', 'chir', 'aro', 'det', 'gyn'] },
+    { id: 'h-ji', name: 'Nemocnice Jihlava', short: 'NEM Jihlava', lat: 49.3961, lon: 15.579, ext: true, types: ['pci', 'psych'], depts: ['up', 'pci', 'psy'] },
     { id: 'h-fnkv', name: 'Fakultní nemocnice Královské Vinohrady', short: 'FNKV Praha', lat: 50.074618, lon: 14.482014, heliport: true, types: ['popaleniny'] },
   ],
 
@@ -191,7 +196,7 @@ const ZOS_DATA = {
     { id: 'nzo', klasif: 'NZO – spatřená', n: { 1: 1 }, rvP: 1, trans: 0.55, hosp: 'okresni', scene: [22, 38], w: 4, where: ['ulice', 'prov', 'rd', 'priroda'], age: [30, 85] },
     { id: 'porucha', klasif: 'Porucha vědomí', n: { 1: 0.2, 2: 0.425, 3: 0.375 }, dyn: 0.53, rvP: 0.29, trans: 0.85, hosp: 'okresni', scene: [12, 28], w: 713, where: ['rd', 'byt', 'ulice', 'domov'], age: [25, 90] },
     { id: 'dusnost', klasif: 'Dušnost', n: { 1: 0.053, 2: 0.749, 3: 0.198 }, dyn: 0.63, rvP: 0.24, trans: 0.92, hosp: 'okresni', scene: [11, 26], w: 714, where: ['rd', 'byt', 'domov', 'ulice'], age: [30, 90] },
-    { id: 'hrudnik', klasif: 'Bolesti na hrudi', n: { 2: 0.789, 3: 0.211 }, dyn: 0.55, rvP: 0.27, trans: 0.95, hosp: [['kcc', 0.3], ['okresni', 0.7]], scene: [12, 28], w: 440, where: ['rd', 'byt', 'prov', 'ulice'], age: [40, 88] },
+    { id: 'hrudnik', klasif: 'Bolesti na hrudi', n: { 2: 0.789, 3: 0.211 }, dyn: 0.55, rvP: 0.27, trans: 0.95, hosp: [['pci', 0.3], ['okresni', 0.7]], scene: [12, 28], w: 440, where: ['rd', 'byt', 'prov', 'ulice'], age: [40, 88] },
     { id: 'cmp', klasif: 'CMP', n: { 2: 0.88, 3: 0.12 }, dyn: 0.96, rvP: 0.03, zzum: true, trans: 0.97, hosp: 'iktove', scene: [13, 29], w: 185, where: ['rd', 'byt', 'ulice', 'domov'], age: [55, 92] },
     { id: 'kreceU', klasif: 'Křečové stavy', n: { 2: 0.763, 3: 0.237 }, dyn: 0.48, rvP: 0.34, trans: 0.7, hosp: 'okresni', scene: [11, 25], w: 131, where: ['rd', 'byt', 'ulice', 'prov'], age: [15, 80] },
     { id: 'pedi', klasif: 'Pediatrické stavy', symptomKey: '__pediatric__', n: { 1: 0.1, 2: 0.6, 3: 0.3 }, dyn: 0.5, rvP: 0.35, trans: 0.92, hosp: 'okresni', scene: [11, 25], w: 1, where: ['rd', 'byt', 'skola'], age: [0, 14], child: true },
@@ -220,9 +225,9 @@ const ZOS_DATA = {
   ],
 
   where: {
-    rd: { txt: ['Rodinný dům, přístup hlavním vchodem', 'Rodinný dům, vstup ze dvora', 'Rodinný dům, pacient v přízemí'], ch: 0 },
-    byt: { txt: ['Bytový dům, 2. patro, výtah', 'Bytový dům, 3. patro, bez výtahu', 'Byt, zvonek nefunguje', 'Bytový dům, vchod z pavlače'], ch: 0 },
-    domov: { txt: ['Domov pro seniory, pokoj', 'Domov pro seniory, společenská místnost'], ch: 0 },
+    rd: { txt: ['RD', 'RD, vstup ze dvora', 'RD, přízemí'], ch: 0 },
+    byt: { txt: ['Bytový dům, 2. patro', 'Bytový dům, 3. patro, bez výtahu', 'Bytový dům, přízemí'], ch: 0 },
+    domov: { txt: ['Domov pro seniory', 'Domov pro seniory, 1. patro'], ch: 0 },
     prov: { txt: ['Provozovna, vstup z ulice', 'Provozovna, zadní vchod', 'Pracoviště, výrobní hala'], ch: 0 },
     skola: { txt: ['Škola, učebna', 'Školní hřiště'], ch: 0 },
     ulice: { txt: ['Ulice, před domem', 'Chodník u zastávky', 'Veřejné prostranství'], ch: 1 },
@@ -239,11 +244,11 @@ const ZOS_DATA = {
   // none = podíl případů bez popisu, a = základ, b = volitelný doplněk (bp = jeho pravděpodobnost).
   place: {
     rd: { none: 0.42, bp: 0.28,
-      a: ['RD', 'přízemí', '1. patro', 'patro', 'podkroví', 'novostavba', 'řadovka', 'chalupa', 'statek', 'dvojdomek', 'krajní dům', 'za domem', 'na zahradě', 'na dvoře', 've dvoře', 'v garáži', 'v dílně', 've stodole', 'koupelna', 'ložnice v patře', 'kuchyně', 'obývák', 'vejminek', 'zadní trakt', 'u vrat', 'na terase', 've sklepě', 'bod', 'dům na konci obce', 'dům u hlavní silnice'],
+      a: ['RD', 'RD', 'RD', 'RD', 'RD, přízemí', 'RD, patro', 'RD, 1. patro', 'přízemí', '1. patro', 'patro', 'podkroví', 'novostavba', 'řadovka', 'chalupa', 'statek', 'dvojdomek', 'krajní dům', 'za domem', 'na zahradě', 'na dvoře', 've dvoře', 'v garáži', 'v dílně', 've stodole', 'vejminek', 'zadní trakt', 'u vrat', 'na terase', 'bod', 'dům na konci obce', 'dům u hlavní silnice'],
       b: ['bude čekat u vrat', 'bude čekat před domem', 'branka otevřená', 'vrata otevřená', 'pes zavřený', 'pes na dvoře', 'vchod z boku', 'vchod zezadu', 'vchod ze dvora', 'zvonek nefunguje', 'dveře odemčené', 'klíč má sousedka', 'úzký vjezd', 'strmé schody', 'příjezd po polní cestě', 'u domu se staví', 'svítí před domem', 'zamává'] },
     byt: { none: 0.3, bp: 0.38,
       a: ['bytovka', 'panelák', 'bytový dům', 'činžák', 'DPS', 'ubytovna', 'garsonka'],
-      b: ['výtah', 'bez výtahu', 'výtah nejede', 'zvonek na jméno', 'zvonek nefunguje', 'vchod ze dvora', 'vchod z boku', 'zadní vchod', 'prostřední vchod', 'poslední vchod', 'vchod A', 'vchod B', 'bude čekat u vchodu', 'dveře odemčené', 'klíče u sousedky', 'otevře soused', 'nad obchodem', 'pavlač', 'byt vlevo', 'byt vpravo', 'na chodbě', 'v koupelně'] },
+      b: ['výtah', 'bez výtahu', 'výtah nejede', 'zvonek na jméno', 'zvonek nefunguje', 'vchod ze dvora', 'vchod z boku', 'zadní vchod', 'prostřední vchod', 'poslední vchod', 'vchod A', 'vchod B', 'bude čekat u vchodu', 'dveře odemčené', 'klíče u sousedky', 'otevře soused', 'nad obchodem', 'pavlač', 'byt vlevo', 'byt vpravo'] },
     domov: { none: 0.3, bp: 0.4,
       a: ['DPS', 'domov seniorů', 'pokoj', 'pokoj v 1. patře', 'pokoj ve 2. patře', 'přízemí', 'oddělení B', 'jídelna', 'společenská místnost', 'pavilon A', 'pavilon C', 'zahrada areálu', 'ošetřovna'],
       b: ['sestra čeká u vchodu', 'vstup přes recepci', 'hlavní vchod', 'boční vchod', 'výtah', 'personál u pacienta', 'personál dovede'] },

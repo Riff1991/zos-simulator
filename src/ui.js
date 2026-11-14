@@ -178,7 +178,7 @@ function renderLiveAlerts() {
     const crew = c.crews.map(id => sim.crewOf(id)).find(k => k && k.type === 'RZP');
     return `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${esc((c.rvReq.kind || 'zhoršení stavu').toLocaleUpperCase('cs-CZ'))} · ${esc(c.num)} · N${c.n}${crew ? ' · ' + esc(crew.name) : ''} · ${esc(c.klasif)} — klikni pro otevření</span>${x('rv:' + c.id)}</div>`;
   });
-  const reportHtml = reports.map(({ c, r }) => `<div class="live-alert report-alert" role="button" tabindex="0" data-case="${c.id}" data-report="${esc(r.id)}"><span class="alert-txt">☎ Linka 112 · ${esc(c.num)}: ${esc(r.text)} — klikni pro otevření</span>${x(c.id + ':' + r.id, ` data-case="${c.id}" data-report="${esc(r.id)}"`)}</div>`);
+  const reportHtml = reports.map(({ c, r }) => `<div class="live-alert report-alert" role="button" tabindex="0" data-case="${c.id}" data-report="${esc(r.id)}"><span class="alert-txt">☎ ${esc(r.source || 'Linka 112')} · ${esc(c.num)}: ${esc(r.text)} — klikni pro otevření</span>${x(c.id + ':' + r.id, ` data-case="${c.id}" data-report="${esc(r.id)}"`)}</div>`);
   setHTML($('alerts-live'), requestHtml.concat(reportHtml).join(''));
 }
 
@@ -216,7 +216,7 @@ function renderCases() {
   let rows = ({ waiting: wait, active: act, intake, closed })[tabCase].slice();
   if (tabCase === 'waiting') rows.sort((a, b) => a.n - b.n || a.readyAt - b.readyAt);
   else if (tabCase === 'closed') rows.sort((a, b) => b.closedAt - a.closedAt), rows = rows.slice(0, 60);
-  else rows.sort((a, b) => b.createdAt - a.createdAt);
+  else rows.sort((a, b) => a.n - b.n || a.createdAt - b.createdAt);
   const query = caseSearch.trim().toLocaleLowerCase('cs-CZ');
   if (query) rows = rows.filter(c => [c.num, c.addr, c.town, c.okres, c.klasif, c.charakter, c.typ, c.up, c.place, c.poznamka, c.src, c.op, c.ozn, c.phone, c.desc, c.dest, c.targetHospitalId, clarificationOf(c)].filter(Boolean).join(' ').toLocaleLowerCase('cs-CZ').includes(query));
   if (!rows.length) { setHTML($('cases'), `<div class="empty">${query ? 'Hledání neodpovídá žádnému případu.' : tabCase === 'waiting' ? 'Žádný případ nečeká na vyslání posádky.' : 'Nic k zobrazení.'}</div>`); return; }
@@ -241,8 +241,19 @@ function renderCases() {
     const meta = intk
       ? `${c.op} nabírá výzvu · ${c.src}`
       : `Událost ${c.num} · ${sim.clockAt(c.createdAt)} · ${esc(c.src)} · volající ${esc(c.ozn)} · ${esc(c.phone)}`;
+    const nTag = `N${c.n}${c.nDopl ? '<small>DOPL</small>' : c.dyn ? '<small>DYN</small>' : ''}`;
+    if (sel.c !== c.id) {
+      const who = [c.patientName || patient, c.klasif, c.ageText || (c.age != null ? c.age + ' let' : '')].filter(Boolean).join(', ');
+      const what = [c.place, c.poznamka].filter(Boolean).join(' · ');
+      const chips = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(k => `<span class="cchip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state !== 'base' && k.state !== 'free' ? '#fff' : '#111'}">${k.dest ? esc(k.dest.name) + ' ' : ''}${esc(k.name)}</span>`).join('');
+      return `<article class="case-card case-row n${c.n} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
+      <span class="case-priority">${nTag}</span><b class="cr-addr">${esc(c.town && !String(c.addr).includes(c.town) ? c.town + ', ' : '')}${esc(c.addr)}</b>
+      <span class="cr-cls">${esc(c.klasif)}</span><span class="cr-up">${esc(symptomsOf(c).map(x => String(x).replace(/^[^0-9A-Za-zÀ-ž]+/, '')).slice(0, 5).join(', '))}</span><span class="cr-what">${esc(what)}</span><span class="cr-time">${esc(sim.clockAt(c.createdAt))}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
+      <span class="cr-who">${esc(who)}</span><span class="cr-crews">${chips || `<span class="wait">${esc(status)}</span>`}${chips && (rvPending || missing.length) ? `<span class="wait urgent">${esc(status)}</span>` : ''}</span>
+    </article>`;
+    }
     return `<article class="case-card n${c.n} ${sel.c === c.id ? 'sel' : ''} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
-      <div class="case-top"><span class="case-priority">N${c.n}${c.dyn ? '<small>DYN</small>' : ''}</span>
+      <div class="case-top"><span class="case-priority">${nTag}</span>
         <div class="case-address"><strong>${esc(c.addr)}</strong><small>${esc(c.town || '')}${c.okres ? ` · okres ${esc(c.okres)}` : ''} · ${esc(c.typ || 'primární')}</small></div>
         <span class="case-status ${rvPending || missing.length ? 'urgent' : ''}">${esc(status)}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
       </div>

@@ -115,6 +115,16 @@ td.nn small{display:block;font:400 10px var(--mono);color:var(--mut)}
 .case-card{background:#fff;border:1px solid #aebbc7;border-left:5px solid var(--n3);border-radius:3px;padding:4px 6px;display:grid;gap:3px;cursor:pointer;min-width:0;box-shadow:inset 0 1px #fff}
 .case-card.n1{border-left-color:var(--n1)}.case-card.n2{border-left-color:var(--n2)}.case-card.n3{border-left-color:var(--n3)}.case-card.n4{border-left-color:#7892a6}
 .case-card:hover{background:#f4f8fc;border-color:#8da2b5}.case-card.sel{background:#e1eefb;border-color:#4c83b5;box-shadow:inset 0 0 0 1px #4c83b5}
+.case-row{grid-template-columns:32px minmax(0,1.5fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,.9fr) 40px;grid-template-areas:"p a c u w t" "p o o o o o";gap:1px 8px;align-items:baseline;padding:2px 6px}
+.case-row .case-priority{grid-area:p;align-self:center}.cr-addr{grid-area:a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-cls{grid-area:c;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cr-up{grid-area:u;font:10px var(--mono);color:#334;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+.cr-what{grid-area:w;font-size:11px;color:#445;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cr-time{grid-area:t;font:11px var(--mono);text-align:right;white-space:nowrap}
+.case-row .cr-who,.case-row .cr-crews{grid-area:o}.case-row{grid-template-areas:"p a c u w t" "p o o o o o"}
+.cr-line2{display:flex}.case-row .cr-who{grid-area:auto;grid-column:2/3;font-weight:600;font-size:12px;background:#d7dde3;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.case-row .cr-crews{grid-area:auto;grid-column:3/7;display:flex;gap:3px;flex-wrap:wrap;align-items:center}
+.cchip{font:600 11px var(--sans);padding:1px 5px;border-radius:2px;white-space:nowrap}.case-row .wait{font-size:11px;color:var(--mut)}.case-row .wait.urgent{color:#c52b22;font-weight:600}
+@media (max-width:700px){.case-row{grid-template-columns:30px minmax(0,1fr) 44px}.case-row .cr-cls,.case-row .cr-up,.case-row .cr-what{display:none}.case-row .cr-crews{grid-column:2/4}.case-row .cr-who{grid-column:2/4}}
+[data-theme=dark] .case-row .cr-who{background:#2a3440}[data-theme=dark] .cr-up,[data-theme=dark] .cr-what{color:#b8c2cc}
 .case-card:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
 .case-card.rv-pending{animation:case-alert .8s steps(2,end) infinite;border-color:#c52b22}
 @keyframes case-alert{50%{background:#ffd7d3}}

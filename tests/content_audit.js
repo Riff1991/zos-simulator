@@ -54,7 +54,7 @@ for (const c of P) {
   if (a < 15 && /provozovn/i.test(place)) add('dítě v provozovně', `${a} | ${place.slice(0, 50)}`);
   if (a < 4 && /škola/i.test(place)) add('batole ve škole', `${a} | ${place.slice(0, 50)}`);
   if (c.sex === 'M' && /Gravid|Porod|plodová|těhot/i.test(up)) add('muž s gynekologií', up.slice(0, 60));
-  if (/nedýchá/.test(up) && c.nOrig !== 1) add('nedýchá a ne N1', `N${c.nOrig} ${c.klasif}`);
+  if (/nedýchá/.test(up) && !/TANR nelze/i.test(up) && c.nOrig !== 1) add('nedýchá a ne N1', `N${c.nOrig} ${c.klasif}`);
   const toks = up.split(',').map(x => x.trim().replace(/^[^0-9A-Za-zÁ-ž]+/, '').toLowerCase()).filter(Boolean);
   if (toks.length !== new Set(toks).size) add('duplicitní příznak', up.slice(0, 80));
   if (/schopen udržet konverzaci/.test(up) && /nemůže mluvit|pouze slovo|pouze větu/.test(up)) add('protichůdná řeč', up.slice(0, 80));
