@@ -8,6 +8,20 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.0 – 2026-11-14
+
+> Přibyli first respondeři (HZS, JPO, PČR, VZS, horská služba) se zelenými AED značkami na mapě a dlaždicí FR, která vyšle nejbližšího. Posádku lze poslat zpět v režimu N3 na majáky (modrá tečka na dlaždici) a změnit jí naléhavost jízdy. Rádio má vlastní okno vlevo dole: přepis a zápis do terminálu se objeví se zpožděním, mluvící posádka bliká a žádost o lékaře je červená a nevyšle posádku sama. Opravy: LIBERO jde odpřáhnout, RZP Planá je zpět v ČB, RZP nejede s pacientem, dokud RV nedojede, rádio už neusekává konce vět a odvolání výjezdu zní správně.
+
+- FR: 60 jednotek (HZS, JPO II/III/IV, PČR, VZS, Horská služba) se zelenou AED značkou na mapě (vrstva FR). Dlaždice FR (skupina Speciální) přetažená na případ vyšle nejbližšího; v kartě případu lze vybrat ze tří nejbližších. Datová zpráva hlásí příjezd a převzetí TANR od svědků.
+- Návrat v režimu N3: tlačítko v panelu posádky + rádiová relace („po předání se prosím vracejte v režimu N3“ → potvrzení → „ZCB101 díky, konec“). Modrá tečka na dlaždici svítí, když posádka jede na majáky. RV mimo pravidelně zajištěnou oblast (>10 min od základny) se vrací na majáky vždy.
+- Naléhavost jízdy posádky lze změnit (N1–N3); rychlost a majáky podle naléhavosti.
+- Rádio: nové okno vlevo dole pod panelem případu s dlaždicemi odpovědí. Přepis relace a zápis do terminálu se objeví s několikavteřinovým zpožděním. Žádost o lékaře je červená; odpověď „Za vámi RV…“ posádku automaticky nevyšle – vyšlete ji ručně, jinak ji po prodlení vyšle kolega (−1 b.). Červené upozornění se objeví až po odpovědi na rádiu.
+- Mluvící posádka bliká v přehledu posádek.
+- Příznak ZZUM (výjezd bez lékaře) u RZP ze ZZUM stanoviště, ne u N1.
+- Opravy: LIBERO lze odpřáhnout od posádky na základně; RZP Planá zpět ve skupině České Budějovice; RZP s pacientem čeká na RV, který je na cestě; rádio už neusekává konce vět; odvolání výjezdu: „ZCBxxx, ZCB101 – ruším výjezd, vraťte se na základnu“; po zajištění osoby už nejede vyjednavač; zabarikádovaná osoba → zásahová jednotka PČR z Českého Krumlova se simulovaným dojezdem.
+
+---
+
 ## v0.20.1 – 2026-11-14
 
 > Hlasové rádiové relace nově říkají jedničku jako „jedna“, ne „jeden“. Volací znaky i čísla se čtou rádiově: „zecébé dvacet jedna“, „tři sta jedenáct“, „naléhavost en jedna“.

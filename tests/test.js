@@ -428,6 +428,7 @@ console.log('case click moves map camera true');
     ] } }, seenLog: 0,
     isVstricnaRadioMessage: text => /vstřícn|vstricn/i.test(String(text || '')),
     vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {},
+    performance: { now: () => Date.now() }, setTimeout() {}, renderRadio() {}, logDueAt: new Map(), logLastDue: 0,
   };
   vm.runInNewContext(fn[0] + '\npollLog(); pollLog();', ctx);
   if (toneCount !== 1 || ctx.seenLog !== 2) throw new Error('vstřícná jízda radio tone repeated or was missed');
@@ -593,4 +594,48 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   sim._deathCaseStep(a);
   if (a.status !== 'closed' || a.coroner.state !== 'sent') throw new Error('po vyslání koronera se případ neuzavřel');
   console.log('koroner: zjištění → dostupný → vyslání → uzavření true');
+}
+
+// ---- 0.21: FR, ZZUM příznak, návrat v režimu N3, odpřažení LIBERO, RV čeká, zapomenuté vyslání lékaře
+{
+  const sim = new Sim({ seed: 303, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  const mkCase = (n) => { const c = sim._spawn(); c.status = 'waiting'; c.n = n; c.typ = 'primární'; sim.s.cases.push(c); return c; };
+  // FR: vyslání nejbližšího, dojezd, datová zpráva o převzetí TANR
+  const c = mkCase(1);
+  const sug = sim.frSuggest(c.id, 3);
+  if (!sug.length || sug[0].eta > sug[1].eta + 1e-6 && sug[0].pref > sug[1].pref) throw new Error('FR návrh není seřazený');
+  const r = sim.sendFr(c.id);
+  if (!r.ok || !c.frs || c.frs[0].state !== 'enroute') throw new Error('FR se nevyslal');
+  if (sim.frSuggest(c.id, 80).some(x => x.frId === c.frs[0].id)) throw new Error('vyslaný FR se nesmí nabízet znovu');
+  for (let i = 0; i < 400 && c.frs[0].state !== 'onscene'; i++) sim.step(10);
+  if (c.frs[0].state !== 'onscene') throw new Error('FR nedojel');
+  if (!c.radioReports.some(x => /TANR od svědků/.test(x.text))) throw new Error('chybí datová zpráva o převzetí TANR');
+  JSON.parse(JSON.stringify(sim.s));
+  // režim N3 při návrat: majáky + rychlejší než standard
+  const k = sim.s.crews.find(x => x.type === 'RZP' && x.state === 'base');
+  const home = { lat: k.lat, lon: k.lon };
+  const free = { lat: home.lat + 0.12, lon: home.lon + 0.12 };
+  k.lat = free.lat; k.lon = free.lon; k.state = 'free';
+  const slow = sim._goHome(k); if (sim.isLights(k)) throw new Error('standardní návrat nesmí mít majáky');
+  const fast = (k.retN3 = true, sim._goHome(k));
+  if (!(fast < slow * 0.95) || !k.mv || k.mv.mode !== 'RETL') throw new Error('návrat v režimu N3 není rychlejší');
+  k.state = 'free'; if (!sim.isLights(k)) throw new Error('majáky se nezobrazují');
+  k.state = 'base'; k.mv = null;
+  // ZZUM příznak
+  const z = sim.s.crews.find(x => x.type === 'RZP' && x.zzum);
+  const c2 = mkCase(2); c2.rvNeed = true; c2.crews.push(z.id); z.caseId = c2.id;
+  if (!sim.setZzumFlag(c2.id, true).ok || c2.rvNeed) throw new Error('ZZUM příznak nezrušil povinný lékař');
+  const c1 = mkCase(1); c1.crews.push(z.id);
+  if (sim.setZzumFlag(c1.id, true).ok) throw new Error('ZZUM příznak nesmí jít u N1');
+  const nz = sim.s.crews.find(x => x.type === 'RZP' && !x.zzum && x.state === 'base'); const c3 = mkCase(2); c3.crews.push(nz.id); nz.caseId = c3.id;
+  if (sim.setZzumFlag(c3.id, true).ok) throw new Error('ZZUM příznak jen u ZZUM stanovišť');
+  // odpřažení LIBERO od posádky na základně
+  sim._isDay = () => true;
+  const lib = sim.s.crews.find(x => x.libero); lib.state = 'base'; lib.liberoPresent = true;
+  const rz = sim.s.crews.find(x => x.type === 'RZP' && x.st === lib.st && x.state === 'base');
+  if (rz && sim.attachLibero(rz.id, lib.id).ok) {
+    if (!sim.removeLibero(rz.id).ok || rz.rlp || lib.state !== 'base') throw new Error('LIBERO se neodpřáhlo');
+  }
+  console.log('FR, ZZUM příznak, návrat v režimu N3, odpřažení LIBERO true');
 }

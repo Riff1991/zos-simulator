@@ -3,7 +3,9 @@
 const ZOS_VOICE = (function () {
   let worker = null, state = 'off', progress = 0, err = '', ctx = null, master = null, volume = 0.6, tempo = 0.75;
   let reqSeq = 0; const pending = new Map(), cache = new Map(), queue = [];
-  let playing = false, listeners = [];
+  let playing = false, listeners = [], speakListeners = [];
+  const emitSpeak = (key, on) => { for (const f of speakListeners) { try { f(key, on); } catch (e) { /* ignore */ } } };
+  function onSpeak(f) { speakListeners.push(f); }
   const emit = () => { for (const f of listeners) { try { f(status()); } catch (e) { /* ignore */ } } };
   function status() { return { state, progress, err }; }
   function onChange(f) { listeners.push(f); }
@@ -75,7 +77,7 @@ const ZOS_VOICE = (function () {
     return t.replace(/\s+/g, ' ').trim();
   }
   function synth(text, key) {
-    const v = voiceOf(key), tx = speakable(text), ck = key + '|' + tempo + '|' + tx;
+    const v = voiceOf(key), tx0 = speakable(text), tx = /[.!?…]$/.test(tx0) ? tx0 : tx0 + '.', ck = key + '|' + tempo + '|' + tx;
     if (cache.has(ck)) return cache.get(ck);
     if (!worker || state !== 'ready') return Promise.resolve(null);
     const id = ++reqSeq;
@@ -91,7 +93,9 @@ const ZOS_VOICE = (function () {
     return c;
   }
   async function render(pcm, sr, v) {
-    const SR = 16000, rate = v.rate, lead = 0.2, tail = 0.16, dur = pcm.length / sr / rate;
+    // na konec přidáme ticho, aby syntéza ani filtry neuřízly poslední slabiku věty
+    const padded = new Float32Array(pcm.length + Math.round(sr * 0.3)); padded.set(pcm); pcm = padded;
+    const SR = 16000, rate = v.rate, lead = 0.2, tail = 0.3, dur = pcm.length / sr / rate;
     const len = Math.ceil((lead + dur + tail) * SR);
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     const oc = new OAC(1, len, SR);
@@ -107,8 +111,9 @@ const ZOS_VOICE = (function () {
     src.connect(hp); hp.connect(lp); lp.connect(pk); pk.connect(pre); pre.connect(sh); sh.connect(comp); comp.connect(out); out.connect(oc.destination);
     // výpadky digitálního přenosu (jen posádky)
     if (!v.zos) {
-      const drops = Math.random() < 0.55 ? 1 + (Math.random() < 0.3 ? 1 : 0) : 0;
-      for (let i = 0; i < drops; i++) { const at = lead + 0.3 + Math.random() * Math.max(0.1, dur - 0.6), d = 0.04 + Math.random() * 0.07; out.gain.setValueAtTime(0.9, at); out.gain.setValueAtTime(0.05, at + 0.005); out.gain.setValueAtTime(0.9, at + d); }
+      // jen u delších relací, nikdy v poslední polovině věty (výpadek nesmí useknout slovo na konci)
+      const drops = dur > 2.5 && Math.random() < 0.4 ? 1 : 0;
+      for (let i = 0; i < drops; i++) { const at = lead + 0.4 + Math.random() * Math.max(0.1, dur * 0.5 - 0.4), d = 0.03 + Math.random() * 0.04; out.gain.setValueAtTime(0.9, at); out.gain.setValueAtTime(0.05, at + 0.005); out.gain.setValueAtTime(0.9, at + d); }
     }
     // šum v pozadí po dobu klíčování
     const nb = oc.createBuffer(1, len, SR), nd = nb.getChannelData(0);
@@ -146,10 +151,12 @@ const ZOS_VOICE = (function () {
         const c = audioCtx(); if (!c) break;
         const v = voiceOf(it.key);
         const res = it.p ? await it.p : null;
-        if (!res || !res.pcm || !res.pcm.length) { await chirpOnly(v.zos); continue; }
+        if (!res || !res.pcm || !res.pcm.length) { emitSpeak(it.key, true); await chirpOnly(v.zos); emitSpeak(it.key, false); continue; }
         let ab;
         try { ab = await render(res.pcm, res.sr, v); } catch (e) { await chirpOnly(v.zos); continue; }
+        emitSpeak(it.key, true);
         await new Promise(resolve => { const s = c.createBufferSource(); s.buffer = ab; s.connect(master); s.onended = resolve; s.start(); setTimeout(resolve, ab.duration * 1000 + 800); });
+        emitSpeak(it.key, false);
         await new Promise(r => setTimeout(r, 180));
       }
     } finally { playing = false; }
@@ -170,5 +177,5 @@ const ZOS_VOICE = (function () {
   function demo() { for (const [t, k] of DEMO) say(t.replace(/^ZCB\d+: /, ''), k); }
   function prefetch(text, key) { if (state === 'ready') synth(text, key); }
   function busy() { return playing || queue.length > 0; }
-  return { enable, unlock, setVolume, setTempo, say, prefetch, status, onChange, speakable, busy, chirp: zos => chirpOnly(!!zos), demo, renderExchange, DEMO };
+  return { enable, unlock, setVolume, setTempo, onSpeak, say, prefetch, status, onChange, speakable, busy, chirp: zos => chirpOnly(!!zos), demo, renderExchange, DEMO };
 })();

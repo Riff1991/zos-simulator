@@ -151,3 +151,34 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - Místo seznamu odrážek (`<ul><li>`) se nyní zobrazuje u každé verze jeden odstavec (3–4 věty) shrnutí hlavních změn.
 - Datový formát: `ZOS_CHANGELOG` obsahuje objekty s polem `”p”` (odstavec) místo `”l”` (seznam).
 - Cíl: zjednodušit a zkompaktovat zobrazení cambgov na úvodní stránce, zpřehlednit informace o novinkách.
+
+### Várka požadavků z 14. 11. 2026 (v0.21)
+**Návrat a naléhavost**
+- Návrat z případu je standardně bez majáků. Dispečer může posádce nařídit **režim N3 (návrat na VRZ / s majáky)** – rychlejší dle modelu rychlosti. Nastavuje se v panelu přehledových posádek po kliknutí na vůz ve spodním panelu. Rádiem: „po předání se prosím vracejte v režimu N3“ → posádka potvrdí → ZOS „ZCB101 díky, konec“.
+- Na dlaždici vozu malá modrá tečka svítí, když posádka jede na majáky (k případu i zpět v N3).
+- RV se vrací na VRZ vždy; je-li mimo pravidelně zabezpečovanou oblast (cca >10 min od základny), vrací se v režimu N3 až na základnu.
+- Rychlost posádky podle naléhavosti; dispečer může naléhavost posádky změnit.
+**Opravy**
+- Nejde odpřiřadit libero od posádky.
+- Když mluví posádka, bliká v panelu posádek ikonka konkrétního vozu.
+- RZP Planá přesunout zpět do přehledu posádek České Budějovice.
+- Pokud si posádka dodatečně po příjezdu vyžádá RV, RZP **nesmí odjet s pacientem**, dokud RV nedojede (případně se potkají po cestě, má-li to smysl). RV se nesmí uvolnit dřív, než dojede.
+- Posádky při rádiové komunikaci ukončují slova v půlce (hlavně na konci věty) – dohrát relaci celou.
+- Odvolání výjezdu rádiem: „ZCBxxx, ZCB101“ → „ZCBxxx na příjmu“ → „ruším výjezd, vraťte se na základnu“ (ne „volající odvolal“).
+- „OS KŘP JčK: hlídka osobu zajistila, vyjednavač na cestě“ nedává smysl – po zajištění osoby vyjednavač není potřeba.
+- Zabarikádování v domě/bytě: na místo vyjíždí zásahová jednotka z Českého Krumlova (simulovaný čas dojezdu).
+**First respondeři (FR)**
+- Nový typ zdroje: HZS, JPO II/III/IV, PČR, VZS, Horská služba (seznam souřadnic od uživatele). Na mapě malé zelené AED symboly. V panelu posádek malá samostatná skupina „FR“. Vyslání ručně i automaticky nejbližšího; v datové zprávě vidět „na místě, přebírají TANR od svědků“. Typ FR se ve hře rozlišuje.
+**ZZUM**
+- Příznak ZZUM = výjezd bez lékaře, volitelně jen u ZZUM stanovišť.
+**Rádiové okno**
+- Nové menší okno vlevo dole pod panelem vybraného případu, dlaždice odpovědí. Zpráva o zhoršení/posouzení stavu (žádost o lékaře) červená; pokud ji dispečer nevyřídí, doplní se prodleva. Stisk dlaždice automaticky **nepřiřazuje** posádku. Zpráva do terminálu a přepis v rádiovém okně se objeví až s několikavteřinovým zpožděním, ne ihned po odpovědi na příjmu.
+
+### Rozhodnutí k várce v0.21 (14. 11. 2026)
+- „Režim N3“ = jízda na majáky (VRZ). K případu jedou na majáky naléhavosti N1/N2 (a transport P2), N3/N4 bez majáků; dispečer může naléhavost jízdy posádky změnit (přepočte se zbývající trasa). Návrat je standardně bez majáků; režim N3 ho zrychlí. Modrá tečka na dlaždici = jede na majáky.
+- Žádost posádky o lékaře: odpověď tlačítkem rádio „Za vámi RV …“ nic nevysílá. Když dispečer do 3 min nevyšle lékaře, vyšle ho kolega s −1 b. Červené upozornění nahoře až minutu po odpovědi na rádiu.
+- RZP čeká s pacientem na lékaře (RV/LZS), pokud je vyslán a jede; limit 15 min platí jen tehdy, když lékař vyslán není. „Potkání po cestě“ zatím není implementováno.
+- FR: nejbližší podle silniční trasy + doba na výjezd podle typu (HZS ~1–2 min, JPO III ~4–7 min, VZS/HS ~3–8 min); VZS přednost u tonutí, horská služba v terénu. FR je v dlaždicích jediná dlaždice „FR“ ve skupině Speciální, ne 60 dlaždic. FR neboduje.
+- ZZUM příznak lze zapnout, jen když je k případu vyslána RZP ze ZZUM stanoviště; u N1 ne (lékař povinný).
+- Zásahová jednotka PČR z Českého Krumlova: modelována jen jako datové zprávy OS KŘP s dojezdem 12–25 min (okres ČK) / 30–65 min (jinde).
+- Rádio: přepis relace se v okně ukáže po 3,5 s, řádky terminálu po 4 s a dalších ~2,3 s za sebou (skutečný čas).

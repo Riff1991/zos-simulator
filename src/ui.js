@@ -92,7 +92,7 @@ const panelWindows = { map: null, radio: null };
 try { mainPanelHidden = Object.assign(mainPanelHidden, JSON.parse(localStorage.getItem(PANEL_LAYOUT_KEY) || '{}')); } catch (_) {}
 if (satellitePanel) document.body.dataset.panel = satellitePanel;
 let tabCase = 'waiting', tabRadio = 'ČB', view = 'cases', caseSearch = '';
-let layers = { base: true, hosp: true, crews: true, cases: true };
+let layers = { base: true, hosp: true, crews: true, cases: true, fr: true };
 let vb = { x: 30, y: 30, w: 970, h: 940 };
 let lastT = performance.now(), seenLog = 0, saveAt = 0, modalOpen = false, audio = null, sugOpen = true;
 const okresCache = {};
@@ -135,6 +135,7 @@ function ico(state, type) {
   if (type === 'LZS') return helicopter();
   if (type === 'PCR') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><path d="M18 3l11 4v6c0 5-4.5 8-11 9-6.5-1-11-4-11-9V7z" fill="#1d4f9c" stroke="#fff" stroke-width="1.2"/><text x="18" y="16" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">PČR</text></svg>`;
   if (type === 'HZS') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><path d="M18 2c3 4 7 6 7 12a7 7 0 0 1-14 0c0-3 2-5 3-7 1 2 2 3 3 3 0-3 1-5 1-8z" fill="#e2463b" stroke="#fff" stroke-width="1.1"/></svg>`;
+  if (type === 'FR') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><rect x="9" y="1.500" width="18" height="21" rx="3" fill="#1a9b4b" stroke="#fff" stroke-width="1.4"/><path d="M18 19.500C18 19.500 11.500 15.200 11.500 11 11.500 8.800 13.200 7.500 14.900 7.500 16.200 7.500 17.300 8.200 18 9.300 18.700 8.200 19.800 7.500 21.100 7.500 22.800 7.500 24.500 8.800 24.500 11 24.500 15.200 18 19.500 18 19.500Z" fill="#fff"/><path d="M18.800 8.800 15.800 12.400H17.700L17 16.200 20.400 11.800H18.400Z" fill="#1a9b4b"/></svg>`;
   if (type === 'COR') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><circle cx="18" cy="12" r="9" fill="#fff" stroke="#202a31" stroke-width="1.3"/><path d="M18 6.500v11M13.5 10h9" stroke="#202a31" stroke-width="2.2" stroke-linecap="round"/></svg>`;
   switch (state) {
     case 'call': return car(1, '#fff', type);
@@ -178,7 +179,8 @@ const ALERT_TTL_MS = 40000, alertSeen = new Map(), alertHidden = new Set();
 function renderLiveAlerts() {
   const now = performance.now();
   const visible = key => { if (alertHidden.has(key)) return false; if (!alertSeen.has(key)) alertSeen.set(key, now); return now - alertSeen.get(key) < ALERT_TTL_MS; };
-  const requests = sim.s.cases.filter(c => c.status !== 'closed' && c.rvReq && !c.rvReq.cancelled && c.rvReq.satT == null && !c.docAssigned && !alertHidden.has('rv:' + c.id));
+  const rvOnRadio = c => (sim.s.radioQ || []).some(e => e.caseId === c.id && e.kind === 'rv' && (e.state === 'calling' || e.state === 'open'));
+  const requests = sim.s.cases.filter(c => c.status !== 'closed' && c.rvReq && !c.rvReq.cancelled && c.rvReq.satT == null && !c.docAssigned && !alertHidden.has('rv:' + c.id) && !rvOnRadio(c) && (c.rvAckAt == null || sim.s.t - c.rvAckAt > 60));
   const agencyReq = sim.s.cases.filter(c => c.status !== 'closed' && c.agencies).flatMap(c => ['pcr', 'hzs'].filter(k => c.agencies[k] && c.agencies[k].state === 'requested' && !alertHidden.has(`ag:${c.id}:${k}`)).map(k => ({ c, k })));
   const reports = sim.s.cases.flatMap(c => (c.radioReports || []).filter(r => r.received && !r.acknowledged && visible(c.id + ':' + r.id)).map(r => ({ c, r }))).slice(-4);
   const x = (key, extra) => `<span class="alert-x" role="button" aria-label="Zavřít upozornění" title="Zavřít" data-act="dismiss-alert" data-key="${esc(key)}"${extra || ''}>✕</span>`;
@@ -298,6 +300,12 @@ function renderDetail() {
   const secDelta = c.scheduleDelta == null ? 'zatím nepřistaveno' : `${Math.round(Math.abs(c.scheduleDelta) / 60)} min ${c.scheduleDelta < 0 ? 'před termínem' : 'po termínu'}`;
   let h = `<div class="panel dgrid"><div class="dc1"><h3>${esc(c.num)} · <span class="pill" style="background:${c.n === 1 ? '#f7c9c5' : c.n === 2 ? '#fbdcb5' : c.n === 4 ? '#d8e4ec' : '#f7ecb8'}">N${c.n}${c.dyn ? ' dyn.' : ''}</span> <span class="pill" style="background:#e1e8ee">${st}</span></h3>`;
   if (c.n === 2 && !c.dyn && c.status !== 'closed' && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) h += `<button class="btn" data-act="n2-dynamic" data-case="${c.id}">Změnit výzvu na dynamickou</button>`;
+  if (c.n >= 2 && c.status !== 'closed' && c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RZP' && k.zzum && k.caseId === c.id; })) h += `<button class="btn${c.zzumFlag ? ' pri' : ''}" data-act="zzum-flag" data-case="${c.id}" title="ZZUM – výjezd bez lékaře">${c.zzumFlag ? '✓ ZZUM – bez lékaře (zrušit)' : 'Příznak ZZUM – výjezd bez lékaře'}</button>`;
+  if (c.typ !== 'sekundární' && c.status !== 'closed' && !c.exitus) {
+    const sent = (c.frs || []).map(a => `<li>${esc(a.name)} – ${a.state === 'onscene' ? 'na místě' : 'na cestě, dojezd ' + Math.max(1, Math.round((a.arriveAt - sim.s.t) / 60)) + ' min'}</li>`).join('');
+    const sug = sim.frSuggest(c.id, 3).map(x => `<button class="btn" data-act="send-fr" data-case="${c.id}" data-fr="${x.frId}" title="${esc(x.label)}">${esc(x.name)} · ${Math.max(1, Math.round(x.eta / 60))} min</button>`).join('');
+    h += `<div class="multi-patient"><b>First respondeři</b>${sent ? `<ul style="margin:2px 0 4px 16px;padding:0">${sent}</ul>` : ' <span style="color:#5a6a7a">nikdo nevyslán</span>'}<div class="opts">${sug || ''}</div></div>`;
+  }
   const wx = sim._lzsWeatherStatus(), wxLabel = wx === 'clear' ? 'bez omezení' : wx === 'consult' ? 'na konzultaci' : 'neletovo';
   h += `<div class="multi-patient"><b>LZS · ${wxLabel}</b>${wx === 'consult' ? `<br>${c.lzsConsult?.status === 'pending' ? 'Čeká se na rozhodnutí pilota.' : c.lzsConsult?.status === 'approved' ? 'Pilot let povolil.' : c.lzsConsult?.status === 'declined' ? 'Pilot let nedoporučil.' : `<button class="btn" data-act="lzs-consult" data-case="${c.id}">Konzultovat s pilotem</button>`}` : ''}</div>`;
   if (c.lzsActive && c.lzsTechRequired) h += `<div class="multi-patient"><b>Technická součinnost LZS · nepřístupný terén</b><br>${c.lzsTechDone ? 'Přístup k pacientovi je zajištěn.' : c.lzsTechRequested ? 'HZS zajišťuje přístup.' : `<button class="btn" data-act="lzs-tech" data-case="${c.id}">Vyžádat technickou součinnost HZS</button>`}</div>`;
@@ -408,7 +416,8 @@ function agencyTiles() {
   const by = k => open.filter(c => c.agencies && c.agencies[k] && (c.agencies[k].state === 'sent' || c.agencies[k].state === 'onscene')).map(c => c.num);
   const req = k => open.some(c => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested');
   const tile = (id, cls, name, list, icon, ask) => `<button class="tile ${cls}${ask ? ' agency-ask' : ''}" data-crew="${id}" title="${esc(name)} – přetáhni na případ"><span class="tn">${name}</span><i>${list.length ? esc(list.join(', ')) : 'volné'}</i>${icon}</button>`;
-  return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), corAsk) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
+  const frBy = open.filter(c => (c.frs || []).length).map(c => c.num);
+  return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), corAsk) + tile('x-fr', 'st-fr', 'FR', frBy, ico('base', 'FR'), false) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
 }
 function deathInfo(c) {
   if (!c.exitus) return '';
@@ -418,10 +427,9 @@ function deathInfo(c) {
 }
 function renderCrews() {
   const s = sim.s;
-  const HELI = k => k.st === 'cbpl' && k.type === 'RZP'; // RZP Planá – na základně u LZS
-  const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU' && !HELI(k)) }));
-  groups.push({ title: 'Speciální (LZS, RZP Planá, součinnost, MU)', crews: s.crews.filter(k => k.type === 'LZS' || k.type === 'MU' || HELI(k)) });
-  const rank = k => (k.id === 'lzs' ? -3 : k.type === 'LZS' ? -2.5 : HELI(k) ? -2 : k.type === 'MU' ? 5 : k.type === 'RZP' && !k.res ? 0 : k.type === 'RV' ? 1 : k.type === 'LIB' ? 1.5 : k.type === 'RZP' ? 2 : 3);
+  const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU') }));
+  groups.push({ title: 'Speciální (LZS, součinnost, MU)', crews: s.crews.filter(k => k.type === 'LZS' || k.type === 'MU') });
+  const rank = k => (k.id === 'lzs' ? -3 : k.type === 'LZS' ? -2.5 : k.type === 'MU' ? 5 : k.type === 'RZP' && !k.res ? 0 : k.type === 'RV' ? 1 : k.type === 'LIB' ? 1.5 : k.type === 'RZP' ? 2 : 3);
   let h = '';
   for (const g of groups) {
     g.crews.sort((a, b) => rank(a) - rank(b));
@@ -432,7 +440,7 @@ function renderCrews() {
         const pre = spec && k.type === 'MU' && !g._ag ? (g._ag = true, agencyTiles()) : '';
         const prealert = s.cases.some(c => c.status === 'intake' && c.n === 1 && (c.prealertCrewIds || []).includes(k.id));
         const soft = k.caseRole === 'exam' ? 'exam' : k.caseRole === 'escort' ? 'escort' : '';
-        return pre + `<button class="tile ty-${k.type} st-${k.state} ${soft ? 'soft-' + soft : ''} ${followK === k.id ? 'follow' : ''} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
+        return pre + `<button data-code="${esc(k.code)}" class="tile ty-${k.type} st-${k.state} ${talkCodes.has(String(k.code)) ? 'talking' : ''} ${soft ? 'soft-' + soft : ''} ${followK === k.id ? 'follow' : ''} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${sim.isLights(k) ? '<span class="siren-dot" title="jede na majáky"></span>' : ''}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
       }).join('') + (spec && !g._ag ? agencyTiles() : '') + '</div>';
   }
   setHTML($('crews'), h);
@@ -446,9 +454,17 @@ function renderCrews() {
 <dt>Uskutečněné výjezdy</dt><dd>${k.callsCompleted || 0}</dd>
 ${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${esc(cs.klasif)}</a></dd>` : ''}${k.dest ? `<dt>Cíl</dt><dd>${esc(k.dest.name)}</dd>` : ''}</dl>`;
   if (k.type === 'RZP' && (k.state === 'base' || k.state === 'call') && sim.liberoFor(k)) p += `<button class="btn pri" data-act="libero" data-crew="${k.id}">+ LIBERO (dočasně RLP)</button>`;
+  if (k.type === 'RZP' && k.liberoId) p += `<button class="btn" data-act="unlibero" data-crew="${k.id}">− LIBERO (odpřadit lékaře)</button>`;
+  if (k.type === 'LIB' && k.withCrew) p += `<button class="btn" data-act="unlibero" data-crew="${k.withCrew}">Odpřadit od ${esc((sim.crewOf(k.withCrew) || {}).name || 'RZP')}</button>`;
   if (k.type === 'LIB') { const m = (sim.s.libero && sim.s.libero.modes[k.id]) || 'random'; p += `<div class="opts" style="margin:4px 0">Obsazení: ${[['on', 'Obsazeno'], ['off', 'Neobsazeno'], ['random', 'Náhodně']].map(([v, l]) => `<button data-libset="${k.id}" data-val="${v}" class="${m === v ? 'on' : ''}">${l}</button>`).join('')}</div>`; }
   if (k.type === 'LIB' && k.state === 'base') for (const r of sim.s.crews.filter(x => x.type === 'RZP' && x.st === k.st && !x.rlp && (x.state === 'base' || x.state === 'call'))) p += `<button class="btn" data-act="libero" data-crew="${r.id}" data-lib="${k.id}">Do vozu ${esc(r.name)}</button>`;
   if (k.type === 'LIB' && k.state === 'off') p += '<p style="color:#5a6a7a;margin:4px 0">LIBERO dnes není ve službě (jen přes den a ne vždy).</p>';
+  if (!['LZS', 'MU', 'LIB'].includes(k.type) && !['off', 'base', 'second', 'activating', 'attached'].includes(k.state)) {
+    const dn = k.driveN || (cs ? Math.min(3, cs.n || 3) : 3);
+    if (['call', 'enroute'].includes(k.state)) p += `<div class="opts" style="margin:4px 0">Naléhavost jízdy: ${[1, 2, 3].map(n => `<button data-act="drive-n" data-crew="${k.id}" data-n="${n}" class="${dn === n ? 'on' : ''}">N${n}</button>`).join('')} <span style="color:#5a6a7a">${sim.isLights(k) ? '● majáky' : 'bez majáků'}</span></div>`;
+    const n3 = k.retN3 || k.retLights;
+    p += `<button class="btn${n3 ? '' : ' pri'}" data-act="ret-n3" data-crew="${k.id}" title="Po předání se vracet na majáky (rychleji)">${n3 ? '● Návrat v režimu N3 (majáky)' : 'Vracet se v režimu N3 (majáky)'}</button>`;
+  }
   if (k.res && k.state === 'off') p += `<button class="btn pri" data-act="resv" data-crew="${k.id}">Aktivovat zálohu</button>`;
   if (sim.avail(k) && selCase && (selCase.status === 'waiting' || selCase.status === 'active') && !(k.type === 'MU' && !selCase.mu)) p += `<button class="btn pri" data-act="assign" data-case="${selCase.id}" data-crew="${k.id}">Vyslat k ${esc(selCase.num)}</button>`;
   if ((k.state === 'call' || k.state === 'enroute') && selCase && selCase.id !== k.caseId && selCase.status !== 'closed') p += `<button class="btn red" data-act="reassign" data-case="${selCase.id}" data-crew="${k.id}">Přesměrovat na ${esc(selCase.num)}</button>`;
@@ -461,7 +477,7 @@ ${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${e
 const KRAJ = [[49.70, 14.40], [49.68, 14.80], [49.60, 15.05], [49.35, 15.25], [49.15, 15.50], [48.95, 15.35], [48.78, 15.05], [48.72, 14.80], [48.62, 14.55], [48.60, 14.30], [48.62, 14.0], [48.75, 13.82], [48.88, 13.70], [49.05, 13.55], [49.20, 13.65], [49.40, 13.80], [49.58, 14.0], [49.70, 14.15]];
 const VLT = [[48.64, 14.23], [48.78, 14.33], [48.97, 14.47], [49.06, 14.43], [49.22, 14.42], [49.35, 14.39], [49.55, 14.15]];
 function renderToolsOnce() {
-  setHTML($('maptools'), [['base', 'Základny'], ['hosp', 'Nemocnice'], ['crews', 'Vozidla'], ['cases', 'Případy']].map(([k, l]) => `<button data-layer="${k}" class="${layers[k] ? '' : 'off'}">${l}</button>`).join('') + '<button data-act="zoomin">＋</button><button data-act="zoomout">－</button><button data-act="zoomreset">⌂</button>');
+  setHTML($('maptools'), [['base', 'Základny'], ['hosp', 'Nemocnice'], ['fr', 'FR'], ['crews', 'Vozidla'], ['cases', 'Případy']].map(([k, l]) => `<button data-layer="${k}" class="${layers[k] ? '' : 'off'}">${l}</button>`).join('') + '<button data-act="zoomin">＋</button><button data-act="zoomout">－</button><button data-act="zoomreset">⌂</button>');
 }
 
 const BASE_HTML = (() => {
@@ -589,7 +605,7 @@ function glInit() {
     GL.on('error', e => { if (window.console) console.warn('map', e && e.error && e.error.message); });
     GL.on('load', () => {
       const empty = { type: 'FeatureCollection', features: [] };
-      for (const s of ['routes', 'stations', 'hosp', 'heliport', 'cases', 'crews']) GL.addSource(s, { type: 'geojson', data: empty });
+      for (const s of ['routes', 'stations', 'hosp', 'heliport', 'fr', 'cases', 'crews']) GL.addSource(s, { type: 'geojson', data: empty });
       GL.addSource('selroute', { type: 'geojson', data: empty });
       GL.addLayer({ id: 'routes', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'col'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 3, 14, 6], 'line-opacity': 0.85 } });
       GL.addLayer({ id: 'stations', type: 'circle', source: 'stations', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 4.5, 13, 7], 'circle-color': '#fffdf4', 'circle-stroke-color': '#263b4a', 'circle-stroke-width': 1.6 } });
@@ -618,6 +634,13 @@ function glInit() {
         if (GL.getLayer('stations-house')) return;
         GL.addLayer({ id: 'stations-house', type: 'symbol', source: 'stations', layout: { 'icon-image': 'zos-house', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.48, 13, 0.78], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.base ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, 'crews-base');
       });
+      const aedSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><rect x="1.500" y="1.500" width="25" height="25" rx="4.500" fill="#1a9b4b" stroke="#fff" stroke-width="2"/><path d="M14 23C14 23 5 17 5 11 5 8 7.400 6.200 9.800 6.200 11.600 6.200 13.200 7.200 14 8.800 14.800 7.200 16.400 6.200 18.200 6.200 20.600 6.200 23 8 23 11 23 17 14 23 14 23Z" fill="#fff"/><path d="M15.400 9 11 15H13.600L12.600 20 17 13.600H14.400Z" fill="#1a9b4b"/></svg>';
+      svgIcon('zos-aed', aedSvg, 28, 28, () => {
+        if (GL.getLayer('fr-aed')) return;
+        GL.addLayer({ id: 'fr-aed', type: 'symbol', source: 'fr', layout: { 'icon-image': 'zos-aed', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.36, 13, 0.62], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.fr ? 'visible' : 'none' } }, 'crews-base');
+        GL.addLayer({ id: 'fr-l', type: 'symbol', source: 'fr', minzoom: 10.5, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'visibility': layers.fr ? 'visible' : 'none' }, paint: { 'text-color': '#0e6b35', 'text-halo-color': '#fff', 'text-halo-width': 1.2 } }, 'crews-base');
+      });
+      GL.getSource('fr').setData({ type: 'FeatureCollection', features: (D.fr || []).map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [f.lon, f.lat] }, properties: { name: f.name } })) });
       // průhledný kruh drží klikací plochu a zvýraznění výběru; samotné vozidlo je symbol (sanitka / RV)
       GL.addLayer({ id: 'crews', type: 'circle', source: 'crews', filter: ['all', ['!=', ['get', 'type'], 'LZS'], ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']]], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 9, 14, 15], 'circle-color': '#ffd23f', 'circle-opacity': ['case', ['get', 'sel'], 0.55, 0.01], 'circle-stroke-color': '#111', 'circle-stroke-width': ['case', ['get', 'sel'], 1.5, 0] } });
       {
@@ -662,7 +685,7 @@ function glApplyLayers() {
   if (!glReady) return;
   const vis = (ids, on) => ids.forEach(id => GL.getLayer(id) && GL.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   vis(['stations', 'stations-l', 'stations-house'], layers.base); vis(['hosp', 'hosp-t', 'hosp-l', 'heliport', 'heliport-l'], layers.hosp);
-  vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
+  vis(['fr-aed', 'fr-l'], layers.fr); vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
@@ -734,6 +757,7 @@ function renderMapSvg() {
     const x = X(st.lon), y = Y(st.lat), z = sc;
     h += `<circle cx="${x}" cy="${y}" r="${5.5 * z}" fill="#fffdf4" stroke="#263b4a" stroke-width="${1.3 * z}"/><path d="M${x - 3.8 * z} ${y - .2 * z}L${x} ${y - 3.5 * z}L${x + 3.8 * z} ${y - .2 * z}V${y + 3.3 * z}H${x - 3.8 * z}Z" fill="#fffdf4" stroke="#263b4a" stroke-width="${1.1 * z}" stroke-linejoin="round"/><path d="M${x - 3.8 * z} ${y - .2 * z}L${x} ${y - 3.5 * z}L${x + 3.8 * z} ${y - .2 * z}" fill="none" stroke="#d9342b" stroke-width="${1.4 * z}" stroke-linecap="round" stroke-linejoin="round"/><rect x="${x - .8 * z}" y="${y + 1 * z}" width="${1.6 * z}" height="${2.3 * z}" fill="#b8c8d3" stroke="#263b4a" stroke-width="${.5 * z}"/>` + (zoomed || ['cb', 'ta', 'jh', 'st', 'pi', 'pt', 'ck'].includes(st.id) ? `<text x="${x + 7 * sc}" y="${y + 3 * sc}" font-size="${10 * sc}" fill="#33475a">${esc(st.short)}</text>` : '');
   }
+  if (layers.fr) for (const f of D.fr || []) { const x = X(f.lon), y = Y(f.lat), r = 4.2 * sc; h += `<rect x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" rx="1.5" fill="#1a9b4b" stroke="#fff" stroke-width="1"><title>${esc(f.name)}</title></rect>`; }
   if (layers.hosp) for (const hp of D.hospitals) { const x = X(hp.lon), y = Y(hp.lat), r = 5.5 * sc; h += `<g><rect x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" fill="#fff" stroke="#c0281f" stroke-width="${1.5 * sc}"/><path d="M${x - r * .6} ${y}h${r * 1.2}M${x} ${y - r * .6}v${r * 1.2}" stroke="#c0281f" stroke-width="${2 * sc}"/></g>` + (zoomed ? `<text x="${x + 8 * sc}" y="${y - 6 * sc}" font-size="${9 * sc}" fill="#8a1c14">${esc(hp.short)}</text>` : ''); }
   if (layers.hosp) { for (const hp of [D.lzs.heliport, ...D.hospitals.filter(h => h.heliport)]) { const x = X(hp.lon), y = Y(hp.lat), r = 5.5 * sc; h += `<circle cx="${x}" cy="${y}" r="${r}" fill="#f4cf46" stroke="#263746" stroke-width="${1.5 * sc}"/><text x="${x}" y="${y + 3 * sc}" text-anchor="middle" font-size="${8 * sc}" font-weight="700" fill="#263746">H</text>` + (zoomed ? `<text x="${x + 8 * sc}" y="${y - 6 * sc}" font-size="${9 * sc}" fill="#263746">${hp.id === 'h-fnkv' ? 'LKPY' : 'LKCC'}</text>` : ''); } }
   const routeOf = (kk, col, w) => {
@@ -819,8 +843,8 @@ function renderRadio() {
     const availability = remaining <= 0 ? 'Volná nyní' : run.phase === 'transport' ? `Volná přibližně za ${Math.ceil(remaining / 60)} min` : `Volná za ${Math.ceil(remaining / 60)} min`;
     return `<div class="transport-row ${run.phase}"><b>${esc(k.name)}</b><span>${esc(run.hospitalName)}</span><span>${phase} · ${detail}</span><span class="transport-time">${availability}</span></div>`;
   }).join('') : '<div class="transport-empty">Žádná posádka právě nejede do nemocnice ani se nevrací po předání.</div>');
-  const L = sim.s.log, out = [];
-  for (let i = L.length - 1; i >= 0 && out.length < 90; i--) { const e = L[i], kind = e.kind === 'deadline' ? 'alert' : e.kind, vj = isVstricnaRadioMessage(e.txt); out.push(`<div class="k-${kind}${vj ? ' k-vstricna' : ''} ${e.cid ? 'click' : ''}" ${e.cid ? `data-case="${e.cid}"` : ''}><time>${e.clock}</time><span>${esc(e.txt)}</span></div>`); }
+  const L = sim.s.log, out = [], nowMs = performance.now();
+  for (let i = L.length - 1; i >= 0 && out.length < 90; i--) { const e = L[i]; if (e.kind === 'crew' && (logDueAt.get(e.id) || 0) > nowMs) continue; const kind = e.kind === 'deadline' ? 'alert' : e.kind, vj = isVstricnaRadioMessage(e.txt); out.push(`<div class="k-${kind}${vj ? ' k-vstricna' : ''} ${e.cid ? 'click' : ''}" ${e.cid ? `data-case="${e.cid}"` : ''}><time>${e.clock}</time><span>${esc(e.txt)}</span></div>`); }
   setHTML($('log'), out.join(''));
 }
 
@@ -892,11 +916,23 @@ function applyVoice() {
   ZOS_VOICE.enable(!!settings.voice && !!settings.sound);
 }
 if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onChange(() => { const el = $('voice-status'); if (el) el.textContent = voiceStatusText(); if (sim) renderRadioLive(); });
-function voiceSay(text, key, isCall) {
+function voiceSay0(text, key, isCall) {
   if (!settings.sound || typeof ZOS_VOICE === 'undefined') return;
   const st = ZOS_VOICE.status().state;
   if (settings.voice && (st === 'ready' || st === 'loading')) ZOS_VOICE.say(text, key);
   else if (isCall) ZOS_VOICE.chirp(false);
+}
+// posádka, která právě vysílá, bliká v přehledu posádek
+const talkCodes = new Set();
+function setTalking(key, on) {
+  const k = String(key); if (on) talkCodes.add(k); else talkCodes.delete(k);
+  document.querySelectorAll(`#crews .tile[data-code="${k}"]`).forEach(el => el.classList.toggle('talking', on));
+}
+if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onSpeak((key, on) => { if (key !== 'zos') setTalking(key, on); });
+function voiceSay(text, key, isCall) {
+  const st = typeof ZOS_VOICE !== 'undefined' ? ZOS_VOICE.status().state : 'off', real = settings.sound && settings.voice && (st === 'ready' || st === 'loading');
+  if (!real && key !== 'zos' && settings.sound !== undefined) { setTalking(key, true); setTimeout(() => setTalking(key, false), Math.min(9000, 1200 + String(text).length * 65)); }
+  voiceSay0(text, key, isCall);
 }
 function radioSpeak(txt) {
   let m;
@@ -911,17 +947,22 @@ const radioOpen = () => (sim && sim.s.radioQ || []).filter(e => e.state === 'cal
 const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen().some(e => e.state !== 'zos');
 const radioSlowActive = () => !!(settings.radioSlow && radioPending());
 const rqPrefetched = new Set();
+const RC_DELAY = 3500, rcSeen = new Map();
 function renderRadioLive() {
   const box = $('radio-live'); if (!box || !sim) return;
-  const list = radioOpen().slice(-4);
+  const list = radioOpen().slice(-4), now = performance.now();
+  const win = $('w-rcom'); if (win) win.classList.toggle('live', list.length > 0);
   for (const e of list) if (!rqPrefetched.has(e.id) && typeof ZOS_VOICE !== 'undefined' && settings.voice) { rqPrefetched.add(e.id); ZOS_VOICE.prefetch(e.msg, e.code); for (const o of e.opts || []) if (o.say) ZOS_VOICE.prefetch(o.say, 'zos'); }
   const cs = id => id ? sim.caseOf(id) : null;
-  setHTML(box, list.map(e => {
+  setHTML(box, !list.length ? '<div class="rc-idle">Frekvence volná · žádná posádka nevolá.</div>' : list.map(e => {
     const c = cs(e.caseId), tag = c ? `<span class="rc-case" data-case="${c.id}">${esc(c.num)} · N${c.n}</span>` : '';
     const sign = /^K/.test(String(e.callCodes || '')) ? 'Kryštof ' + String(e.callCodes).slice(1) : 'ZCB' + (e.callCodes || e.code);
     if (e.state === 'zos') return `<div class="radio-call zos"><span class="rc-ico" aria-hidden="true">📻</span><b>→ ZCB${esc(e.code)}</b><span class="rc-msg">Informuj posádku: ${esc(e.msg)}</span>${tag}<button class="btn pri" data-act="rq-zos" data-rq="${e.id}">Volat posádku</button></div>`;
-    if (e.state === 'calling') return `<div class="radio-call calling"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-name">${esc(e.name)} volá${e.tries > 1 ? ` (${e.tries}. volání)` : ''}</span>${tag}<button class="btn pri" data-act="rq-answer" data-rq="${e.id}" title="Klávesa P">Na příjmu</button></div>`;
-    return `<div class="radio-call open"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-msg">${esc(e.msg)}</span>${tag}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
+    if (e.state === 'calling') return `<div class="radio-call calling${e.kind === 'rv' ? ' rv' : ''}"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-name">${esc(e.name)} volá${e.tries > 1 ? ` (${e.tries}. volání)` : ''}</span>${tag}<button class="btn pri" data-act="rq-answer" data-rq="${e.id}" title="Klávesa P">Na příjmu</button></div>`;
+    if (!rcSeen.has(e.id)) { rcSeen.set(e.id, now); setTimeout(() => { if (sim) renderRadioLive(); }, RC_DELAY + 80); }
+    const heard = now - rcSeen.get(e.id) >= RC_DELAY, red = e.kind === 'rv' ? ' rv' : '', flag = e.kind === 'rv' ? '<span class="rc-red">ŽÁDOST O LÉKAŘE</span>' : '';
+    if (!heard) return `<div class="radio-call open${red}"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-hearing">${esc(e.name)} hlásí…</span>${tag}</div>`;
+    return `<div class="radio-call open${red}"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b>${flag}<span class="rc-msg">${esc(e.msg)}</span>${tag}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
   }).join(''));
 }
 // ---------- upozornění ----------
@@ -937,11 +978,13 @@ function beep(f, delay = 0, length = 0.12) {
 function newCallTone() { beep(620, 0, 0.16); beep(790, 0.2, 0.16); beep(1040, 0.4, 0.24); }
 function alarmBeep() { beep(1040); setTimeout(() => beep(780), 170); setTimeout(() => beep(1040), 340); }
 function vstricnaTone() { beep(740, 0, 0.12); beep(988, 0.15, 0.12); beep(1318, 0.3, 0.2); }
+const logDueAt = new Map(); let logLastDue = 0;
 function pollLog() {
   let vstricnaIncoming = false;
   for (const e of sim.s.log) {
     if (e.id <= seenLog) continue;
     seenLog = e.id;
+    if (e.kind === 'crew') { const now = performance.now(), due = Math.max(now + 4000, logLastDue + 2300); logLastDue = due; logDueAt.set(e.id, due); if (logDueAt.size > 400) logDueAt.delete(logDueAt.keys().next().value); setTimeout(() => { if (sim) renderRadio(); }, due - now + 60); }
     if (e.kind === 'crew' && !satellitePanel) radioSpeak(e.txt);
     if (isVstricnaRadioMessage(e.txt)) {
       vstricnaIncoming = true;
@@ -1247,6 +1290,10 @@ function act(a, el) {
     case 'vj-decline': { const r = sim.declineVstricna(d.case); if (!r.ok) toast(r.msg, 'warn'); break; }
     case 'rules': rulesModal(el && el.dataset.back); break;
     case 'prealert': { const r = sim.prealert(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Předpoplach: ' + r.crews.join(', ') + '. Posádky nevyjíždějí.', 'alert'); break; }
+    case 'send-fr': { const r = sim.sendFr(d.case, d.fr); toast(r.msg, r.ok ? '' : 'warn'); break; }
+    case 'zzum-flag': { const cs = sim.caseOf(d.case), r = sim.setZzumFlag(d.case, !(cs && cs.zzumFlag)); if (!r.ok) toast(r.msg, 'warn'); break; }
+    case 'drive-n': { const r = sim.setDriveUrgency(d.crew, d.n); if (!r.ok) toast(r.msg, 'warn'); break; }
+    case 'ret-n3': { const r = sim.requestReturnN3(d.crew); if (!r.ok) toast(r.msg, 'warn'); else toast('Návrat v režimu N3 nařízen.', ''); break; }
     case 'n2-dynamic': { const r = sim.convertN2Dynamic(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Výzva změněna na dynamickou.', ''); break; }
     case 'lzs-consult': { const r = sim.consultLzsPilot(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Čeká se na textové rozhodnutí pilota LZS.', 'alert'); break; }
     case 'lzs-tech': { const r = sim.requestLzsTechnicalAssist(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Technická součinnost HZS vyžádána.', 'alert'); break; }
@@ -1258,6 +1305,7 @@ function act(a, el) {
     case 'mu-landing': { const r = sim.requestMuLandingInfo(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Ověření plochy předáno, čeká se na odpověď z místa.', ''); break; }
     case 'lzs-support': { const r = sim.requestLzsSupport(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else { toast('Mezikrajská LZS je k dispozici. Zkontroluj ETA a potvrď vyslání.', ''); beep(660); } break; }
     case 'libero': { const r = sim.attachLibero(d.crew, d.lib || undefined); if (!r.ok) toast(r.msg, 'warn'); else toast(`${sim.crewOf(d.crew).name}: lékař LIBERO ve voze`, ''); break; }
+    case 'unlibero': { const r = sim.removeLibero(d.crew); if (!r.ok) toast(r.msg, 'warn'); else toast('LIBERO odpřaženo od posádky.', ''); break; }
     case 'assign-libero': {
       const a = sim.attachLibero(d.crew); if (!a.ok) { toast(a.msg, 'warn'); break; }
       const r = sim.assign(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else { sel.c = d.case; toast(`${sim.crewOf(d.crew).name} → ${sim.caseOf(d.case).num}`, ''); }
@@ -1319,7 +1367,7 @@ function dragEnd(ev, cancel) {
   if (/^x-/.test(d.id)) {
     const acs = sim.caseOf(tg.dataset.case || tg.dataset.dropCase); if (!acs) return;
     const r = sim.sendAgency(acs.id, d.id.slice(2)); sel.c = acs.id;
-    toast(r.ok ? (r.msg || `${{ cor: 'Koroner', pcr: 'PČR', hzs: 'HZS' }[d.id.slice(2)]} → ${acs.num}`) : r.msg, r.ok ? '' : 'warn'); render(); return;
+    toast(r.ok ? (r.msg || `${{ cor: 'Koroner', pcr: 'PČR', hzs: 'HZS', fr: 'FR' }[d.id.slice(2)]} → ${acs.num}`) : r.msg, r.ok ? '' : 'warn'); render(); return;
   }
   const k = sim.crewOf(d.id), cs = sim.caseOf(tg.dataset.case || tg.dataset.dropCase); if (!k || !cs) return;
   sel.k = k.id; sel.c = cs.id;
@@ -1363,7 +1411,7 @@ document.addEventListener('click', ev => {
   const ck = t.closest('[data-crew]'), cc = t.closest('[data-case]');
   if (ck && !t.closest('#modal')) {
     ev.preventDefault();
-    if (/^x-/.test(ck.dataset.crew)) { toast('Přetáhni dlaždici na případ – ZOS vyrozumí ' + ({ 'x-cor': 'koronera', 'x-pcr': 'PČR', 'x-hzs': 'HZS' }[ck.dataset.crew]) + '.', ''); return; }
+    if (/^x-/.test(ck.dataset.crew)) { toast('Přetáhni dlaždici na případ – ZOS vyrozumí ' + ({ 'x-cor': 'koronera', 'x-pcr': 'PČR', 'x-hzs': 'HZS', 'x-fr': 'nejbližšího first respondera' }[ck.dataset.crew]) + '.', ''); return; }
     sel.k = ck.dataset.crew;
     if (t.closest('.tile')) { followK = followK === sel.k ? null : sel.k; followLast = 0; if (followK) { const fk = sim.crewOf(followK); toast(`Sleduji ${fk.name} na mapě (posunutím mapy nebo dalším klikem zrušíš).`, ''); } }
     syncSelectionToMain();

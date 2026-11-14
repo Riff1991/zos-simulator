@@ -109,8 +109,22 @@ const ZOS_EXTMSG = (function () {
     const r = ctx.r, out = [], who = ctx.sex === 'Ž' ? 'žena' : 'muž';
     const beh = pickF(r, [`${who} vyhrožuje sebevraždou`, `${who} stojí na mostě, hrozí skokem`, `${who} se zavřel v bytě, vyhrožuje podřezáním`, `${who} agresivní, ničí vybavení bytu`, `${who} zmatený, bloudí po silnici`, `${who} slyší hlasy, ohrožuje rodinu`, `${who} pod vlivem, napadá kolemjdoucí`, `${who} na střeše domu`, `${who} s nožem, sebepoškozování`, `${who} po požití léků, píše rozlučkové SMS`, `${who} v rozrušení, odmítá pomoc`, `${who} nahý venku, nekomunikuje`]);
     out.push({ src: 'pcr', dt: ri(r, 20, 90), text: join([`${ctx.addr}`, beh, `${patrol(ctx)} ${pickF(r, ['vyslána', 'na cestě', 'na místě', 'vyslána, ' + eta(r)])}`, maybe(r, 0.5, pickF(r, ['oznamuje rodina', 'oznamuje soused', 'oznamovatel sám', 'oznámení z KIC', 'oznamuje kamarád z jiného kraje']))]) });
+    // zabarikádovaná osoba v bytě/domě → zásahová jednotka PČR z Českého Krumlova (simulovaný čas dojezdu)
+    const barricade = /zavřel se v bytě|odmítá otevřít/.test(beh);
+    if (barricade) {
+      const near = ctx.okres === 'Český Krumlov' || ctx.town === 'Český Krumlov';
+      const etaMin = near ? ri(r, 12, 25) : ri(r, 30, 65);
+      out.push({ src: 'pcr', dt: ri(r, 160, 360), text: join([`hlídka na místě, ${pickF(r, ['osoba se zabarikádovala', 'osoba se zabarikádovala v bytě, nekomunikuje', 'osoba za zavřenými dveřmi, odmítá otevřít'])}`, `vyžádána zásahová jednotka PČR (Český Krumlov), ${pickF(r, ['ETA', 'dojezd', 'předpokládaný příjezd'])} ${etaMin} min`, pickF(r, ['ZZS čekat u vozidla PČR', 'přístup zatím nezajištěn – vyčkejte', 'ZZS prozatím nevstupovat'])]) });
+      out.push({ src: 'pcr', dt: etaMin * 60 + ri(r, 60, 240), text: pickF(r, ['zásahová jednotka PČR na místě, přebírá zajištění', 'zásahová jednotka PČR na místě, probíhá vstup do objektu']) });
+      out.push({ src: 'pcr', dt: etaMin * 60 + ri(r, 420, 900), text: pickF(r, ['osoba zajištěna, místo bezpečné, posádka může k pacientovi', 'objekt zajištěn, osoba omezena, ZZS může k pacientovi']) });
+      return out;
+    }
+    const calm = r() < 0.5;
+    const first = calm ? pickF(r, ['osobu zajistila', 'na místě, osoba zklidněná', 'použila hmaty a chvaty, osoba omezena']) : 'na místě, udržuje verbální kontakt';
+    // vyjednavač dává smysl jen u osoby, která ještě není zajištěná
+    const tail = calm ? pickF(r, ['žádá vyšetření ZZS', 'k převozu na psychiatrii', 'možný převoz na PZS', 'drobná řezná poranění předloktí']) : pickF(r, ['žádá vyšetření ZZS', 'možný převoz na PZS', 'vyjednavač na cestě']);
     out.push({ src: 'pcr', dt: ri(r, 160, 420), text: pickF(r, [
-      `hlídka ${pickF(r, ['na místě, udržuje verbální kontakt', 'na místě, osoba zklidněná', 'osobu zajistila', 'použila hmaty a chvaty, osoba omezena', 'na místě, osoba odmítá otevřít'])}${maybe(r, 0.5, ', ' + pickF(r, ['žádá vyšetření ZZS', 'k převozu na psychiatrii', 'možný převoz na PZS', 'drobná řezná poranění předloktí', 'vyjednavač na cestě']))}`,
+      `hlídka ${first}${maybe(r, 0.5, ', ' + tail)}`,
       `${pickF(r, ['osoba', who])} ${pickF(r, ['zadržena', 'se nechala odvést z mostu', 'otevřela dveře, kooperuje', 'utekla do lesa, pátrání'])}, ${pickF(r, ['ZZS čekat u vozidla PČR', 'přístup bezpečný', 'přístup zatím nezajištěn – vyčkejte', 'hlídka zůstává do příjezdu ZZS'])}`]) });
     if (r() < 0.35) out.push({ src: 'pcr', dt: ri(r, 420, 800), text: pickF(r, ['místo bezpečné, posádka může k pacientovi', 'osoba eskortována k ZZS', 'hlídka doprovodí převoz', 'zbraň/nůž zajištěn']) });
     return out;
