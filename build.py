@@ -11,17 +11,25 @@ u = strip(rd('src/voice.js')) + rd('src/ui.js')
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
 t = t.replace('ZOS JčK · DISPEČER', 'ZOS JčK · DISPEČER · v' + ver, 1)
-# verze, changelog (posledních 3 verzí s jednou klíčovou větou) a obrys kraje pro úvodní obrazovku
+# verze, changelog (posledních 3 verzí s klíčovými změnami) a obrys kraje pro úvodní obrazovku
 import json as _j
 cl = rd('CHANGELOG.md') if os.path.exists('CHANGELOG.md') else ''
 secs = [x.strip() for x in re.split(r'\n## ', cl)[1:]][:3]
 changelog = []
 for x in secs:
     head, _, body = x.partition('\n')
-    items = [ln.strip() for ln in body.split('\n') if ln.strip()]
-    # vezmi první (nejdůležitější) bod jako shrnutí
-    summary = items[0].replace('- ', '') if items else ''
-    changelog.append({'h': head.strip(), 'l': [summary]})
+    items = [ln.strip().replace('- ', '', 1) for ln in body.split('\n') if ln.strip()]
+    # vezmi prvních 4 body (klíčové změny)
+    summary_items = []
+    for item in items[:4]:
+        if item.startswith('---'): continue  # přeskoč separátor
+        # vezmi první větu (do prvního "." nebo ":")
+        short = item.split('.')[0].split(':')[0].strip()
+        if len(short) > 85:
+            short = short[:82] + '…'
+        if short:
+            summary_items.append(short)
+    changelog.append({'h': head.strip(), 'l': summary_items})
 mk = _j.loads(rd('src/mask.geojson'))['geometry']['coordinates'][0][1]
 lo = [p[0] for p in mk]; la = [p[1] for p in mk]
 x0, x1, y0, y1 = min(lo), max(lo), min(la), max(la)
