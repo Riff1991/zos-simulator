@@ -170,7 +170,8 @@ class Sim {
       lz.takeoffReported = lz.caseId;
       // při konzultaci pilota se počasí může zhoršit a LZS se po vzletu vrací (v pár procentech)
       const wx = this._lzsWeatherStatus();
-      if ((wx === 'consult' && this.rnd() < 0.08) || (wx === 'clear' && this.rnd() < 0.01)) { lz.abortCase = lz.caseId; lz.abortAt = t + this.rr(60, Math.max(90, Math.min(420, (lz.until - t) * 0.7))); }
+      const noAbort = (this.caseOf(lz.caseId) || {}).script && this.caseOf(lz.caseId).script.noAbort;
+      if (!noAbort && ((wx === 'consult' && this.rnd() < 0.08) || (wx === 'clear' && this.rnd() < 0.01))) { lz.abortCase = lz.caseId; lz.abortAt = t + this.rr(60, Math.max(90, Math.min(420, (lz.until - t) * 0.7))); }
       const cs = this.caseOf(lz.caseId); if (!cs) return;
       const mins = Math.max(1, Math.ceil((lz.until - t) / 60));
       const ground = cs.crews.map(id => this.crewOf(id)).filter(k => k && k.id !== lz.id && k.type !== 'LZS' && BUSY.includes(k.state));
@@ -270,13 +271,18 @@ class Sim {
   _sceneEvents(c, cs) {
     const t = this.s.t;
     if (cs.sceneEv) return; cs.sceneEv = true;
+    if (cs.script && cs.script.agency && (cs.patientCount || 1) <= 1) {
+      const a = cs.script.agency;
+      if (!(cs.agencies && cs.agencies[a.kind])) this._requestAgency(c, cs, a.kind, a.why);
+      return;
+    }
     if ((cs.patientCount || 1) > 1 && !cs.methane) {
       cs.methane = true;
       const heavy = Math.max(1, Math.min(cs.patientCount, this.ri(1, 2)));
       this._crewCall(c, cs, `METHANE: dopravní nehoda, ${cs.patientCount} zranění, z toho ${heavy} vážně, ${this.pick(['nebezpečí provoz', 'únik provozních kapalin', 'bez dalšího nebezpečí'])}, přístup ${this.pick(['z obce', 'od křižovatky', 'po hlavní silnici'])}, ${this.pick(['HZS a PČR na místě', 'HZS na místě, PČR na cestě', 'PČR na místě'])}, požadujeme ${heavy > 1 ? 'další RZP a LZS' : 'další RZP'}.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info');
       return;
     }
-    if (c.type === 'RZP' && !['silnice', 'priroda'].includes(cs.where) && this.rnd() < 0.03) {
+    if (c.type === 'RZP' && ((cs.script && cs.script.notFound) || (!['silnice', 'priroda'].includes(cs.where) && this.rnd() < 0.03))) {
       cs.notFoundUntil = t + this.rr(150, 300);
       this._crewCall(c, cs, this.pick(['jsme na adrese, nikdo tu není, nemůžeme najít pacienta.', 'na adrese nikdo neotvírá, pacienta nemůžeme najít.', 'nemůžeme najít místo, číslo popisné tu není.']), [{ k: 'ok', label: 'Rozumí, voláme na místo', say: 'ZCB101 rozumí, voláme na místo.', ok: true, act: 'ack', def: true }], 'info');
       this.L('sys', `${cs.num}: ZOS kontaktuje volajícího – upřesnění místa.`, cs.id);
@@ -470,7 +476,7 @@ class Sim {
     for (const c of this.s.cases) if (c.lzsConsult && c.lzsConsult.status === 'pending' && t >= c.lzsConsult.answerAt) {
       const current = this._lzsWeatherStatus();
       const chance = this.s.weather.condition === 'marginal' ? 0.48 : 0.62;
-      const approved = current !== 'neletovo' && this.rnd() < chance;
+      const approved = current !== 'neletovo' && (c.script && c.script.pilot ? c.script.pilot === 'approve' : this.rnd() < chance);
       c.lzsConsult.status = approved ? 'approved' : 'declined';
       c.lzsPilotApproved = approved;
       c.lzsConsult.weatherStatus = current;
@@ -1178,17 +1184,18 @@ class Sim {
     const pool = notes[whKey] || [];
     return pool.length ? this.pick(pool) : '';
   }
-  _spawn() {
+  _spawn(over) {
+    over = over || {};
     const s = this.s, D = ZOS_DATA, t = s.t;
-    const ind = this.wpick(D.indications, x => x.w);
+    const ind = over.ind ? D.indications.find(x => x.id === over.ind) : this.wpick(D.indications, x => x.w);
     const nKeys = Object.keys(ind.n).map(Number);
-    let n = Number(this.wpick(nKeys, k => ind.n[k]));
-    let dyn = n === 2 && !!ind.dyn && this.rnd() < ind.dyn;
-    const sex = ind.sex || (this.rnd() < 0.5 ? 'M' : 'Ž');
+    let n = over.n || Number(this.wpick(nKeys, k => ind.n[k]));
+    let dyn = over.dyn != null ? over.dyn : n === 2 && !!ind.dyn && this.rnd() < ind.dyn;
+    const sex = over.sex || ind.sex || (this.rnd() < 0.5 ? 'M' : 'Ž');
     const hospType = Array.isArray(ind.hosp) ? this.wpick(ind.hosp, x => x[1])[0] : ind.hosp;
     const symptomKey = ind.symptomKey || ind.klasif;
-    let symptoms = this._symptomSet(symptomKey, n);
-    if (this._isApneicUnresponsive(symptoms)) {
+    let symptoms = over.symptoms ? over.symptoms.slice() : this._symptomSet(symptomKey, n);
+    if (!over.symptoms && this._isApneicUnresponsive(symptoms)) {
       n = 1;
       dyn = false;
       const n1Symptoms = this._symptomSet(symptomKey, 1, terms =>
@@ -1196,7 +1203,7 @@ class Sim {
       if (this._isApneicUnresponsive(n1Symptoms) && !n1Symptoms.some(x => x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE'))) symptoms = n1Symptoms;
       else symptoms = symptoms.filter(x => !x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE'));
     }
-    symptoms = this._cleanSymptoms(symptoms);
+    if (!over.symptoms) symptoms = this._cleanSymptoms(symptoms);
     {
       const isDyn = x => x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE');
       const hasDyn = symptoms.some(isDyn);
@@ -1205,14 +1212,14 @@ class Sim {
       else { dyn = false; symptoms = symptoms.filter(x => !isDyn(x)); }
     }
     const rvNeed = n === 1 || (n === 2 && !dyn);
-    const rvLater = !rvNeed && this.rnd() < (ind.rvP || 0);
-    const rvReqKind = rvLater ? (this.rnd() < 0.5 ? 'zhoršení stavu' : 'posouzení stavu') : null;
+    const rvLater = !rvNeed && (over.rvLater != null ? over.rvLater : this.rnd() < (ind.rvP || 0));
+    const rvReqKind = rvLater ? (over.rvReqKind || (this.rnd() < 0.5 ? 'zhoršení stavu' : 'posouzení stavu')) : null;
     const up = symptoms.join(', '), symptomText = up.toLocaleUpperCase('cs-CZ');
     const isChild = symptomText.includes('DÍTĚ');
     const minAge = isChild ? 0 : symptomText.includes('DOSPĚLÝ') ? Math.max(18, ind.age[0]) : ind.age[0];
     const maxAge = isChild ? 17 : ind.age[1];
-    const age = minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
-    const whKey = this._pickWhere(ind, age);
+    const age = over.age != null ? over.age : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
+    const whKey = over.where || this._pickWhere(ind, age);
     // veřejná místa pod „ulicí“: nádraží, úřady, obchody, sport, ubytování (reálná místa z OSM)
     let poiKey = whKey;
     if (whKey === 'ulice' && typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi) {
@@ -1225,7 +1232,9 @@ class Sim {
     let lat, lon, addr, townN, okres = null, cast = '';
     const A = typeof ZOS_ADDR !== 'undefined' && ZOS_ADDR && ZOS_ADDR.a ? ZOS_ADDR : null;
     const nearTown = (la, lo) => { let b = null, bd = 1e9; for (const tw of D.towns) { const d = hav(la, lo, tw.lat, tw.lon) / Math.sqrt(tw.w); if (d < bd) { bd = d; b = tw; } } return b; };
-    if ((whKey === 'silnice' || whKey === 'priroda') && typeof ROUTER !== 'undefined' && ROUTER.ready) {
+    if (over.at) {
+      lat = over.at.lat; lon = over.at.lon; addr = over.at.addr; townN = over.at.town; okres = over.at.okres || null;
+    } else if ((whKey === 'silnice' || whKey === 'priroda') && typeof ROUTER !== 'undefined' && ROUTER.ready) {
       const p = ROUTER.randomRoadPoint(() => this.rnd(), whKey === 'silnice' ? [0, 1, 2, 3, 4] : [4, 5, 6]);
       lat = p.lat + this.rr(-0.0004, 0.0004); lon = p.lon + this.rr(-0.0004, 0.0004);
       const tw = nearTown(lat, lon); townN = tw.n;
@@ -1251,10 +1260,10 @@ class Sim {
     this._remember(lat, lon, '');
     const town = { n: townN };
     const isRoadAccident = ind.id === 'dn_poly' || ind.id === 'dn_lehke';
-    const patientCount = !isRoadAccident ? 1 : symptomText.includes('VÍCE ZRANĚNÝCH') ? this.ri(2, 4) : this.rnd() < 0.025 ? this.ri(2, 3) : 1;
-    const intake = n === 1 ? this.ri(70, 150) : this.ri(90, 200); // podle říjnového vzorku (medián volání→výzva 141 s u N1)
+    const patientCount = over.patientCount != null ? over.patientCount : !isRoadAccident ? 1 : symptomText.includes('VÍCE ZRANĚNÝCH') ? this.ri(2, 4) : this.rnd() < 0.025 ? this.ri(2, 3) : 1;
+    const intake = over.intake != null ? over.intake : n === 1 ? this.ri(70, 150) : this.ri(90, 200); // podle říjnového vzorku (medián volání→výzva 141 s u N1)
     const poznamka = this._zosNote(ind, up, whKey);
-    const extKinds = EXTMSG.kindFor(ind.id, poiKey, () => this.rnd());
+    const extKinds = over.extKinds !== undefined ? over.extKinds : EXTMSG.kindFor(ind.id, poiKey, () => this.rnd());
     const radioReports = extKinds ? this._extReports(extKinds, { t, intake, patientCount, up, addr, town: townN, okres, where: whKey, sex, lat, lon }) : [];
     const placeDescription = this._placeText(D.place && D.place[poiKey] ? poiKey : whKey);
     const placeText = this.rnd() < 0.2 ? placeDescription.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : placeDescription;
@@ -1290,8 +1299,14 @@ class Sim {
       const pWake = ['resus', 'nzo', 'obeseni', 'tonuti'].includes(ind.id) ? 0.04 : 0.4;
       if (c.fate !== 'rosc' && this.rnd() < pWake) { c.fate = 'wakes'; c.wakeAt = c.readyAt + this.rr(100, 420); c.trans = this.rnd() < 0.8; }
     }
-    c.lzsTechRequired = whKey === 'priroda' && this.rnd() < 0.55;
+    if (over.fate) {
+      c.fate = over.fate; c.trans = over.fate === 'rosc' || over.fate === 'wakes';
+      if (c.fate === 'wakes') c.wakeAt = c.readyAt + (over.wakeIn || 120);
+    }
+    c.lzsTechRequired = over.lzsTech != null ? over.lzsTech : whKey === 'priroda' && this.rnd() < 0.55;
     c.lzsTerrain = c.lzsTechRequired ? 'nepřístupný terén' : null;
+    if (over.script) c.script = over.script;
+    if (over.patch) Object.assign(c, over.patch);
     return c;
   }
   // datové zprávy od HZS / PČR / eCall k případu; texty se v rámci směny neopakují
@@ -1348,18 +1363,19 @@ class Sim {
       this.L('alert', `${cs.num}: odhad nedosáhl kritéria MU. Případ pokračuje jako běžná událost s více zraněnými.`, cs.id);
     }
   }
-  _spawnMU() {
+  _spawnMU(over) {
+    over = over || {};
     const s = this.s, D = ZOS_DATA;
-    const town = this.pick(D.towns.filter(x => x.w >= 5));
-    const cas = this.ri(10, 22);
-    const aircraft = this.rnd() < 0.12;
-    const groupsRequired = this.ri(3, 7);
+    const town = over.town ? D.towns.find(x => x.n === over.town) : this.pick(D.towns.filter(x => x.w >= 5));
+    const cas = over.cas != null ? over.cas : this.ri(10, 22);
+    const aircraft = over.aircraft != null ? over.aircraft : this.rnd() < 0.12;
+    const groupsRequired = over.groupsRequired != null ? over.groupsRequired : this.ri(3, 7);
     const symptoms = this._symptomSet('MU - MATRA 722', 1), up = symptoms.join(', ');
     const c = this._newCase({
       ind: 'mu', klasif: 'MU - MATRA 722', up, symptoms, charakter: 'Tísňová výzva v terénu',
       place: aircraft ? 'Okolí letiště / místo letecké nehody' : 'Silnice, hromadná nehoda', n: 1, dyn: false, rvNeed: true, rvLater: false, rvP: 1, zzumInd: false,
       addr: aircraft ? `okolí letiště u ${town.n}` : `silnice I/${this.pick([3, 20, 34, 4])}, okolí ${town.n}`, town: town.n,
-      lat: town.lat + this.rr(-0.03, 0.03), lon: town.lon + this.rr(-0.04, 0.04), age: 0, sex: 'M', child: false,
+      lat: town.lat + (over.town ? 0.012 : this.rr(-0.03, 0.03)), lon: town.lon + (over.town ? 0.015 : this.rr(-0.04, 0.04)), age: 0, sex: 'M', child: false,
       desc: aircraft ? `Letecká nehoda, počet osob na palubě se ověřuje.` : `Hromadná dopravní nehoda, rozsah se ověřuje.`, hospType: 'okresni', trans: true, scene: [20, 40], pocet: cas,
       poznamka: 'Více osob zraněno, rozsah události se ověřuje.', ozn: this._name(), oznRel: 'přepojeno z 112',
       phone: this._phone(), src: 'Linka 112', op: 'OP-A', intake: 25,
@@ -1459,10 +1475,26 @@ class Sim {
       }
     }
   }
-  _spawnSecondary(scheduledAt) {
+  // výcvik: vypne náhodné případy, sekundáry, MU a změny počasí; případy se vkládají ručně
+  startScripted(weather) {
+    const s = this.s, far = 1e12;
+    s.scripted = true;
+    s.ev.nextSpawn = far; s.ev.nextSecond = far; s.ev.nextMU = null;
+    s.weather.condition = weather || 'clear'; s.weather.nextChange = far;
+    s.weather.previousStatus = this._lzsWeatherStatus();
+  }
+  setScriptedWeather(condition) {
+    const w = this.s.weather; w.condition = condition; w.nextChange = 1e12; w.previousStatus = this._lzsWeatherStatus();
+  }
+  spawnScripted(over) { return this._spawn(over); }
+  spawnScriptedMU(over) { return this._spawnMU(over); }
+  spawnScriptedSecondary(scheduledAt, over) { return this._spawnSecondary(scheduledAt, over); }
+  _spawnSecondary(scheduledAt, over) {
     const D = ZOS_DATA, t = this.s.t;
     let from, to;
-    if (this.rnd() < 0.75) {
+    if (over && over.from && over.to) {
+      from = D.hospitals.find(h => h.id === over.from); to = D.hospitals.find(h => h.id === over.to);
+    } else if (this.rnd() < 0.75) {
       const cb = D.hospitals.find(h => h.id === 'h-cb'), other = this.pick(D.hospitals.filter(h => h.id !== 'h-cb'));
       if (this.rnd() < 0.5) { from = other; to = cb; } else { from = cb; to = other; }
     } else {
@@ -1660,7 +1692,7 @@ class Sim {
       for (const id of c.recallDue.ids) { const k = this.crewOf(id); if (k && k.caseId === c.id && (k.state === 'call' || k.state === 'enroute')) this._opsScore(-1, `neodvolaná posádka ${k.name} po hlášení exitu u ${c.num}`, c.id); }
     }
     if (cor && cor.state === 'pending' && t >= cor.answerAt) {
-      const ok = this.rnd() < (this._isDay() ? 0.6 : 0.45);
+      const ok = c.script && c.script.coroner ? c.script.coroner === 'available' : this.rnd() < (this._isDay() ? 0.6 : 0.45);
       cor.state = ok ? 'available' : 'unavailable';
       if (ok) {
         cor.availAt = t;
@@ -2112,7 +2144,7 @@ class Sim {
         if (rv && rv.type === 'RV' && rv.caseRole !== 'heli-transfer' && rv.caseId === cs.id) {
           if (rv.state !== 'onscene') { this.L('crew', `${rv.name}: RZP odváží jediného pacienta, RV se vrací na základnu`, cs.id, rv.id); this._release(rv); continue; }
           // doprovod: po KPR vždy, N1 většinou, N2 hlavně děti, N3 výjimečně
-          const pEsc = cs.fate === 'rosc' ? 1 : cs.n === 1 ? 0.85 : cs.n === 2 ? (cs.child ? 0.8 : 0.35) : 0.06;
+          const pEsc = cs.script && cs.script.escort != null ? (cs.script.escort ? 1 : 0) : cs.fate === 'rosc' ? 1 : cs.n === 1 ? 0.85 : cs.n === 2 ? (cs.child ? 0.8 : 0.35) : 0.06;
           if (this.rnd() < pEsc) escorts.push(rv);
           else leaving.push(rv);
         }
@@ -2155,7 +2187,7 @@ class Sim {
     const ackOpts = dsay.centre ? [{ k: 'ok', label: 'Rozumí, nahlásíme', say: 'ZCB101 rozumí, nahlásíme.', ok: true, act: 'ack', def: true }, { k: 'plain', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack' }] : [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }];
     const loaded = this.pick(['pacienta máme naloženého', 'pacienta máme na palubě', 'pacienta máme ve voze']);
     for (const rv of escorts) {
-      rv.caseRole = 'escort'; rv.escortFree = cs.fate !== 'rosc' && cs.n >= 2 && this.rnd() < 0.6;
+      rv.caseRole = 'escort'; rv.escortFree = cs.script && cs.script.escortFree != null ? cs.script.escortFree : cs.fate !== 'rosc' && cs.n >= 2 && this.rnd() < 0.6;
       rv.dest = { hid: best.id, name: c.dest.name, type };
       this._go(rv, best.lat, best.lon, pmode); rv.state = 'transport'; rv.until = t + dur;
       rv.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', escort: true, handoverSec: null, availableAt: t + dur }; // doprovod je volný hned po příjezdu
@@ -2197,17 +2229,18 @@ class Sim {
     const distanceSec = this._eta(rzp.mv.a[0], rzp.mv.a[1], hospital.lat, hospital.lon);
     const trauma = /trauma|dopravní nehoda|amputace|popálení/i.test(cs.klasif);
     const fitChance = cs.n === 3 ? (trauma ? 0.06 : 0.50) : cs.n === 2 ? (trauma ? 0.02 : 0.16) : 0;
-    const suitable = this.rnd() < fitChance;
+    const forced = !!(cs.script && cs.script.vstricna);
+    const suitable = forced || this.rnd() < fitChance;
     const nearest = ZOS_DATA.stations.reduce((a, x) => !a || hav(x.lat, x.lon, hospital.lat, hospital.lon) < hav(a.lat, a.lon, hospital.lat, hospital.lon) ? x : a, null);
     const area = nearest && nearest.oblast;
     const receiver = this.s.crews.filter(k => k.type === 'RZP' && k.oblast === area && this.avail(k) && !k.res && k.caseId !== cs.id);
-    const canOffer = suitable && receiver.length > 0 && routeDuration > 12 * 60;
+    const canOffer = suitable && receiver.length > 0 && (forced || routeDuration > 12 * 60);
     // Vstřícnou řeší jen periferní posádky; „dojedeme sami / je schopen překladu“ se říká jen z periferie.
     // Vstřícná má smysl jen u dlouhých přejezdů po pomalejších silnicích (např. Dačice → JH, Vyšší Brod → ČK),
     // ne tam, kde se jede po dálnici či rychlé silnici (Veselí, Soběslav → Tábor): čas trasy po síti s rychlostmi jízdy s VRZ.
     const homeSec = rzp.home ? this._eta(rzp.home.lat, rzp.home.lon, hospital.lat, hospital.lon) : distanceSec;
     const ack = ackOpts || [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }];
-    if (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext) {
+    if (!forced && (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext)) {
       cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec };
       if (baseMsg) this._crewCall(rzp, cs, `${baseMsg}.`, ack, 'info');
       return;

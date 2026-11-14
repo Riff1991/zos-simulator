@@ -10,12 +10,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ## v0.19.3 – 2026-11-14
 
+> Posádka je po předání pacienta v přehledu transportů volná ihned, zpáteční jízda se už nepočítá. Místo odhadu „volná za 31 min“ se u předávající posádky ukáže „Volná nyní“. Přehled nově zobrazuje i doprovodné RV, které je po příjezdu do nemocnice volné hned, takže se v přehledu objeví jen do příjezdu.
+
 - Přehled transportů: posádka po předání pacienta je volná ihned (zpáteční jízda se už nepočítá). Místo odhadu „volná za 31 min“ se u posádky, která právě předává, ukáže „Volná nyní“.
 - Přehled transportů zobrazuje i doprovodné RV: po příjezdu do nemocnice je volné hned, a proto se v přehledu objeví jen do příjezdu.
 
 ---
 
 ## v0.19.2 – 2026-11-14
+
+> Vyslaná LZS nově splní požadavek na lékaře u N1/N2 (RV lze poslat i tak) a po odvolání nebo návratu LZS lékař zase chybí. Při konzultaci počasí se může let po vzletu v několika procentech případů přerušit a dispečer musí zajistit jiného lékaře. Koroner se nejdřív zjišťuje, pak ho dispečer přetáhne na případ a včasné vyslání se bodově odměňuje. Panel posádek má skupinu Speciální (LZS, RZP Planá, KORONER, PČR, HZS, MU), za adresou je zkratka okresu a vracející se vůz jede po přidělení výzvy rovnou k ní.
 
 - LZS nahrazuje RV: vyslaná LZS splní požadavek na lékaře u N1/N2 (RV lze poslat i tak, kdyby LZS nedoletěla). Když se LZS odvolá nebo vrátí, RV zase chybí.
 - Počasí: když je LZS na konzultaci, může se po vzletu v několika procentech případů let přerušit („pro počasí let nelze dokončit, vracíme se na základnu“) a dispečer musí zajistit jiného lékaře.
@@ -28,6 +32,8 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 ---
 
 ## v0.19.1 – 2026-11-14
+
+> Přibyl Výcvik – první směna s návodem: klidná směna, ve které hra krok za krokem provede výběrem případu, vysláním RZP a RV, rádiem a upozorněními. Mimořádná událost je hotová do zhruba dvou hodin, protože od 30. minuty pomáhají posádky sousedních krajů a Dolního Rakouska. Během rádiové relace hra běží 1× a ukazatel rychlosti to zobrazuje. Opravy se týkají čekání LZS na heliportu, postihu za přehlédnutou datovou zprávu a hlášení „na kruháči“.
 
 - Výcvik: nová položka v menu „Výcvik – první směna s návodem“. Klidná směna bez MU a sekundárů, hra provede krok za krokem (výběr případu, vyslání RZP a RV, sledování posádky, rádio, upozornění, dlaždice PČR/HZS).
 - MU je hotová do ~2 h: od 30. minuty po potvrzení pomáhají posádky sousedních krajů (Vysočina, Plzeňský, Středočeský, Jihomoravský kraj, Dolní Rakousko), po 110 min převezmou zbylé pacienty. Pozastavení N3 během MU končí, jakmile na místě nezbývají pacienti.

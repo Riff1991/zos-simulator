@@ -13,11 +13,13 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - name: ESLint (nedefinované funkce)
-        run: npx --yes eslint@9 src/messages.js src/voice.js src/tts-worker.js src/data.js src/people.js src/engine.js src/router.js src/ui.js
+        run: npx --yes eslint@9 src/messages.js src/voice.js src/tts-worker.js src/data.js src/people.js src/engine.js src/router.js src/tutorial.js src/ui.js
       - name: Sestavení
         run: python3 build.py && git diff --exit-code -- site/index.html || (echo "site/index.html neodpovídá src/ – spusť python3 build.py a commitni" && exit 1)
       - name: Testy enginu
         run: node tests/test.js
+      - name: Test výcviku
+        run: node tests/tutorial.js
       - name: Audit obsahu výzev
         run: node tests/content_audit.js
       - name: Test v prohlížeči

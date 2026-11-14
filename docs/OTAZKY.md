@@ -138,6 +138,14 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - „Na adrese nikdo / nemůžeme najít“ → ZOS: „rozumí, voláme na místo“.
 - Žádost o hasiče / policii → ZOS: „ZCB101 rozumí, posíláme hasiče / policii”.
 
+### Výcvik – scénářový tutoriál (14. 11. 2026, zadání uživatele)
+- Výcvik má být edukativní a projít bod po bodu všechny herní mechaniky; nesmí se čekat na náhodné výjezdy.
+- Rozhodnutí: výcvik je řada lekcí. Každá lekce sama vloží předem připravený případ (pevné místo, příznaky, osud pacienta, součinnost), náhodné případy, sekundáry, MU i počasí jsou ve výcviku vypnuté.
+- Lekce: 1 Základy (výběr, RZP + RV, sledování, rádio, upozornění) · 2 Vstřícná jízda · 3 Exitus a koroner (koroner k dispozici i nedostupný) · 4 LZS (konzultace s pilotem, technická součinnost HZS, předání z heliportu) · 5 RV doprovod (po KPR, odvolatelný doprovod) · 6 Sekundární převoz (termín ±15 min) · 7 Součinnost PČR a HZS · 8 Pokrytí a volba posádky · 9 MU · 10 Bizarní finále.
+- Bizarní finále: „probuzená NZO“ (N1 → N2 po cestě) současně s polytraumatem bez volného RV. Řešení: doplňková N2 uvolní lékaře, RV se přesměruje na polytrauma bez penalizace, k tomu LZS, METHANE, PČR a HZS.
+- Lekce lze spustit i samostatně z nabídky Výcvik; každá si připraví vlastní situaci.
+- Technicky: engine dostal skriptované vložení případu (pevná poloha, příznaky, `fate`, `script`) a přepínače pro pevný výsledek náhodných voleb (koroner, vstřícná, doprovod RV, žádost o PČR/HZS, pilot LZS). Běžná hra se nemění.
+
 ### Changelog formát (14. 11. 2026)
 - Changelog na úvodní stránce zobrazuje poslední 3 verze.
 - Místo seznamu odrážek (`<ul><li>`) se nyní zobrazuje u každé verze jeden odstavec (3–4 věty) shrnutí hlavních změn.

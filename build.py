@@ -7,7 +7,7 @@ d = strip(rd('src/data.js')) + strip(rd('src/people.js'))
 symptoms = 'const ZOS_SYMPTOMS = ' + rd('src/symptoms.json').strip() + ';\n'
 e = strip(rd('src/messages.js')) + strip(rd('src/engine.js'))
 m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src/mask.geojson') + ';\n')
-u = strip(rd('src/voice.js')) + rd('src/ui.js')
+u = strip(rd('src/voice.js')) + strip(rd('src/tutorial.js')) + rd('src/ui.js')
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
 t = t.replace('ZOS JčK · DISPEČER', 'ZOS JčK · DISPEČER · v' + ver, 1)
@@ -18,18 +18,12 @@ secs = [x.strip() for x in re.split(r'\n## ', cl)[1:]][:3]
 changelog = []
 for x in secs:
     head, _, body = x.partition('\n')
-    items = [ln.strip().replace('- ', '', 1) for ln in body.split('\n') if ln.strip()]
-    # vezmi prvních 4 body (klíčové změny)
-    summary_items = []
-    for item in items[:4]:
-        if item.startswith('---'): continue  # přeskoč separátor
-        # vezmi první větu (do prvního "." nebo ":")
-        short = item.split('.')[0].split(':')[0].strip()
-        if len(short) > 85:
-            short = short[:82] + '…'
-        if short:
-            summary_items.append(short)
-    changelog.append({'h': head.strip(), 'l': summary_items})
+    lines = [ln.strip() for ln in body.split('\n') if ln.strip()]
+    para = ' '.join(ln[1:].strip() for ln in lines if ln.startswith('>'))
+    if not para:
+        items = [ln.replace('- ', '', 1) for ln in lines if ln.startswith('- ')]
+        para = ' '.join((it.split(':')[0].strip().rstrip('.') + '.') for it in items[:4])
+    changelog.append({'h': head.strip(), 'p': para})
 mk = _j.loads(rd('src/mask.geojson'))['geometry']['coordinates'][0][1]
 lo = [p[0] for p in mk]; la = [p[1] for p in mk]
 x0, x1, y0, y1 = min(lo), max(lo), min(la), max(la)

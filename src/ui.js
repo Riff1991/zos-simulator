@@ -828,35 +828,33 @@ function renderRadio() {
 
 // ---------- výcvik: první směna s návodem ----------
 let tut = null;
-const TUT = [
-  { t: 'Vítej na ZOS ZZS JčK. Vlevo jsou výzvy, uprostřed mapa kraje, vpravo všechny posádky. Hra je zatím pozastavená – klikni Dál.', next: true, pause: true },
-  { t: 'Operátor právě přijímá první tísňovou výzvu (záložka „Nabírá se“). Počkej, až příjem dokončí – výzva pak spadne do „Čekající“.', hl: '[data-tabcase=intake]', fast: 10, done: () => sim.s.cases.some(c => c.status === 'waiting' && !c.mu && c.typ !== 'sekundární') },
-  { t: 'Výzva čeká na vyslání. Klikni na ni v seznamu – nahoře jsou nejnaléhavější (N1 → N3).', hl: '#cases .case-card', pause: true, done: () => { const c = sel.c && sim.caseOf(sel.c); return !!(c && c.status !== 'intake'); } },
-  { t: 'V panelu vybraného případu vidíš adresu, příznaky a doporučené posádky seřazené podle dojezdu. Vyšli nejbližší RZP: přetáhni její dlaždici zprava na případ (nebo klikni na tlačítko u doporučené posádky).', hl: '#detail', pause: true, done: () => { const c = sel.c && sim.caseOf(sel.c); return !!(c && c.crews.length); } },
-  { t: 'N1 a N2 (a dynamická indikace) potřebují lékaře. Pokud případ ukazuje „chybí RV“, pošli k němu ještě RV (dlaždice se žlutým pruhem). Jinak klikni Dál.', hl: '#crews', next: true, pause: true, skipIf: () => { const c = sel.c && sim.caseOf(sel.c); return !(c && c.rvNeed && !c.docAssigned); }, done: () => { const c = sel.c && sim.caseOf(sel.c); return !!(c && c.docAssigned); } },
-  { t: 'Posádka vyjíždí. Klikni na její dlaždici vpravo – mapa ji bude sledovat (posunutím mapy sledování zrušíš). Statusy (výjezd, na místě, transport) posádky hlásí terminálem.', hl: '#crews', next: true },
-  { t: 'Rádio: když posádka volá, nahoře bliká modrá lišta „volá“. Klikni Na příjmu (nebo klávesa P), poslechni zprávu a vyber odpověď. Hra se během relace zpomalí. Počkej na první relaci…', hl: '#radio-live', fast: 5, done: () => (sim.s.radioQ || []).some(e => e.state === 'done') || sim.s.radioMode !== 'interactive' },
-  { t: 'Výborně. Červené pruhy nahoře jsou upozornění a datové zprávy od HZS, PČR a eCall – klikem otevřeš případ, křížkem zprávu skryješ. Když posádka žádá lékaře, policii nebo hasiče, klik otevře výjezd a můžeš na něj rovnou přetáhnout dlaždici.', hl: '#alerts-live', next: true },
-  { t: 'Dlaždice KORONER, PČR a HZS najdeš vpravo ve skupině „Speciální“. Přetahují se na případ stejně jako posádky.', hl: '.st-pcr', next: true },
-  { t: 'Dole je přehled transportů a provozní zprávy. Body a rozbor rozhodnutí uvidíš na konci směny, pravidla hodnocení jsou v menu ☰ Pravidla. To je vše – hodně štěstí na směně!', next: true, last: true },
-];
+const TUT = ZOS_TUTORIAL.lessons.flatMap((L, li) => L.steps.map((st, i) => Object.assign({}, st, { lesson: L.title, li, nL: ZOS_TUTORIAL.lessons.length, setup: i === 0 ? L.setup : null, lastOfLesson: i === L.steps.length - 1 })));
+const tutArg = () => [sim, tut.T, { sel }];
+const tutText = st => typeof st.t === 'function' ? st.t(sim, tut.T) : st.t;
 function startTutorial() {
   window._opt = Object.assign({}, window._opt || {}, { mode: 'shift', hour: 9, diff: 0.6, secondaryEnabled: 'false', muEnabled: 'false', muProbability: 0, startState: 'clean', libero: 'auto' });
   settings.radioInteractive = true; saveSettings();
   newGame();
-  sim.s.ev.nextSpawn = sim.s.t + 25;
-  tut = { i: 0, shown: -1 }; speed = 0;
+  sim.startScripted('clear');
+  tut = { i: 0, shown: null, T: {} };
+  tutEnter(); speed = 0;
   tutRender();
+}
+function tutEnter() {
+  const st = TUT[tut.i];
+  if (st.setup) { tut.T = {}; st.setup(sim, tut.T); }
+  if (st.enter) st.enter(sim, tut.T);
 }
 function tutEnd() { tut = null; const el = $('tut'); if (el) el.remove(); document.querySelectorAll('.tut-hl').forEach(e => e.classList.remove('tut-hl')); if (sim && !speed) speed = savedSpeed || 1; }
 function tutNext(manual) {
   if (!tut) return;
   const st = TUT[tut.i];
-  if (st && st.last && manual) { tutEnd(); toast('Výcvik dokončen. Další směnu spustíš z menu.', ''); return; }
+  if (st && manual && tut.i === TUT.length - 1) { tutEnd(); speed = 0; toast('Výcvik dokončen. Směnu spustíš z menu.', ''); homeModal(); return; }
   tut.i++;
-  while (TUT[tut.i] && TUT[tut.i].skipIf && TUT[tut.i].skipIf()) tut.i++;
+  while (TUT[tut.i]) { tutEnter(); if (TUT[tut.i].skipIf && TUT[tut.i].skipIf(...tutArg())) tut.i++; else break; }
   if (!TUT[tut.i]) { tutEnd(); return; }
-  if (TUT[tut.i].pause) speed = 0; else speed = TUT[tut.i].fast || Math.max(speed, 1);
+  const nx = TUT[tut.i];
+  if (nx.pause) speed = 0; else speed = nx.fast || Math.max(speed, 1);
   tutRender();
 }
 function tutRender() {
@@ -864,17 +862,20 @@ function tutRender() {
   const st = TUT[tut.i]; if (!st) return tutEnd();
   let el = $('tut');
   if (!el) { el = document.createElement('div'); el.id = 'tut'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
-  if (tut.shown !== tut.i) {
-    tut.shown = tut.i;
-    el.innerHTML = `<div class="tut-step">Výcvik ${tut.i + 1}/${TUT.length}</div><p>${esc(st.t)}</p><div class="tut-btns">${st.next ? `<button class="btn pri" data-act="tut-next">${st.last ? 'Dokončit' : 'Dál'}</button>` : '<span class="tut-wait">čekám na tvůj krok…</span>'}<button class="btn" data-act="tut-skip">Ukončit návod</button></div>`;
+  const txt = tutText(st), key = tut.i + '|' + txt;
+  if (tut.shown !== key) {
+    tut.shown = key;
+    const lastStep = tut.i === TUT.length - 1;
+    el.innerHTML = `<div class="tut-step">Lekce ${st.li + 1}/${st.nL} · ${esc(st.lesson)} · krok ${tut.i + 1}/${TUT.length}</div><p>${esc(txt)}</p><div class="tut-btns">${st.next ? `<button class="btn pri" data-act="tut-next">${lastStep ? 'Dokončit' : st.lastOfLesson ? 'Další lekce' : 'Dál'}</button>` : '<span class="tut-wait">čekám na tvůj krok…</span>'}${st.next ? '' : '<button class="btn" data-act="tut-next">Přeskočit krok</button>'}<button class="btn" data-act="tut-skip">Ukončit návod</button></div>`;
   }
   document.querySelectorAll('.tut-hl').forEach(e => e.classList.remove('tut-hl'));
-  if (st.hl) { const t = document.querySelector(st.hl); if (t) t.classList.add('tut-hl'); }
+  const hl = typeof st.hl === 'function' ? st.hl(sim, tut.T) : st.hl;
+  if (hl) { const t = document.querySelector(hl); if (t) t.classList.add('tut-hl'); }
 }
 function tutTick() {
   if (!tut || !sim) return;
   const st = TUT[tut.i];
-  if (st && st.done && st.done()) { tutNext(false); return; }
+  if (st && st.done && st.done(...tutArg())) { tutNext(false); return; }
   if (st && !st.pause && !st.next && speed === 0 && !modalOpen) speed = st.fast || 1;
   tutRender();
 }
@@ -970,7 +971,7 @@ function homeModal() {
     <div class="menu">
       ${saved ? `<button class="mbtn pri" data-act="resume">▶ Pokračovat ve směně<small>Uložená rozehraná směna${esc(when)}</small></button>` : ''}
       <button class="mbtn${saved ? '' : ' pri'}" data-act="newshift">＋ Nová směna<small>Obtížnost, LIBERO, nastavení směny</small></button>
-      <button class="mbtn" data-act="tutorial">🎓 Výcvik – první směna s návodem<small>Klidná směna, hra tě provede krok za krokem</small></button>
+      <button class="mbtn" data-act="tutorial">🎓 Výcvik – 10 lekcí s návodem<small>Připravené případy, všechny mechaniky krok za krokem</small></button>
       <div class="mrow"><button class="mbtn" data-act="settings">⚙ Nastavení<small>Vzhled, zvuk, hra</small></button><button class="mbtn" data-act="rules">☰ Pravidla<small>Co se hodnotí</small></button><button class="mbtn" data-act="changelog">✦ Co je nového<small>Verze ${esc(ZOS_VERSION)}</small></button></div>
     </div>
     <div class="foot"><span>v${esc(ZOS_VERSION)}</span>${upd}${inst}<span>Mapa © přispěvatelé OpenStreetMap · fiktivní případy</span></div></div>`);
@@ -994,7 +995,7 @@ function settingsModal(fromGame) {
 }
 function changelogModal() {
   const L = typeof ZOS_CHANGELOG !== 'undefined' ? ZOS_CHANGELOG : [];
-  modal(`<div class="card home" style="max-width:560px;max-height:80vh;overflow:auto"><h2 style="margin:0 0 8px">Co je nového</h2>${L.map(x => `<h3 style="margin:10px 0 3px;font-size:14px">${esc(x.h)}</h3><ul style="margin:0;padding-left:18px;font-size:12.5px">${x.l.map(t => `<li>${esc(t.replace(/^[-*]\s*/, ''))}</li>`).join('')}</ul>`).join('')}
+  modal(`<div class="card home" style="max-width:560px;max-height:80vh;overflow:auto"><h2 style="margin:0 0 8px">Co je nového</h2>${L.map(x => `<h3 style="margin:10px 0 3px;font-size:14px">${esc(x.h)}</h3><p style="margin:0 0 6px;font-size:12.5px;line-height:1.45">${esc(x.p)}</p>`).join('')}
     <div class="foot" style="margin-top:12px"><button class="btn pri" data-act="home">‹ Zpět</button></div></div>`);
 }
 async function checkUpdate(btn) {
@@ -1109,7 +1110,7 @@ function newGame() {
   closeModal(); toast(o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
 function afterLoad() { sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
-function doSave() { try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
+function doSave() { if (sim.s.scripted) return; try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
 function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} applyVoice(); try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); } catch (e) { homeModal(); } }
 function render() {
   if (!sim) return;
