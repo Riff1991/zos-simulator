@@ -18,7 +18,7 @@ const ZOS_DATA = {
   stations: [
     { id: 'cb', oblast: 'ČB', name: 'České Budějovice', short: 'ČB', lat: 48.96638, lon: 14.47035, day: { rzp: 3, rv: 2 }, night: { rzp: 3, rv: 2 } },
     { id: 'cbpr', oblast: 'ČB', name: 'ČB – Pražská', short: 'ČB Pražská', lat: 48.99902, lon: 14.48112, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
-    { id: 'cbpl', oblast: 'ČB', name: 'ČB – Planá', short: 'ČB Planá', lat: 48.945, lon: 14.435, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'cbpl', oblast: 'ČB', name: 'ČB – Planá', short: 'ČB Planá', lat: 48.94395, lon: 14.44425, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
     { id: 'cbvl', oblast: 'ČB', name: 'ČB – Vltava', short: 'ČB Vltava', lat: 48.99162, lon: 14.45038, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
     { id: 'kaplice', oblast: 'ČB', name: 'Kaplice', short: 'Kaplice', lat: 48.7396, lon: 14.4953, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
     { id: 'tyn', oblast: 'ČB', name: 'Týn nad Vltavou', short: 'Týn n. V.', lat: 49.2222, lon: 14.4217, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },

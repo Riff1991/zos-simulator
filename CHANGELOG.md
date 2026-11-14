@@ -8,10 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.19.2 – vývoj
+## v0.19.2 – 2026-11-14
 
 - LZS nahrazuje RV: vyslaná LZS splní požadavek na lékaře u N1/N2 (RV lze poslat i tak, kdyby LZS nedoletěla). Když se LZS odvolá nebo vrátí, RV zase chybí.
 - Počasí: když je LZS na konzultaci, může se po vzletu v několika procentech případů let přerušit („pro počasí let nelze dokončit, vracíme se na základnu“) a dispečer musí zajistit jiného lékaře.
+- Koroner: ZOS nejdřív zjistí dostupnost; když je k dispozici, dlaždice KORONER bliká a dispečer ho na případ přetáhne. Jezdí fiktivně, bez omezení počtu výjezdů, dorazí třeba za několik hodin a případ se může uzavřít hned po odjezdu posádek. Nevyslaný do 15 min → vyšle kolega (−1), včas do 10 min +1.
+- Za adresou výzvy zkratka okresu (CB, CK, JH, PT, ST, PI, TA).
+- „Právě řešené“ řazené od nejnovějšího; u případu značky PČR, HZS a KORONER podobně jako posádky.
+- Panel posádek: ve skupině Speciální LZS, vedle ní RZP Planá (základna u LZS, poloha posunuta k heliportu), pod tím KORONER, PČR a HZS a až pak moduly MU.
 - Vůz, který se vrací na základnu, jede po přidělení výzvy rovnou k ní, bez zastavení. Na dálnici se neotáčí – pokračuje k nejbližšímu sjezdu, na silnicích I. a nižších tříd se otočí hned.
 
 ---

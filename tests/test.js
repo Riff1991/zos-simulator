@@ -26,6 +26,7 @@ function bot(sim) {
     if ((c.status === 'active') && c.mu && c.mu.left > 0) {
       const r = sim.suggest(c.id, 'RZP')[0]; if (r && c.crews.length < 8) sim.assign(c.id, r.crewId);
     }
+    if (c.coroner && c.coroner.state === 'available') sim.sendAgency(c.id, 'cor');
     if (c.status === 'active' && c.rvReq && !c.rvReq.cancelled && !c.rvReq.satT && !c.docAssigned) {
       const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId);
     }
@@ -578,4 +579,18 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (k.turn > 20) throw new Error('vůz na cestě má zbytečně dlouhý výjezd');
   if (hav(p1.lat, p1.lon, p2.lat, p2.lon) > 0.01 || hav(p2.lat, p2.lon, p3.lat, p3.lon) < 0.01) throw new Error('vůz po přesměrování zastavil');
   console.log('LZS místo RV / počasí / přesměrování za jízdy true');
+}
+// koroner: nejdřív zjištění, pak se rozsvítí a dispečer ho vyšle (fiktivně, bez omezení počtu)
+{
+  const sim = new Sim({ seed: 221, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  const mk = () => { const c = sim._spawn(); c.status = 'active'; c.exitus = true; c.arrived = true; c.coroner = { state: 'pending', answerAt: sim.s.t }; sim.s.cases.push(c); return c; };
+  const a = mk(), b = mk();
+  if (sim.sendAgency(a.id, 'cor').ok) throw new Error('koronera nejde vyslat před zjištěním');
+  sim._isDay = () => true; const rnd = sim.rnd; sim.rnd = () => 0.1; sim._deathCaseStep(a); sim._deathCaseStep(b); sim.rnd = rnd;
+  if (a.coroner.state !== 'available' || a.status === 'closed') throw new Error('dostupný koroner nesmí případ hned uzavřít');
+  if (!sim.sendAgency(a.id, 'cor').ok || !sim.sendAgency(b.id, 'cor').ok) throw new Error('koroner na více případů');
+  sim._deathCaseStep(a);
+  if (a.status !== 'closed' || a.coroner.state !== 'sent') throw new Error('po vyslání koronera se případ neuzavřel');
+  console.log('koroner: zjištění → dostupný → vyslání → uzavření true');
 }

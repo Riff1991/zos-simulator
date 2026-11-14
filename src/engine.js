@@ -290,15 +290,29 @@ class Sim {
     else if (['trauma', 'czs', 'porucha', 'dusnost'].includes(cs.ind) && ['byt', 'rd', 'priroda'].includes(cs.where) && this.rnd() < 0.035) { kind = 'hzs'; why = 'na transport'; }
     if (kind && !(cs.agencies && cs.agencies[kind])) this._requestAgency(c, cs, kind, why);
   }
+  // koroner: jen fiktivně, bez omezení počtu výjezdů, přijede za x hodin (případ se může uzavřít hned po odjezdu posádek)
+  _sendCoroner(cs, late) {
+    const cor = cs.coroner; if (!cor || cor.state !== 'available') return { ok: false, msg: 'Koroner není k dispozici.' };
+    const t = this.s.t, eta = this.rr(2400, 4 * 3600);
+    cor.state = 'sent'; cor.sentAt = t; cor.arriveAt = t + eta;
+    if (late) this._opsScore(-1, `koroner nevyslán do 15 min od potvrzení dostupnosti u ${cs.num} (vyslal kolega)`, cs.id);
+    else if (t - (cor.availAt || t) <= 600) this._opsScore(1, `včas vyslaný koroner u ${cs.num}`, cs.id);
+    this.L('sys', `${cs.num}: koroner ${cor.name || ''} vyslán${late ? ' (kolega ZOS)' : ''}, dorazí asi za ${Math.max(1, Math.round(eta / 3600 * 2) / 2)} h.`.replace('  ', ' '), cs.id);
+    if (!this._busyCrews(cs).length) this._checkClose(cs);
+    return { ok: true };
+  }
   // ---------- součinnost PČR / HZS (dlaždice jako koroner) ----------
   sendAgency(caseId, kind, viaRadio) {
     const cs = this.caseOf(caseId); if (!cs || cs.status === 'closed') return { ok: false, msg: 'Případ už je uzavřen.' };
     const A = cs.agencies || (cs.agencies = {});
     if (kind === 'cor') {
       if (!cs.exitus) return { ok: false, msg: 'Koronera lze přiřadit jen k případu s exitem.' };
-      if (cs.coroner && cs.coroner.state !== 'unavailable') return { ok: true, msg: 'Koroner se už zjišťuje / je zajištěn.' };
-      cs.coroner = { state: 'pending', answerAt: this.s.t + this.rr(120, 300) };
-      return { ok: true };
+      const cor = cs.coroner;
+      if (!cor) { cs.coroner = { state: 'pending', answerAt: this.s.t + this.rr(120, 300) }; return { ok: true, msg: 'ZOS zjišťuje dostupnost koronera.' }; }
+      if (cor.state === 'pending') return { ok: false, msg: 'Dostupnost koronera se teprve zjišťuje.' };
+      if (cor.state === 'unavailable') return { ok: false, msg: 'Koroner není k dispozici – prohlídku provede lékař RV.' };
+      if (cor.state === 'sent') return { ok: true, msg: 'Koroner už je na cestě.' };
+      return this._sendCoroner(cs, false);
     }
     if (kind === 'hzs' && cs.lzsTechRequired && !cs.lzsTechRequested) this.requestLzsTechnicalAssist(cs.id);
     const a = A[kind], nm = kind === 'pcr' ? 'PČR' : 'HZS';
@@ -1649,9 +1663,10 @@ class Sim {
       const ok = this.rnd() < (this._isDay() ? 0.6 : 0.45);
       cor.state = ok ? 'available' : 'unavailable';
       if (ok) {
-        cor.until = t + this.rr(900, 1800);
+        cor.availAt = t;
         cor.name = this.pick(['MUDr. Kovář', 'MUDr. Malá', 'MUDr. Sýkora', 'MUDr. Vlková', 'MUDr. Holý', 'MUDr. Bartošová']);
-        this.L('sys', `${c.num}: koroner ${cor.name} zajištěn (telefonicky, informace do terminálu) – posádky se vracejí na základnu.`, c.id);
+        this.L('sys', `${c.num}: koroner ${cor.name} je k dispozici (telefonicky, informace do terminálu) – posádky se vracejí na základnu.`, c.id);
+        this.L('req', `${c.num}: koroner k dispozici – přetáhni dlaždici KORONER na případ.`, c.id);
       } else {
         c.exam = { needed: true, done: false, remaining: this.rr(1200, 2100), since: t, lastPen: t };
         if (here('RV')) this.L('sys', `${c.num}: koroner není k dispozici (informace do terminálu) – RV zůstává na prohlídku zemřelého, RZP se vrací.`, c.id);
@@ -1663,7 +1678,9 @@ class Sim {
       if (!this._busyCrews(c).length) this._checkClose(c);
       return;
     }
-    if (cor && cor.state === 'available' && t >= cor.until && c.status !== 'closed' && !this._busyCrews(c).length) { this._close(c, false); return; }
+    // koroner je k dispozici, ale dispečer ho ještě nevyslal: po 15 min ho vyšle kolega ZOS (−1)
+    if (cor && cor.state === 'available' && t - (cor.availAt || t) > 900) { this._sendCoroner(c, true); }
+    if (cor && cor.state === 'sent' && c.status !== 'closed' && !this._busyCrews(c).length) { this._close(c, false); return; }
     if (c.exam && c.exam.needed && !c.exam.done && !here('RV') && t - c.exam.lastPen >= 3600) {
       c.exam.lastPen = t;
       this._opsScore(-1, `čekající prohlídka zemřelého u ${c.num}`, c.id);
@@ -2325,7 +2342,7 @@ class Sim {
     if (cs.exitus) {
       if (cs.exam && cs.exam.needed && !cs.exam.done) { cs.status = 'waiting'; cs.waitSince = this.s.t; cs.examPending = true; return; }
       cs.examPending = false;
-      if (cs.coroner && (cs.coroner.state === 'pending' || (cs.coroner.state === 'available' && this.s.t < cs.coroner.until))) { cs.status = 'active'; return; }
+      if (cs.coroner && (cs.coroner.state === 'pending' || cs.coroner.state === 'available')) { cs.status = 'active'; return; }
       return this._close(cs, false);
     }
     const sent = cs.initialDispatchSent || [];

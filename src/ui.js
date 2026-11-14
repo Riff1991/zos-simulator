@@ -104,6 +104,8 @@ function clockAt(t) {
   return pad(Math.floor(sec / 3600)) + ':' + pad(Math.floor(sec % 3600 / 60)) + ':' + pad(sec % 60);
 }
 function mmss(sec) { sec = Math.max(0, Math.floor(sec)); return pad(Math.floor(sec / 60)) + ':' + pad(sec % 60); }
+const OKR = { 'České Budějovice': 'CB', 'Český Krumlov': 'CK', 'Jindřichův Hradec': 'JH', 'Prachatice': 'PT', 'Strakonice': 'ST', 'Písek': 'PI', 'Tábor': 'TA' };
+const okrAbbr = c => OKR[c.okres] || OKR[okresOf(c)] || '';
 function okresOf(c) {
   if (okresCache[c.id]) return okresCache[c.id];
   let best = null, bd = 1e9;
@@ -185,8 +187,10 @@ function renderLiveAlerts() {
     return `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${esc((c.rvReq.kind || 'zhoršení stavu').toLocaleUpperCase('cs-CZ'))} · ${esc(c.num)} · N${c.n}${crew ? ' · ' + esc(crew.name) : ''} · ${esc(c.klasif)} — klikni pro otevření</span>${x('rv:' + c.id)}</div>`;
   });
   const reportHtml = reports.map(({ c, r }) => `<div class="live-alert report-alert" role="button" tabindex="0" data-case="${c.id}" data-report="${esc(r.id)}"><span class="alert-txt">☎ ${esc(r.source || 'Linka 112')} · ${esc(c.num)}: ${esc(r.text)} — klikni pro otevření</span>${x(c.id + ':' + r.id, ` data-case="${c.id}" data-report="${esc(r.id)}"`)}</div>`);
+  const corReq = sim.s.cases.filter(c => c.status !== 'closed' && c.coroner && c.coroner.state === 'available' && !alertHidden.has(`cor:${c.id}`));
+  const corHtml = corReq.map(c => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ KORONER K DISPOZICI · ${esc(c.num)} — klikni a přetáhni dlaždici KORONER na případ</span>${x(`cor:${c.id}`)}</div>`);
   const agencyHtml = agencyReq.map(({ c, k }) => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ POSÁDKA ŽÁDÁ ${k === 'pcr' ? 'POLICII' : 'HASIČE'} · ${esc(c.num)} · ${esc(c.agencies[k].why || '')} — klikni a přetáhni dlaždici ${k === 'pcr' ? 'PČR' : 'HZS'} na případ</span>${x(`ag:${c.id}:${k}`)}</div>`);
-  setHTML($('alerts-live'), requestHtml.concat(agencyHtml, reportHtml).join(''));
+  setHTML($('alerts-live'), requestHtml.concat(corHtml, agencyHtml, reportHtml).join(''));
 }
 
 // ---------- případy ----------
@@ -223,6 +227,7 @@ function renderCases() {
   let rows = ({ waiting: wait, active: act, intake, closed })[tabCase].slice();
   if (tabCase === 'waiting') rows.sort((a, b) => a.n - b.n || a.readyAt - b.readyAt);
   else if (tabCase === 'closed') rows.sort((a, b) => b.closedAt - a.closedAt), rows = rows.slice(0, 60);
+  else if (tabCase === 'active') rows.sort((a, b) => b.createdAt - a.createdAt);
   else rows.sort((a, b) => a.n - b.n || a.createdAt - b.createdAt);
   const query = caseSearch.trim().toLocaleLowerCase('cs-CZ');
   if (query) rows = rows.filter(c => [c.num, c.addr, c.town, c.okres, c.klasif, c.charakter, c.typ, c.up, c.place, c.poznamka, c.src, c.op, c.ozn, c.phone, c.desc, c.dest, c.targetHospitalId, clarificationOf(c)].filter(Boolean).join(' ').toLocaleLowerCase('cs-CZ').includes(query));
@@ -234,7 +239,7 @@ function renderCases() {
     const status = tabCase === 'closed'
       ? (c.unserved ? 'Neobslouženo' : c.typ === 'sekundární' ? 'Dokončeno' : `Uzavřeno · ${Math.round(c.score ? c.score.total : 0)} b.`)
       : c.examPending && c.status === 'waiting' ? 'Prohlídka zemřelého – vyšli RV'
-        : c.exitus ? (c.coroner && c.coroner.state === 'available' ? 'Exitus · koroner' : 'Exitus')
+        : c.exitus ? (c.coroner && c.coroner.state === 'available' ? 'Exitus · vyšli koronera' : c.coroner && c.coroner.state === 'sent' ? 'Exitus · koroner jede' : 'Exitus')
         : c.status === 'waiting' ? 'Čeká na vyslání'
         : missing.length ? `Doplnit: ${missing.join(' + ')}`
         : intk ? `${c.op} nabírá výzvu`
@@ -252,16 +257,16 @@ function renderCases() {
     if (sel.c !== c.id) {
       const who = [c.patientName || patient, c.klasif, c.ageText || (c.age != null ? c.age + ' let' : '')].filter(Boolean).join(', ');
       const what = [c.place, c.poznamka].filter(Boolean).join(' · ');
-      const chips = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(k => `<span class="cchip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state !== 'base' && k.state !== 'free' ? '#fff' : '#111'}">${k.dest ? esc(k.dest.name) + ' ' : ''}${esc(k.name)}</span>`).join('');
+      const chips = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(k => `<span class="cchip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state !== 'base' && k.state !== 'free' ? '#fff' : '#111'}">${k.dest ? esc(k.dest.name) + ' ' : ''}${esc(k.name)}</span>`).join('') + agencyChips(c);
       return `<article class="case-card case-row n${c.n} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
-      <span class="case-priority">${nTag}</span><b class="cr-addr">${esc(c.town && !String(c.addr).includes(c.town) ? c.town + ', ' : '')}${esc(c.addr)}</b>
+      <span class="case-priority">${nTag}</span><b class="cr-addr"><span class="cr-at">${esc(c.town && !String(c.addr).includes(c.town) ? c.town + ', ' : '')}${esc(c.addr)}</span><span class="okr">${esc(okrAbbr(c))}</span></b>
       <span class="cr-cls">${esc(c.klasif)}</span><span class="cr-up">${esc(symptomsOf(c).map(x => String(x).replace(/^[^0-9A-Za-zÀ-ž]+/, '')).slice(0, 5).join(', '))}</span><span class="cr-what">${esc(what)}</span><span class="cr-time">${esc(sim.clockAt(c.createdAt))}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
       <span class="cr-who">${esc(who)}</span><span class="cr-crews">${chips || `<span class="wait">${esc(status)}</span>`}${chips && (rvPending || missing.length) ? `<span class="wait urgent">${esc(status)}</span>` : ''}</span>
     </article>`;
     }
     return `<article class="case-card n${c.n} ${sel.c === c.id ? 'sel' : ''} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
       <div class="case-top"><span class="case-priority">${nTag}</span>
-        <div class="case-address"><strong>${esc(c.addr)}</strong><small>${esc(c.town || '')}${c.okres ? ` · okres ${esc(c.okres)}` : ''} · ${esc(c.typ || 'primární')}</small></div>
+        <div class="case-address"><strong>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span></strong><small>${esc(c.town || '')}${c.okres ? ` · okres ${esc(c.okres)}` : ''} · ${esc(c.typ || 'primární')}</small></div>
         <span class="case-status ${rvPending || missing.length ? 'urgent' : ''}">${esc(status)}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
       </div>
       <div class="case-main"><div class="case-class"><b>${esc(c.klasif)}</b><small>${esc(c.charakter || '')}</small></div>
@@ -327,7 +332,7 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 <dt>Klasifikace</dt><dd>${esc(c.klasif)}</dd>
 <dt>Upřesnění</dt><dd>${esc(clarificationOf(c))}</dd>
 <dt>Oznamovatel</dt><dd>${esc(c.ozn)}${c.oznRel ? ` <span style="font-weight:400;color:#5a6a7a">(${esc(c.oznRel.replace(/^volá /, ''))})</span>` : ''} · ${esc(c.phone)}</dd>
-<dt>Adresa</dt><dd>${esc(c.addr)}<br><span style="font-weight:400;color:#5a6a7a">Jihočeský kraj, okres ${esc(okresOf(c))}, obec ${esc(c.town)}<br>${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</span></dd>
+<dt>Adresa</dt><dd>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span><br><span style="font-weight:400;color:#5a6a7a">Jihočeský kraj, okres ${esc(okresOf(c))}, obec ${esc(c.town)}<br>${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</span></dd>
 <dt>Popis místa</dt><dd>${esc(c.place)}</dd>
 <dt>Pacienti</dt><dd>${c.mu ? c.mu.cas + ' zraněných (zbývá ošetřit ' + c.mu.left + ')' : (c.patientCount || 1) > 1 ? `${c.patientCount} zranění (zbývá ošetřit ${c.patientsRemaining})` : esc(c.desc)}</dd>
 <dt>Oznámil</dt><dd>${esc(c.src)} · nabíral ${esc(c.op)}</dd></dl>`;
@@ -389,36 +394,46 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 }
 
 // ---------- posádky ----------
+// značky součinnosti u případu (jako posádky)
+function agencyChips(c) {
+  const out = [], A = c.agencies || {};
+  if (c.coroner && (c.coroner.state === 'sent' || c.coroner.state === 'available')) out.push(`<span class="cchip ag-cor">${c.coroner.state === 'sent' ? 'KORONER' : 'KORONER dostupný'}</span>`);
+  for (const [k, nm, cl] of [['pcr', 'PČR', 'ag-pcr'], ['hzs', 'HZS', 'ag-hzs']]) if (A[k] && A[k].state !== 'requested') out.push(`<span class="cchip ${cl}">${nm}${A[k].state === 'onscene' ? ' na místě' : ''}</span>`); else if (A[k]) out.push(`<span class="cchip ${cl} ask">${nm}?</span>`);
+  return out.join('');
+}
 // dlaždice součinnosti: koroner, PČR, HZS – přetažením na případ je ZOS vyrozumí
 function agencyTiles() {
   const open = sim.s.cases.filter(c => c.status !== 'closed');
-  const cor = open.filter(c => c.coroner && c.coroner.state === 'available').map(c => c.num);
+  const cor = open.filter(c => c.coroner && c.coroner.state === 'sent').map(c => c.num), corAsk = open.some(c => c.coroner && c.coroner.state === 'available');
   const by = k => open.filter(c => c.agencies && c.agencies[k] && (c.agencies[k].state === 'sent' || c.agencies[k].state === 'onscene')).map(c => c.num);
   const req = k => open.some(c => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested');
   const tile = (id, cls, name, list, icon, ask) => `<button class="tile ${cls}${ask ? ' agency-ask' : ''}" data-crew="${id}" title="${esc(name)} – přetáhni na případ"><span class="tn">${name}</span><i>${list.length ? esc(list.join(', ')) : 'volné'}</i>${icon}</button>`;
-  return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), false) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
+  return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), corAsk) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
 }
 function deathInfo(c) {
   if (!c.exitus) return '';
   const cor = c.coroner || {}, ex = c.exam;
-  const t = cor.state === 'pending' ? 'ZOS zjišťuje koronera' : cor.state === 'available' ? 'koroner zajištěn' : ex && ex.done ? 'prohlídka zemřelého provedena' : ex && ex.crewId ? 'RV provádí prohlídku zemřelého (lze odvolat, pak se musí vrátit)' : 'koroner není – na prohlídku zemřelého vyšli RV';
-  return `<p class="death-panel"><b>Exitus</b> · ${t}${cor.state === 'available' ? ' <span class="chip cor">KORONER</span>' : ''}</p>`;
+  const t = cor.state === 'pending' ? 'ZOS zjišťuje koronera' : cor.state === 'available' ? 'koroner k dispozici – přetáhni dlaždici KORONER na případ' : cor.state === 'sent' ? `koroner vyslán, dorazí asi za ${Math.max(1, Math.round((cor.arriveAt - sim.s.t) / 1800) / 2)} h` : ex && ex.done ? 'prohlídka zemřelého provedena' : ex && ex.crewId ? 'RV provádí prohlídku zemřelého (lze odvolat, pak se musí vrátit)' : 'koroner není – na prohlídku zemřelého vyšli RV';
+  return `<p class="death-panel"><b>Exitus</b> · ${t}${cor.state === 'sent' ? ' <span class="chip cor">KORONER</span>' : ''}</p>`;
 }
 function renderCrews() {
   const s = sim.s;
-  const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU') }));
-  groups.push({ title: 'Speciální (LZS, MU)', crews: s.crews.filter(k => k.type === 'LZS' || k.type === 'MU') });
-  const rank = k => (k.type === 'RZP' && !k.res ? 0 : k.type === 'RV' ? 1 : k.type === 'LIB' ? 1.5 : k.type === 'RZP' ? 2 : 3);
+  const HELI = k => k.st === 'cbpl' && k.type === 'RZP'; // RZP Planá – na základně u LZS
+  const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU' && !HELI(k)) }));
+  groups.push({ title: 'Speciální (LZS, RZP Planá, součinnost, MU)', crews: s.crews.filter(k => k.type === 'LZS' || k.type === 'MU' || HELI(k)) });
+  const rank = k => (k.id === 'lzs' ? -3 : k.type === 'LZS' ? -2.5 : HELI(k) ? -2 : k.type === 'MU' ? 5 : k.type === 'RZP' && !k.res ? 0 : k.type === 'RV' ? 1 : k.type === 'LIB' ? 1.5 : k.type === 'RZP' ? 2 : 3);
   let h = '';
   for (const g of groups) {
     g.crews.sort((a, b) => rank(a) - rank(b));
     const free = g.crews.filter(k => sim.avail(k)).length, on = g.crews.filter(k => k.state !== 'off').length;
+    const spec = g.title.startsWith('Speciální');
     h += `<div class="oblast">${esc(g.title)} <span>volných ${free} / ve službě ${on}</span></div><div class="grid">` +
       g.crews.map(k => {
+        const pre = spec && k.type === 'MU' && !g._ag ? (g._ag = true, agencyTiles()) : '';
         const prealert = s.cases.some(c => c.status === 'intake' && c.n === 1 && (c.prealertCrewIds || []).includes(k.id));
         const soft = k.caseRole === 'exam' ? 'exam' : k.caseRole === 'escort' ? 'escort' : '';
-        return `<button class="tile ty-${k.type} st-${k.state} ${soft ? 'soft-' + soft : ''} ${followK === k.id ? 'follow' : ''} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
-      }).join('') + (g.title.startsWith('Speciální') ? agencyTiles() : '') + '</div>';
+        return pre + `<button class="tile ty-${k.type} st-${k.state} ${soft ? 'soft-' + soft : ''} ${followK === k.id ? 'follow' : ''} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
+      }).join('') + (spec && !g._ag ? agencyTiles() : '') + '</div>';
   }
   setHTML($('crews'), h);
   setHTML($('legend'), [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`);
