@@ -131,6 +131,8 @@ function helicopter() {
 }
 function ico(state, type) {
   if (type === 'LZS') return helicopter();
+  if (type === 'PCR') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><path d="M18 3l11 4v6c0 5-4.5 8-11 9-6.5-1-11-4-11-9V7z" fill="#1d4f9c" stroke="#fff" stroke-width="1.2"/><text x="18" y="16" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">PČR</text></svg>`;
+  if (type === 'HZS') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><path d="M18 2c3 4 7 6 7 12a7 7 0 0 1-14 0c0-3 2-5 3-7 1 2 2 3 3 3 0-3 1-5 1-8z" fill="#e2463b" stroke="#fff" stroke-width="1.1"/></svg>`;
   if (type === 'COR') return `<svg class="ic" viewBox="0 0 36 24" aria-hidden="true"><circle cx="18" cy="12" r="9" fill="#fff" stroke="#202a31" stroke-width="1.3"/><path d="M18 6.500v11M13.5 10h9" stroke="#202a31" stroke-width="2.2" stroke-linecap="round"/></svg>`;
   switch (state) {
     case 'call': return car(1, '#fff', type);
@@ -173,6 +175,7 @@ function renderLiveAlerts() {
   const now = performance.now();
   const visible = key => { if (alertHidden.has(key)) return false; if (!alertSeen.has(key)) alertSeen.set(key, now); return now - alertSeen.get(key) < ALERT_TTL_MS; };
   const requests = sim.s.cases.filter(c => c.status !== 'closed' && c.rvReq && !c.rvReq.cancelled && c.rvReq.satT == null && !c.docAssigned && !alertHidden.has('rv:' + c.id));
+  const agencyReq = sim.s.cases.filter(c => c.status !== 'closed' && c.agencies).flatMap(c => ['pcr', 'hzs'].filter(k => c.agencies[k] && c.agencies[k].state === 'requested' && !alertHidden.has(`ag:${c.id}:${k}`)).map(k => ({ c, k })));
   const reports = sim.s.cases.flatMap(c => (c.radioReports || []).filter(r => r.received && !r.acknowledged && visible(c.id + ':' + r.id)).map(r => ({ c, r }))).slice(-4);
   const x = (key, extra) => `<span class="alert-x" role="button" aria-label="Zavřít upozornění" title="Zavřít" data-act="dismiss-alert" data-key="${esc(key)}"${extra || ''}>✕</span>`;
   const requestHtml = requests.map(c => {
@@ -180,7 +183,8 @@ function renderLiveAlerts() {
     return `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${esc((c.rvReq.kind || 'zhoršení stavu').toLocaleUpperCase('cs-CZ'))} · ${esc(c.num)} · N${c.n}${crew ? ' · ' + esc(crew.name) : ''} · ${esc(c.klasif)} — klikni pro otevření</span>${x('rv:' + c.id)}</div>`;
   });
   const reportHtml = reports.map(({ c, r }) => `<div class="live-alert report-alert" role="button" tabindex="0" data-case="${c.id}" data-report="${esc(r.id)}"><span class="alert-txt">☎ ${esc(r.source || 'Linka 112')} · ${esc(c.num)}: ${esc(r.text)} — klikni pro otevření</span>${x(c.id + ':' + r.id, ` data-case="${c.id}" data-report="${esc(r.id)}"`)}</div>`);
-  setHTML($('alerts-live'), requestHtml.concat(reportHtml).join(''));
+  const agencyHtml = agencyReq.map(({ c, k }) => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ POSÁDKA ŽÁDÁ ${k === 'pcr' ? 'POLICII' : 'HASIČE'} · ${esc(c.num)} · ${esc(c.agencies[k].why || '')} — klikni a přetáhni dlaždici ${k === 'pcr' ? 'PČR' : 'HZS'} na případ</span>${x(`ag:${c.id}:${k}`)}</div>`);
+  setHTML($('alerts-live'), requestHtml.concat(agencyHtml, reportHtml).join(''));
 }
 
 // ---------- případy ----------
@@ -279,6 +283,7 @@ function patchWait() {
 function nameFor(k) { const p = k.split(' '); return p[1].toUpperCase() + ' ' + p[0][0] + '.'; }
 function renderDetail() {
   const c = sel.c && sim.caseOf(sel.c);
+  const dp = $('detail'); if (dp) { if (c) dp.dataset.dropCase = c.id; else delete dp.dataset.dropCase; }
   if (!c) { setHTML($('detail'), '<div class="empty">Vyber případ v seznamu nebo na mapě.</div>'); return; }
   const intk = c.status === 'intake';
   const missingTypes = missingInitialDispatch(c);
@@ -382,10 +387,14 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 }
 
 // ---------- posádky ----------
-function coronerTile() {
-  const cs = sim.s.cases.filter(c => c.status !== 'closed' && c.coroner && c.coroner.state === 'available');
-  if (!cs.length) return '';
-  return `<div class="tile st-coroner" title="Koroner – přiřazen k případům, není na mapě"><span class="tn">KORONER</span><i>${cs.map(c => esc(c.num)).join(', ')}</i>${ico('base', 'COR')}</div>`;
+// dlaždice součinnosti: koroner, PČR, HZS – přetažením na případ je ZOS vyrozumí
+function agencyTiles() {
+  const open = sim.s.cases.filter(c => c.status !== 'closed');
+  const cor = open.filter(c => c.coroner && c.coroner.state === 'available').map(c => c.num);
+  const by = k => open.filter(c => c.agencies && c.agencies[k] && (c.agencies[k].state === 'sent' || c.agencies[k].state === 'onscene')).map(c => c.num);
+  const req = k => open.some(c => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested');
+  const tile = (id, cls, name, list, icon, ask) => `<button class="tile ${cls}${ask ? ' agency-ask' : ''}" data-crew="${id}" title="${esc(name)} – přetáhni na případ"><span class="tn">${name}</span><i>${list.length ? esc(list.join(', ')) : 'volné'}</i>${icon}</button>`;
+  return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), false) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
 }
 function deathInfo(c) {
   if (!c.exitus) return '';
@@ -407,7 +416,7 @@ function renderCrews() {
         const prealert = s.cases.some(c => c.status === 'intake' && c.n === 1 && (c.prealertCrewIds || []).includes(k.id));
         const soft = k.caseRole === 'exam' ? 'exam' : k.caseRole === 'escort' ? 'escort' : '';
         return `<button class="tile ty-${k.type} st-${k.state} ${soft ? 'soft-' + soft : ''} ${followK === k.id ? 'follow' : ''} ${sel.k === k.id ? 'sel' : ''} ${prealert ? 'prealerted' : ''}" data-crew="${k.id}" title="${esc(k.name + ' · ' + sim.phase(k) + (prealert ? ' · PŘEDPOPLACH' : '') + ' · ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}" aria-label="${esc(k.name + ', ' + sim.phase(k) + (prealert ? ', předpoplach' : '') + ', ' + (k.callsCompleted || 0) + ' dokončených výjezdů')}"><span class="tn">${esc(k.name)}</span><i>${esc(k.code)}${k.type === 'RV' ? ' RV' : k.type === 'LZS' ? ' LZS' : k.res ? ' Z' : ''} · ${k.callsCompleted || 0} výj.</i>${ico(k.state, k.type)}${prealert ? '<span class="prealert-badge">PA</span>' : ''}</button>`;
-      }).join('') + (g.title.startsWith('Speciální') ? coronerTile() : '') + '</div>';
+      }).join('') + (g.title.startsWith('Speciální') ? agencyTiles() : '') + '</div>';
   }
   setHTML($('crews'), h);
   setHTML($('legend'), [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`);
@@ -770,7 +779,12 @@ function selectCaseFromElement(caseElement, clickedElement) {
   const cs = sim.caseOf(sel.c); if (!cs) return;
   const alert = clickedElement.closest('.report-alert');
   sim.acknowledge112(cs.id, alert ? alert.dataset.report : undefined);
-  const openDetail = !!(clickedElement.closest('.live-alert') || clickedElement.closest('#log'));
+  const openDetail = !!(clickedElement.closest('.live-alert') || clickedElement.closest('#log') || clickedElement.closest('.radio-call'));
+  if (clickedElement.closest('.live-alert') || clickedElement.closest('.radio-call')) {
+    tabCase = cs.status === 'intake' ? 'intake' : cs.status === 'closed' ? 'closed' : (cs.status === 'waiting' || missingInitialDispatch(cs).length) ? 'waiting' : 'active';
+    caseSearch = ''; const si = $('case-search'); if (si) si.value = '';
+    setTimeout(() => { const el = document.querySelector(`#cases [data-case="${cs.id}"]`); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60);
+  }
   view = openDetail ? 'detail' : 'map'; render();
   focusOn(cs.lat, cs.lon);
   if (openDetail) { view = 'detail'; render(); }
@@ -814,13 +828,15 @@ function voiceSay(text, key, isCall) {
 }
 function radioSpeak(txt) {
   let m;
-  if ((m = /^ZCB101, zde ZCB(\d+), příjem/.exec(txt))) return voiceSay(txt, m[1], true);
+  if ((m = /^ZCB101, zde (?:ZCB(\d+)|Kryštof (\d+))/.exec(txt))) return voiceSay(txt, m[1] || 'K' + m[2], true);
+  if (/^ZCB\d+, ZCB101\b/.test(txt)) return voiceSay(txt, 'zos', true);
+  if (/^ZCB101: /.test(txt)) return voiceSay(txt.replace(/^ZCB101: /, ''), 'zos');
   if (/^ZCB101\b/.test(txt)) return voiceSay(txt, 'zos');
-  if ((m = /^ZCB(\d+): (.*)$/.exec(txt))) return voiceSay(m[2], m[1]);
-  if ((m = /^ZCB(\d+) rozumí/.exec(txt))) return voiceSay(txt, m[1]);
+  if ((m = /^(?:ZCB(\d+)|Kryštof (\d+))(?: a \d+)?: (.*)$/.exec(txt))) return voiceSay(m[3], m[1] || 'K' + m[2]);
+  if ((m = /^ZCB(\d+) (?:rozumí|na příjmu)/.exec(txt))) return voiceSay(txt, m[1]);
 }
-const radioOpen = () => (sim && sim.s.radioQ || []).filter(e => e.state === 'calling' || e.state === 'open');
-const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen().length > 0;
+const radioOpen = () => (sim && sim.s.radioQ || []).filter(e => e.state === 'calling' || e.state === 'open' || e.state === 'zos');
+const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen().some(e => e.state !== 'zos');
 const rqPrefetched = new Set();
 function renderRadioLive() {
   const box = $('radio-live'); if (!box || !sim) return;
@@ -829,8 +845,10 @@ function renderRadioLive() {
   const cs = id => id ? sim.caseOf(id) : null;
   setHTML(box, list.map(e => {
     const c = cs(e.caseId), tag = c ? `<span class="rc-case" data-case="${c.id}">${esc(c.num)} · N${c.n}</span>` : '';
-    if (e.state === 'calling') return `<div class="radio-call calling"><span class="rc-ico" aria-hidden="true">📻</span><b>ZCB${esc(e.code)}</b><span class="rc-name">${esc(e.name)} volá${e.tries > 1 ? ` (${e.tries}. volání)` : ''}</span>${tag}<button class="btn pri" data-act="rq-answer" data-rq="${e.id}" title="Klávesa P">Na příjmu</button></div>`;
-    return `<div class="radio-call open"><span class="rc-ico" aria-hidden="true">📻</span><b>ZCB${esc(e.code)}</b><span class="rc-msg">${esc(e.msg)}</span>${tag}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
+    const sign = /^K/.test(String(e.callCodes || '')) ? 'Kryštof ' + String(e.callCodes).slice(1) : 'ZCB' + (e.callCodes || e.code);
+    if (e.state === 'zos') return `<div class="radio-call zos"><span class="rc-ico" aria-hidden="true">📻</span><b>→ ZCB${esc(e.code)}</b><span class="rc-msg">Informuj posádku: ${esc(e.msg)}</span>${tag}<button class="btn pri" data-act="rq-zos" data-rq="${e.id}">Volat posádku</button></div>`;
+    if (e.state === 'calling') return `<div class="radio-call calling"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-name">${esc(e.name)} volá${e.tries > 1 ? ` (${e.tries}. volání)` : ''}</span>${tag}<button class="btn pri" data-act="rq-answer" data-rq="${e.id}" title="Klávesa P">Na příjmu</button></div>`;
+    return `<div class="radio-call open"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-msg">${esc(e.msg)}</span>${tag}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
   }).join(''));
 }
 // ---------- upozornění ----------
@@ -1125,6 +1143,7 @@ function act(a, el) {
     case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) homeModal(); }); } break;
     case 'start': newGame(); break;
     case 'test-voice': applyVoice(); if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.demo(); break;
+    case 'rq-zos': if (sim) { sim.radioZosCall(d.rq); pollLog(); render(); } break;
     case 'rq-answer': if (sim) { sim.radioAnswer(d.rq); pollLog(); render(); } break;
     case 'rq-reply': if (sim) { sim.radioReply(d.rq, d.k); pollLog(); render(); } break;
     case 'home': homeModal(); break;
@@ -1189,6 +1208,7 @@ function moveGhost(x, y) { if (drag.ghost) { drag.ghost.style.left = x + 12 + 'p
 function dropTarget(x, y) {
   const e = document.elementFromPoint(x, y);
   if (e && e.closest('[data-case]') && !e.closest('#modal')) return e.closest('[data-case]');
+  if (e && e.closest('[data-drop-case]')) { const el = e.closest('[data-drop-case]'); return { dataset: { case: el.dataset.dropCase }, classList: el.classList }; }
   const id = glCaseAt(x, y); return id ? { dataset: { case: id }, classList: { add() {}, remove() {} } } : null;
 }
 document.addEventListener('pointerdown', ev => {
@@ -1219,7 +1239,12 @@ function dragEnd(ev, cancel) {
   suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
   if (cancel) return;
   const tg = dropTarget(ev.clientX, ev.clientY); if (!tg) return;
-  const k = sim.crewOf(d.id), cs = sim.caseOf(tg.dataset.case); if (!k || !cs) return;
+  if (/^x-/.test(d.id)) {
+    const acs = sim.caseOf(tg.dataset.case || tg.dataset.dropCase); if (!acs) return;
+    const r = sim.sendAgency(acs.id, d.id.slice(2)); sel.c = acs.id;
+    toast(r.ok ? (r.msg || `${{ cor: 'Koroner', pcr: 'PČR', hzs: 'HZS' }[d.id.slice(2)]} → ${acs.num}`) : r.msg, r.ok ? '' : 'warn'); render(); return;
+  }
+  const k = sim.crewOf(d.id), cs = sim.caseOf(tg.dataset.case || tg.dataset.dropCase); if (!k || !cs) return;
   sel.k = k.id; sel.c = cs.id;
   let r;
   if (cs.vstricna && cs.vstricna.state === 'offered') r = sim.assignVstricna(cs.id, k.id);
@@ -1260,7 +1285,9 @@ document.addEventListener('click', ev => {
   if (t.closest('#map')) return;
   const ck = t.closest('[data-crew]'), cc = t.closest('[data-case]');
   if (ck && !t.closest('#modal')) {
-    ev.preventDefault(); sel.k = ck.dataset.crew;
+    ev.preventDefault();
+    if (/^x-/.test(ck.dataset.crew)) { toast('Přetáhni dlaždici na případ – ZOS vyrozumí ' + ({ 'x-cor': 'koronera', 'x-pcr': 'PČR', 'x-hzs': 'HZS' }[ck.dataset.crew]) + '.', ''); return; }
+    sel.k = ck.dataset.crew;
     if (t.closest('.tile')) { followK = followK === sel.k ? null : sel.k; followLast = 0; if (followK) { const fk = sim.crewOf(followK); toast(`Sleduji ${fk.name} na mapě (posunutím mapy nebo dalším klikem zrušíš).`, ''); } }
     syncSelectionToMain();
     if (ck.dataset.ptt) { const k = sim.crewOf(sel.k); toast(`${k.name}: spojení v pořádku, ${STLAB[k.state].toLowerCase()}.`, ''); }

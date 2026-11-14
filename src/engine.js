@@ -128,12 +128,13 @@ class Sim {
   }
 
   // spojový řád: volání, potvrzení ZOS, zpráva, odpověď ZOS
-  _radio(crew, cs, msg, reply) {
-    if (this.s.radioMode === 'interactive') {
+  _radio(crew, cs, msg, reply, codes) {
+    {
       const say = reply ? `ZCB101 rozumí${reply === true ? '' : ', ' + reply}.` : 'ZCB101 rozumí.';
       const opts = [{ k: 'ok', label: reply && reply !== true ? `Rozumí, ${reply}` : 'Rozumí', say, ok: true, act: 'ack' }];
       if (reply === 'zjišťujeme koronera') opts.push({ k: 'bad', label: 'Rozumí, vracejte se na základnu', say: 'ZCB101 rozumí, vracejte se na základnu.', ok: false, act: 'ack' });
-      this._rq(crew, cs, msg, opts, 'info');
+      const who = cs && codes == null ? this._caller(cs, crew) : { crew, codes: codes || crew.code };
+      this._crewCall(who.crew, cs, msg, opts, 'info', who.codes);
       return;
     }
     const id = cs ? cs.id : null, code = `ZCB${crew.code}`;
@@ -142,19 +143,166 @@ class Sim {
     this.L('crew', `${code}: ${msg}`, id, crew.id);
     if (reply) this.L('crew', `ZCB101 rozumí${reply === true ? '' : ', ' + reply}.`, id, crew.id);
   }
+  // LZS Kryštof 13: zkouška spojení v 8:00 a 20:00, hlášení po vzletu, hlášení transportu
+  _lzsRadio() {
+    const s = this.s, t = s.t, lz = this.crewOf('lzs');
+    if (!lz) return;
+    const sod = (s.startHour * 3600 + t) % 86400, day = Math.floor((s.startHour * 3600 + t) / 86400);
+    for (const hh of [8, 20]) {
+      const key = `${day}-${hh}`;
+      if (sod >= hh * 3600 && sod < hh * 3600 + 900 && s.lzsCheck !== key && lz.state !== 'off') {
+        s.lzsCheck = key;
+        const w = this._lzsWeatherStatus();
+        this._crewCall(lz, null, `na Matře slyší za 5, ${w === 'clear' ? 'jsme bez omezení' : w === 'consult' ? 'jsme na konzultaci' : 'zatím neletoví, kdyžtak se ozveme'}.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info', 'K' + String(lz.code).replace(/\D/g, ''));
+      }
+    }
+    if ((lz.state === 'enroute' || (lz.state === 'transport' && lz.lzsLeg === 'to-scene')) && lz.caseId && lz.enrouteAt != null && t - lz.enrouteAt >= 60 && lz.takeoffReported !== lz.caseId) {
+      lz.takeoffReported = lz.caseId;
+      const cs = this.caseOf(lz.caseId); if (!cs) return;
+      const mins = Math.max(1, Math.ceil((lz.until - t) / 60));
+      const ground = cs.crews.map(id => this.crewOf(id)).filter(k => k && k.id !== lz.id && k.type !== 'LZS' && BUSY.includes(k.state));
+      const say2 = ground.length ? `${ground.map(k => 'ZCB' + k.code).join(' a ')}, ${this._label(lz)} přistává za ${mins} minut.` : null;
+      this._crewCall(lz, cs, `po vzletu, na místě přistání za ${mins} minut.`, [{ k: 'ok', label: `Rozumí, na místě za ${mins} min`, say: `ZCB101 rozumí, na místě za ${mins} minut.`, say2, ok: true, act: 'ack', def: true }], 'info', 'K' + String(lz.code).replace(/\D/g, ''));
+    }
+  }
   // ---------- interaktivní rádiové relace ----------
   // Posádka volá → dispečer „na příjmu“ → zpráva → dispečer volí odpověď. Bez odezvy posádka volání opakuje.
   _rq(crew, cs, msg, opts, kind, extra) {
     const s = this.s, q = s.radioQ || (s.radioQ = []);
-    const e = Object.assign({ id: 'rq' + (s.rqSeq = (s.rqSeq || 0) + 1), t: s.t, crewId: crew.id, code: crew.code, name: crew.name, caseId: cs ? cs.id : null, msg, opts, kind, state: 'calling', tries: 1, nextAt: s.t + 45 }, extra || {});
+    const e = Object.assign({ id: 'rq' + (s.rqSeq = (s.rqSeq || 0) + 1), t: s.t, crewId: crew.id, code: crew.code, callCodes: crew.code, name: crew.name, caseId: cs ? cs.id : null, msg, opts, kind, state: 'calling', tries: 1, nextAt: s.t + 45 }, extra || {});
     q.push(e); if (q.length > 50) q.splice(0, q.length - 50);
-    this.L('crew', `ZCB101, zde ZCB${crew.code}, příjem.`, e.caseId, crew.id);
+    this.L('crew', `ZCB101, zde ${this._csign(e.callCodes)}, příjem.`, e.caseId, crew.id);
     return e;
   }
+  _csign(codes) { return /^K/.test(String(codes)) ? String(codes).replace(/^K(\d+)/, 'Kryštof $1') : `ZCB${codes}`; }
+  // relace posádky → ZOS. Interaktivně čeká na dispečera; automaticky se přehraje celá i s výchozí odpovědí.
+  _crewCall(crew, cs, msg, opts, kind, callCodes) {
+    if (this.s.radioMode === 'interactive') return this._rq(crew, cs, msg, opts, kind, callCodes ? { callCodes } : null);
+    const id = cs ? cs.id : null, sign = this._csign(callCodes || crew.code);
+    this.L('crew', `ZCB101, zde ${sign}, příjem.`, id, crew.id);
+    this.L('crew', 'ZCB101 na příjmu.', id, crew.id);
+    this.L('crew', `${sign}: ${msg}`, id, crew.id);
+    if (kind === 'vj') return null; // vstřícnou rozhoduje dispečer přetažením posádky / vyprší
+    const o = (opts || []).find(x => x.def) || (opts || []).find(x => x.ok !== false) || (opts || [])[0];
+    if (o) {
+      if (o.say) this.L('crew', o.say, id, crew.id);
+      if (o.say2) this.L('crew', o.say2, id, crew.id);
+      if (o.act === 'vj-self') this.L('crew', `${sign} rozumí, jedeme sami.`, id, crew.id);
+    }
+    return null;
+  }
+  // relace ZOS → posádka (dispečer ji spouští sám; automaticky proběhne hned)
+  _zosCall(crew, cs, msg, reply) {
+    const s = this.s;
+    if (s.radioMode === 'interactive') {
+      const q = s.radioQ || (s.radioQ = []);
+      q.push({ id: 'rq' + (s.rqSeq = (s.rqSeq || 0) + 1), t: s.t, crewId: crew.id, code: crew.code, callCodes: crew.code, name: crew.name, caseId: cs ? cs.id : null, msg, reply: reply || null, opts: [], kind: 'zos', state: 'zos', tries: 1, nextAt: s.t + 240 });
+      return;
+    }
+    this._zosSay(crew, cs, msg, reply);
+  }
+  _zosSay(crew, cs, msg, reply) {
+    const id = cs ? cs.id : null;
+    this.L('crew', `ZCB${crew.code}, ZCB101.`, id, crew.id);
+    this.L('crew', `ZCB${crew.code} na příjmu.`, id, crew.id);
+    this.L('crew', `ZCB101: ${msg}`, id, crew.id);
+    this.L('crew', `ZCB${crew.code} rozumí${reply ? ', ' + reply : ''}.`, id, crew.id);
+  }
+  radioZosCall(id) {
+    const e = this.radioEntry(id); if (!e || e.state !== 'zos') return { ok: false };
+    const crew = this.crewOf(e.crewId), cs = e.caseId ? this.caseOf(e.caseId) : null;
+    e.state = 'done'; e.doneAt = this.s.t;
+    if (crew) this._zosSay(crew, cs, e.msg, e.reply);
+    return { ok: true };
+  }
+  // název posádky do rádia: „RV Třeboň“, „Kryštof 13“
+  _label(k) {
+    if (!k) return '';
+    if (k.type === 'LZS') return `Kryštof ${String(k.code).replace(/\D/g, '')}`;
+    const st = ZOS_DATA.stations.find(x => x.id === k.st);
+    const town = st ? st.name.replace(/^ČB – .*/, 'České Budějovice') : k.name;
+    return `${k.type === 'RV' ? 'RV' : 'RZP'} ${town}`;
+  }
+  // kdo z vozů u případu volá: RV, pokud je na místě (ohlásí i RZP), jinak volající posádka
+  _caller(cs, base) {
+    const ks = cs.crews.map(id => this.crewOf(id)).filter(k => k && k.caseId === cs.id);
+    const rv = ks.find(k => k.type === 'RV' && (k.state === 'onscene' || k.caseRole === 'escort'));
+    const rzp = ks.find(k => k.type === 'RZP' && (k.state === 'onscene' || k.state === 'transport') && !k.caseRole);
+    if (rv && (!base || base.type !== 'LZS')) return { crew: rv, codes: rzp ? `${rv.code} a ${rzp.code}` : rv.code };
+    return { crew: base, codes: base.code };
+  }
+  // události po příjezdu: nenalezený pacient, žádost o PČR / HZS, METHANE u více zraněných
+  _sceneEvents(c, cs) {
+    const t = this.s.t;
+    if (cs.sceneEv) return; cs.sceneEv = true;
+    if ((cs.patientCount || 1) > 1 && !cs.methane) {
+      cs.methane = true;
+      const heavy = Math.max(1, Math.min(cs.patientCount, this.ri(1, 2)));
+      this._crewCall(c, cs, `METHANE: dopravní nehoda, ${cs.patientCount} zranění, z toho ${heavy} vážně, ${this.pick(['nebezpečí provoz', 'únik provozních kapalin', 'bez dalšího nebezpečí'])}, přístup ${this.pick(['z obce', 'od křižovatky', 'po hlavní silnici'])}, ${this.pick(['HZS a PČR na místě', 'HZS na místě, PČR na cestě', 'PČR na místě'])}, požadujeme ${heavy > 1 ? 'další RZP a LZS' : 'další RZP'}.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info');
+      return;
+    }
+    if (c.type === 'RZP' && !['silnice', 'priroda'].includes(cs.where) && this.rnd() < 0.03) {
+      cs.notFoundUntil = t + this.rr(150, 300);
+      this._crewCall(c, cs, this.pick(['jsme na adrese, nikdo tu není, nemůžeme najít pacienta.', 'na adrese nikdo neotvírá, pacienta nemůžeme najít.', 'nemůžeme najít místo, číslo popisné tu není.']), [{ k: 'ok', label: 'Rozumí, voláme na místo', say: 'ZCB101 rozumí, voláme na místo.', ok: true, act: 'ack', def: true }], 'info');
+      this.L('sys', `${cs.num}: ZOS kontaktuje volajícího – upřesnění místa.`, cs.id);
+      return;
+    }
+    const h = this.hour(), night = h >= 20 || h < 6;
+    let kind = null, why = '';
+    if (cs.ind === 'psych' && this.rnd() < 0.14) { kind = 'pcr'; why = 'agresivní pacient'; }
+    else if (cs.ind === 'intox' && ['ulice', 'verejne'].includes(cs.where) && this.rnd() < (night ? 0.14 : 0.08)) { kind = 'pcr'; why = this.pick(['pro určení totožnosti', 'agresivní pacient']); }
+    else if (['trauma', 'porucha'].includes(cs.ind) && ['ulice', 'verejne'].includes(cs.where) && this.rnd() < 0.04) { kind = 'pcr'; why = this.pick(['pro určení totožnosti', 'agresivní pacient']); }
+    else if (['trauma', 'czs', 'porucha', 'dusnost'].includes(cs.ind) && ['byt', 'rd', 'priroda'].includes(cs.where) && this.rnd() < 0.035) { kind = 'hzs'; why = 'na transport'; }
+    if (kind && !(cs.agencies && cs.agencies[kind])) this._requestAgency(c, cs, kind, why);
+  }
+  // ---------- součinnost PČR / HZS (dlaždice jako koroner) ----------
+  sendAgency(caseId, kind, viaRadio) {
+    const cs = this.caseOf(caseId); if (!cs || cs.status === 'closed') return { ok: false, msg: 'Případ už je uzavřen.' };
+    const A = cs.agencies || (cs.agencies = {});
+    if (kind === 'cor') {
+      if (!cs.exitus) return { ok: false, msg: 'Koronera lze přiřadit jen k případu s exitem.' };
+      if (cs.coroner && cs.coroner.state !== 'unavailable') return { ok: true, msg: 'Koroner se už zjišťuje / je zajištěn.' };
+      cs.coroner = { state: 'pending', answerAt: this.s.t + this.rr(120, 300) };
+      return { ok: true };
+    }
+    if (kind === 'hzs' && cs.lzsTechRequired && !cs.lzsTechRequested) this.requestLzsTechnicalAssist(cs.id);
+    const a = A[kind], nm = kind === 'pcr' ? 'PČR' : 'HZS';
+    if (a && (a.state === 'sent' || a.state === 'onscene')) return { ok: true, msg: nm + ' už je vyrozuměna.' };
+    const eta = this.rr(kind === 'pcr' ? 300 : 360, kind === 'pcr' ? 900 : 1000);
+    const wasReq = a && a.reqAt != null;
+    A[kind] = Object.assign(a || {}, { state: 'sent', sentAt: this.s.t, arriveAt: this.s.t + eta });
+    if (wasReq && !A[kind].scored) { A[kind].scored = true; if (this.s.t - A[kind].reqAt <= 360) this._opsScore(1, `včas vyrozuměna ${nm} u ${cs.num}`, cs.id); }
+    this.L('sys', `${cs.num}: ${nm} vyrozuměna, dojezd asi ${Math.round(eta / 60)} min.`, cs.id);
+    return { ok: true };
+  }
+  _agencyStep(cs) {
+    const t = this.s.t, A = cs.agencies; if (!A) return;
+    for (const kind of ['pcr', 'hzs']) {
+      const a = A[kind]; if (!a) continue;
+      const nm = kind === 'pcr' ? 'PČR' : 'HZS';
+      if (a.state === 'sent' && t >= a.arriveAt) { a.state = 'onscene'; this.L('sys', `${cs.num}: ${nm} na místě.`, cs.id); }
+      if (a.state === 'requested' && !a.penal && t - a.reqAt > 360) { a.penal = true; this._opsScore(-1, `nevyrozuměná ${nm} na žádost posádky u ${cs.num}`, cs.id); }
+    }
+  }
+  _agencyHold(cs) { const A = cs.agencies || {}; return ['pcr', 'hzs'].some(k => A[k] && A[k].reqAt != null && (A[k].state === 'requested' || A[k].state === 'sent') && this.s.t - A[k].reqAt < 2400); }
+  // posádka žádá součinnost (rádiem)
+  _requestAgency(crew, cs, kind, why) {
+    const A = cs.agencies || (cs.agencies = {});
+    if (A[kind]) return;
+    A[kind] = { state: 'requested', reqAt: this.s.t, why };
+    const nm = kind === 'pcr' ? 'policii' : 'hasiče';
+    this.L('req', `${cs.num}: ${crew.name} žádá ${kind === 'pcr' ? 'PČR' : 'HZS'} – ${why}`, cs.id);
+    const who = this._caller(cs, crew);
+    this._crewCall(who.crew, cs, `žádáme na místo ${nm}, ${why}.`, [
+      { k: 'send', label: `Posíláme ${nm}`, say: `ZCB101 rozumí, posíláme ${nm}.`, ok: true, act: 'agency', agency: kind },
+      { k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'agency', who.codes);
+  }
+
   setRadioMode(mode) {
     this.s.radioMode = mode === 'interactive' ? 'interactive' : 'auto';
-    if (this.s.radioMode === 'auto') for (const e of this.s.radioQ || []) if (e.state === 'calling' || e.state === 'open') {
-      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId); this.L('crew', `ZCB${e.code}: ${e.msg}`, e.caseId, e.crewId); }
+    if (this.s.radioMode === 'auto') for (const e of this.s.radioQ || []) if (e.state === 'calling' || e.state === 'open' || e.state === 'zos') {
+      if (e.state === 'zos') { const k = this.crewOf(e.crewId); e.state = 'done'; if (k) this._zosSay(k, e.caseId ? this.caseOf(e.caseId) : null, e.msg, e.reply); continue; }
+      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId); this.L('crew', `${this._csign(e.callCodes || e.code)}: ${e.msg}`, e.caseId, e.crewId); }
       e.state = 'open'; const def = (e.opts || []).find(x => x.def) || (e.opts || [])[0]; this.radioReply(e.id, def ? def.k : null, true);
     }
   }
@@ -163,7 +311,7 @@ class Sim {
     const e = this.radioEntry(id); if (!e || e.state !== 'calling') return { ok: false };
     e.state = 'open'; e.openedAt = this.s.t; e.nextAt = this.s.t + 120;
     this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId);
-    this.L('crew', `ZCB${e.code}: ${e.msg}`, e.caseId, e.crewId);
+    this.L('crew', `${this._csign(e.callCodes || e.code)}: ${e.msg}`, e.caseId, e.crewId);
     return { ok: true };
   }
   radioReply(id, k, auto) {
@@ -173,11 +321,14 @@ class Sim {
     e.state = 'done'; e.doneAt = this.s.t; e.reply = o ? o.k : null;
     if (!o) return { ok: true };
     if (o.say) this.L('crew', o.say, e.caseId, e.crewId);
+    if (o.say2) this.L('crew', o.say2, e.caseId, e.crewId);
     if (!auto && o.ok === false) this._opsScore(-1, `nevhodná odpověď na relaci ZCB${e.code}`, e.caseId);
     const cs = e.caseId ? this.caseOf(e.caseId) : null;
     if (o.act === 'vj-assign' && cs) { const r = this.assignVstricna(cs.id, o.crewId); if (!r.ok) { this.L('warn', r.msg, cs.id); if (cs.vstricna && cs.vstricna.state === 'offered') this.declineVstricna(cs.id); } }
     else if (o.act === 'vj-decline' && cs) this.declineVstricna(cs.id, auto);
     else if (o.act === 'vj-self' && cs) this.L('crew', `ZCB${e.code} rozumí, jedeme sami.`, cs.id, e.crewId);
+    else if (o.act === 'assign' && cs) { const r = this.assign(cs.id, o.crewId); if (!r.ok) this.L('warn', `${cs.num}: ${r.msg || 'posádku se nepodařilo vyslat'} – vyber posádku ručně.`, cs.id); }
+    else if (o.act === 'agency' && cs) this.sendAgency(cs.id, o.agency, true);
     else if (o.act === 'rv-send' && cs) {
       const best = this.suggest(cs.id, 'RV')[0] || this.suggest(cs.id, 'LZS')[0];
       const r = best ? this.assign(cs.id, best.crewId) : { ok: false };
@@ -191,8 +342,9 @@ class Sim {
       if (e.state === 'done' || e.state === 'missed') continue;
       const cs = e.caseId ? this.caseOf(e.caseId) : null;
       if (e.kind === 'vj' && (!cs || !cs.vstricna || cs.vstricna.state !== 'offered')) { e.state = 'done'; e.doneAt = t; continue; }
+      if (e.state === 'zos') { if (t >= e.nextAt || (cs && cs.status === 'closed')) e.state = 'missed'; continue; }
       if (t < e.nextAt) continue;
-      if (e.state === 'calling' && e.tries < 3) { e.tries++; e.nextAt = t + 45; this.L('crew', `ZCB101, zde ZCB${e.code}, příjem. (${e.tries}. volání)`, e.caseId, e.crewId); continue; }
+      if (e.state === 'calling' && e.tries < 3) { e.tries++; e.nextAt = t + 45; this.L('crew', `ZCB101, zde ${this._csign(e.callCodes || e.code)}, příjem. (${e.tries}. volání)`, e.caseId, e.crewId); continue; }
       // bez odezvy: posádka si poradí sama, dispečer ztrácí provozní bod
       const wasCalling = e.state === 'calling';
       this._opsScore(-1, `${wasCalling ? 'nepřijatá' : 'nedokončená'} relace ZCB${e.code}`, e.caseId);
@@ -690,7 +842,7 @@ class Sim {
     }
     const cancellableLzs = c.type === 'LZS' && (c.state === 'onscene' || (c.state === 'transport' && c.lzsLeg === 'to-scene'));
     if (c.state !== 'call' && c.state !== 'enroute' && !cancellableLzs) return { ok: false, msg: 'Odvolat lze jen posádku ve výzvě nebo na cestě k místu; LZS lze odvolat i z místa před odletem s pacientem.' };
-    const p = this.pos(c), role = c.caseRole;
+    const p = this.pos(c), role = c.caseRole, wasMoving = c.state === 'enroute';
     if (role === 'vstricna-support' && cs.vstricna) {
       const primary = this.crewOf(cs.vstricna.primaryCrewId), plan = cs.vstricna;
       plan.state = 'cancelled';
@@ -727,6 +879,7 @@ class Sim {
     } else if (c.state === 'call') { c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; c.until = this.s.t; }
     else { const dur = this._go(c, c.home.lat, c.home.lon, 'RET'); c.state = 'free'; c.until = this.s.t + dur; }
     this.L('warn', `${c.name}: odvolána od případu ${cs.num}`, cs.id, c.id);
+    if (c.type !== 'LZS' && wasMoving) this._zosSay(c, cs, cs.exitus ? 'vraťte se na základnu, výjezd zrušen.' : this.pick(['vraťte se na základnu, výjezd zrušen.', 'vraťte se na základnu, volající zrušil výjezd.']));
     this._checkClose(cs);
     return { ok: true };
   }
@@ -1294,6 +1447,7 @@ class Sim {
     }
 
     for (const c of s.cases) if (c.status !== 'closed') this._caseStep(c);
+    this._lzsRadio();
     if (s.radioMode === 'interactive') this._radioStep();
     this._runMuAssistant();
     for (const cs of s.cases) if (cs.vstricna && cs.vstricna.state === 'offered' && t >= cs.vstricna.expiresAt) {
@@ -1354,6 +1508,7 @@ class Sim {
     // Plánovaný N4 převoz neeskaluje jako akutní tísňová výzva.
     if (c.typ === 'sekundární') return;
     if (c.exitus) { this._deathCaseStep(c); return; }
+    if (c.agencies) this._agencyStep(c);
     // žádost o lékaře na místě
     if (c.rvReqAt != null && !c.rvReq && t >= c.rvReqAt) {
       c.rvReq = { t, satT: c.docAssigned ? t : null, kind: c.rvReqKind || 'zhoršení stavu' };
@@ -1365,12 +1520,12 @@ class Sim {
           this.L('req', `${c.num}: posádka hlásí zhoršení stavu a žádá lékaře – doplňková naléhavost N2${extra ? ` (${extra})` : ''}`, c.id);
         }
         else this.L('req', `${c.num}: posádka žádá lékaře – ${c.rvReq.kind}`, c.id);
-        const rzp = this.s.radioMode === 'interactive' && c.crews.map(id => this.crewOf(id)).find(k => k && k.type === 'RZP' && k.state === 'onscene');
+        const rzp = c.crews.map(id => this.crewOf(id)).find(k => k && k.type === 'RZP' && k.state === 'onscene');
         if (rzp) {
-          const ext = c.rvReq.kind === 'zhoršení stavu' ? `pacient se zhoršuje${c.symptoms && c.symptoms.length ? ', ' + String(c.symptoms[c.symptoms.length - 1]).replace(/^[^0-9A-Za-zÀ-ž]+/, '').toLocaleLowerCase('cs-CZ') : ''}, žádáme lékaře na místo.` : 'žádáme lékaře k posouzení stavu.';
-          this._rq(rzp, c, ext, [
-            { k: 'send', label: 'Posílám lékaře', say: 'ZCB101 rozumí, lékař vyslán.', ok: true, act: 'rv-send' },
-            { k: 'later', label: 'Rozumí, lékaře zajistím', say: 'ZCB101 rozumí, lékaře zajistíme.', ok: true, act: 'ack', def: true }], 'rv');
+          const sug = [...this.suggest(c.id, 'RV').slice(0, 2), ...this.suggest(c.id, 'LZS').slice(0, 1)].map(x => this.crewOf(x.crewId)).filter(Boolean);
+          const opts = sug.map((k, i) => ({ k: 'rv' + i, label: `Za vámi ${this._label(k)}`, say: `ZCB101 rozumí, za vámi ${this._label(k)}.`, ok: true, act: 'assign', crewId: k.id }));
+          opts.push({ k: 'later', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true });
+          this._crewCall(rzp, c, `žádáme lékaře na místo, ${c.rvReq.kind === 'zhoršení stavu' ? 'zhoršení stavu' : 'posouzení stavu'}.`, opts, 'rv');
         }
       }
     }
@@ -1383,6 +1538,7 @@ class Sim {
         c.up = c.symptoms.join(', ');
         c.poznamka = [c.poznamka, 'opakované volání – pacient se probírá, dýchá'].filter(Boolean).join(', ');
         this.L('warn', `${c.num}: opakované volání – pacient se probírá a dýchá, doplňková naléhavost N1→N2`, c.id);
+        for (const k of c.crews.map(id => this.crewOf(id)).filter(k => k && (k.state === 'call' || k.state === 'enroute') && k.type !== 'LZS')) this._zosCall(k, c, 'pacient se probírá, měníme naléhavost na N2.');
       }
     }
     if (c.status === 'waiting' && !c.mu) {
@@ -1413,12 +1569,13 @@ class Sim {
       cor.state = ok ? 'available' : 'unavailable';
       if (ok) {
         cor.until = t + this.rr(900, 1800);
-        this.L('crew', `ZCB101 pro posádky u ${c.num}: koroner zajištěn, vracejte se na základnu.`, c.id);
+        cor.name = this.pick(['MUDr. Kovář', 'MUDr. Malá', 'MUDr. Sýkora', 'MUDr. Vlková', 'MUDr. Holý', 'MUDr. Bartošová']);
+        this.L('sys', `${c.num}: koroner ${cor.name} zajištěn (telefonicky, informace do terminálu) – posádky se vracejí na základnu.`, c.id);
       } else {
         c.exam = { needed: true, done: false, remaining: this.rr(1200, 2100), since: t, lastPen: t };
-        if (here('RV')) this.L('crew', `ZCB101 pro posádky u ${c.num}: koroner není k dispozici, RV zůstává na prohlídku zemřelého, RZP se vrací.`, c.id);
+        if (here('RV')) this.L('sys', `${c.num}: koroner není k dispozici (informace do terminálu) – RV zůstává na prohlídku zemřelého, RZP se vrací.`, c.id);
         else {
-          this.L('crew', `ZCB101 pro posádky u ${c.num}: koroner není k dispozici, prohlídku provede lékař RV.`, c.id);
+          this.L('sys', `${c.num}: koroner není k dispozici (informace do terminálu) – prohlídku provede lékař RV.`, c.id);
           this.L('alert', `${c.num}: koroner není k dispozici – na prohlídku zemřelého vyšli RV (během služby, co nejdřív).`, c.id);
         }
       }
@@ -1443,10 +1600,10 @@ class Sim {
     const coming = cs.crews.map(id => this.crewOf(id)).filter(k => k && k.id !== c.id && k.caseId === cs.id && (k.state === 'call' || k.state === 'enroute'));
     if (kind === 'signs') {
       const who = coming.some(k => k.type === 'RV' || k.type === 'LZS') ? (coming.some(k => k.type === 'LZS') && !coming.some(k => k.type === 'RV') ? ' LZS můžete odvolat.' : ' RV můžete odvolat.') : coming.length ? ' Další posádku můžete odvolat.' : '';
-      this._radio(c, cs, `na místě jisté známky smrti, KPR nezahajujeme.${who}`, 'zjišťujeme koronera');
+      this._radio(c, cs, `na místě jisté známky smrti, exitus, prosíme zjistit koronera.${who}`, 'zjišťujeme koronera');
       if (coming.length) cs.recallDue = { at: t, ids: coming.map(k => k.id), done: false };
-    } else if (kind === 'cpr') this._radio(c, cs, 'KPR neúspěšná, na místě exitus.', 'zjišťujeme koronera');
-    else this._radio(c, cs, 'po konzultaci s lékařem KPR ukončena, na místě exitus.', 'zjišťujeme koronera');
+    } else if (kind === 'cpr') this._radio(c, cs, 'na místě exitus, prosím zjistěte nám dostupnost koronera.', 'zjišťujeme koronera');
+    else this._radio(c, cs, 'po konzultaci s lékařem na místě exitus, prosíme zjistit koronera.', 'zjišťujeme koronera');
     this.s.agg.deaths = (this.s.agg.deaths || 0) + 1;
     void doc;
   }
@@ -1544,7 +1701,7 @@ class Sim {
           dur = this._go(c, target.lat, target.lon, c.caseRole === 'vstricna-support' ? 'N3' : 'N' + Math.min(4, Math.max(1, cs.n || 3)));
           if (!c.caseRole) this._park(c, cs);
         }
-        c.until = t + dur; c.state = 'enroute';
+        c.until = t + dur; c.state = 'enroute'; c.enrouteAt = t; c.takeoffReported = null;
         this.L('crew', `${c.name}: výjezd, ETA ${Math.round(dur / 60)} min`, cs.id, c.id);
         break;
       }
@@ -1588,6 +1745,7 @@ class Sim {
         else if (cs.fate === 'signs' && !cs.mu) dur = this.rr(60, 150);
         c.until = t + dur;
         this.L('crew', `${c.name}: na místě`, cs.id, c.id);
+        if (!cs.exitus && !cs.mu && cs.typ !== 'sekundární' && (c.type === 'RZP' || c.type === 'RV')) this._sceneEvents(c, cs);
         break;
       }
       case 'onscene': {
@@ -1620,6 +1778,7 @@ class Sim {
           const needDoc = cs.rvNeed || !!activeRvReq;
           const limit = (activeRvReq ? cs.rvReq.t : c.arrivedAt) + 900;
           if (needDoc && !cs.docArrived && t < limit) break;
+          if (this._agencyHold(cs) || (cs.notFoundUntil && t < cs.notFoundUntil)) { c.until = Math.max(t + 30, cs.notFoundUntil || 0); break; }
           if ((cs.patientCount || 1) > 1) {
             if ((cs.patientsRemaining || 0) <= 0) return this._release(c);
             cs.patientsHandled = (cs.patientsHandled || 0) + 1;
@@ -1646,7 +1805,9 @@ class Sim {
             this.L('crew', `${c.name}: telefonická konzultace s lékařem`, cs.id, c.id);
             break;
           }
-          this._radio(c, cs, `${c.consulted ? 'po konzultaci s lékařem ' : ''}pacient ponechán na místě, vracíme se na základnu.`, true);
+          const rvHere = cs.crews.map(id => this.crewOf(id)).find(k => k && k.type === 'RV' && k.caseId === cs.id && k.state === 'onscene');
+          if (rvHere) { this._radio(rvHere, cs, 'pacienta jsme ponechali na místě a obě posádky se vracíme zpátky na základnu.', true); cs.leftOnScene = true; this._release(rvHere); return this._release(c); }
+          this._radio(c, cs, `${c.consulted ? 'po konzultaci ' : ''}pacient ponechán na místě a my se vracíme zpátky na základnu.`, true);
           cs.leftOnScene = true;
           return this._release(c);
         }
@@ -1673,6 +1834,10 @@ class Sim {
         return this._release(c);
       }
       case 'transport': {
+        if (c.kruhacAt && t >= c.kruhacAt && t < c.until) {
+          c.kruhacAt = null; const kcs = this.caseOf(c.caseId);
+          if (kcs) this._crewCall(c, kcs, `jsme na kruháči, dojezd ${Math.max(3, Math.round((c.until - t) / 60))} minut.`, [{ k: 'ok', label: 'Rozumí, nahlásíme', say: 'ZCB101 rozumí, nahlásíme.', ok: true, act: 'ack', def: true }], 'info');
+        }
         if (t < c.until) break;
         const cs = this.caseOf(c.caseId);
         if (c.caseRole === 'vstricna-primary') {
@@ -1752,6 +1917,12 @@ class Sim {
     cs.lzsState = 'let na heliport';
     cs.lzsPatientToHospital = true; cs.lzsTransferRequired = !this._externalHandover(cs);
     this.L('crew', `${c.name}: let s pacientem na ${hp.name}`, cs.id, c.id);
+    if (c.id === 'lzs' || /^KR/.test(String(c.code))) {
+      const mins = Math.max(1, Math.ceil(dur / 60)), hosp = ZOS_DATA.hospitals.find(h => h.id === (cs.lzsTargetHospitalId || 'h-cb')) || {};
+      const poly = ['dn_poly', 'amput'].includes(cs.ind) || (['trauma', 'dn_lehke'].includes(cs.ind) && cs.nOrig === 1);
+      const tail = poly ? this._centreTail(cs, mins).replace(/, dojezd \d+ minut$/, '') : '';
+      this._crewCall(c, cs, `směřujeme ${hosp.id === 'h-fnkv' ? 'popáleninové centrum Vinohrady' : 'ARO ' + (hosp.name || 'Nemocnice České Budějovice')}, přílet na heliport za ${mins} minut${tail}.`, [{ k: 'ok', label: 'Rozumí, nahlásíme', say: 'ZCB101 rozumí, nahlásíme.', ok: true, act: 'ack', def: true }], 'info', 'K' + String(c.code).replace(/\D/g, ''));
+    }
     if ((cs.patientsRemaining || 1) > 0) {
       cs.patientsHandled = (cs.patientsHandled || 0) + 1;
       cs.patientsRemaining = Math.max(0, cs.patientCount - cs.patientsHandled);
@@ -1821,7 +1992,7 @@ class Sim {
     this.L('crew', `${c.name}: vzlet z heliportu, návrat na základnu`, cs ? cs.id : null, c.id);
   }
   _startTransport(c, cs) {
-    const t = this.s.t, D = ZOS_DATA, escorts = [];
+    const t = this.s.t, D = ZOS_DATA, escorts = [], leaving = [];
     // Při transportu jediného pacienta se RV nenechává čekat na prázdném místě.
     // Vrací se na základnu, ať už je na místě, nebo ještě na cestě.
     if (c.type === 'RZP' && c.caseRole !== 'heli-transfer' && cs.typ !== 'sekundární' && (cs.patientCount || cs.pocet || 1) <= 1) {
@@ -1832,7 +2003,7 @@ class Sim {
           // doprovod: po KPR vždy, N1 většinou, N2 hlavně děti, N3 výjimečně
           const pEsc = cs.fate === 'rosc' ? 1 : cs.n === 1 ? 0.85 : cs.n === 2 ? (cs.child ? 0.8 : 0.35) : 0.06;
           if (this.rnd() < pEsc) escorts.push(rv);
-          else { this._radio(rv, cs, `pacient předán posádce ${c.code}, jede sama, jsme volní, vracíme se na základnu.`, true); this._release(rv); }
+          else leaving.push(rv);
         }
       }
     }
@@ -1855,7 +2026,8 @@ class Sim {
     const pmode = cs.n <= 2 || cs.fate === 'rosc' ? 'P2' : 'P3'; // NACA IV–VI v režimu N2, jinak N3
     const dur = this._go(c, best.lat, best.lon, pmode);
     const dept = this._deptFor(best, cs, type);
-    c.dest = { hid: best.id, name: best.short + ' – ' + dept, type, say: `do ${best.gen || best.short} ${DEPT_ACC[dept] || ''}`.trim() };
+    const dsay = this._destSay(best, dept);
+    c.dest = { hid: best.id, name: best.short + ' – ' + dept, type, say: dsay.text };
     const handoverEstimate = 700;
     c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate + driveSec(this._eta(best.lat, best.lon, c.home.lat, c.home.lon), 'RET') };
     if (cs.mu && cs.mu.hospitalCapacities) {
@@ -1865,15 +2037,46 @@ class Sim {
     c.until = t + dur; c.state = 'transport';
     cs.transported = true; cs.dest = c.dest.name;
     this.L('crew', `${c.name}: transport – ${c.dest.name}`, cs.id, c.id);
+    // hlášení cíle transportu rádiem (vždy při odjezdu z místa); u centrové péče s dojezdem a avízem přes ZOS
+    const primaryRun = c.type === 'RZP' && !cs.mu && cs.typ !== 'sekundární' && c.caseRole !== 'heli-transfer';
+    const mins = Math.max(5, Math.round(dur / 300) * 5);
+    const centreTail = dsay.centre ? this._centreTail(cs, mins) : '';
+    const ackOpts = dsay.centre ? [{ k: 'ok', label: 'Rozumí, nahlásíme', say: 'ZCB101 rozumí, nahlásíme.', ok: true, act: 'ack', def: true }, { k: 'bad', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: false, act: 'ack' }] : [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }];
+    const loaded = this.pick(['pacienta máme naloženého', 'pacienta máme na palubě', 'pacienta máme ve voze']);
     for (const rv of escorts) {
       rv.caseRole = 'escort'; rv.escortFree = cs.fate !== 'rosc' && cs.n >= 2 && this.rnd() < 0.6;
       rv.dest = { hid: best.id, name: c.dest.name, type };
       this._go(rv, best.lat, best.lon, pmode); rv.state = 'transport'; rv.until = t + dur;
-      this._radio(rv, cs, `doprovázíme ${c.code} do ${best.gen || best.short}${rv.escortFree ? ', jsme odvolatelní' : ''}.`, true);
     }
-    if (c.type === 'RZP' && !cs.mu && cs.typ !== 'sekundární' && (cs.patientCount || 1) === 1 && !escorts.length) this._announceVstricna(c, cs, best, dur);
+    if (primaryRun && escorts.length) {
+      const rv = escorts[0];
+      this._crewCall(rv, cs, `${loaded} a jedeme společně ${dsay.text}${centreTail}${rv.escortFree ? ', my jsme odvolatelní' : ''}.`, ackOpts, 'info', `${rv.code} a ${c.code}`);
+    }
+    for (const rv of leaving) {
+      const leaveDest = `${dept === 'Urgentní příjem' ? 'na urgent' : (DEPT_ACC[dept] || '')} do ${best.gen || best.short}`;
+      this._crewCall(rv, cs, `pacienta převáží posádka ${c.code} ${leaveDest}${centreTail} a my ${this.rnd() < 0.5 ? 'se vracíme zpátky na základnu' : 'jsme volní'}.`, ackOpts, 'info', rv.code);
+      this._release(rv);
+    }
+    if (primaryRun && dsay.second && dur > 15 * 60 && hav(c.lat, c.lon, best.lat, best.lon) > 12) c.kruhacAt = t + dur - 7 * 60;
+    if (primaryRun && (cs.patientCount || 1) === 1 && !escorts.length) this._announceVstricna(c, cs, best, dur, leaving.length ? null : `${loaded} a jedeme ${dsay.text}${centreTail}`, ackOpts);
+    else if (primaryRun && !escorts.length && !leaving.length) this._crewCall(c, cs, `${loaded} a jedeme ${dsay.text}${centreTail}.`, ackOpts, 'info');
   }
-  _announceVstricna(rzp, cs, hospital, routeDuration) {
+  // cíl transportu v rádiovém žargonu (1. pád): „urgentní příjem Tábor“, „KCC České Budějovice“
+  _destSay(h, dept) {
+    const town = String(h.name || h.short).replace(/^(Fakultní nemocnice|Nemocnice) /, '');
+    const D = { 'Urgentní příjem': 'urgentní příjem', 'Chirurgická ambulance': 'chirurgie', 'Iktové centrum': 'iktové centrum', 'KCC – komplexní cerebrovaskulární centrum': 'KCC', 'ARO': 'ARO', 'Dětské oddělení': 'dětské oddělení', 'Gynekologicko-porodnické oddělení': 'gynekologie', 'ORL': 'ORL', 'Traumacentrum': 'traumacentrum', 'Kardiocentrum – katetrizační sál': 'kardioJIP', 'Psychiatrické oddělení': 'psychiatrie', 'Popáleninové centrum': 'popáleninové centrum' }[dept] || String(dept).toLocaleLowerCase('cs-CZ');
+    const centre = ['KCC', 'traumacentrum', 'iktové centrum', 'ARO', 'kardioJIP'].includes(D);
+    const second = h.id === 'h-cb' && ['KCC', 'traumacentrum', 'ARO', 'kardioJIP', 'dětské oddělení'].includes(D);
+    return { text: h.id === 'h-cb' && ['ARO', 'kardioJIP', 'traumacentrum'].includes(D) ? `${D} Nemocnice České Budějovice` : `${D} ${town}`, centre, second };
+  }
+  // avízo do centra: dojezd zaokrouhlený na 5 min, u polytraumatu pohlaví, věk, trauma triage, ventilace
+  _centreTail(cs, mins) {
+    const poly = ['dn_poly', 'amput'].includes(cs.ind) || (['trauma', 'dn_lehke'].includes(cs.ind) && cs.nOrig === 1);
+    if (!poly) return `, dojezd ${mins} minut`;
+    if (!cs.triage) cs.triage = { why: this.pick(['mechanismus', 'mechanismus', 'anatomie', 'fyziologie']), vent: this.rnd() < 0.75 ? 'spontánně ventilující' : 'UPV' };
+    return `, polytrauma, ${cs.sex === 'Ž' ? 'žena' : 'muž'} ${cs.age} let, triage pozitivní – ${cs.triage.why}, ${cs.triage.vent}, dojezd ${mins} minut`;
+  }
+  _announceVstricna(rzp, cs, hospital, routeDuration, baseMsg, ackOpts) {
     const distanceSec = this._eta(rzp.mv.a[0], rzp.mv.a[1], hospital.lat, hospital.lon);
     const trauma = /trauma|dopravní nehoda|amputace|popálení/i.test(cs.klasif);
     const fitChance = cs.n === 3 ? (trauma ? 0.06 : 0.50) : cs.n === 2 ? (trauma ? 0.02 : 0.16) : 0;
@@ -1882,48 +2085,31 @@ class Sim {
     const area = nearest && nearest.oblast;
     const receiver = this.s.crews.filter(k => k.type === 'RZP' && k.oblast === area && this.avail(k) && !k.res && k.caseId !== cs.id);
     const canOffer = suitable && receiver.length > 0 && routeDuration > 12 * 60;
-    // Vstřícnou řeší jen periferní posádky (daleko od cílové nemocnice). Posádky u okresní/krajské nemocnice nic nehlásí.
-    const homeSec = rzp.home ? this._eta(rzp.home.lat, rzp.home.lon, hospital.lat, hospital.lon) : distanceSec;
+    // Vstřícnou řeší jen periferní posádky; „dojedeme sami / je schopen překladu“ se říká jen z periferie.
     // Vstřícná má smysl jen u dlouhých přejezdů po pomalejších silnicích (např. Dačice → JH, Vyšší Brod → ČK),
     // ne tam, kde se jede po dálnici či rychlé silnici (Veselí, Soběslav → Tábor): čas trasy po síti s rychlostmi jízdy s VRZ.
-    if (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext) { cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec }; return; }
-    const goTo = (rzp.dest && rzp.dest.say) || `do ${hospital.gen || hospital.short}`;
-    const common = `ZCB${rzp.code}: pacienta máme ve voze, jedeme ${goTo},`;
-    if (this.s.radioMode === 'interactive') {
-      const head = `pacienta máme ve voze, jedeme ${goTo},`;
-      if (!suitable) {
-        cs.vstricna = { state: 'not-suitable', hospitalId: hospital.id, area, distanceSec };
-        this._rq(rzp, cs, `${head} pacient není schopen překladu, jedeme sami.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack' }], 'info');
-      } else if (canOffer) {
-        cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, areaGen: ZOS_DATA.oblastGen[area] || nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(240, routeDuration * 0.68) };
-        cs.vstricna.freeAtOffer = receiver.length;
-        const opts = receiver.slice(0, 3).map((k, i) => ({ k: 'vj' + i, label: `Naproti ${k.name}`, say: null, ok: true, act: 'vj-assign', crewId: k.id }));
-        opts.push({ k: 'self', label: 'Dojíždějte sami', say: null, ok: true, act: 'vj-decline', def: true });
-        this._rq(rzp, cs, `${head} pacient je schopen překladu.`, opts, 'vj');
-      } else {
-        cs.vstricna = { state: 'self-unavailable', hospitalId: hospital.id, area, distanceSec };
-        this._rq(rzp, cs, `${head} pacient je schopen překladu.`, [
-          { k: 'self', label: 'Dojíždějte sami', say: 'ZCB101 rozumí, dojíždějte sami.', ok: true, act: 'vj-self', def: true },
-          { k: 'wait', label: 'Rozumí, zjistím vstřícnou', say: 'ZCB101 rozumí, vstřícnou zjišťujeme.', ok: false, act: 'ack' }], 'info');
-      }
+    const homeSec = rzp.home ? this._eta(rzp.home.lat, rzp.home.lon, hospital.lat, hospital.lon) : distanceSec;
+    const ack = ackOpts || [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }];
+    if (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext) {
+      cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec };
+      if (baseMsg) this._crewCall(rzp, cs, `${baseMsg}.`, ack, 'info');
       return;
     }
-    this.L('crew', `ZCB101, zde ZCB${rzp.code}, příjem.`, cs.id, rzp.id);
-    this.L('crew', 'ZCB101 na příjmu.', cs.id, rzp.id);
+    const head = baseMsg || `pacienta máme ve voze a jedeme ${(rzp.dest && rzp.dest.say) || hospital.short}`;
     if (!suitable) {
-      this.L('crew', `${common} pacient není schopen překladu, jedeme sami.`, cs.id, rzp.id);
-      this.L('crew', 'ZCB101 rozumí.', cs.id, rzp.id);
       cs.vstricna = { state: 'not-suitable', hospitalId: hospital.id, area, distanceSec };
+      this._crewCall(rzp, cs, `${head}, dojedeme sami.`, ack, 'info');
     } else if (canOffer) {
-      // rozhodnutí je na dispečerovi: vyslat vstřícnou (pravidlo: aspoň 2 volné RZP v oblasti), nebo „dojíždějte sami“
-      this.L('crew', `${common} pacient je schopen překladu.`, cs.id, rzp.id);
-      cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, areaGen: ZOS_DATA.oblastGen[area] || nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(120, routeDuration * 0.68) };
+      cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, areaGen: (ZOS_DATA.oblastGen || {})[area] || nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(240, routeDuration * 0.68) };
       cs.vstricna.freeAtOffer = receiver.length;
+      const opts = receiver.slice(0, 3).map((k, i) => ({ k: 'vj' + i, label: `Naproti ${this._label(k)} (${k.code})`, say: null, ok: true, act: 'vj-assign', crewId: k.id }));
+      opts.push({ k: 'self', label: 'Dojíždějte sami', say: null, ok: true, act: 'vj-decline', def: true });
+      this._crewCall(rzp, cs, `${head}, je schopen překladu.`, opts, 'vj');
     } else {
-      this.L('crew', `${common} pacient je schopen překladu.`, cs.id, rzp.id);
-      this.L('crew', 'ZCB101 rozumí, dojíždějte sami.', cs.id, rzp.id);
-      this.L('crew', `ZCB${rzp.code} rozumí, jedeme sami.`, cs.id, rzp.id);
       cs.vstricna = { state: 'self-unavailable', hospitalId: hospital.id, area, distanceSec };
+      this._crewCall(rzp, cs, `${head}, je schopen překladu.`, [
+        { k: 'self', label: 'Dojíždějte sami', say: 'ZCB101 rozumí, dojíždějte sami.', ok: true, act: 'vj-self', def: true },
+        { k: 'wait', label: 'Rozumí, zjistím vstřícnou', say: 'ZCB101 rozumí, vstřícnou zjišťujeme.', ok: false, act: 'ack' }], 'info');
     }
   }
   _meetPoint(mv, f) {

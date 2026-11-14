@@ -13,6 +13,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 - Hlasové rádiové relace: posádky mluví česky přímo ve hře (vlastní syntéza, stejný zvuk na Macu, Windows i mobilu, funguje i offline). Zvuk digitální vysílačky: tón klíčování, úzké pásmo, komprese, šum a občasné výpadky; každá posádka má svůj hlas.
 - Interaktivní rádio: posádka volá „ZCB101, zde ZCB…, příjem“, dispečer klikne Na příjmu (klávesa P), posádka předá zprávu a dispečer volí odpověď (vstřícná jízda, žádost o lékaře, exitus, doprovod…). Bez odezvy posádka volání opakuje a pak si poradí sama (−1 provozní bod).
 - Dispečer ZCB101 má vlastní stálý hlas, každá posádka jiný. Tempo hlasu volitelné (Klidné / Normální / Rychlé / Velmi rychlé). Hlášení ve správné češtině: „jedeme do Jindřichova Hradce na urgentní příjem“, „naproti z Jindřichova Hradce posádka 312“.
+- Spojový řád podle ZZS JčK: statusy jen terminálem; rádiem cíl transportu (vždy při odjezdu, žargon „jedeme urgentní příjem Tábor“), z periferie „dojedeme sami / je schopen překladu“, u centrové péče dojezd a avízo („rozumí, nahlásíme“), u polytraumatu pohlaví, věk, trauma triage a ventilace, v ČB druhé hlášení „na kruháči“.
+- Je-li na místě RV, volá za oba vozy („zde ZCB 319 a 315“): doprovod („jedeme společně…, my jsme odvolatelní“), předání RZP, ponechání na místě. Exitus „prosím zjistěte nám dostupnost koronera“, výsledek koronera telefonicky do terminálu. Žádost o lékaře „zhoršení / posouzení stavu“ → odpověď „za vámi RV Třeboň“ rovnou vyšle zvolenou posádku.
+- ZOS volá posádky sám: doplnění („pacient se probírá, měníme naléhavost na N2“) tlačítkem Volat posádku, odvolání („vraťte se na základnu, výjezd zrušen“).
+- Kryštof 13: zkouška spojení v 8:00 a 20:00, hlášení po vzletu s časem přistání (ZOS předá posádkám), hlášení transportu na heliport.
+- Nové situace z místa: nenalezený pacient („rozumí, voláme na místo“), žádost o policii / hasiče, METHANE u více zraněných.
+- Dlaždice KORONER, PČR a HZS v panelu posádek: přetažením na případ (i do panelu vybraného případu) ZOS vyrozumí; žádost posádky bliká červeně, klik na upozornění otevře výjezd v seznamu i v detailu.
 - Během relace se hra zpomalí nejvýš na 5×. V nastavení: rádio Odpovídám sám / Automaticky, hlas Zapnutý / Vypnutý (jen tóny), tlačítko Vyzkoušet. Hlas se jednorázově stáhne (~80 MB).
 
 ---

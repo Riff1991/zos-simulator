@@ -474,11 +474,11 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     return { sim, cs, recalled, back, log: sim.s.log.filter(e => e.cid === cs.id).map(e => e.txt).join('\n') };
   };
   let r = run('signs', 'available');
-  if (r.cs.status !== 'closed' || !/jisté známky smrti, KPR nezahajujeme/.test(r.log) || !/ZCB101 na příjmu/.test(r.log)) throw new Error('signs-of-death flow failed');
+  if (r.cs.status !== 'closed' || !/jisté známky smrti, exitus/.test(r.log) || !/ZCB101 na příjmu/.test(r.log)) throw new Error('signs-of-death flow failed');
   r = run('cpr-fail', 'unavailable');
-  if (r.cs.status !== 'closed' || !r.recalled || !r.back || !r.cs.exam.done || !/KPR neúspěšná, na místě exitus/.test(r.log) || !/prohlídka zemřelého ukončena/.test(r.log)) throw new Error('exam / recall flow failed: ' + JSON.stringify({ st: r.cs.status, rec: r.recalled, back: r.back }));
+  if (r.cs.status !== 'closed' || !r.recalled || !r.back || !r.cs.exam.done || !/na místě exitus/.test(r.log) || !/prohlídka zemřelého ukončena/.test(r.log)) throw new Error('exam / recall flow failed: ' + JSON.stringify({ st: r.cs.status, rec: r.recalled, back: r.back }));
   r = run('rosc', 'available');
-  if (r.cs.status !== 'closed' || !/doprovázíme/.test(r.log) || r.cs.exitus) throw new Error('ROSC escort flow failed');
+  if (r.cs.status !== 'closed' || !/jedeme společně/.test(r.log) || r.cs.exitus) throw new Error('ROSC escort flow failed');
   console.log('exitus / koroner / prohlídka / doprovod true');
 
   const sim = new Sim({ seed: 21, mode: 'shift', startHour: 7 });
@@ -533,4 +533,26 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   sim.radioReply(e.id, 'bad');
   if (e.state !== 'done' || !sim.s.log.slice(-3).some(x => x.txt.includes('vracejte se'))) throw new Error('odpověď na relaci nefunguje');
   console.log('interaktivní rádio: relace, opakování, odpovědi true', q.length, 'relací');
+}
+// spojový řád: PČR/HZS dlaždice, ZOS volá posádku, zkouška spojení LZS, kdo volá
+{
+  const sim = new Sim({ seed: 201, mode: 'free', startHour: 7, muEnabled: false, radio: 'interactive' });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  const cs = sim._spawn(); cs.status = 'active'; sim.s.cases.push(cs);
+  const k = sim.s.crews.find(x => x.type === 'RZP' && sim.avail(x)); k.caseId = cs.id; k.state = 'onscene'; cs.crews.push(k.id);
+  sim._requestAgency(k, cs, 'pcr', 'agresivní pacient');
+  if (!cs.agencies.pcr || cs.agencies.pcr.state !== 'requested' || !sim._agencyHold(cs)) throw new Error('žádost o PČR');
+  const e = sim.s.radioQ[sim.s.radioQ.length - 1];
+  sim.radioAnswer(e.id); sim.radioReply(e.id, 'send');
+  if (cs.agencies.pcr.state !== 'sent' || !sim.s.log.some(x => /posíláme policii/.test(x.txt))) throw new Error('PČR přes rádio');
+  if (!sim.sendAgency(cs.id, 'hzs').ok || cs.agencies.hzs.state !== 'sent') throw new Error('HZS dlaždicí');
+  sim.s.t = cs.agencies.hzs.arriveAt + 1; sim._agencyStep(cs);
+  if (cs.agencies.hzs.state !== 'onscene') throw new Error('HZS na místě');
+  sim._zosCall(k, cs, 'pacient se probírá, měníme naléhavost na N2.');
+  const z = sim.s.radioQ[sim.s.radioQ.length - 1];
+  if (z.state !== 'zos' || !sim.radioZosCall(z.id).ok || !sim.s.log.some(x => x.txt === `ZCB${k.code} na příjmu.`)) throw new Error('ZOS volá posádku');
+  const s2 = new Sim({ seed: 202, mode: 'free', startHour: 8, muEnabled: false, radio: 'auto' });
+  s2.step(30);
+  if (!s2.s.log.some(x => /Kryštof 13: na Matře slyší za 5/.test(x.txt))) throw new Error('zkouška spojení LZS v 8:00');
+  console.log('spojový řád: PČR/HZS, ZOS volá, LZS zkouška spojení true');
 }

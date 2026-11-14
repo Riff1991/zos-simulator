@@ -44,10 +44,10 @@ const ZOS_VOICE = (function () {
   }
   function setTempo(t) { tempo = Math.max(0.55, Math.min(1.2, Number(t) || 0.75)); }
   // text pro čtení: volací znaky, zkratky, nemocnice
-  const ABBR = { RZP: 'er zet pé', RV: 'er vé', RLP: 'er el pé', LZS: 'el zet es', KPR: 'ká pé er', ARO: 'áro', ORL: 'ó er el', KCC: 'ká cé cé', PČR: 'policie', HZS: 'hasiči', ZZ: 'zdravotnické zařízení', DN: 'dopravní nehoda', RD: 'rodinný dům', NEM: 'nemocnice', ZOS: 'zet ó es', LIBERO: 'libero', TANR: 'tanr', DPS: 'dé pé es', LSPP: 'pohotovost', CB: 'Budějovice', ČB: 'Budějovice', JH: 'Jindřichův Hradec', TA: 'Tábor', PT: 'Prachatice', ST: 'Strakonice', CK: 'Krumlov', ČK: 'Krumlov', PI: 'Písek' };
+  const ABBR = { RZP: 'er zet pé', RV: 'er vé', RLP: 'er el pé', LZS: 'el zet es', KPR: 'ká pé er', ARO: 'áro', ORL: 'ó er el', KCC: 'ká cé cé', PČR: 'policie', HZS: 'hasiči', ZZ: 'zdravotnické zařízení', DN: 'dopravní nehoda', RD: 'rodinný dům', NEM: 'nemocnice', ZOS: 'zet ó es', LIBERO: 'libero', TANR: 'tanr', UPV: 'úpévé', METHANE: 'metejn', JIP: 'jip', DPS: 'dé pé es', LSPP: 'pohotovost', CB: 'Budějovice', ČB: 'Budějovice', JH: 'Jindřichův Hradec', TA: 'Tábor', PT: 'Prachatice', ST: 'Strakonice', CK: 'Krumlov', ČK: 'Krumlov', PI: 'Písek' };
   function speakable(text) {
     let t = String(text || '').replace(/\s*\(\d+\. volání\)/g, '').replace(/[()]/g, ', ');
-    t = t.replace(/\bZCB\s?101\b/g, 'zet cé bé sto jedna').replace(/\bZCB\s?(\d+)/g, 'zet cé bé $1');
+    t = t.replace(/\bZCB\s?101\b/g, 'zecébé sto jedna').replace(/\bZCB\s?(\d+)/g, 'zecébé $1').replace(/Kryštof (\d)(\d)\b/g, 'Kryštof $1 $2').replace(/kardioJIP/g, 'kardiojip');
     t = t.replace(/\b([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,})_?(RZP|RV|Z|LIBERO)\s?(\d*)\b/g, (m, a, b, n) => `${ABBR[a] || a.toLocaleLowerCase('cs-CZ')} ${ABBR[b] || (b === 'Z' ? 'záloha' : b)}${n ? ' ' + n : ''}`);
     t = t.replace(/_/g, ' ');
     t = t.replace(/\b[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,}\b/g, w => ABBR[w] || (w.length > 4 ? w.toLocaleLowerCase('cs-CZ') : w));
