@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.19.3-dev – 2026-11-14
+## v0.19.3 – 2026-11-14
 
 - Přehled transportů: posádka po předání pacienta je volná ihned (zpáteční jízda se už nepočítá). Místo odhadu „volná za 31 min“ se u posádky, která právě předává, ukáže „Volná nyní“.
 - Přehled transportů zobrazuje i doprovodné RV: po příjezdu do nemocnice je volné hned, a proto se v přehledu objeví jen do příjezdu.
