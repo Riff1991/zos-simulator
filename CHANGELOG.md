@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.20.1 – 2026-11-14
+
+> Hlasové rádiové relace nově říkají jedničku jako „jedna“, ne „jeden“. Volací znaky i čísla se čtou rádiově: „zecébé dvacet jedna“, „tři sta jedenáct“, „naléhavost en jedna“.
+
+- Rádio: číslo končící jedničkou se vyslovuje „jedna“ (dříve „jeden“); všechna čísla v relacích se čtou slovy.
+
+---
+
 ## v0.20.0 – 2026-11-14
 
 > Výcvik má nově 10 lekcí s předem připravenými případy, takže se na nic nečeká a projdou se všechny hlavní mechaniky: vstřícná jízda, exitus a koroner, LZS, doprovod RV, sekundární převoz, součinnost PČR a HZS, pokrytí a mimořádná událost. Závěrečné bizarní finále spojí probuzenou zástavu, polytrauma bez blízkého lékaře a nenalezeného pacienta. Výcvik už nepřepisuje uloženou směnu a v úvodní obrazovce se changelog zobrazuje jako krátké odstavce.

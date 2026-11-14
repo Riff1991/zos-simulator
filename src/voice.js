@@ -45,6 +45,25 @@ const ZOS_VOICE = (function () {
   function setTempo(t) { tempo = Math.max(0.55, Math.min(1.2, Number(t) || 0.75)); }
   // text pro čtení: volací znaky, zkratky, nemocnice
   const ABBR = { RZP: 'er zet pé', RV: 'er vé', RLP: 'er el pé', LZS: 'el zet es', KPR: 'ká pé er', ARO: 'áro', ORL: 'ó er el', KCC: 'ká cé cé', PČR: 'policie', HZS: 'hasiči', ZZ: 'zdravotnické zařízení', DN: 'dopravní nehoda', RD: 'rodinný dům', NEM: 'nemocnice', ZOS: 'zet ó es', LIBERO: 'libero', TANR: 'tanr', UPV: 'úpévé', METHANE: 'metejn', JIP: 'jip', DPS: 'dé pé es', LSPP: 'pohotovost', CB: 'Budějovice', ČB: 'Budějovice', JH: 'Jindřichův Hradec', TA: 'Tábor', PT: 'Prachatice', ST: 'Strakonice', CK: 'Krumlov', ČK: 'Krumlov', PI: 'Písek' };
+  // čísla slovy; jednička vždy „jedna“ (rádiový úzus: „zecébé dvacet jedna“, ne „jeden“)
+  const NU = ['nula', 'jedna', 'dva', 'tři', 'čtyři', 'pět', 'šest', 'sedm', 'osm', 'devět'];
+  const NT = ['deset', 'jedenáct', 'dvanáct', 'třináct', 'čtrnáct', 'patnáct', 'šestnáct', 'sedmnáct', 'osmnáct', 'devatenáct'];
+  const NTY = ['', '', 'dvacet', 'třicet', 'čtyřicet', 'padesát', 'šedesát', 'sedmdesát', 'osmdesát', 'devadesát'];
+  const NH = ['', 'sto', 'dvě stě', 'tři sta', 'čtyři sta', 'pět set', 'šest set', 'sedm set', 'osm set', 'devět set'];
+  function numCz(str) {
+    if (str.length > 1 && str[0] === '0') return str;
+    const n = Number(str);
+    if (!Number.isFinite(n) || n > 9999) return str;
+    if (n === 0) return NU[0];
+    const out = [], th = Math.floor(n / 1000), r = n % 1000;
+    if (th) out.push(th === 1 ? 'tisíc' : (th < 5 ? NU[th] + ' tisíce' : NU[th] + ' tisíc'));
+    if (r >= 100) out.push(NH[Math.floor(r / 100)]);
+    const q = r % 100;
+    if (q >= 20) { out.push(NTY[Math.floor(q / 10)]); if (q % 10) out.push(NU[q % 10]); }
+    else if (q >= 10) out.push(NT[q - 10]);
+    else if (q > 0) out.push(NU[q]);
+    return out.join(' ');
+  }
   function speakable(text) {
     let t = String(text || '').replace(/\s*\(\d+\. volání\)/g, '').replace(/[()]/g, ', ');
     t = t.replace(/\bZCB\s?101\b/g, 'zecébé sto jedna').replace(/\bZCB\s?(\d+)/g, 'zecébé $1').replace(/Kryštof (\d)(\d)\b/g, 'Kryštof $1 $2').replace(/kardioJIP/g, 'kardiojip');
@@ -52,6 +71,7 @@ const ZOS_VOICE = (function () {
     t = t.replace(/_/g, ' ');
     t = t.replace(/\b[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{2,}\b/g, w => ABBR[w] || (w.length > 4 ? w.toLocaleLowerCase('cs-CZ') : w));
     t = t.replace(/\bN([1-4])\b/g, (m, d) => 'en ' + ['jedna', 'dva', 'tři', 'čtyři'][d - 1]);
+    t = t.replace(/\d+/g, numCz);
     return t.replace(/\s+/g, ' ').trim();
   }
   function synth(text, key) {
