@@ -136,4 +136,4 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - Špatná adresa / nenalezený pacient se hlásí rádiem.
 - Žádosti o součinnost rádiem: „žádáme na místo hasiče na transport“, „žádáme na místo policii pro určení totožnosti“, „žádáme na místo policii, agresivní pacient“.
 - „Na adrese nikdo / nemůžeme najít“ → ZOS: „rozumí, voláme na místo“.
-- (předpoklad, nepotvrzeno) Žádost o hasiče / policii → ZOS: „rozumí, vyrozumíme“.
+- Žádost o hasiče / policii → ZOS: „ZCB101 rozumí, posíláme hasiče / policii“.
