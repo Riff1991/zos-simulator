@@ -93,3 +93,47 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - Dodaná SM01.06 je revize 4 ze dne 14. 2. 2020; aktuální traumatologický plán není k dispozici, proto hra nepředstírá přesné aktivační stupně.
 - Prototyp vychází z dodaných STČ 09/IZS (2016), STČ 04/IZS (2016) a STČ 08/IZS (2009): podezření z 112, potvrzení rozsahem hlášení první posádky, generované METHANE informace, požadavky na posily, ověření příjmu nemocnic a zvláštní větev letecké nehody.
 - Prahová logika MU je pouze herní aproximace: více než 15 zraněných nebo generovaný odhad nejméně 5 skupin. Počty, kapacity a situační hlášení jsou smyšlené.
+
+### Spojový řád – rádiová komunikace (odpovědi z 14. 11. 2026)
+- Statusy (výjezd, na místě, odjezd do ZZ, předání, volná) hlásí posádka **jen terminálem**, rádiem ne.
+- Rádiem posádka volá ZOS kvůli: cíli transportu, žádosti o lékaře / LZS, exitu nebo ponechání na místě, vstřícné jízdě.
+- Volací znak se vyslovuje „zecebé“ + číslo („zecebé tři sta třináct“). ZOS odpovídá „Zecebé 101 rozumí“.
+- Vstřícnou jízdu předává ZOS druhé posádce **výzvou na terminál**, ne rádiem.
+- Cíl transportu hlásí posádka rádiem **vždy**.
+- Avízo do nemocnice dělá ZOS jen u centrové péče (traumacentrum, iktová centra, KCC). Posádka řekne např. „směřujeme KCC České Budějovice, dojezd x minut“, ZOS: „101 rozumí, nahlásíme“.
+- U polytraumat se hlásí: pohlaví, věk, důvod trauma triage (Věstník), spontánně ventilující / UPV, čas dojezdu či doletu. Přes ZOS se avizuje i transport na ARO, vždy s dojezdem zaokrouhleným na 5 min.
+- Směrování na koronární jednotku se hlásí („jedeme s pacientem na kardioJIP Nemocnice České Budějovice“) a posádka se ozve znovu „na kruháči“ (velký kruhový objezd v ČB) s dojezdem např. 7 min; ZOS znovu nahlásí. Stejně u KCC.
+- Koronera shání ZOS.
+- Vyslovuje se spíš „zecébé“. Začátek relace: „Zecébé 101, zde zecébé 313, příjem.“ → „Zecébé 101 na příjmu.“ je v pořádku.
+- ZOS volá posádku rádiem sám při odvolání / přesměrování a s výsledkem koronera.
+- Cíl transportu hlásí posádka při odjezdu z místa.
+- Druhé hlášení před příjezdem: jen ČB – KCC, kardioJIP, traumabox, ARO ČB, dětské ČB. „Na kruháči“ jen když jedou přes něj (velký kruhový objezd u průmyslové zóny, u Toyoty dole). Na urgent ČB se nehlásí nikdy.
+- Hlášení cíle transportu (vzor): „ZCB216, pacienta máme naloženého / na palubě / ve voze a jedeme urgentní příjem / chirurgie / interna Tábor, dojedeme sami / je schopen překladu.“ (žargon: cíl v 1. pádě)
+- Když je na místě RZP i RV, volá vždy RV a ohlásí oba vozy: „ZCB 101, zde ZCB 319 a 315.“
+- RV hlásí např.: „ZCB219, pacienta převáží posádka 313 na urgent do Jindřichova Hradce a my se vracíme zpátky na základnu / my jsme volní“, nebo „jedeme společně urgent Jindřichův Hradec (a my jsme odvolatelní)“.
+- Ponechání na místě: RZP „ZCB313, po konzultaci pacient ponechán na místě a my se vracíme zpátky na základnu“; RV „pacienta jsme ponechali na místě a obě posádky se vracíme zpátky na základnu“.
+- „Dojedeme sami / je schopen překladu“ jen z periferie (kde dává vstřícná smysl).
+- Exitus: „na místě exitus, prosím zjistěte nám dostupnost koronera“ / „na místě exitus, prosíme zjistit koronera“ (ne „KPR neúspěšná“).
+- Žádost o lékaře striktně: „ZCB313, žádáme lékaře na místo, zhoršení stavu / posouzení stavu.“
+- Odpověď ZOS na žádost: „rozumí, za vámi RV Třeboň“ (název posádky).
+- Výsledek koronera sděluje ZOS telefonicky (informace do terminálu): „koroner Dr. …“; pokud není, RV musí zůstat na místě (případně odjede jinam a pak se má na prohlídku vrátit).
+- Na koronera na místě čeká policie / rodina, posádky odjíždějí.
+- Odvolání od ZOS: „vraťte se na základnu, výjezd zrušen / volající zrušil výjezd“.
+- LZS (Kryštof 13): zkouška spojení vždy v 8:00 a 20:00 – „ZCB 101, zde Kryštof 1 3“ → „ZCB 101 na příjmu“ → „ZCB 101, Kryštof 1 3 na Matře slyší za 5, jsme bez omezení / na konzultaci / zatím neletoví, kdyžtak se ozveme“.
+- LZS po vzletu (asi minutu): „ZCB 101, Kryštof 1 3 po vzletu, na místě přistání za xx minut“ → „ZCB 101 rozumí, na místě za xx minut“. Totéž zahlásí posádkám jedoucím k případu: „ZCB xxx a ZCB xxx, Kryštof 13 přistává za xx minut“.
+- LZS při transportu: „směřujeme ARO Nemocnice ČB, přílet na heliport za xx minut“; pacienta avizuje ve formátu trauma triage jen při triage pozitivitě.
+- Předpoplach během nabírání: terminálem / tlačítkem, bez rádia.
+- Doplnění informací během jízdy (zbraň, PB na místě, pacient se probral) volá ZOS rádiem.
+- Sekundární převozy (N4): jen terminál.
+- LIBERO se hlásí pod znakem RZP (lékař je ve voze).
+- Více zraněných (i pod prahem MU): první posádka hlásí METHANE.
+- Doplnění od ZOS (vzor): „ZCB313, ZCB101, pacient se probírá, měníme naléhavost na N2“ nebo „…na místě resuscitace, za vámi RV Jindřichův Hradec“.
+- Když volá ZOS: „ZCB313, ZCB101“ → „ZCB313 na příjmu“ → zpráva ZOS → posádka potvrdí („313 rozumí“).
+- Trauma triage u polytraumat: zjednodušeně (např. „triage pozitivní – mechanismus“).
+- Avízo do centra: hráč odpovídá „nahlásíme“, bez bodů.
+- Rádio je poloduplex: nikdy víc relací najednou, další posádka počká na ukončení relace.
+- Konzultace ponechání na místě: lékař RV oblasti přes ZOS telefonem – stačí zpráva do terminálu (jako doteď).
+- Špatná adresa / nenalezený pacient se hlásí rádiem.
+- Žádosti o součinnost rádiem: „žádáme na místo hasiče na transport“, „žádáme na místo policii pro určení totožnosti“, „žádáme na místo policii, agresivní pacient“.
+- „Na adrese nikdo / nemůžeme najít“ → ZOS: „rozumí, voláme na místo“.
+- (předpoklad, nepotvrzeno) Žádost o hasiče / policii → ZOS: „rozumí, vyrozumíme“.
