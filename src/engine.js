@@ -1096,7 +1096,7 @@ class Sim {
     const notes = {
       byt: ['vstup do domu z dvorní strany', 'přístup přes uzamčený vchod', 'zvonek bez odezvy'],
       rd: ['příjezd po nezpevněné cestě', 'vjezd do dvora z boční ulice', 'příjezdová cesta za domem'],
-      domov: ['kontakt na místě zajištěn personálem', 'pacient v pokoji, vstup přes recepci'],
+      domov: ['kontakt na místě zajištěn personálem', 'vstup přes recepci, personál dovede'],
       prov: ['vstup do objektu z ulice', 'pacient v zadní části provozovny', 'příjezd přes areál'],
       skola: ['kontakt na místě zajištěn zaměstnancem školy', 'pacient v budově školy'],
       ulice: ['místo události u komunikace', 'přístup z přilehlého chodníku'],

@@ -151,7 +151,8 @@ const STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 
 function renderTop() {
   const s = sim.s, sm = sim.summary();
   $('clock').textContent = sim.clock();
-  setHTML($('speeds'), SPEEDS.map(v => `<button data-speed="${v}" class="${v === speed ? 'on' : ''}">${v === 0 ? '⏸' : v + '×'}</button>`).join(''));
+  const effSpeed = radioSlowActive() ? Math.min(speed, 1) : speed;
+  setHTML($('speeds'), SPEEDS.map(v => `<button data-speed="${v}" class="${v === effSpeed ? 'on' : ''}${v === speed && effSpeed !== speed ? ' set' : ''}" title="${v === speed && effSpeed !== speed ? 'Nastavená rychlost – během rádiové relace hra běží 1×' : ''}">${v === 0 ? '⏸' : v + '×'}</button>`).join(''));
   const waiting = s.cases.filter(c => c.status === 'waiting' || (c.status === 'active' && missingInitialDispatch(c).length)).length;
   const rem = Math.max(0, s.shiftLen - s.t);
   const left = s.mode === 'shift' ? ` · zbývá ${Math.floor(rem / 3600)}:${pad(Math.floor(rem % 3600 / 60))} h` : ' · volný režim';
@@ -891,6 +892,7 @@ function radioSpeak(txt) {
 }
 const radioOpen = () => (sim && sim.s.radioQ || []).filter(e => e.state === 'calling' || e.state === 'open' || e.state === 'zos');
 const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen().some(e => e.state !== 'zos');
+const radioSlowActive = () => !!(settings.radioSlow && radioPending());
 const rqPrefetched = new Set();
 function renderRadioLive() {
   const box = $('radio-live'); if (!box || !sim) return;
@@ -967,7 +969,7 @@ function settingsModal(fromGame) {
     <div class="setrow"><b>Rádio</b><span>${seg('radioInteractive', [[true, 'Odpovídám sám'], [false, 'Automaticky']])}</span></div>
     <div class="setrow"><b>Hlas posádek</b><span>${seg('voice', [[true, 'Zapnutý'], [false, 'Vypnutý']])} <button class="btn" data-act="test-voice">Vyzkoušet</button> <small id="voice-status">${esc(voiceStatusText())}</small></span></div>
     <div class="setrow"><b>Tempo hlasu</b><span>${seg('voiceTempo', [[0.85, 'Klidné'], [0.75, 'Normální'], [0.66, 'Rychlé'], [0.58, 'Velmi rychlé']])}</span></div>
-    <div class="setrow"><b>Zpomalit hru při relaci</b><span>${seg('radioSlow', [[true, 'Ano (max 5×)'], [false, 'Ne']])}</span></div>
+    <div class="setrow"><b>Zpomalit hru při relaci</b><span>${seg('radioSlow', [[true, 'Ano (1×)'], [false, 'Ne']])}</span></div>
     <div class="setrow"><b>Výchozí rychlost</b><span>${seg('speed', [[1, '1×'], [2, '2×'], [5, '5×'], [10, '10×']])}</span></div>
     <div class="setrow"><b>Pauza při nové N1</b><span>${seg('autoPauseN1', [[true, 'Ano'], [false, 'Ne']])}</span></div>
     <div class="setrow"><b>Nápověda (obtížnost)</b><span>${seg('hints', [[false, 'Realistická'], [true, 'S nápovědami']])}</span></div>
@@ -1170,7 +1172,7 @@ function frame() {
     }
   }
   if (!modalOpen && speed > 0 && !sim.s.ended) {
-    sim.step(dt * (settings.radioSlow && radioPending() ? Math.min(speed, 5) : speed));
+    sim.step(dt * (radioSlowActive() ? Math.min(speed, 1) : speed));
     pollLog();
     if (sim.s.ended) { speed = 0; render(); try { localStorage.removeItem(SAVE_KEY); } catch (e) {} endModal(); return; }
     if (now - saveAt > 15000) { saveAt = now; doSave(); }

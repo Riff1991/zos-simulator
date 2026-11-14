@@ -252,7 +252,7 @@ const ZOS_DATA = {
       a: ['bytovka', 'panelák', 'bytový dům', 'činžák', 'DPS', 'ubytovna', 'garsonka'],
       b: ['výtah', 'bez výtahu', 'výtah nejede', 'zvonek na jméno', 'zvonek nefunguje', 'vchod ze dvora', 'vchod z boku', 'zadní vchod', 'prostřední vchod', 'poslední vchod', 'vchod A', 'vchod B', 'bude čekat u vchodu', 'dveře odemčené', 'klíče u sousedky', 'otevře soused', 'nad obchodem', 'pavlač', 'byt vlevo', 'byt vpravo'] },
     domov: { none: 0.3, bp: 0.4,
-      a: ['DPS', 'domov seniorů', 'pokoj', 'pokoj v 1. patře', 'pokoj ve 2. patře', 'přízemí', 'oddělení B', 'jídelna', 'společenská místnost', 'pavilon A', 'pavilon C', 'zahrada areálu', 'ošetřovna'],
+      a: ['DPS', 'domov seniorů', '1. patro', '2. patro', '3. patro', 'přízemí', 'oddělení B', 'pavilon A', 'pavilon C', 'zahrada areálu'],
       b: ['sestra čeká u vchodu', 'vstup přes recepci', 'hlavní vchod', 'boční vchod', 'výtah', 'personál u pacienta', 'personál dovede'] },
     prov: { none: 0.3, bp: 0.35,
       a: ['hala', 'výrobní hala', 'sklad', 'dílna', 'kancelář', 'kancelář v patře', 'šatna', 'rampa', 'dvůr areálu', 'vrátnice', 'prodejna', 'za pultem', 'zázemí prodejny', 'kuchyň provozovny', 'pila', 'kravín', 'lakovna', 'expedice', 'parkoviště firmy', 'stavba', 'lešení', 'u linky'],

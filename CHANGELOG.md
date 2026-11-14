@@ -8,10 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.19.1 – vývoj
+## v0.19.1 – 2026-11-14
 
 - Výcvik: nová položka v menu „Výcvik – první směna s návodem“. Klidná směna bez MU a sekundárů, hra provede krok za krokem (výběr případu, vyslání RZP a RV, sledování posádky, rádio, upozornění, dlaždice PČR/HZS).
 - MU je hotová do ~2 h: od 30. minuty po potvrzení pomáhají posádky sousedních krajů (Vysočina, Plzeňský, Středočeský, Jihomoravský kraj, Dolní Rakousko), po 110 min převezmou zbylé pacienty. Pozastavení N3 během MU končí, jakmile na místě nezbývají pacienti.
+- Během rádiové relace hra běží 1× a ukazatel rychlosti to ukazuje (nastavená rychlost je čárkovaně, vrátí se po relaci).
+- Domov pro seniory: místo jen patro / oddělení, bez pokojů.
 - Opravy: LZS na heliportu už nečeká na RZP donekonečna (po 25 min převezme pacienta personál nemocnice, −3 b. místo opakovaných srážek); přehlédnutá datová zpráva se netrestá; u centrové péče „Rozumí“ bez „nahlásíme“ není chyba; hlášení „na kruháči“ jen u posádek, které jedou přes kruháč Okružní × silnice č. 3.
 
 ---
