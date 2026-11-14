@@ -32,6 +32,13 @@ header .brand{font-weight:600;letter-spacing:.04em;font-size:12px;color:#9fb4c7;
 .speeds button{background:var(--hdr2);border:1px solid #38505f;color:#cfe0ee;padding:3px 8px;border-radius:4px;font:500 12px var(--mono)}
 .speeds button.on{background:var(--acc);border-color:#7db0f2;color:#fff}
 #alerts-live{flex:1 0 100%;order:10}
+#radio-live{flex:1 0 100%;order:11;display:grid;gap:3px}#radio-live:empty{display:none}
+.radio-call{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;background:#13324a;border:2px solid #3f8fd2;border-radius:4px;padding:4px 8px;color:#e8f2fb;font-size:13px}
+.radio-call.calling{animation:radio-flash 1s steps(2,end) infinite}.radio-call.open{background:#0f2a3d;border-color:#7cc0ff}
+@keyframes radio-flash{50%{background:#1e5c8c;box-shadow:0 0 10px #63b0f5}}
+.radio-call b{font:600 13px var(--mono);color:#fff}.rc-msg{flex:1 1 320px;font-weight:600}.rc-name{color:#cfe3f5}
+.rc-case{font:12px var(--mono);color:#9fd0ff;cursor:pointer;text-decoration:underline dotted}.rc-opts{display:flex;gap:4px;flex-wrap:wrap}
+.radio-call .btn{padding:2px 9px;font-size:12px;background:#24445e;color:#eef6fd;border:1px solid #5d8db5}.radio-call .btn:hover{background:#2f5a7c}.radio-call .btn.pri{background:#2f7de1;border-color:#7db0f2;color:#fff}
 .live-alert{width:100%;background:#8f1e18;color:#fff;border:2px solid #ff756b;border-radius:4px;padding:5px 10px;text-align:left;font-weight:700;animation:alert-flash .75s steps(2,end) infinite}
 @keyframes alert-flash{50%{background:#d9342b;color:#fff;box-shadow:0 0 12px #ff756b}}
 .kpi{display:flex;gap:12px;margin-left:auto;font-size:12px;color:#9fb4c7}
@@ -358,6 +365,7 @@ html[data-theme=dark] .st-transport,html[data-theme=dark] .st-handover{backgroun
     <div class="kpi" id="kpi"></div>
     <div id="multiwin"><button class="hbtn" data-act="open-map">Otevřít mapu bokem</button><button class="hbtn" id="toggle-map-main" data-act="toggle-map-main">Skrýt mapu zde</button><button class="hbtn" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="hbtn" id="toggle-radio-main" data-act="toggle-radio-main">Skrýt přehled zde</button></div>
     <div id="alerts-live"></div>
+    <div id="radio-live"></div>
     <button class="hbtn gear" data-act="settings" title="Nastavení" aria-label="Nastavení">⚙</button>
     <button class="hbtn" id="btn-end" style="display:none">Vyhodnotit</button>
   </header>

@@ -1,0 +1,8 @@
+Hlas pro rádiové relace – použité komponenty (stahují se jen při zapnutém hlasu):
+
+- Piper TTS, hlas cs_CZ-jirka-medium (rhasspy/piper-voices), licence MIT.
+  Ověřeno kontrolním součtem SHA-1 19712805c8d07e5c31f9ba2993742b573d854be6 (shodný s balíčkem distribuce OpenMandriva).
+- onnxruntime-web 1.18.0 (Microsoft), licence MIT – https://github.com/microsoft/onnxruntime
+- piper-phonemize (WASM build @diffusionstudio/piper-wasm 1.0.0), obsahuje espeak-ng – licence GPL-3.0.
+  Zdrojové kódy: https://github.com/rhasspy/piper-phonemize a https://github.com/espeak-ng/espeak-ng
+  Datový balík je zúžen jen na češtinu (cs_dict, phontab, phonindex, phondata, intonations, lang/zlw/cs).

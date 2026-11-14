@@ -79,7 +79,7 @@ class Sim {
     opts = opts || {};
     const seed = (opts.seed != null ? opts.seed : (Date.now() & 0x7fffffff)) | 0;
     const s = this.s = {
-      v: 1, seed, rs: seed, t: 0, secondaryEnabled: opts.secondaryEnabled !== false, muEnabled: opts.muEnabled !== false, muProbability: Math.max(0, Math.min(100, Number(opts.muProbability == null ? 10 : opts.muProbability))),
+      v: 1, seed, rs: seed, t: 0, radioMode: opts.radio === 'interactive' ? 'interactive' : 'auto', radioQ: [], rqSeq: 0, secondaryEnabled: opts.secondaryEnabled !== false, muEnabled: opts.muEnabled !== false, muProbability: Math.max(0, Math.min(100, Number(opts.muProbability == null ? 10 : opts.muProbability))),
       startHour: opts.startHour != null ? opts.startHour : 7,
       mode: opts.mode || 'shift', diff: opts.diff || 1, rateMul: opts.rateMul || 1,
       shiftLen: 12 * 3600, ended: false, logId: 1, caseSeq: 0,
@@ -127,11 +127,79 @@ class Sim {
 
   // spojový řád: volání, potvrzení ZOS, zpráva, odpověď ZOS
   _radio(crew, cs, msg, reply) {
+    if (this.s.radioMode === 'interactive') {
+      const say = reply ? `ZCB101 rozumí${reply === true ? '' : ', ' + reply}.` : 'ZCB101 rozumí.';
+      const opts = [{ k: 'ok', label: reply && reply !== true ? `Rozumí, ${reply}` : 'Rozumí', say, ok: true, act: 'ack' }];
+      if (reply === 'zjišťujeme koronera') opts.push({ k: 'bad', label: 'Rozumí, vracejte se na základnu', say: 'ZCB101 rozumí, vracejte se na základnu.', ok: false, act: 'ack' });
+      this._rq(crew, cs, msg, opts, 'info');
+      return;
+    }
     const id = cs ? cs.id : null, code = `ZCB${crew.code}`;
     this.L('crew', `ZCB101, zde ${code}, příjem.`, id, crew.id);
     this.L('crew', 'ZCB101 na příjmu.', id, crew.id);
     this.L('crew', `${code}: ${msg}`, id, crew.id);
     if (reply) this.L('crew', `ZCB101 rozumí${reply === true ? '' : ', ' + reply}.`, id, crew.id);
+  }
+  // ---------- interaktivní rádiové relace ----------
+  // Posádka volá → dispečer „na příjmu“ → zpráva → dispečer volí odpověď. Bez odezvy posádka volání opakuje.
+  _rq(crew, cs, msg, opts, kind, extra) {
+    const s = this.s, q = s.radioQ || (s.radioQ = []);
+    const e = Object.assign({ id: 'rq' + (s.rqSeq = (s.rqSeq || 0) + 1), t: s.t, crewId: crew.id, code: crew.code, name: crew.name, caseId: cs ? cs.id : null, msg, opts, kind, state: 'calling', tries: 1, nextAt: s.t + 45 }, extra || {});
+    q.push(e); if (q.length > 50) q.splice(0, q.length - 50);
+    this.L('crew', `ZCB101, zde ZCB${crew.code}, příjem.`, e.caseId, crew.id);
+    return e;
+  }
+  setRadioMode(mode) {
+    this.s.radioMode = mode === 'interactive' ? 'interactive' : 'auto';
+    if (this.s.radioMode === 'auto') for (const e of this.s.radioQ || []) if (e.state === 'calling' || e.state === 'open') {
+      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId); this.L('crew', `ZCB${e.code}: ${e.msg}`, e.caseId, e.crewId); }
+      e.state = 'open'; const def = (e.opts || []).find(x => x.def) || (e.opts || [])[0]; this.radioReply(e.id, def ? def.k : null, true);
+    }
+  }
+  radioEntry(id) { return (this.s.radioQ || []).find(e => e.id === id); }
+  radioAnswer(id) {
+    const e = this.radioEntry(id); if (!e || e.state !== 'calling') return { ok: false };
+    e.state = 'open'; e.openedAt = this.s.t; e.nextAt = this.s.t + 120;
+    this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId);
+    this.L('crew', `ZCB${e.code}: ${e.msg}`, e.caseId, e.crewId);
+    return { ok: true };
+  }
+  radioReply(id, k, auto) {
+    const e = this.radioEntry(id); if (!e || (e.state !== 'open' && e.state !== 'calling')) return { ok: false };
+    if (e.state === 'calling') { if (!auto) return { ok: false }; }
+    const o = (e.opts || []).find(x => x.k === k) || e.opts[0];
+    e.state = 'done'; e.doneAt = this.s.t; e.reply = o ? o.k : null;
+    if (!o) return { ok: true };
+    if (o.say) this.L('crew', o.say, e.caseId, e.crewId);
+    if (!auto && o.ok === false) this._opsScore(-1, `nevhodná odpověď na relaci ZCB${e.code}`, e.caseId);
+    const cs = e.caseId ? this.caseOf(e.caseId) : null;
+    if (o.act === 'vj-assign' && cs) { const r = this.assignVstricna(cs.id, o.crewId); if (!r.ok) { this.L('warn', r.msg, cs.id); if (cs.vstricna && cs.vstricna.state === 'offered') this.declineVstricna(cs.id); } }
+    else if (o.act === 'vj-decline' && cs) this.declineVstricna(cs.id, auto);
+    else if (o.act === 'vj-self' && cs) this.L('crew', `ZCB${e.code} rozumí, jedeme sami.`, cs.id, e.crewId);
+    else if (o.act === 'rv-send' && cs) {
+      const best = this.suggest(cs.id, 'RV')[0] || this.suggest(cs.id, 'LZS')[0];
+      const r = best ? this.assign(cs.id, best.crewId) : { ok: false };
+      if (!r.ok) this.L('warn', `${cs.num}: lékaře se nepodařilo vyslat automaticky – vyber posádku ručně.`, cs.id);
+    }
+    return { ok: true };
+  }
+  _radioStep() {
+    const s = this.s, t = s.t;
+    for (const e of s.radioQ || []) {
+      if (e.state === 'done' || e.state === 'missed') continue;
+      const cs = e.caseId ? this.caseOf(e.caseId) : null;
+      if (e.kind === 'vj' && (!cs || !cs.vstricna || cs.vstricna.state !== 'offered')) { e.state = 'done'; e.doneAt = t; continue; }
+      if (t < e.nextAt) continue;
+      if (e.state === 'calling' && e.tries < 3) { e.tries++; e.nextAt = t + 45; this.L('crew', `ZCB101, zde ZCB${e.code}, příjem. (${e.tries}. volání)`, e.caseId, e.crewId); continue; }
+      // bez odezvy: posádka si poradí sama, dispečer ztrácí provozní bod
+      const wasCalling = e.state === 'calling';
+      this._opsScore(-1, `${wasCalling ? 'nepřijatá' : 'nedokončená'} relace ZCB${e.code}`, e.caseId);
+      const def = (e.opts || []).find(x => x.def) || (e.opts || []).find(x => x.ok !== false) || (e.opts || [])[0];
+      if (wasCalling) this.L('warn', `ZCB${e.code} se nedovolala, pokračuje podle vlastního uvážení.`, e.caseId, e.crewId);
+      e.state = 'open';
+      this.radioReply(e.id, def ? def.k : null, true);
+      e.state = 'missed';
+    }
   }
   _freeRzp(area, exceptId) { return this.s.crews.filter(k => k.type === 'RZP' && k.oblast === area && this.avail(k) && !k.res && k.id !== exceptId).length; }
   _opsScore(delta, reason, caseId) {
@@ -1224,6 +1292,7 @@ class Sim {
     }
 
     for (const c of s.cases) if (c.status !== 'closed') this._caseStep(c);
+    if (s.radioMode === 'interactive') this._radioStep();
     this._runMuAssistant();
     for (const cs of s.cases) if (cs.vstricna && cs.vstricna.state === 'offered' && t >= cs.vstricna.expiresAt) {
       this.declineVstricna(cs.id, true);
@@ -1294,6 +1363,13 @@ class Sim {
           this.L('req', `${c.num}: posádka hlásí zhoršení stavu a žádá lékaře – doplňková naléhavost N2${extra ? ` (${extra})` : ''}`, c.id);
         }
         else this.L('req', `${c.num}: posádka žádá lékaře – ${c.rvReq.kind}`, c.id);
+        const rzp = this.s.radioMode === 'interactive' && c.crews.map(id => this.crewOf(id)).find(k => k && k.type === 'RZP' && k.state === 'onscene');
+        if (rzp) {
+          const ext = c.rvReq.kind === 'zhoršení stavu' ? `pacient se zhoršuje${c.symptoms && c.symptoms.length ? ', ' + String(c.symptoms[c.symptoms.length - 1]).replace(/^[^0-9A-Za-zÀ-ž]+/, '').toLocaleLowerCase('cs-CZ') : ''}, žádáme lékaře na místo.` : 'žádáme lékaře k posouzení stavu.';
+          this._rq(rzp, c, ext, [
+            { k: 'send', label: 'Posílám lékaře', say: 'ZCB101 rozumí, lékař vyslán.', ok: true, act: 'rv-send' },
+            { k: 'later', label: 'Rozumí, lékaře zajistím', say: 'ZCB101 rozumí, lékaře zajistíme.', ok: true, act: 'ack', def: true }], 'rv');
+        }
       }
     }
     if (c.fate === 'wakes' && c.wakeAt != null && !c.wokeDone && t >= c.wakeAt && c.status !== 'intake') {
@@ -1810,6 +1886,25 @@ class Sim {
     // ne tam, kde se jede po dálnici či rychlé silnici (Veselí, Soběslav → Tábor): čas trasy po síti s rychlostmi jízdy s VRZ.
     if (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext) { cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec }; return; }
     const common = `ZCB${rzp.code}: pacienta máme ve voze, jedeme ${hospital.name},`;
+    if (this.s.radioMode === 'interactive') {
+      const head = `pacienta máme ve voze, jedeme ${hospital.name},`;
+      if (!suitable) {
+        cs.vstricna = { state: 'not-suitable', hospitalId: hospital.id, area, distanceSec };
+        this._rq(rzp, cs, `${head} pacient není schopen překladu, jedeme sami.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack' }], 'info');
+      } else if (canOffer) {
+        cs.vstricna = { state: 'offered', hospitalId: hospital.id, hospitalName: rzp.dest.name, hospitalLat: hospital.lat, hospitalLon: hospital.lon, area, areaName: nearest.short, distanceSec, routeDuration, primaryCrewId: rzp.id, meet: this._meetPoint(rzp.mv, 0.68), helperCrewId: null, expiresAt: this.s.t + Math.max(240, routeDuration * 0.68) };
+        cs.vstricna.freeAtOffer = receiver.length;
+        const opts = receiver.slice(0, 3).map((k, i) => ({ k: 'vj' + i, label: `Naproti ${k.name}`, say: null, ok: true, act: 'vj-assign', crewId: k.id }));
+        opts.push({ k: 'self', label: 'Dojíždějte sami', say: null, ok: true, act: 'vj-decline', def: true });
+        this._rq(rzp, cs, `${head} pacient je schopen překladu.`, opts, 'vj');
+      } else {
+        cs.vstricna = { state: 'self-unavailable', hospitalId: hospital.id, area, distanceSec };
+        this._rq(rzp, cs, `${head} pacient je schopen překladu.`, [
+          { k: 'self', label: 'Dojíždějte sami', say: 'ZCB101 rozumí, dojíždějte sami.', ok: true, act: 'vj-self', def: true },
+          { k: 'wait', label: 'Rozumí, zjistím vstřícnou', say: 'ZCB101 rozumí, vstřícnou zjišťujeme.', ok: false, act: 'ack' }], 'info');
+      }
+      return;
+    }
     this.L('crew', `ZCB101, zde ZCB${rzp.code}, příjem.`, cs.id, rzp.id);
     this.L('crew', 'ZCB101 na příjmu.', cs.id, rzp.id);
     if (!suitable) {

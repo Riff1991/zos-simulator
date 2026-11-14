@@ -13,7 +13,7 @@ function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window.
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 // ---------- nastavení (vzhled, písmo, zvuk, hra) ----------
 const SET_KEY = 'zos_jck_settings_v1';
-const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false };
+const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false, voice: !(window.innerWidth < 760), radioInteractive: true, radioSlow: true };
 let settings = Object.assign({}, SET_DEF);
 try { settings = Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (_) {}
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (_) {} }
@@ -164,6 +164,7 @@ function renderTop() {
     `<button data-view="${k}" class="${view === k ? 'on' : ''}">${l}${k === 'cases' && waiting ? `<span class="badge">${waiting}</span>` : ''}</button>`).join(''));
   document.querySelectorAll('.win').forEach(w => w.classList.toggle('active', w.id === 'w-' + view));
   renderLiveAlerts();
+  renderRadioLive();
 }
 // Upozornění nahoře: hlášení 112 zmizí samo nejpozději po 40 s (reálného času) nebo po kliknutí na ✕.
 // Zpráva zůstává v rádiovém logu a případ lze otevřít i odtud.
@@ -791,6 +792,47 @@ function renderRadio() {
   setHTML($('log'), out.join(''));
 }
 
+
+// ---------- rádio: hlas a interaktivní relace ----------
+function voiceStatusText() {
+  if (typeof ZOS_VOICE === 'undefined') return '';
+  const v = ZOS_VOICE.status();
+  if (!settings.voice) return 'jen tóny vysílačky';
+  return v.state === 'ready' ? 'připraveno' : v.state === 'loading' ? `stahuji hlas ${Math.round(v.progress * 100)} % (jednorázově ~80 MB)` : v.state === 'error' ? 'hlas nelze načíst: ' + v.err : '';
+}
+function applyVoice() {
+  if (typeof ZOS_VOICE === 'undefined' || satellitePanel) return;
+  ZOS_VOICE.unlock(); ZOS_VOICE.setVolume((settings.volume || 0) / 100 * 1.1);
+  ZOS_VOICE.enable(!!settings.voice && !!settings.sound);
+}
+if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onChange(() => { const el = $('voice-status'); if (el) el.textContent = voiceStatusText(); if (sim) renderRadioLive(); });
+function voiceSay(text, key, isCall) {
+  if (!settings.sound || typeof ZOS_VOICE === 'undefined') return;
+  const st = ZOS_VOICE.status().state;
+  if (settings.voice && (st === 'ready' || st === 'loading')) ZOS_VOICE.say(text, key);
+  else if (isCall) ZOS_VOICE.chirp(false);
+}
+function radioSpeak(txt) {
+  let m;
+  if ((m = /^ZCB101, zde ZCB(\d+), příjem/.exec(txt))) return voiceSay(txt, m[1], true);
+  if (/^ZCB101\b/.test(txt)) return voiceSay(txt, 'zos');
+  if ((m = /^ZCB(\d+): (.*)$/.exec(txt))) return voiceSay(m[2], m[1]);
+  if ((m = /^ZCB(\d+) rozumí/.exec(txt))) return voiceSay(txt, m[1]);
+}
+const radioOpen = () => (sim && sim.s.radioQ || []).filter(e => e.state === 'calling' || e.state === 'open');
+const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen().length > 0;
+const rqPrefetched = new Set();
+function renderRadioLive() {
+  const box = $('radio-live'); if (!box || !sim) return;
+  const list = radioOpen().slice(-4);
+  for (const e of list) if (!rqPrefetched.has(e.id) && typeof ZOS_VOICE !== 'undefined' && settings.voice) { rqPrefetched.add(e.id); ZOS_VOICE.prefetch(e.msg, e.code); for (const o of e.opts || []) if (o.say) ZOS_VOICE.prefetch(o.say, 'zos'); }
+  const cs = id => id ? sim.caseOf(id) : null;
+  setHTML(box, list.map(e => {
+    const c = cs(e.caseId), tag = c ? `<span class="rc-case" data-case="${c.id}">${esc(c.num)} · N${c.n}</span>` : '';
+    if (e.state === 'calling') return `<div class="radio-call calling"><span class="rc-ico" aria-hidden="true">📻</span><b>ZCB${esc(e.code)}</b><span class="rc-name">${esc(e.name)} volá${e.tries > 1 ? ` (${e.tries}. volání)` : ''}</span>${tag}<button class="btn pri" data-act="rq-answer" data-rq="${e.id}" title="Klávesa P">Na příjmu</button></div>`;
+    return `<div class="radio-call open"><span class="rc-ico" aria-hidden="true">📻</span><b>ZCB${esc(e.code)}</b><span class="rc-msg">${esc(e.msg)}</span>${tag}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
+  }).join(''));
+}
 // ---------- upozornění ----------
 function toast(txt, kind) {
   const t = document.createElement('div'); t.className = 'toast ' + (kind || ''); t.textContent = txt;
@@ -809,6 +851,7 @@ function pollLog() {
   for (const e of sim.s.log) {
     if (e.id <= seenLog) continue;
     seenLog = e.id;
+    if (e.kind === 'crew' && !satellitePanel) radioSpeak(e.txt);
     if (isVstricnaRadioMessage(e.txt)) {
       vstricnaIncoming = true;
       if (e.kind === 'alert' || e.kind === 'req' || e.kind === 'deadline' || e.kind === 'warn') toast(e.txt, 'alert');
@@ -848,6 +891,9 @@ function settingsModal(fromGame) {
     <div class="setrow"><b>Velikost písma</b><span>${seg('font', [[0.92, 'Menší'], [1, 'Normální'], [1.12, 'Větší'], [1.25, 'Velké']])}</span></div>
     <div class="setrow"><b>Zvuk</b><span>${seg('sound', [[true, 'Zapnutý'], [false, 'Vypnutý']])} <button class="btn" data-act="test-sound">Vyzkoušet</button></span></div>
     <div class="setrow"><b>Hlasitost</b><span>${seg('volume', [[30, 'Tichá'], [60, 'Střední'], [100, 'Hlasitá']])}</span></div>
+    <div class="setrow"><b>Rádio</b><span>${seg('radioInteractive', [[true, 'Odpovídám sám'], [false, 'Automaticky']])}</span></div>
+    <div class="setrow"><b>Hlas posádek</b><span>${seg('voice', [[true, 'Zapnutý'], [false, 'Vypnutý']])} <button class="btn" data-act="test-voice">Vyzkoušet</button> <small id="voice-status">${esc(voiceStatusText())}</small></span></div>
+    <div class="setrow"><b>Zpomalit hru při relaci</b><span>${seg('radioSlow', [[true, 'Ano (max 5×)'], [false, 'Ne']])}</span></div>
     <div class="setrow"><b>Výchozí rychlost</b><span>${seg('speed', [[1, '1×'], [2, '2×'], [5, '5×'], [10, '10×']])}</span></div>
     <div class="setrow"><b>Pauza při nové N1</b><span>${seg('autoPauseN1', [[true, 'Ano'], [false, 'Ne']])}</span></div>
     <div class="setrow"><b>Nápověda (obtížnost)</b><span>${seg('hints', [[false, 'Realistická'], [true, 'S nápovědami']])}</span></div>
@@ -965,13 +1011,14 @@ function printModal(k) {
 function newGame() {
   const o = window._opt;
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  sim = new Sim({ mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, seed: (Math.random() * 1e9) | 0 });
+  sim = new Sim({ mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, radio: settings.radioInteractive ? 'interactive' : 'auto', seed: (Math.random() * 1e9) | 0 });
+  applyVoice();
   afterLoad(); speed = settings.speed; savedSpeed = settings.speed;
   closeModal(); toast(o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
 function afterLoad() { sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
 function doSave() { try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
-function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); } catch (e) { homeModal(); } }
+function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} applyVoice(); try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); } catch (e) { homeModal(); } }
 function render() {
   if (!sim) return;
   renderTop(); renderCases(); renderDetail(); renderCrews(); renderMap(); renderRadio();
@@ -1049,7 +1096,7 @@ function frame() {
     }
   }
   if (!modalOpen && speed > 0 && !sim.s.ended) {
-    sim.step(dt * speed);
+    sim.step(dt * (settings.radioSlow && radioPending() ? Math.min(speed, 5) : speed));
     pollLog();
     if (sim.s.ended) { speed = 0; render(); try { localStorage.removeItem(SAVE_KEY); } catch (e) {} endModal(); return; }
     if (now - saveAt > 15000) { saveAt = now; doSave(); }
@@ -1076,6 +1123,9 @@ function act(a, el) {
       break;
     case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) homeModal(); }); } break;
     case 'start': newGame(); break;
+    case 'test-voice': applyVoice(); if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.demo(); break;
+    case 'rq-answer': if (sim) { sim.radioAnswer(d.rq); pollLog(); render(); } break;
+    case 'rq-reply': if (sim) { sim.radioReply(d.rq, d.k); pollLog(); render(); } break;
     case 'home': homeModal(); break;
     case 'newshift': window._opt = null; shiftModal(); break;
     case 'newshift-keep': shiftModal(); break;
@@ -1189,7 +1239,7 @@ document.addEventListener('click', ev => {
   if (suppressClick) { ev.preventDefault(); return; }
   const t = ev.target;
   const se = t.closest('[data-set]');
-  if (se) { const k = se.dataset.set, v = se.dataset.val; settings[k] = v === 'true' ? true : v === 'false' ? false : isNaN(Number(v)) ? v : Number(v); saveSettings(); applyTheme(); if (k === 'speed' && sim) { speed = settings.speed; savedSpeed = speed; } settingsModal(window._setFromGame); return; }
+  if (se) { const k = se.dataset.set, v = se.dataset.val; settings[k] = v === 'true' ? true : v === 'false' ? false : isNaN(Number(v)) ? v : Number(v); saveSettings(); applyTheme(); if (k === 'speed' && sim) { speed = settings.speed; savedSpeed = speed; } if (['voice', 'sound', 'volume'].includes(k)) applyVoice(); if (k === 'radioInteractive' && sim) sim.setRadioMode(settings.radioInteractive ? 'interactive' : 'auto'); settingsModal(window._setFromGame); return; }
   const o = t.closest('[data-opt]'); if (o) { window._opt[o.dataset.opt] = o.dataset.val; shiftModal(); return; }
   const lm = t.closest('[data-libmode]'); if (lm) { window._opt.libero.modes[lm.dataset.libmode] = lm.dataset.val; window._libOpen = true; shiftModal(); return; }
   const ls = t.closest('[data-libset]'); if (ls) { const r = sim.setLiberoMode(ls.dataset.libset, ls.dataset.val); if (!r.ok) toast(r.msg, 'warn'); else { if (window._opt && window._opt.libero) { window._opt.libero.modes[ls.dataset.libset] = ls.dataset.val; saveOpts(); } render(); } return; }
@@ -1259,7 +1309,10 @@ $('btn-end').addEventListener('click', () => { if (sim) { sim.s.ended = true; sp
   window.addEventListener('pointercancel', () => { mapDrag = null; });
   svg.addEventListener('wheel', ev => { ev.preventDefault(); const p = svgPt(svg, ev); zoom(ev.deltaY > 0 ? 1.15 : 0.87, p.x, p.y); }, { passive: false });
 })();
-window.addEventListener('keydown', ev => { if (ev.key === ' ' && sim && !modalOpen) { ev.preventDefault(); speed = speed ? 0 : savedSpeed; } });
+window.addEventListener('keydown', ev => {
+  if (ev.key === ' ' && sim && !modalOpen) { ev.preventDefault(); speed = speed ? 0 : savedSpeed; }
+  if ((ev.key === 'p' || ev.key === 'P') && sim && !modalOpen && !/INPUT|TEXTAREA|SELECT/.test((ev.target && ev.target.tagName) || '')) { const e = radioOpen().find(x => x.state === 'calling'); if (e) { sim.radioAnswer(e.id); pollLog(); render(); } }
+});
 window.__zos = { get sim() { return sim; }, step: s => sim && sim.step(s) }; Object.defineProperty(window, '__zosMap', { get: () => GL });
 setInterval(frame, 100);
 // ---------- aplikace (PWA): instalace, offline provoz a aktualizace při spuštění ----------

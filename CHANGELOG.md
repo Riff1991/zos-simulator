@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.19.0 – vývoj
+
+- Hlasové rádiové relace: posádky mluví česky přímo ve hře (vlastní syntéza, stejný zvuk na Macu, Windows i mobilu, funguje i offline). Zvuk digitální vysílačky: tón klíčování, úzké pásmo, komprese, šum a občasné výpadky; každá posádka má svůj hlas.
+- Interaktivní rádio: posádka volá „ZCB101, zde ZCB…, příjem“, dispečer klikne Na příjmu (klávesa P), posádka předá zprávu a dispečer volí odpověď (vstřícná jízda, žádost o lékaře, exitus, doprovod…). Bez odezvy posádka volání opakuje a pak si poradí sama (−1 provozní bod).
+- Během relace se hra zpomalí nejvýš na 5×. V nastavení: rádio Odpovídám sám / Automaticky, hlas Zapnutý / Vypnutý (jen tóny), tlačítko Vyzkoušet. Hlas se jednorázově stáhne (~80 MB).
+
+---
+
 ## v0.18.0 – 2026-11-14
 
 - Doplňková naléhavost: pacient nabraný jako bezvědomí / nedýchá se cestou může probrat (N1 → N2). Když posádka u N3 hlásí zhoršení a žádá lékaře, případ přejde automaticky na doplňkovou N2 a přibude příznak typický pro indikaci.

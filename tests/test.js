@@ -426,7 +426,7 @@ console.log('case click moves map camera true');
       { id: 2, kind: 'crew', txt: 'Vstřícná jízda přijata.' },
     ] } }, seenLog: 0,
     isVstricnaRadioMessage: text => /vstřícn|vstricn/i.test(String(text || '')),
-    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {},
+    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {},
   };
   vm.runInNewContext(fn[0] + '\npollLog(); pollLog();', ctx);
   if (toneCount !== 1 || ctx.seenLog !== 2) throw new Error('vstřícná jízda radio tone repeated or was missed');
@@ -516,4 +516,21 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   const ho = []; for (let i = 0; i < 400; i++) ho.push(sim._handoverSec({ n: 3 })); ho.sort((a, b) => a - b);
   if (Math.abs(ho[200] - 605) > 90) throw new Error('medián předání neodpovídá říjnu');
   console.log('0.18 doplňková / pracoviště / Jihlava / DZ / předání true');
+}
+// interaktivní rádio: bez odpovědí se relace samy uzavřou (posádka si poradí), s odpovědí proběhne akce
+{
+  const sim = new Sim({ seed: 190, mode: 'shift', startHour: 8, muEnabled: false, radio: 'interactive' });
+  for (let i = 0; i < 4 * 120; i++) { bot(sim); sim.step(30); }
+  const q = sim.s.radioQ;
+  if (!q.length) throw new Error('interaktivní rádio nevytvořilo žádnou relaci');
+  if (q.some(e => (e.state === 'calling' || e.state === 'open') && sim.s.t - e.t > 400)) throw new Error('rádiová relace zůstala viset');
+  const cs = sim.s.cases.find(c => c.status !== 'closed') || sim._spawn();
+  const k = sim.s.crews.find(x => x.type === 'RZP');
+  sim._radio(k, cs, 'zkušební relace.', 'zjišťujeme koronera');
+  const e = q[q.length - 1];
+  if (e.state !== 'calling' || !sim.radioAnswer(e.id).ok || e.state !== 'open') throw new Error('na příjmu nefunguje');
+  const before = sim.s.ops ? sim.s.ops.points : 0;
+  sim.radioReply(e.id, 'bad');
+  if (e.state !== 'done' || !sim.s.log.slice(-3).some(x => x.txt.includes('vracejte se'))) throw new Error('odpověď na relaci nefunguje');
+  console.log('interaktivní rádio: relace, opakování, odpovědi true', q.length, 'relací');
 }
