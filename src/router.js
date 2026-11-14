@@ -1,7 +1,7 @@
 // Router nad kompletní silniční sítí OSM (graph.bin). Trasy, odhady jízdy a pokrytí.
 const ROUTER = (function () {
-  // km/h: dálnice, I. tř. (trunk), I. tř., II. tř., III. tř., místní, účelové
-  const KPH = [100, 85, 72, 62, 52, 36, 22], CONN_KPH = 25;
+  // km/h pro jízdu N2/N3 s VRZ (limit + 30: dálnice 150, mimo obec 120; na hůře sjízdných silnicích méně): dálnice, I. tř. (trunk), I. tř., II. tř., III. tř., místní, účelové
+  const KPH = [150, 120, 109, 94, 79, 55, 33], CONN_KPH = 25;
   const KM_LAT = 111.19, KM_LON = 111.19 * Math.cos(49.1 * Math.PI / 180);
   const GC = 0.01;
   let N = 0, M = 0, nlat, nlon, eu, ev, ecls, elen, eptsOff, P, adjOff, adjE, grid, ready = false;

@@ -15,11 +15,12 @@ function travelSec(a, b, c, d, mult) {
 }
 function heliSec(a, b, c, d) { return hav(a, b, c, d) / (130 * 1.852) * 3600; }
 // Jízda k události s výstražnými zařízeními je rychlejší než běžný provoz (faktor času jízdy).
-// Doba jízdy podle režimu (směrnice Primární zásah pozemních prostředků + úprava pravidel jízdy s VRZ):
-// N1 bez rychlostního limitu; N2, N3 a jízda s pacientem nejvýše +30 km/h nad limit (80 / 120 / 150);
-// N4 a návrat bez VRZ v běžných limitech. Čísla [pevná část v s, násobek času trasy] jsou kalibrovaná
-// na říjnovém vzorku výjezdů (čas výjezd → příjezd proti trase ze základny): N1 124 s + 0,63×, N2 132 s + 0,67×, N3 183 s + 0,64×.
-const DRIVE = { N1: [110, 0.62], N2: [130, 0.66], N3: [170, 0.66], N4: [60, 0.9], P2: [90, 0.7], P3: [90, 0.76], RET: [30, 0.9] };
+// Doba jízdy podle režimu (směrnice Primární zásah pozemních prostředků + úprava pravidel jízdy s VRZ).
+// Router počítá po třídách silnic rychlostmi N2/N3 (limit + 30: dálnice 150, mimo obec 120, na horších silnicích méně).
+// Režimy jsou [pevná část v s (rozjezd, průjezd obcí, hledání adresy), násobek času trasy]. N1 bez limitu je o pár % rychlejší;
+// N4 a návrat bez VRZ v běžných limitech jsou pomalejší. N1–N3 kalibrováno na říjnovém vzorku výjezdů
+// (čas výjezd → příjezd proti trase ze základny): N1 113 s + 0,94×, N2 138 s + 0,97×, N3 193 s + 0,89× (bez nejdelších tras ~1,0×).
+const DRIVE = { N1: [110, 0.94], N2: [135, 0.97], N3: [175, 0.95], N4: [60, 1.3], P2: [90, 1.05], P3: [90, 1.15], RET: [30, 1.35] };
 function driveSec(base, mode) { const m = DRIVE[mode] || DRIVE.N3; return m[0] * Math.min(1, base / 150) + base * m[1]; }
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Pracovní denní rytmus: ranní špička, klidnější poledne, menší odpolední vlna.
