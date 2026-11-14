@@ -335,7 +335,7 @@ for (let i = 0; i < 600 && airCase.status !== 'closed'; i++) airSim.step(30);
 if (airCase.status !== 'closed' || !airCase.lzsTransferred || !airCase.transported || !airCase.dest.includes('Traumacentrum')) throw new Error('LZS patient transfer lifecycle failed');
 if (airSim.crewOf(airRzp.crewId).caseId || lzs.caseId || !['base', 'free'].includes(lzs.state)) throw new Error('LZS or RZP did not clear the case or LZS failed to return');
 const airRzpCrew = airSim.crewOf(airRzp.crewId);
-if (!airRzpCrew.hospitalRun || airRzpCrew.hospitalRun.phase !== 'return' || airRzpCrew.hospitalRun.availableAt !== airRzpCrew.until) throw new Error('hospital transport board did not retain the crew until return-to-base completion');
+if (!airRzpCrew.hospitalRun || airRzpCrew.hospitalRun.phase !== 'return' || airRzpCrew.hospitalRun.availableAt > airSim.s.t) throw new Error('hospital transport board should show the crew as free right after handover');
 console.log('LZS heliport transfer lifecycle true');
 const burnSim = new Sim({ seed: 107, mode: 'free', startHour: 10 });
 burnSim.s.ev.nextSpawn = burnSim.s.ev.nextSecond = 999999; burnSim.s.ev.nextMU = null;

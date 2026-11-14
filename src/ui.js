@@ -813,9 +813,10 @@ function renderRadio() {
   active.sort((a, b) => a.hospitalRun.availableAt - b.hospitalRun.availableAt);
   setHTML($('transport-board'), active.length ? active.map(k => {
     const run = k.hospitalRun, remaining = Math.max(0, run.availableAt - sim.s.t);
-    const phase = run.phase === 'transport' ? 'Na cestě do nemocnice' : run.phase === 'handover' ? 'Předání pacienta' : 'Návrat na základnu';
-    const detail = run.phase === 'transport' ? `Příjem za ${Math.ceil(Math.max(0, k.until - sim.s.t) / 60)} min` : run.phase === 'handover' ? `Konec předání za ${Math.ceil(Math.max(0, k.until - sim.s.t) / 60)} min` : 'Po předání';
-    const availability = run.phase === 'transport' ? `Volná přibližně za ${Math.ceil(remaining / 60)} min` : `Volná za ${Math.ceil(remaining / 60)} min`;
+    const esc_ = !!run.escort;
+    const phase = run.phase === 'transport' ? (esc_ ? 'Doprovod do nemocnice' : 'Na cestě do nemocnice') : run.phase === 'handover' ? 'Předání pacienta' : 'Po předání, vrací se na základnu';
+    const detail = run.phase === 'transport' ? `Příjem za ${Math.ceil(Math.max(0, k.until - sim.s.t) / 60)} min` : run.phase === 'handover' ? `Konec předání za ${Math.ceil(Math.max(0, k.until - sim.s.t) / 60)} min` : 'volná';
+    const availability = remaining <= 0 ? 'Volná nyní' : run.phase === 'transport' ? `Volná přibližně za ${Math.ceil(remaining / 60)} min` : `Volná za ${Math.ceil(remaining / 60)} min`;
     return `<div class="transport-row ${run.phase}"><b>${esc(k.name)}</b><span>${esc(run.hospitalName)}</span><span>${phase} · ${detail}</span><span class="transport-time">${availability}</span></div>`;
   }).join('') : '<div class="transport-empty">Žádná posádka právě nejede do nemocnice ani se nevrací po předání.</div>');
   const L = sim.s.log, out = [];

@@ -1976,7 +1976,7 @@ class Sim {
         if (c.hospitalRun) {
           c.hospitalRun.handoverSec = handoverSec;
           c.hospitalRun.phase = 'handover';
-          c.hospitalRun.availableAt = c.until + driveSec(this._eta(c.lat, c.lon, c.home.lat, c.home.lon), 'RET');
+          c.hospitalRun.availableAt = c.until; // po předání je posádka volná (zpáteční jízda se nepočítá)
         }
         this.L('crew', `${c.name}: příjezd k ZZ – ${c.dest.name}`, cs ? cs.id : null, c.id);
         break;
@@ -2084,7 +2084,7 @@ class Sim {
     const dur = this._go(c, h.lat, h.lon, 'P2');
     c.dest = { hid: h.id, name: `${h.short} – ${dept}`, type: cs.hospType };
     const handoverEstimate = 700;
-    c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate + driveSec(this._eta(h.lat, h.lon, c.home.lat, c.home.lon), 'RET') };
+    c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate };
     c.until = t + dur; c.state = 'transport';
     cs.transported = true; cs.dest = c.dest.name; cs.lzsState = 'pozemní převoz';
     this.L('crew', `${c.name}: převzala pacienta od LZS, převoz na ${c.dest.name}`, cs.id, c.id);
@@ -2140,7 +2140,7 @@ class Sim {
     const dsay = this._destSay(best, dept);
     c.dest = { hid: best.id, name: best.short + ' – ' + dept, type, say: dsay.text };
     const handoverEstimate = 700;
-    c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate + driveSec(this._eta(best.lat, best.lon, c.home.lat, c.home.lon), 'RET') };
+    c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate };
     if (cs.mu && cs.mu.hospitalCapacities) {
       const cap = cs.mu.hospitalCapacities.find(x => x.hospitalId === best.id);
       if (cap) { cap.remaining = Math.max(0, cap.remaining - 1); if (!cap.remaining) cap.state = 'dočasně nepřijímá'; }
@@ -2158,6 +2158,7 @@ class Sim {
       rv.caseRole = 'escort'; rv.escortFree = cs.fate !== 'rosc' && cs.n >= 2 && this.rnd() < 0.6;
       rv.dest = { hid: best.id, name: c.dest.name, type };
       this._go(rv, best.lat, best.lon, pmode); rv.state = 'transport'; rv.until = t + dur;
+      rv.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', escort: true, handoverSec: null, availableAt: t + dur }; // doprovod je volný hned po příjezdu
     }
     if (primaryRun && escorts.length) {
       const rv = escorts[0];
@@ -2323,7 +2324,8 @@ class Sim {
     c.lat = p.lat; c.lon = p.lon; c.mv = null;
     const dur = this._go(c, c.home.lat, c.home.lon, 'RET');
     c.state = 'free'; c.until = t + dur;
-    if (leavingHospital) { c.hospitalRun.phase = 'return'; c.hospitalRun.availableAt = c.until; }
+    if (leavingHospital) { c.hospitalRun.phase = 'return'; c.hospitalRun.availableAt = t; }
+    else if (c.hospitalRun) c.hospitalRun = null;
     this.L('crew', `${c.name}: volný`, cs ? cs.id : null, c.id);
     if (cs) this._checkClose(cs);
   }
