@@ -158,8 +158,19 @@ class Sim {
         this._crewCall(lz, null, `na Matře slyší za 5, ${w === 'clear' ? 'jsme bez omezení' : w === 'consult' ? 'jsme na konzultaci' : 'zatím neletoví, kdyžtak se ozveme'}.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info', 'K' + String(lz.code).replace(/\D/g, ''));
       }
     }
+    if (lz.abortAt && t >= lz.abortAt && lz.caseId === lz.abortCase && (lz.state === 'enroute' || (lz.state === 'transport' && lz.lzsLeg === 'to-scene'))) {
+      const cs = this.caseOf(lz.caseId); lz.abortAt = null; lz.abortCase = null;
+      if (cs) {
+        this._crewCall(lz, cs, this.pick(['pro počasí let nelze dokončit, vracíme se na základnu.', 'zhoršila se dohlednost, let přerušujeme, vracíme se na základnu.', 'námraza a nízká oblačnost, k místu nedoletíme, vracíme se na základnu.']), [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info', 'K' + String(lz.code).replace(/\D/g, ''));
+        this.cancelAssignment(cs.id, lz.id);
+        this.L('req', `${cs.num}: LZS pro počasí nedoletí – zajisti jiného lékaře (RV).`, cs.id);
+      }
+    }
     if ((lz.state === 'enroute' || (lz.state === 'transport' && lz.lzsLeg === 'to-scene')) && lz.caseId && lz.enrouteAt != null && t - lz.enrouteAt >= 60 && lz.takeoffReported !== lz.caseId) {
       lz.takeoffReported = lz.caseId;
+      // při konzultaci pilota se počasí může zhoršit a LZS se po vzletu vrací (v pár procentech)
+      const wx = this._lzsWeatherStatus();
+      if ((wx === 'consult' && this.rnd() < 0.08) || (wx === 'clear' && this.rnd() < 0.01)) { lz.abortCase = lz.caseId; lz.abortAt = t + this.rr(60, Math.max(90, Math.min(420, (lz.until - t) * 0.7))); }
       const cs = this.caseOf(lz.caseId); if (!cs) return;
       const mins = Math.max(1, Math.ceil((lz.until - t) / 60));
       const ground = cs.crews.map(id => this.crewOf(id)).filter(k => k && k.id !== lz.id && k.type !== 'LZS' && BUSY.includes(k.state));
@@ -807,15 +818,18 @@ class Sim {
       if (c.type === 'RV' && cs.n <= 2 && cs.rvNeed && !cs.rvFirstBonus && !hasRzp && !cs.arrived) { cs.rvFirstBonus = true; this._opsScore(1, `RV vysláno jako první k ${cs.num}`, cs.id); }
       if (c.type === 'LZS' && cs.rvNeed && !cs.docAssigned && !cs.lzsDocBonus && !this.suggest(cs.id, 'RV').some(x => x.eta < 900)) { cs.lzsDocBonus = true; this._opsScore(1, `LZS místo nedostupného RV u ${cs.num}`, cs.id); }
     }
-    const p = this.pos(c);
-    c.lat = p.lat; c.lon = p.lon; c.mv = null; c.consulted = false; c.escortFree = false;
-    c.turn = this._turnout(c, cs.n);
+    const p = this.pos(c), rolling = c.state === 'free' && c.mv && c.mv.path && t < c.mv.t1 && c.type !== 'LZS';
+    c.lat = p.lat; c.lon = p.lon; c.consulted = false; c.escortFree = false;
+    if (!rolling) c.mv = null;
+    c.turn = rolling ? this.rr(5, 15) : this._turnout(c, cs.n); // vůz na cestě (vrací se) jede rovnou, bez zastavení
     c.dispatchAt = t; c.turnoutAlerted = false;
     c.state = 'call'; c.until = t + c.turn; c.caseId = cs.id; c.arrivedAt = null; c.dest = null; c.hospitalRun = null;
     c.caseRole = role || null;
     cs.crews.push(c.id);
     cs.asg.push({ crewId: c.id, t, eta, role: c.caseRole });
     if (role !== 'heli-transfer' && cs.initialDispatchRequired && cs.initialDispatchRequired.includes(c.type) && !cs.initialDispatchSent.includes(c.type)) cs.initialDispatchSent.push(c.type);
+    // LZS má lékaře – nahrazuje RV (obvykle se RV posílá i tak, kdyby LZS nedoletěla)
+    if (c.type === 'LZS' && cs.initialDispatchRequired && cs.initialDispatchRequired.includes('RV') && !cs.initialDispatchSent.includes('RV')) cs.initialDispatchSent.push('RV');
     if (c.rlp) this._markDoctor(cs, c);
     if (cs.firstAssign == null) cs.firstAssign = t;
     if (doc) {
@@ -878,6 +892,7 @@ class Sim {
       }
     }
     cs.crews = cs.crews.filter(id => id !== c.id);
+    if (role !== 'heli-transfer' && cs.initialDispatchRequired && (c.type === 'LZS' || c.type === 'RV') && !cs.crews.some(id => { const k = this.crewOf(id); return k && (k.type === 'RV' || k.type === 'LZS' || k.rlp) && k.caseRole !== 'heli-transfer'; })) cs.initialDispatchSent = cs.initialDispatchSent.filter(x => x !== 'RV');
     if (role !== 'heli-transfer' && cs.initialDispatchRequired && !cs.crews.some(id => { const k = this.crewOf(id); return k && k.type === c.type && k.caseRole !== 'heli-transfer'; })) cs.initialDispatchSent = cs.initialDispatchSent.filter(x => x !== c.type);
     const a = cs.asg.find(x => x.crewId === c.id && !x.cancelled && !x.diverted); if (a) a.cancelled = true;
     if (role === 'heli-transfer') cs.lzsTransferCrewId = null;
@@ -991,6 +1006,47 @@ class Sim {
       if (pool.length) return this.pick(pool);
     }
     return null;
+  }
+  // vůz přesměrovaný za jízdy: z dálnice pokračuje ve směru jízdy k nejbližšímu sjezdu, na silnicích I. a nižší třídy se otočí hned
+  _continueToExit(c, target) {
+    const m = c.mv, t = this.s.t; c.mv = null;
+    const p = this.pos(Object.assign({}, c, { mv: m })); c.lat = p.lat; c.lon = p.lon;
+    if (!m || !m.path || !m.frac || typeof ROUTER === 'undefined' || !ROUTER.ready || !ROUTER.snap) return null;
+    const here = ROUTER.snap(c.lat, c.lon); if (!here || here.cls !== 0) return null;
+    const P = m.path, F = m.frac, span = Math.max(1, m.t1 - m.t0), fr = clamp01((t - m.t0) / span);
+    let i = F.findIndex(f => f >= fr); if (i < 0) return null;
+    const pts = [c.lat, c.lon], times = [0];
+    const onMw = (la, lo) => { const sn = ROUTER.snap(la, lo); return !!(sn && sn.cls === 0 && sn.d < 0.01); };
+    let lat0 = c.lat, lon0 = c.lon, since = 0, checks = 0, exitR = null;
+    for (; i < P.length / 2; i++) {
+      const la = P[i * 2], lo = P[i * 2 + 1], dla = la - lat0, dlo = lo - lon0;
+      since += hav(lat0, lon0, la, lo); lat0 = la; lon0 = lo;
+      pts.push(la, lo); times.push((F[i] - fr) * span);
+      if (!onMw(la, lo)) break;
+      if (since >= 0.8 && checks < 40 && (dla || dlo)) {
+        since = 0; checks++;
+        // trasa s penalizovanou dálnicí: první úsek nesmí vést zpět po dálnici
+        const r = ROUTER.route(la, lo, target.lat, target.lon, true);
+        if (!r || !r.pts || r.pts.length < 4) continue;
+        let j = 1; while (j < r.pts.length / 2 - 1 && hav(la, lo, r.pts[j * 2], r.pts[j * 2 + 1]) < 0.12) j++;
+        const back = (r.pts[j * 2] - la) * dla + (r.pts[j * 2 + 1] - lo) * dlo * 0.42 < 0 && onMw(r.pts[j * 2], r.pts[j * 2 + 1]);
+        if (!back) { exitR = r; break; }
+      }
+    }
+    // po sjezdu: jede po penalizované trase, dokud není ~300 m mimo dálnici
+    if (exitR) {
+      const R = exitR.pts, RF = exitR.frac, t0 = times[times.length - 1];
+      let off = 0, la0 = R[0], lo0 = R[1];
+      for (let j = 1; j < R.length / 2; j++) {
+        const la = R[j * 2], lo = R[j * 2 + 1];
+        if (!onMw(la, lo)) off += hav(la0, lo0, la, lo); la0 = la; lo0 = lo;
+        pts.push(la, lo); times.push(t0 + RF[j] * exitR.sec);
+        if (off >= 0.3) break;
+      }
+    }
+    const sec = Math.max(1, times[times.length - 1]);
+    c.lat = pts[pts.length - 2]; c.lon = pts[pts.length - 1];
+    return { pts, fr: times.map(x => x / sec), sec };
   }
   // posádka zastaví na silnici u místa události (každá kousek vedle, ne přímo v symbolu události)
   _park(c, cs) {
@@ -1723,7 +1779,13 @@ class Sim {
         if (c.type === 'LZS') dur = this._goAir(c, cs.lat, cs.lon);
         else {
           const target = c.caseRole === 'heli-transfer' ? ZOS_DATA.lzs.heliport : c.caseRole === 'vstricna-support' ? c.vstricnaMeet : { lat: cs.lat, lon: cs.lon };
+          const pre = c.mv ? this._continueToExit(c, target) : null; // na dálnici se neotáčí – dojede k nejbližšímu sjezdu
           dur = this._go(c, target.lat, target.lon, c.caseRole === 'vstricna-support' ? 'N3' : 'N' + Math.min(4, Math.max(1, cs.n || 3)));
+          if (pre && c.mv && c.mv.path) {
+            const tot = pre.sec + dur, m = c.mv;
+            m.path = pre.pts.concat(m.path.slice(2)); m.frac = pre.fr.map(f => f * pre.sec / tot).concat(m.frac.slice(1).map(f => (pre.sec + f * dur) / tot));
+            m.a = [pre.pts[0], pre.pts[1]]; m.t1 = t + tot; dur = tot;
+          }
           if (!c.caseRole) this._park(c, cs);
         }
         c.until = t + dur; c.state = 'enroute'; c.enrouteAt = t; c.takeoffReported = null;

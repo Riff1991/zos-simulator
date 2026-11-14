@@ -556,3 +556,26 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (!s2.s.log.some(x => /Kryštof 13: na Matře slyší za 5/.test(x.txt))) throw new Error('zkouška spojení LZS v 8:00');
   console.log('spojový řád: PČR/HZS, ZOS volá, LZS zkouška spojení true');
 }
+// LZS místo RV, LZS se pro počasí vrací, přesměrování vozu za jízdy bez zastavení
+{
+  const sim = new Sim({ seed: 211, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  const cs = sim._spawn(); cs.status = 'waiting'; cs.n = 1; cs.rvNeed = true; cs.initialDispatchRequired = ['RZP', 'RV']; cs.initialDispatchSent = []; sim.s.cases.push(cs);
+  const lz = sim.crewOf('lzs'); sim._lzsWeatherStatus = () => 'clear';
+  const r = sim.assign(cs.id, lz.id);
+  if (!r.ok || !cs.initialDispatchSent.includes('RV')) throw new Error('LZS nenahrazuje RV v povinném výjezdu: ' + (r.msg || ''));
+  sim.step(lz.until - sim.s.t + 1);
+  lz.abortCase = cs.id; lz.abortAt = sim.s.t; sim._lzsRadio();
+  if (lz.caseId === cs.id || cs.initialDispatchSent.includes('RV')) throw new Error('LZS se po přerušení letu nevrátila / RV dál chybí');
+  const hav = (a, b, c, d) => Math.hypot((a - c) * 111, (b - d) * 73);
+  // vůz vracející se na základnu jede k nové výzvě rovnou
+  const k = sim.s.crews.find(x => x.type === 'RZP' && sim.avail(x));
+  const cs2 = sim._spawn(); cs2.status = 'waiting'; sim.s.cases.push(cs2);
+  const far = ZOS_DATA.stations.find(st => hav(st.lat, st.lon, k.home.lat, k.home.lon) > 25);
+  k.lat = far.lat; k.lon = far.lon; k.state = 'free'; sim._go(k, k.home.lat, k.home.lon, 'RET'); k.until = k.mv.t1;
+  sim.step(120); const p1 = sim.pos(k);
+  sim.assign(cs2.id, k.id); const p2 = sim.pos(k); sim.step(6); const p3 = sim.pos(k);
+  if (k.turn > 20) throw new Error('vůz na cestě má zbytečně dlouhý výjezd');
+  if (hav(p1.lat, p1.lon, p2.lat, p2.lon) > 0.01 || hav(p2.lat, p2.lon, p3.lat, p3.lon) < 0.01) throw new Error('vůz po přesměrování zastavil');
+  console.log('LZS místo RV / počasí / přesměrování za jízdy true');
+}

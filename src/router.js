@@ -64,11 +64,11 @@ const ROUTER = (function () {
     if (best) { best.c = cumTo(best.e, best.i); best.cls = ecls[best.e]; }
     return best;
   }
-  function heapRun(dist, nxt, h) {
+  function heapRun(dist, nxt, h, avoid) {
     while (h.n) {
       const [d, x] = h.pop(); if (d > dist[x]) continue;
       for (let q = adjOff[x]; q < adjOff[x + 1]; q++) {
-        const e = adjE[q], y = eu[e] === x ? ev[e] : eu[e], nd = d + elen[e] * spk(ecls[e]);
+        const e = adjE[q], y = eu[e] === x ? ev[e] : eu[e], nd = d + elen[e] * spk(ecls[e]) * (avoid && ecls[e] === 0 ? 6 : 1);
         if (nd < dist[y]) { dist[y] = nd; if (nxt) nxt[y] = e; h.push(nd, y); }
       }
     }
@@ -88,12 +88,12 @@ const ROUTER = (function () {
     if (tv < dist[ev[sd.e]]) { dist[ev[sd.e]] = tv; h.push(tv, ev[sd.e]); }
   };
   // strom nejkratších cest k cíli
-  function toTarget(sd) {
-    const key = sd.e + ':' + sd.i;
+  function toTarget(sd, avoid) {
+    const key = (avoid ? 'A' : '') + sd.e + ':' + sd.i;
     let r = cache.get(key);
     if (r) { cache.delete(key); cache.set(key, r); return r; }
     const dist = new Float64Array(N).fill(Infinity), nxt = new Int32Array(N).fill(-1), h = new Heap();
-    seed(sd, dist, h); heapRun(dist, nxt, h);
+    seed(sd, dist, h); heapRun(dist, nxt, h, avoid);
     r = { dist, nxt, sd }; cache.set(key, r);
     if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
     return r;
@@ -109,10 +109,11 @@ const ROUTER = (function () {
     if (so.e === sd.e) t = Math.min(t, Math.abs(so.c - sd.c) * spk(so.cls));
     return isFinite(t) ? t + conn(so.d) + conn(sd.d) : null;
   }
-  function route(a, b, c, d) {
+  // avoid: dálnice (třída 0) penalizovaná – pro sjezd z dálnice bez otáčení
+  function route(a, b, c, d, avoid) {
     if (!ready) return null;
     const so = snap(a, b), sd = snap(c, d); if (!so || !sd) return null;
-    const rt = toTarget(sd), s = spk(so.cls);
+    const rt = toTarget(sd, avoid), s = spk(so.cls);
     const viaU = so.c * s + rt.dist[eu[so.e]], viaV = (elen[so.e] - so.c) * s + rt.dist[ev[so.e]];
     const same = so.e === sd.e ? Math.abs(so.c - sd.c) * s : Infinity;
     if (!isFinite(Math.min(viaU, viaV, same))) return null;

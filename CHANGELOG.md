@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.19.2 – vývoj
+
+- LZS nahrazuje RV: vyslaná LZS splní požadavek na lékaře u N1/N2 (RV lze poslat i tak, kdyby LZS nedoletěla). Když se LZS odvolá nebo vrátí, RV zase chybí.
+- Počasí: když je LZS na konzultaci, může se po vzletu v několika procentech případů let přerušit („pro počasí let nelze dokončit, vracíme se na základnu“) a dispečer musí zajistit jiného lékaře.
+- Vůz, který se vrací na základnu, jede po přidělení výzvy rovnou k ní, bez zastavení. Na dálnici se neotáčí – pokračuje k nejbližšímu sjezdu, na silnicích I. a nižších tříd se otočí hned.
+
+---
+
 ## v0.19.1 – 2026-11-14
 
 - Výcvik: nová položka v menu „Výcvik – první směna s návodem“. Klidná směna bez MU a sekundárů, hra provede krok za krokem (výběr případu, vyslání RZP a RV, sledování posádky, rádio, upozornění, dlaždice PČR/HZS).
