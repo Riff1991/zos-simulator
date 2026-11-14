@@ -20,9 +20,9 @@ function heliSec(a, b, c, d) { return hav(a, b, c, d) / (130 * 1.852) * 3600; }
 // Režimy jsou [pevná část v s (rozjezd, průjezd obcí, hledání adresy), násobek času trasy]. N1 bez limitu je o pár % rychlejší;
 // N4 a návrat bez VRZ v běžných limitech jsou pomalejší. N1–N3 kalibrováno na říjnovém vzorku výjezdů
 // (čas výjezd → příjezd proti trase ze základny): N1 113 s + 0,94×, N2 138 s + 0,97×, N3 193 s + 0,89× (bez nejdelších tras ~1,0×).
-// jízdní režimy: N1/N2/P2/RETL = na majáky (VRZ), N3/N4/P3/RET = bez majáků; RETL = návrat v „režimu N3“ na pokyn dispečera
+// jízdní režimy: k případu (N1–N3) a transport (P2/P3) vždy na majáky (VRZ), rychlost podle naléhavosti; RET = návrat bez majáků, RETL = návrat v „režimu N3“ na majáky na pokyn dispečera
 const DRIVE = { N1: [100, 0.92], N2: [125, 0.97], N3: [175, 1.05], N4: [60, 1.3], P2: [90, 1.05], P3: [90, 1.15], RET: [30, 1.35], RETL: [30, 1.02] };
-const LIGHT_MODES = ['N1', 'N2', 'P2', 'RETL'];
+const LIGHT_MODES = ['N1', 'N2', 'N3', 'P2', 'P3', 'RETL'];
 function driveSec(base, mode) { const m = DRIVE[mode] || DRIVE.N3; return m[0] * Math.min(1, base / 150) + base * m[1]; }
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Pracovní denní rytmus: ranní špička, klidnější poledne, menší odpolední vlna.
@@ -755,7 +755,7 @@ class Sim {
       const p = this.pos(c), t = this.s.t, b = c.mv.b; c.lat = p.lat; c.lon = p.lon;
       const dur = this._go(c, b[0], b[1], 'N' + n); c.until = t + dur;
     }
-    this.L('crew', `${c.name}: jízda v naléhavosti N${n}${n <= 2 ? ' (majáky)' : ' (bez majáků)'}`, c.caseId, c.id);
+    this.L('crew', `${c.name}: jízda v naléhavosti N${n}(majáky)`, c.caseId, c.id);
     return { ok: true };
   }
   _goAir(c, lat, lon) {

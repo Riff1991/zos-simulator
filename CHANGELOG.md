@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.1 – 2026-11-14
+
+> Opraven systém majáků: posádky jedou k případu i s pacientem vždy na majáky (rychlost se liší podle naléhavosti N1–N3), bez majáků se vracejí. Režim N3 je návrat na majáky na pokyn dispečera; RV dál než 10 min od základny se vrací na majáky samo.
+
+- Majáky: k případu (N1–N3) i při transportu vždy zapnuté, modrá tečka svítí. Dřív N3 jelo bez majáků.
+
+---
+
 ## v0.21.0 – 2026-11-14
 
 > Přibyli first respondeři (HZS, JPO, PČR, VZS, horská služba) se zelenými AED značkami na mapě a dlaždicí FR, která vyšle nejbližšího. Posádku lze poslat zpět v režimu N3 na majáky (modrá tečka na dlaždici) a změnit jí naléhavost jízdy. Rádio má vlastní okno vlevo dole: přepis a zápis do terminálu se objeví se zpožděním, mluvící posádka bliká a žádost o lékaře je červená a nevyšle posádku sama. Opravy: LIBERO jde odpřáhnout, RZP Planá je zpět v ČB, RZP nejede s pacientem, dokud RV nedojede, rádio už neusekává konce vět a odvolání výjezdu zní správně.
