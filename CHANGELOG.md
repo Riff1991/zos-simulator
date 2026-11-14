@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.20.0 – 2026-11-14
+
+> Výcvik má nově 10 lekcí s předem připravenými případy, takže se na nic nečeká a projdou se všechny hlavní mechaniky: vstřícná jízda, exitus a koroner, LZS, doprovod RV, sekundární převoz, součinnost PČR a HZS, pokrytí a mimořádná událost. Závěrečné bizarní finále spojí probuzenou zástavu, polytrauma bez blízkého lékaře a nenalezeného pacienta. Výcvik už nepřepisuje uloženou směnu a v úvodní obrazovce se changelog zobrazuje jako krátké odstavce.
+
+- Výcvik: 10 lekcí (Základy, Vstřícná jízda, Exitus a koroner, LZS, Doprovod RV, Sekundární převoz, Součinnost PČR a HZS, Pokrytí, Mimořádná událost, Bizarní finále). Každá lekce vloží vlastní případ, náhodné případy jsou ve výcviku vypnuté, kroky lze přeskočit.
+- Výcvik už nepřepisuje uloženou rozehranou směnu.
+- Changelog na úvodní obrazovce: u každé z posledních 3 verzí jeden odstavec.
+
+---
+
 ## v0.19.3 – 2026-11-14
 
 > Posádka je po předání pacienta v přehledu transportů volná ihned, zpáteční jízda se už nepočítá. Místo odhadu „volná za 31 min“ se u předávající posádky ukáže „Volná nyní“. Přehled nově zobrazuje i doprovodné RV, které je po příjezdu do nemocnice volné hned, takže se v přehledu objeví jen do příjezdu.
