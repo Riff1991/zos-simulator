@@ -167,6 +167,7 @@ function renderTop() {
   document.querySelectorAll('.win').forEach(w => w.classList.toggle('active', w.id === 'w-' + view));
   renderLiveAlerts();
   renderRadioLive();
+  tutTick();
 }
 // Upozornění nahoře: hlášení 112 zmizí samo nejpozději po 40 s (reálného času) nebo po kliknutí na ✕.
 // Zpráva zůstává v rádiovém logu a případ lze otevřít i odtud.
@@ -807,6 +808,59 @@ function renderRadio() {
 }
 
 
+
+// ---------- výcvik: první směna s návodem ----------
+let tut = null;
+const TUT = [
+  { t: 'Vítej na ZOS ZZS JčK. Vlevo jsou výzvy, uprostřed mapa kraje, vpravo všechny posádky. Hra je zatím pozastavená – klikni Dál.', next: true, pause: true },
+  { t: 'Operátor právě přijímá první tísňovou výzvu (záložka „Nabírá se“). Počkej, až příjem dokončí – výzva pak spadne do „Čekající“.', hl: '[data-tabcase=intake]', fast: 10, done: () => sim.s.cases.some(c => c.status === 'waiting' && !c.mu && c.typ !== 'sekundární') },
+  { t: 'Výzva čeká na vyslání. Klikni na ni v seznamu – nahoře jsou nejnaléhavější (N1 → N3).', hl: '#cases .case-card', pause: true, done: () => { const c = sel.c && sim.caseOf(sel.c); return !!(c && c.status !== 'intake'); } },
+  { t: 'V panelu vybraného případu vidíš adresu, příznaky a doporučené posádky seřazené podle dojezdu. Vyšli nejbližší RZP: přetáhni její dlaždici zprava na případ (nebo klikni na tlačítko u doporučené posádky).', hl: '#detail', pause: true, done: () => { const c = sel.c && sim.caseOf(sel.c); return !!(c && c.crews.length); } },
+  { t: 'N1 a N2 (a dynamická indikace) potřebují lékaře. Pokud případ ukazuje „chybí RV“, pošli k němu ještě RV (dlaždice se žlutým pruhem). Jinak klikni Dál.', hl: '#crews', next: true, pause: true, skipIf: () => { const c = sel.c && sim.caseOf(sel.c); return !(c && c.rvNeed && !c.docAssigned); }, done: () => { const c = sel.c && sim.caseOf(sel.c); return !!(c && c.docAssigned); } },
+  { t: 'Posádka vyjíždí. Klikni na její dlaždici vpravo – mapa ji bude sledovat (posunutím mapy sledování zrušíš). Statusy (výjezd, na místě, transport) posádky hlásí terminálem.', hl: '#crews', next: true },
+  { t: 'Rádio: když posádka volá, nahoře bliká modrá lišta „volá“. Klikni Na příjmu (nebo klávesa P), poslechni zprávu a vyber odpověď. Hra se během relace zpomalí. Počkej na první relaci…', hl: '#radio-live', fast: 5, done: () => (sim.s.radioQ || []).some(e => e.state === 'done') || sim.s.radioMode !== 'interactive' },
+  { t: 'Výborně. Červené pruhy nahoře jsou upozornění a datové zprávy od HZS, PČR a eCall – klikem otevřeš případ, křížkem zprávu skryješ. Když posádka žádá lékaře, policii nebo hasiče, klik otevře výjezd a můžeš na něj rovnou přetáhnout dlaždici.', hl: '#alerts-live', next: true },
+  { t: 'Dlaždice KORONER, PČR a HZS najdeš vpravo ve skupině „Speciální“. Přetahují se na případ stejně jako posádky.', hl: '.st-pcr', next: true },
+  { t: 'Dole je přehled transportů a provozní zprávy. Body a rozbor rozhodnutí uvidíš na konci směny, pravidla hodnocení jsou v menu ☰ Pravidla. To je vše – hodně štěstí na směně!', next: true, last: true },
+];
+function startTutorial() {
+  window._opt = Object.assign({}, window._opt || {}, { mode: 'shift', hour: 9, diff: 0.6, secondaryEnabled: 'false', muEnabled: 'false', muProbability: 0, startState: 'clean', libero: 'auto' });
+  settings.radioInteractive = true; saveSettings();
+  newGame();
+  sim.s.ev.nextSpawn = sim.s.t + 25;
+  tut = { i: 0, shown: -1 }; speed = 0;
+  tutRender();
+}
+function tutEnd() { tut = null; const el = $('tut'); if (el) el.remove(); document.querySelectorAll('.tut-hl').forEach(e => e.classList.remove('tut-hl')); if (sim && !speed) speed = savedSpeed || 1; }
+function tutNext(manual) {
+  if (!tut) return;
+  const st = TUT[tut.i];
+  if (st && st.last && manual) { tutEnd(); toast('Výcvik dokončen. Další směnu spustíš z menu.', ''); return; }
+  tut.i++;
+  while (TUT[tut.i] && TUT[tut.i].skipIf && TUT[tut.i].skipIf()) tut.i++;
+  if (!TUT[tut.i]) { tutEnd(); return; }
+  if (TUT[tut.i].pause) speed = 0; else speed = TUT[tut.i].fast || Math.max(speed, 1);
+  tutRender();
+}
+function tutRender() {
+  if (!tut) return;
+  const st = TUT[tut.i]; if (!st) return tutEnd();
+  let el = $('tut');
+  if (!el) { el = document.createElement('div'); el.id = 'tut'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  if (tut.shown !== tut.i) {
+    tut.shown = tut.i;
+    el.innerHTML = `<div class="tut-step">Výcvik ${tut.i + 1}/${TUT.length}</div><p>${esc(st.t)}</p><div class="tut-btns">${st.next ? `<button class="btn pri" data-act="tut-next">${st.last ? 'Dokončit' : 'Dál'}</button>` : '<span class="tut-wait">čekám na tvůj krok…</span>'}<button class="btn" data-act="tut-skip">Ukončit návod</button></div>`;
+  }
+  document.querySelectorAll('.tut-hl').forEach(e => e.classList.remove('tut-hl'));
+  if (st.hl) { const t = document.querySelector(st.hl); if (t) t.classList.add('tut-hl'); }
+}
+function tutTick() {
+  if (!tut || !sim) return;
+  const st = TUT[tut.i];
+  if (st && st.done && st.done()) { tutNext(false); return; }
+  if (st && !st.pause && !st.next && speed === 0 && !modalOpen) speed = st.fast || 1;
+  tutRender();
+}
 // ---------- rádio: hlas a interaktivní relace ----------
 function voiceStatusText() {
   if (typeof ZOS_VOICE === 'undefined') return '';
@@ -898,6 +952,7 @@ function homeModal() {
     <div class="menu">
       ${saved ? `<button class="mbtn pri" data-act="resume">▶ Pokračovat ve směně<small>Uložená rozehraná směna${esc(when)}</small></button>` : ''}
       <button class="mbtn${saved ? '' : ' pri'}" data-act="newshift">＋ Nová směna<small>Obtížnost, LIBERO, nastavení směny</small></button>
+      <button class="mbtn" data-act="tutorial">🎓 Výcvik – první směna s návodem<small>Klidná směna, hra tě provede krok za krokem</small></button>
       <div class="mrow"><button class="mbtn" data-act="settings">⚙ Nastavení<small>Vzhled, zvuk, hra</small></button><button class="mbtn" data-act="rules">☰ Pravidla<small>Co se hodnotí</small></button><button class="mbtn" data-act="changelog">✦ Co je nového<small>Verze ${esc(ZOS_VERSION)}</small></button></div>
     </div>
     <div class="foot"><span>v${esc(ZOS_VERSION)}</span>${upd}${inst}<span>Mapa © přispěvatelé OpenStreetMap · fiktivní případy</span></div></div>`);
@@ -1142,6 +1197,9 @@ function act(a, el) {
       break;
     case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) homeModal(); }); } break;
     case 'start': newGame(); break;
+    case 'tutorial': startTutorial(); break;
+    case 'tut-next': tutNext(true); break;
+    case 'tut-skip': tutEnd(); break;
     case 'test-voice': applyVoice(); if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.demo(); break;
     case 'rq-zos': if (sim) { sim.radioZosCall(d.rq); pollLog(); render(); } break;
     case 'rq-answer': if (sim) { sim.radioAnswer(d.rq); pollLog(); render(); } break;

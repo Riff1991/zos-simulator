@@ -38,6 +38,11 @@ header .brand{font-weight:600;letter-spacing:.04em;font-size:12px;color:#9fb4c7;
 @keyframes radio-flash{50%{background:#1e5c8c;box-shadow:0 0 10px #63b0f5}}
 .radio-call b{font:600 13px var(--mono);color:#fff}.rc-msg{flex:1 1 320px;font-weight:600}.rc-name{color:#cfe3f5}
 .rc-case{font:12px var(--mono);color:#9fd0ff;cursor:pointer;text-decoration:underline dotted}.rc-opts{display:flex;gap:4px;flex-wrap:wrap}
+ #tut{position:fixed;left:14px;bottom:14px;z-index:60;max-width:470px;width:calc(100% - 28px);background:#102a40;color:#eef6fd;border:2px solid #f5c542;border-radius:8px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.45);font-size:14px;line-height:1.45}
+#tut p{margin:4px 0 10px}.tut-step{font:600 11px var(--mono);color:#f5c542;letter-spacing:.06em;text-transform:uppercase}.tut-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tut-wait{color:#9fc3e2;font-size:12px;margin-right:auto}
+#tut .btn{background:#24445e;color:#fff;border:1px solid #5d8db5}#tut .btn.pri{background:#f5c542;color:#111;border-color:#f5c542}
+.tut-hl{outline:3px solid #f5c542 !important;outline-offset:2px;box-shadow:0 0 0 6px rgba(245,197,66,.25) !important;animation:tut-pulse 1.4s ease-in-out infinite}
+@keyframes tut-pulse{50%{outline-color:#ffe08a}}
 .radio-call .btn{padding:2px 9px;font-size:12px;background:#24445e;color:#eef6fd;border:1px solid #5d8db5}.radio-call .btn:hover{background:#2f5a7c}.radio-call .btn.pri{background:#2f7de1;border-color:#7db0f2;color:#fff}
 .live-alert{width:100%;background:#8f1e18;color:#fff;border:2px solid #ff756b;border-radius:4px;padding:5px 10px;text-align:left;font-weight:700;animation:alert-flash .75s steps(2,end) infinite}
 @keyframes alert-flash{50%{background:#d9342b;color:#fff;box-shadow:0 0 12px #ff756b}}
