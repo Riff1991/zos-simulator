@@ -136,4 +136,10 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - Špatná adresa / nenalezený pacient se hlásí rádiem.
 - Žádosti o součinnost rádiem: „žádáme na místo hasiče na transport“, „žádáme na místo policii pro určení totožnosti“, „žádáme na místo policii, agresivní pacient“.
 - „Na adrese nikdo / nemůžeme najít“ → ZOS: „rozumí, voláme na místo“.
-- Žádost o hasiče / policii → ZOS: „ZCB101 rozumí, posíláme hasiče / policii“.
+- Žádost o hasiče / policii → ZOS: „ZCB101 rozumí, posíláme hasiče / policii”.
+
+### Changelog formát (14. 11. 2026)
+- Changelog na úvodní stránce zobrazuje poslední 3 verze.
+- Místo seznamu odrážek (`<ul><li>`) se nyní zobrazuje u každé verze jeden odstavec (3–4 věty) shrnutí hlavních změn.
+- Datový formát: `ZOS_CHANGELOG` obsahuje objekty s polem `”p”` (odstavec) místo `”l”` (seznam).
+- Cíl: zjednodušit a zkompaktovat zobrazení cambgov na úvodní stránce, zpřehlednit informace o novinkách.
