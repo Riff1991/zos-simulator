@@ -10,7 +10,7 @@ Před prací si přečti, v tomto pořadí:
 
 - Komunikuj **česky** a stručně. Uživatel často čte z mobilu.
 - Nové věci nejdřív zapiš do `docs/OTAZKY.md`, až potom implementuj.
-- Práce probíhá na větvi `dev` (verze `X.Y.Z-dev`). **Na `main` se nic nemerguje ani nepushuje bez výslovného schválení uživatelem.**
+- Uživatel rozhodl, že se pushuje rovnou do `main` (bez větve `dev`). Změny a vydání se pushují přímo na `main`, jakmile je uživatel schválí.
 - Každá změna, kterou hráč uvidí, dostane záznam v `CHANGELOG.md`.
 - Nikdy necommituj reálná data z xls, osobní údaje ani e-maily z dispečinku (viz `AGENTS.md`).
 - Medicínská a dispečerská pravidla v `src/data.js` neměň bez potvrzení uživatele.
@@ -29,3 +29,13 @@ Pokud je potřeba prohlížeč, spusť lokální server (`python3 -m http.server
 ## Ostré vydání (jen na pokyn uživatele)
 
 Až uživatel řekne „pushni do ostré“, a jen tehdy: merge `dev` do `main`, `VERSION` bez `-dev`, sekce v `CHANGELOG.md`, push na `main`. Tagy ručně nepushuj.
+
+## Způsob práce
+
+- Před změnou najdi relevantní kód (grep) a změň co nejméně.
+- Před úpravou napiš plán ve 2–3 větách.
+- Když zadání není jednoznačné, zeptej se jednou, s konkrétními volbami.
+- Po změně ukaž konkrétní výstup, ne jen „je to hotové“.
+- Neposílej na `main` nic, co uživatel neviděl a neschválil.
+- Průběžně nekomentuj každý krok.
+- Rozhodnutí o formátu nebo chování zapiš do `docs/OTAZKY.md`.
