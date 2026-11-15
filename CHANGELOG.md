@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.6 – 2026-11-15
+
+> Opravená poloha výjezdové základny Jindřichův Hradec.
+
+---
+
 ## v0.21.5 – 2026-11-15
 
 > Míň zbytečného pípání: nekritické datovky se jen zapíšou do logu, pípají a vyskakují jen kritické (červené). Drobné varování „opožděný výjezd“ má jen toast bez pípnutí.

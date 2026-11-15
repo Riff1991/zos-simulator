@@ -29,7 +29,7 @@ const ZOS_DATA = {
     { id: 'vbrod', oblast: 'ČK', name: 'Vyšší Brod', short: 'V. Brod', lat: 48.62, lon: 14.3086, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true },
     { id: 'frymburk', oblast: 'ČK', name: 'Frymburk', short: 'Frymburk', lat: 48.66557, lon: 14.16538, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true },
 
-    { id: 'jh', oblast: 'JH', name: 'Jindřichův Hradec', short: 'JH', lat: 49.1444, lon: 15.0033, day: { rzp: 3, rv: 1 }, night: { rzp: 2, rv: 1 } },
+    { id: 'jh', oblast: 'JH', name: 'Jindřichův Hradec', short: 'JH', lat: 49.14007825722378, lon: 15.005211411223875, day: { rzp: 3, rv: 1 }, night: { rzp: 2, rv: 1 } },
     { id: 'kunzak', oblast: 'JH', name: 'Kunžak', short: 'Kunžak', lat: 49.11736, lon: 15.1895, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
     { id: 'dacice', oblast: 'JH', name: 'Dačice', short: 'Dačice', lat: 49.0817, lon: 15.4358, day: { rzp: 1, rv: 1 }, night: { rzp: 1, rv: 1 } },
     { id: 'trebon', oblast: 'JH', name: 'Třeboň', short: 'Třeboň', lat: 49.00496, lon: 14.7614, day: { rzp: 2, rv: 1 }, night: { rzp: 1, rv: 1 } },
