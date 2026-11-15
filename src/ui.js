@@ -78,7 +78,7 @@ function applyMapTheme() {
     GL.setPaintProperty(id, 'text-halo-color', dark ? 'rgba(14,26,36,0.92)' : o.hc);
   }
 }
-const COL = { base: '#f3f5f7', free: '#3cb54a', call: '#2f7de1', enroute: '#d9372c', onscene: '#d9372c', transport: '#d9372c', handover: '#d9372c', off: '#8e5bd6', activating: '#b79af0', second: '#7b8794', attached: '#169c8f' };
+const COL = { base: '#9aa5b1', free: '#3cb54a', call: '#2f7de1', enroute: '#d9372c', onscene: '#d9372c', transport: '#d9372c', handover: '#d9372c', off: '#8e5bd6', activating: '#b79af0', second: '#7b8794', attached: '#169c8f' };
 const X = lon => (lon - 13.55) / 1.95 * 1000, Y = lat => (49.78 - lat) / 1.28 * 1000;
 
 let sim = null, speed = 0, savedSpeed = 5, sel = { c: null, k: null };
@@ -160,7 +160,12 @@ function renderTop() {
   const rem = Math.max(0, s.shiftLen - s.t);
   const left = s.mode === 'shift' ? ` · zbývá ${Math.floor(rem / 3600)}:${pad(Math.floor(rem % 3600 / 60))} h` : ' · volný režim';
   const wx = sim._lzsWeatherStatus(), wxText = wx === 'clear' ? 'bez omezení' : wx === 'consult' ? 'na konzultaci' : 'neletovo';
-  setHTML($('kpi'), `<span>Skóre <b>${sm.total.toFixed(1)}</b> <small title="Průběžné body za správné a opomenuté úkony">(${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints} provozních b.)</small></span><span>Pokrytí <b>${sm.covNow == null ? '–' : Math.round(sm.covNow) + ' %'}</b></span><span class="${waiting ? 'warn' : ''}">Čekající <b>${waiting}</b></span><span>LZS <b>${wxText}</b></span><span>${left.replace(/^ · /, '')}</span>`);
+  const wo = sim.wxObs(), wl = sim.wxLzs();
+  const wxHtml = wo ? (() => {
+    const sk = ZOS_WX.sky(wo), kt = Math.round(wo.wind), kmh = Math.round(wo.wind * 1.852), src = s.weather.src === 'real' ? 'skutečné historické počasí' : 'simulované počasí (data nejsou k dispozici)';
+    return `<span title="Datum hry">${esc(sim.dateInfo().label)}</span><span title="${esc(sk.txt + ' · ' + src + ' · dohlednost ' + Math.round(wo.vis) + ' m, základna oblačnosti ' + Math.round(wo.base) + ' ft')}">${sk.icon} <b>${wo.temp.toFixed(1).replace('.', ',')} °C</b>${s.weather.src === 'real' ? '' : ' <small>sim.</small>'}</span><span title="Vítr (odkud vane), nárazy ${Math.round(wo.gust)} kt">${ZOS_WX.dirArrow(wo.dir)} ${ZOS_WX.dirName(wo.dir)} <b>${kmh} km/h</b> · ${kt} kt</span>`;
+  })() : '';
+  setHTML($('kpi'), wxHtml + `<span>Skóre <b>${sm.total.toFixed(1)}</b> <small title="Průběžné body za správné a opomenuté úkony">(${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints} provozních b.)</small></span><span>Pokrytí <b>${sm.covNow == null ? '–' : Math.round(sm.covNow) + ' %'}</b></span><span class="${waiting ? 'warn' : ''}">Čekající <b>${waiting}</b></span><span title="${esc(wl && wl.why.length ? wl.why.join(', ') : 'bez omezení')}">LZS <b>${wxText}</b></span><span>${left.replace(/^ · /, '')}</span>`);
   if (!satellitePanel) {
     $('toggle-map-main').textContent = mainPanelHidden.map ? 'Zobrazit mapu zde' : 'Skrýt mapu zde';
     $('toggle-radio-main').textContent = mainPanelHidden.radio ? 'Zobrazit přehled zde' : 'Skrýt přehled zde';
@@ -181,7 +186,7 @@ function renderLiveAlerts() {
   const visible = key => { if (alertHidden.has(key)) return false; if (!alertSeen.has(key)) alertSeen.set(key, now); return now - alertSeen.get(key) < ALERT_TTL_MS; };
   const rvOnRadio = c => (sim.s.radioQ || []).some(e => e.caseId === c.id && e.kind === 'rv' && (e.state === 'calling' || e.state === 'open'));
   const requests = sim.s.cases.filter(c => c.status !== 'closed' && c.rvReq && !c.rvReq.cancelled && c.rvReq.satT == null && !c.docAssigned && !alertHidden.has('rv:' + c.id) && !rvOnRadio(c) && (c.rvAckAt == null || sim.s.t - c.rvAckAt > 60));
-  const agencyReq = sim.s.cases.filter(c => c.status !== 'closed' && c.agencies).flatMap(c => ['pcr', 'hzs'].filter(k => c.agencies[k] && c.agencies[k].state === 'requested' && !alertHidden.has(`ag:${c.id}:${k}`)).map(k => ({ c, k })));
+  const agencyReq = sim.s.cases.filter(c => c.status !== 'closed' && c.agencies).flatMap(c => ['pcr', 'hzs'].filter(k => c.agencies[k] && c.agencies[k].state === 'requested' && !c.agencies[k].fromCall && !alertHidden.has(`ag:${c.id}:${k}`)).map(k => ({ c, k })));
   const reports = sim.s.cases.flatMap(c => (c.radioReports || []).filter(r => r.received && !r.acknowledged && visible(c.id + ':' + r.id)).map(r => ({ c, r }))).slice(-4);
   const x = (key, extra) => `<span class="alert-x" role="button" aria-label="Zavřít upozornění" title="Zavřít" data-act="dismiss-alert" data-key="${esc(key)}"${extra || ''}>✕</span>`;
   const requestHtml = requests.map(c => {
@@ -196,10 +201,15 @@ function renderLiveAlerts() {
 }
 
 // ---------- případy ----------
+// rychlost posádky pro panel a štítek u vozu (LZS i v uzlech)
+function crewSpeedText(k) {
+  const v = sim.speedKmh(k);
+  return k.type === 'LZS' ? `${v} km/h · ${Math.round(v / 1.852)} kt` : `${v} km/h`;
+}
 function chipHTML(k) {
   const col = COL[k.state], dark = k.state !== 'base' && k.state !== 'free';
   const ph = sim.phase(k);
-  return `<span class="chip" data-crew="${k.id}" style="background:${col};color:${dark ? '#fff' : '#111'}">${k.type === 'LZS' ? helicopter() : ''}${esc(k.name)} · ${esc(ph)}${k.dest ? ' → ' + esc(k.dest.name) : ''}</span>`;
+  return `${k.dest ? `<span class="chip dest" data-crew="${k.id}" title="Cílové zařízení">${esc(k.dest.name)}</span>` : ''}<span class="chip" data-crew="${k.id}" style="background:${col};color:${dark ? '#fff' : '#111'}">${k.type === 'LZS' ? helicopter() : ''}${esc(k.name)} · ${esc(ph)}</span>`;
 }
 function lzsSupportHtml(c) {
   const own = sim.crewOf('lzs');
@@ -216,37 +226,44 @@ function lzsSupportHtml(c) {
   }).join('');
   return `<div class="sug"><h4>Mezikrajská výpomoc LZS <small>(vlastní vrtulník je nedostupný)</small></h4>${rows}</div>`;
 }
+const dzOf = c => (c.radioReports || []).find(r => r.id === 'dz-in');
 function renderCases() {
   const s = sim.s;
   const by = st => s.cases.filter(c => c.status === st);
   const pendingDispatch = c => c.status === 'active' && missingInitialDispatch(c).length > 0;
-  const act = by('active').filter(c => !pendingDispatch(c)), wait = s.cases.filter(c => c.status === 'waiting' || pendingDispatch(c)), intake = by('intake'), closed = by('closed');
-  const tabs = [['waiting', 'Čekající', wait.length], ['active', 'Právě řešené', act.length], ['intake', 'Nabírá se', intake.length], ['closed', 'Uzavřené', closed.length]];
+  const dz = by('intake').filter(c => c.phase === 'dz' && dzOf(c) && dzOf(c).received), intake = by('intake').filter(c => c.phase !== 'dz'), closed = by('closed');
+  const act = by('active').filter(c => !pendingDispatch(c)), wait = s.cases.filter(c => c.status === 'waiting' || pendingDispatch(c));
+  const intakeN1 = intake.some(c => c.n === 1);
+  const tabs = [['waiting', 'Čekající', wait.length], ['active', 'Právě řešené', act.length], ['intake', intakeN1 ? 'Nabírá se N1' : 'Nabírá se', intake.length], ['closed', 'Uzavřené', closed.length], ['dz', 'Datové zprávy', dz.length]];
   setHTML($('tabs-cases'), tabs.map(([k, l, n]) => {
-    const classes = [tabCase === k ? 'on' : '', k === 'waiting' && wait.length > 0 && tabCase !== 'waiting' ? 'waiting-alert' : ''].filter(Boolean).join(' ');
+    const classes = [tabCase === k ? 'on' : '', (k === 'waiting' && wait.length > 0 && tabCase !== 'waiting') || (k === 'intake' && intakeN1 && tabCase !== 'intake') ? 'waiting-alert' : ''].filter(Boolean).join(' ');
     return `<button data-tabcase="${k}" class="${classes}">${l}<span class="cnt">${n}</span></button>`;
   }).join(''));
-  let rows = ({ waiting: wait, active: act, intake, closed })[tabCase].slice();
+  let rows = ({ waiting: wait, active: act, intake, closed, dz })[tabCase].slice();
   if (tabCase === 'waiting') rows.sort((a, b) => a.n - b.n || a.readyAt - b.readyAt);
   else if (tabCase === 'closed') rows.sort((a, b) => b.closedAt - a.closedAt), rows = rows.slice(0, 60);
   else if (tabCase === 'active') rows.sort((a, b) => b.createdAt - a.createdAt);
   else rows.sort((a, b) => a.n - b.n || a.createdAt - b.createdAt);
   const query = caseSearch.trim().toLocaleLowerCase('cs-CZ');
-  if (query) rows = rows.filter(c => [c.num, c.addr, c.town, c.okres, c.klasif, c.charakter, c.typ, c.up, c.place, c.poznamka, c.src, c.op, c.ozn, c.phone, c.desc, c.dest, c.targetHospitalId, clarificationOf(c)].filter(Boolean).join(' ').toLocaleLowerCase('cs-CZ').includes(query));
+  if (query) rows = rows.filter(c => c.status === 'intake' ? [c.op, c.src, c.phase === 'dz' && dzOf(c) ? dzOf(c).text : ''].filter(Boolean).join(' ').toLocaleLowerCase('cs-CZ').includes(query) : [c.num, c.addr, c.town, c.okres, c.klasif, c.charakter, c.typ, c.up, c.place, c.poznamka, c.src, c.op, c.ozn, c.phone, c.desc, c.dest, c.targetHospitalId, clarificationOf(c)].filter(Boolean).join(' ').toLocaleLowerCase('cs-CZ').includes(query));
   if (!rows.length) { setHTML($('cases'), `<div class="empty">${query ? 'Hledání neodpovídá žádnému případu.' : tabCase === 'waiting' ? 'Žádný případ nečeká na vyslání posádky.' : 'Nic k zobrazení.'}</div>`); return; }
   const body = rows.map(c => {
     const intk = c.status === 'intake';
+    // fáze 1: jen datová zpráva; fáze 2: jen operátor a linka (nic dalšího o případu dispečer ještě nezná)
+    if (intk && tabCase === 'dz') { const r = dzOf(c); return `<article class="case-card dz-row ${sel.c === c.id ? 'sel' : ''}" data-case="${c.id}" tabindex="0"><div class="case-top"><span class="case-priority dz">DZ</span><div class="case-address"><strong>${esc(r.text)}</strong><small>${esc(r.source || '')} · ${esc(sim.clockAt(r.receivedAt != null ? r.receivedAt : c.createdAt))}</small></div></div></article>`; }
+    if (intk) return `<article class="case-card is-intake ${sel.c === c.id ? 'sel' : ''}" data-case="${c.id}" tabindex="0"><div class="case-top"><span class="case-priority">${c.n === 1 ? 'N1' : '…'}</span><div class="case-address"><strong>${esc(c.op)} nabírá výzvu</strong><small>${esc(c.src)}</small></div><span class="case-status">Výzva se připravuje</span></div></article>`;
     const rvPending = c.rvReq && !c.rvReq.cancelled && c.rvReq.satT == null && !c.docAssigned && c.status !== 'closed';
     const missing = missingInitialDispatch(c);
+    const agMissing = ['pcr', 'hzs'].filter(k => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested' && c.agencies[k].fromCall).map(k => k === 'pcr' ? 'PČR' : 'HZS');
     const status = tabCase === 'closed'
       ? (c.unserved ? 'Neobslouženo' : c.typ === 'sekundární' ? 'Dokončeno' : `Uzavřeno · ${Math.round(c.score ? c.score.total : 0)} b.`)
       : c.examPending && c.status === 'waiting' ? 'Prohlídka zemřelého – vyšli RV'
         : c.exitus ? (c.coroner && c.coroner.state === 'available' ? 'Exitus · vyšli koronera' : c.coroner && c.coroner.state === 'sent' ? 'Exitus · koroner jede' : 'Exitus')
         : c.status === 'waiting' ? 'Čeká na vyslání'
-        : missing.length ? `Doplnit: ${missing.join(' + ')}`
+        : (missing.length || agMissing.length) ? `Doplnit: ${missing.concat(agMissing).join(' + ')}`
         : intk ? `${c.op} nabírá výzvu`
           : rvPending ? `RZP žádá RV: ${c.rvReq.kind || 'posouzení stavu'}` : 'Řeší se';
-    const crewLine = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(chipHTML).join('');
+    const crewLine = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(chipHTML).join('') + (c.frs || []).map(f => `<span class="chip fr">${esc(f.name)}</span>`).join('');
     const patient = (c.patientCount || 1) > 1 ? `${c.patientCount} zranění` : c.age != null ? `${Number(c.age) < 18 ? 'Dítě' : c.sex === 'Ž' ? 'Žena' : 'Muž'}, ${c.age} let` : c.desc;
     const detail = c.typ === 'sekundární'
       ? `Převoz: ${(D.hospitals.find(h => h.id === c.originHospitalId) || {}).short || '?'} → ${(D.hospitals.find(h => h.id === c.targetHospitalId) || {}).short || '?'}`
@@ -259,17 +276,17 @@ function renderCases() {
     if (sel.c !== c.id) {
       const who = [c.patientName || patient, c.klasif, c.ageText || (c.age != null ? c.age + ' let' : '')].filter(Boolean).join(', ');
       const what = [c.place, c.poznamka].filter(Boolean).join(' · ');
-      const chips = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(k => `<span class="cchip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state !== 'base' && k.state !== 'free' ? '#fff' : '#111'}">${k.dest ? esc(k.dest.name) + ' ' : ''}${esc(k.name)}</span>`).join('') + agencyChips(c);
+      const chips = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(k => `${k.dest ? `<span class="cchip dest" data-crew="${k.id}">${esc(k.dest.name)}</span>` : ''}<span class="cchip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state !== 'base' && k.state !== 'free' ? '#fff' : '#111'}">${esc(k.name)}</span>`).join('') + agencyChips(c);
       return `<article class="case-card case-row n${c.n} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
       <span class="case-priority">${nTag}</span><b class="cr-addr"><span class="cr-at">${esc(c.town && !String(c.addr).includes(c.town) ? c.town + ', ' : '')}${esc(c.addr)}</span><span class="okr">${esc(okrAbbr(c))}</span></b>
       <span class="cr-cls">${esc(c.klasif)}</span><span class="cr-up">${esc(symptomsOf(c).map(x => String(x).replace(/^[^0-9A-Za-zÀ-ž]+/, '')).slice(0, 5).join(', '))}</span><span class="cr-what">${esc(what)}</span><span class="cr-time">${esc(sim.clockAt(c.createdAt))}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
-      <span class="cr-who">${esc(who)}</span><span class="cr-crews">${chips || `<span class="wait">${esc(status)}</span>`}${chips && (rvPending || missing.length) ? `<span class="wait urgent">${esc(status)}</span>` : ''}</span>
+      <span class="cr-who">${esc(who)}</span><span class="cr-crews">${chips || `<span class="wait">${esc(status)}</span>`}${chips && (rvPending || missing.length || agMissing.length) ? `<span class="wait urgent">${esc(status)}</span>` : ''}</span>
     </article>`;
     }
     return `<article class="case-card n${c.n} ${sel.c === c.id ? 'sel' : ''} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
       <div class="case-top"><span class="case-priority">${nTag}</span>
         <div class="case-address"><strong>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span></strong><small>${esc(c.town || '')}${c.okres ? ` · okres ${esc(c.okres)}` : ''} · ${esc(c.typ || 'primární')}</small></div>
-        <span class="case-status ${rvPending || missing.length ? 'urgent' : ''}">${esc(status)}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
+        <span class="case-status ${rvPending || missing.length || agMissing.length ? 'urgent' : ''}">${esc(status)}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
       </div>
       <div class="case-main"><div class="case-class"><b>${esc(c.klasif)}</b><small>${esc(c.charakter || '')}</small></div>
         <div class="case-up"><span class="field-label">Upřesnění</span>${esc(symptomsOf(c).join(', ') || '–')}</div>
@@ -295,6 +312,19 @@ function renderDetail() {
   const dp = $('detail'); if (dp) { if (c) dp.dataset.dropCase = c.id; else delete dp.dataset.dropCase; }
   if (!c) { setHTML($('detail'), '<div class="empty">Vyber případ v seznamu nebo na mapě.</div>'); return; }
   const intk = c.status === 'intake';
+  if (intk) {
+    const prealerted = (c.prealertCrewIds || []).map(id => sim.crewOf(id)).filter(Boolean);
+    const prealert = c.n === 1 && c.phase !== 'dz'
+      ? `<div class="prealert-panel"><p>Probíhá nabírání N1. Posádkám můžeš dát předpoplach ještě před dokončením výzvy. Posádky zatím nevyjíždějí.</p>${prealerted.length
+        ? `<b>Předpoplach přijat: ${prealerted.map(k => esc(k.name)).join(', ')}</b>`
+        : `<button class="btn red" data-act="prealert" data-case="${c.id}">Předpoplach posádkám</button>`}</div>`
+      : '';
+    const dr = dzOf(c);
+    const what = c.phase === 'dz' ? `<p><b>Datová zpráva</b><br>${dr ? `${esc(dr.source || '')}: ${esc(dr.text)}` : ''}</p><p>Událost se zatím předává na naši linku.</p>` : `<p>${esc(c.op)} nabírá výzvu · ${esc(c.src)}</p><p>Calltaker ještě nabírá výzvu…</p>`;
+    const earlyReports = (c.radioReports || []).filter(r => r.received && r.id !== 'dz-in').map(r => `<li><time>${esc(sim.clockAt(r.receivedAt))}</time> ${esc(r.source || 'Linka 112')}: ${esc(r.text)}</li>`).join('');
+    const reportsHtml = earlyReports ? `<div class="report-panel"><b>Průběžné zprávy linky 112</b><ul>${earlyReports}</ul></div>` : '';
+    setHTML($('detail'), `<div class="panel dgrid"><div class="dc1"><h3>${c.phase === 'dz' ? 'Datová zpráva' : 'Nabírá se výzva'}</h3>` + what + prealert + reportsHtml + '</div></div>'); return;
+  }
   const missingTypes = missingInitialDispatch(c);
   const st = missingTypes.length ? `čeká na ${missingTypes.join(' + ')}` : { waiting: 'čeká na vyslání', active: 'řeší se', closed: 'uzavřen', intake: 'nabírá se' }[c.status];
   const secDelta = c.scheduleDelta == null ? 'zatím nepřistaveno' : `${Math.round(Math.abs(c.scheduleDelta) / 60)} min ${c.scheduleDelta < 0 ? 'před termínem' : 'po termínu'}`;
@@ -319,17 +349,6 @@ function renderDetail() {
       if (!c.mu.hospitalInfoRequested) h += `<button class="btn" data-act="mu-hospitals" data-case="${c.id}">Vyžádat nemocniční součinnost</button>`;
       if (c.mu.aircraft && !c.mu.landingCheckRequested) h += `<button class="btn" data-act="mu-landing" data-case="${c.id}">Ověřit plochu pro LZS</button>`;
     }
-  }
-  if (intk) {
-    const prealerted = (c.prealertCrewIds || []).map(id => sim.crewOf(id)).filter(Boolean);
-    const prealert = c.n === 1
-      ? `<div class="prealert-panel"><p>U N1 můžeš posádkám dát předpoplach ještě před dokončením výzvy. Posádky zatím nevyjíždějí.</p>${prealerted.length
-        ? `<b>Předpoplach přijat: ${prealerted.map(k => esc(k.name)).join(', ')}</b>`
-        : `<button class="btn red" data-act="prealert" data-case="${c.id}">Předpoplach posádkám</button>`}</div>`
-      : '';
-    const earlyReports = (c.radioReports || []).filter(r => r.received).map(r => `<li><time>${esc(sim.clockAt(r.receivedAt))}</time> ${esc(r.source || 'Linka 112')}: ${esc(r.text)}</li>`).join('');
-    const reportsHtml = earlyReports ? `<div class="report-panel"><b>Průběžné zprávy linky 112</b><ul>${earlyReports}</ul></div>` : '';
-    setHTML($('detail'), h + '<p>Calltaker ještě nabírá výzvu…</p>' + prealert + reportsHtml + '</div></div>'); return;
   }
   h += `<dl><dt>Typ výjezdu</dt><dd>${esc(c.typ || 'primární')}</dd>
 <dt>Naléhavost</dt><dd>N${c.n}${c.dyn ? ' (dynamická)' : ''}</dd>
@@ -366,7 +385,7 @@ ${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>`
   h += `<div style="margin-top:6px"><b>Zasahují:</b> ${crews.length ? crews.map(k => {
     const canCancel = k.state === 'call' || k.state === 'enroute' || (sim.avail(k) && k.caseId === c.id) || (k.type === 'LZS' && (k.state === 'onscene' || (k.state === 'transport' && k.lzsLeg === 'to-scene')));
     return `<span class="assigned-crew">${chipHTML(k)}${canCancel ? `<button class="btn red" data-act="cancel" data-case="${c.id}" data-crew="${k.id}">${k.type === 'LZS' ? 'Odvolat LZS' : 'Odvolat'}</button>` : ''}</span>`;
-  }).join('') : '<span style="color:#5a6a7a">nikdo</span>'}</div>`;
+  }).join('') : (c.frs || []).length ? '' : '<span style="color:#5a6a7a">nikdo</span>'}${(c.frs || []).map(f => `<span class="assigned-crew"><span class="chip fr">${esc(f.name)}</span></span>`).join('')}</div>`;
   if (c.status === 'closed' && c.typ === 'sekundární') h += `<p>Body za dodržení času: <b>${c.score ? c.score.total : 0}/100</b></p>`;
   else if (c.status === 'closed' && c.score) h += `<p>Skóre případu: <b>${Math.round(c.score.total)}</b> (včas ${c.score.delay.toFixed(0)}/20 · příjezd ${c.score.arrive.toFixed(0)}/50 · lékař ${c.score.rv.toFixed(0)}/15 · volba ${c.score.eff.toFixed(0)}/15${c.score.pen ? ' · přesměrování −' + c.score.pen : ''})</p>`;
   h += '</div><div class="dc2">';
@@ -407,8 +426,9 @@ ${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>`
 // značky součinnosti u případu (jako posádky)
 function agencyChips(c) {
   const out = [], A = c.agencies || {};
+  for (const f of c.frs || []) out.push(`<span class="cchip ag-fr" title="First responder${f.state === 'onscene' ? ' – na místě' : ' – na cestě'}">${esc(f.name)}</span>`);
   if (c.coroner && (c.coroner.state === 'sent' || c.coroner.state === 'available')) out.push(`<span class="cchip ag-cor">${c.coroner.state === 'sent' ? 'KORONER' : 'KORONER dostupný'}</span>`);
-  for (const [k, nm, cl] of [['pcr', 'PČR', 'ag-pcr'], ['hzs', 'HZS', 'ag-hzs']]) if (A[k] && A[k].state !== 'requested') out.push(`<span class="cchip ${cl}">${nm}${A[k].state === 'onscene' ? ' na místě' : ''}</span>`); else if (A[k]) out.push(`<span class="cchip ${cl} ask">${nm}?</span>`);
+  for (const [k, nm, cl] of [['pcr', 'PČR', 'ag-pcr'], ['hzs', 'HZS', 'ag-hzs']]) if (A[k] && A[k].state !== 'requested') out.push(`<span class="cchip ${cl}">${nm}${A[k].state === 'onscene' ? ' na místě' : ''}</span>`); else if (A[k]) out.push(`<span class="cchip ${cl}${A[k].fromCall ? '' : ' ask'}">${nm}?</span>`);
   return out.join('');
 }
 // dlaždice součinnosti: koroner, PČR, HZS – přetažením na případ je ZOS vyrozumí
@@ -416,7 +436,7 @@ function agencyTiles() {
   const open = sim.s.cases.filter(c => c.status !== 'closed');
   const cor = open.filter(c => c.coroner && c.coroner.state === 'sent').map(c => c.num), corAsk = open.some(c => c.coroner && c.coroner.state === 'available');
   const by = k => open.filter(c => c.agencies && c.agencies[k] && (c.agencies[k].state === 'sent' || c.agencies[k].state === 'onscene')).map(c => c.num);
-  const req = k => open.some(c => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested');
+  const req = k => open.some(c => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested' && !c.agencies[k].fromCall);
   const tile = (id, cls, name, list, icon, ask) => `<button class="tile ${cls}${ask ? ' agency-ask' : ''}" data-crew="${id}" title="${esc(name)} – přetáhni na případ"><span class="tn">${name}</span><i>${list.length ? esc(list.join(', ')) : 'volné'}</i>${icon}</button>`;
   const frBy = open.filter(c => (c.frs || []).length).map(c => c.num);
   return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), corAsk) + tile('x-fr', 'st-fr', 'FR', frBy, ico('base', 'FR'), false) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
@@ -453,6 +473,7 @@ function renderCrews() {
   let p = `<h3>${esc(k.name)} <span class="pill" style="background:${COL[k.state]};color:${k.state === 'base' || k.state === 'free' ? '#111' : '#fff'}">${esc(sim.phase(k))}</span></h3>
 <dl><dt>Rádio</dt><dd>${esc(k.code)} · ${k.type === 'RV' ? 'RV (lékař)' : k.type === 'LZS' ? 'RLP vrtulník' : k.type === 'MU' ? 'MU modul' : k.type === 'LIB' ? 'LIBERO – lékař bez vozu, jen přes den' : k.res ? 'RZP záloha' : k.rlp ? 'RZP + lékař LIBERO (dočasně RLP)' : 'RZP'}${k.zzum ? ' · ZZUM' : ''}</dd>
 <dt>Členové</dt><dd>${esc(k.members.join(', '))}</dd>
+<dt>Rychlost</dt><dd>${esc(crewSpeedText(k))}</dd>
 <dt>Uskutečněné výjezdy</dt><dd>${k.callsCompleted || 0}</dd>
 ${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${esc(cs.klasif)}</a></dd>` : ''}${cs && transferInfo(cs) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(cs))}</dd>` : ''}${k.dest ? `<dt>Cíl</dt><dd>${esc(k.dest.name)}</dd>` : ''}</dl>`;
   if (k.type === 'RZP' && (k.state === 'base' || k.state === 'call') && sim.liberoFor(k)) p += `<button class="btn pri" data-act="libero" data-crew="${k.id}">+ LIBERO (dočasně RLP)</button>`;
@@ -812,7 +833,7 @@ function glInit() {
         GL.addLayer({ id: 'crews-heli', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'LZS'], layout: { 'icon-image': 'zos-heli', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.38, 13, 0.68], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, GL.getLayer('cases') ? 'cases' : undefined);
       });
       GL.addLayer({ id: 'crews-base-l', type: 'symbol', source: 'crews', minzoom: 10.5, filter: ['all', ['in', ['get', 'state'], ['literal', ['base', 'second']]], ['!', ['get', 'sel']], ['!=', ['get', 'type'], 'LIB']], layout: { 'text-field': ['get', 'code'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0.7, -0.7], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#33475a', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
-      GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 7.5, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['step', ['zoom'], ['get', 'code'], 12, ['concat', ['get', 'code'], ' ', ['get', 'name']]], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 13, 12], 'text-offset': [0.8, -0.8], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
+      GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 7.5, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['concat', ['step', ['zoom'], ['get', 'code'], 12, ['concat', ['get', 'code'], ' ', ['get', 'name']]], ['get', 'spd']], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 13, 12], 'text-offset': [0.8, -0.8], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
       GL.addLayer({ id: 'cases', type: 'circle', source: 'cases', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 9, 14, 13], 'circle-color': ['match', ['get', 'n'], 1, '#d9342b', 2, '#ee8a1b', 4, '#7892a6', '#e8c02a'], 'circle-stroke-color': ['case', ['get', 'sel'], '#111', ['get', 'rvReq'], '#d9342b', '#fff'], 'circle-stroke-width': ['case', ['get', 'sel'], 3.5, ['get', 'rvReq'], 4, 1.6], 'circle-opacity': ['case', ['any', ['get', 'wait'], ['get', 'rvReq']], ['get', 'blink'], 1] } });
       GL.addLayer({ id: 'cases-t', type: 'symbol', source: 'cases', layout: { 'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#111' } });
       GL.addLayer({ id: 'cases-l', type: 'symbol', source: 'cases', minzoom: 11, layout: { 'text-field': ['get', 'num'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
@@ -875,7 +896,7 @@ function glUpdate(force) {
   for (const k of sim.s.crews) {
     if (k.state === 'off' || k.type === 'LIB') continue;
     const p = sim.pos(k);
-    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id, ico: `zv-${k.type === 'RV' ? 'rv' : 'amb'}-${VSTATE[k.state] || 'red'}-${k.mv ? (k.mv.b[1] >= p.lon ? 'r' : 'l') : 'r'}` } });
+    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id, spd: sel.k === k.id ? ' · ' + crewSpeedText(k) : '', ico: `zv-${k.type === 'RV' ? 'rv' : 'amb'}-${VSTATE[k.state] || 'red'}-${k.mv ? (k.mv.b[1] >= p.lon ? 'r' : 'l') : 'r'}` } });
   }
   const c = sel.c && sim.caseOf(sel.c), k = sel.k && sim.crewOf(sel.k);
   const selectedCrews = new Set(c ? c.crews : []);
@@ -945,7 +966,7 @@ function renderMapSvg() {
     const p = sim.pos(kk), x = X(p.lon), y = Y(p.lat), r = 4.5 * sc, isSel = sel.k === kk.id;
     if ((kk.state === 'base' || kk.state === 'second') && !isSel && !zoomed) continue;
     h += `<g class="mk" data-crew="${kk.id}"><circle cx="${x}" cy="${y}" r="${isSel ? r * 1.7 : r}" fill="${COL[kk.state]}" stroke="${isSel ? '#ffd23f' : '#111'}" stroke-width="${(isSel ? 2.5 : 1.2) * sc}"/>${kk.type === 'LZS' ? `<path d="M${x - 3.5 * sc} ${y}h5a2.4 2.4 0 0 1 2.4 2.4v.5h-5a2.4 2.4 0 0 1-2.4-2.4V${y}m5 0 1.8-2.8h1l-1.1 2.8m-4 2.4v1.5m-2 0h4m.5-3.8h5" fill="${kk.state === 'base' || kk.state === 'free' ? '#d9342b' : '#fff'}" stroke="#202a31" stroke-width="${.55 * sc}" stroke-linecap="round"/>` : kk.type === 'RV' ? `<text x="${x}" y="${y + 2.8 * sc}" text-anchor="middle" font-size="${7 * sc}" font-weight="700" fill="${kk.state === 'base' || kk.state === 'free' ? '#111' : '#fff'}">L</text>` : ''}</g>`;
-    if (isSel || zoomed) h += `<text x="${x + 7 * sc}" y="${y - 5 * sc}" font-size="${9 * sc}" fill="#111" stroke="#fff" stroke-width="${2.5 * sc}" paint-order="stroke">${esc(kk.name)}</text>`;
+    if (isSel || zoomed) h += `<text x="${x + 7 * sc}" y="${y - 5 * sc}" font-size="${9 * sc}" fill="#111" stroke="#fff" stroke-width="${2.5 * sc}" paint-order="stroke">${esc(kk.name)}${isSel ? ' · ' + esc(crewSpeedText(kk)) : ''}</text>`;
   }
   setHTML($('dyn'), h);
 }
@@ -1008,7 +1029,7 @@ function selectCaseFromElement(caseElement, clickedElement) {
   sim.acknowledge112(cs.id, alert ? alert.dataset.report : undefined);
   const openDetail = !!(clickedElement.closest('.live-alert') || clickedElement.closest('#log') || clickedElement.closest('.radio-call'));
   if (clickedElement.closest('.live-alert') || clickedElement.closest('.radio-call')) {
-    tabCase = cs.status === 'intake' ? 'intake' : cs.status === 'closed' ? 'closed' : (cs.status === 'waiting' || missingInitialDispatch(cs).length) ? 'waiting' : 'active';
+    tabCase = cs.status === 'intake' ? (cs.phase === 'dz' ? 'dz' : 'intake') : cs.status === 'closed' ? 'closed' : (cs.status === 'waiting' || missingInitialDispatch(cs).length) ? 'waiting' : 'active';
     caseSearch = ''; const si = $('case-search'); if (si) si.value = '';
     setTimeout(() => { const el = document.querySelector(`#cases [data-case="${cs.id}"]`); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60);
   }
@@ -1044,7 +1065,7 @@ const tutText = st => typeof st.t === 'function' ? st.t(sim, tut.T) : st.t;
 function startTutorial() {
   window._opt = Object.assign({}, window._opt || {}, { mode: 'shift', hour: 9, diff: 0.6, secondaryEnabled: 'false', muEnabled: 'false', muProbability: 0, startState: 'clean', libero: 'auto' });
   settings.radioInteractive = true; saveSettings();
-  newGame();
+  newGame(true);
   sim.startScripted('clear');
   tut = { i: 0, shown: null, T: {} };
   tutEnter(); speed = 0;
@@ -1137,12 +1158,31 @@ const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen
 const radioSlowActive = () => !!(settings.radioSlow && radioPending());
 const rqPrefetched = new Set();
 const RC_DELAY = 3500, rcSeen = new Map();
+// automatický režim: panel ukáže přepis proběhlé relace (obě strany) a po chvíli zmizí
+const AUTO_SHOW_MS = 7000, arSeen = new Map();
+let arInit = false;
+function autoSession() {
+  const q = (sim && sim.s.autoRadio) || [], now = performance.now();
+  if (!arInit) { arInit = true; for (const e of q) arSeen.set(e.id, -1e9); }
+  for (let i = q.length - 1; i >= 0; i--) {
+    const e = q[i]; if (!arSeen.has(e.id)) arSeen.set(e.id, now);
+    if (now - arSeen.get(e.id) < AUTO_SHOW_MS) return e;
+    break;
+  }
+  return null;
+}
 function renderRadioLive() {
   const box = $('radio-live'); if (!box || !sim) return;
   const list = radioOpen().slice(-4), now = performance.now();
-  const win = $('w-rcom'); if (win) win.classList.toggle('live', list.length > 0);
+  const auto = !list.length && sim.s.radioMode === 'auto' ? autoSession() : null;
+  const win = $('w-rcom'); if (win) win.classList.toggle('live', list.length > 0 || !!auto);
   for (const e of list) if (!rqPrefetched.has(e.id) && typeof ZOS_VOICE !== 'undefined' && settings.voice) { rqPrefetched.add(e.id); ZOS_VOICE.prefetch(e.msg, e.code); for (const o of e.opts || []) if (o.say) ZOS_VOICE.prefetch(o.say, 'zos'); }
   const cs = id => id ? sim.caseOf(id) : null;
+  if (auto) {
+    const c = auto.caseId ? sim.caseOf(auto.caseId) : null, tag = c && c.status !== 'intake' ? `<span class="rc-case" data-case="${c.id}">${esc(c.num)} · N${c.n}</span>` : '';
+    setHTML(box, `<div class="radio-call auto"><span class="rc-ico" aria-hidden="true">📻</span><b>ZCB${esc(auto.code)}</b><span class="rc-name">${esc(auto.name)}</span>${tag}<div class="rc-transcript">${auto.lines.map(l => `<div class="rc-line ${l.who}">${esc(l.text)}</div>`).join('')}</div></div>`);
+    return;
+  }
   setHTML(box, !list.length ? '<div class="rc-idle">Frekvence volná · žádná posádka nevolá.</div>' : list.map(e => {
     const c = cs(e.caseId), tag = c ? `<span class="rc-case" data-case="${c.id}">${esc(c.num)} · N${c.n}</span>` : '';
     const sign = /^K/.test(String(e.callCodes || '')) ? 'Kryštof ' + String(e.callCodes).slice(1) : 'ZCB' + (e.callCodes || e.code);
@@ -1292,6 +1332,8 @@ function shiftModal() {
 <p>Jsi primární dispečer zdravotnického operačního střediska. Calltaker nabírá výzvy, ty vysíláš posádky. Základny a skladba posádek odpovídají veřejným údajům, případy, jména a adresy jsou vymyšlené.</p>
 <b>Režim</b><div class="opts">${b('mode', 'shift', 'Směna 12 h (se skórem)')}${b('mode', 'free', 'Volný režim')}</div>
 <b>Směna</b><div class="opts">${b('hour', 7, 'Denní 7–19')}${b('hour', 19, 'Noční 19–7')}</div>
+<b>Datum a hodina začátku</b><div class="opts"><input type="date" id="opt-date" value="${esc(o.date || new Date().toISOString().slice(0, 10))}" max="${new Date().toISOString().slice(0, 10)}"> <select id="opt-hour">${Array.from({ length: 24 }, (_, h) => `<option value="${h}"${Number(o.hour) === h ? ' selected' : ''}>${h}:00</option>`).join('')}</select></div>
+<p style="font-size:12px;margin:2px 0;color:#5a6a7a">Počasí se stáhne podle data (historická data; u dnešního a budoucího data nebo bez sítě se simuluje).</p>
 ${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('startState', 'clean', 'Načisto · 0 výjezdů')}${b('startState', 'running', 'Rozjetý kraj · rozpracované události')}</div>` : ''}
 <b>Vytížení</b><div class="opts">${b('diff', 0.8, 'Klidné')}${b('diff', 1, 'Běžné')}${b('diff', 1.4, 'Nálož')}</div>
 <b>Sekundární převozy</b><div class="opts">${b('secondaryEnabled', 'true', 'Zapnuté')}${b('secondaryEnabled', 'false', 'Vypnuté')}</div>
@@ -1336,15 +1378,18 @@ function printModal(k) {
 }
 
 // ---------- hra ----------
-function newGame() {
+async function newGame(noWx) {
   const o = window._opt;
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
-  sim = new Sim({ mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, radio: settings.radioInteractive ? 'interactive' : 'auto', seed: (Math.random() * 1e9) | 0 });
+  const seed = (Math.random() * 1e9) | 0, date = o.date || new Date().toISOString().slice(0, 10);
+  let weather = null;
+  if (!noWx) { toast('Stahuji počasí pro ' + date + '…', ''); try { weather = await ZOS_WX.load(date, seed); } catch (e) { weather = null; } }
+  sim = new Sim({ date, weather, mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, radio: settings.radioInteractive ? 'interactive' : 'auto', seed });
   applyVoice();
   afterLoad(); speed = settings.speed; savedSpeed = settings.speed;
   closeModal(); toast(o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
-function afterLoad() { sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
+function afterLoad() { arSeen.clear(); arInit = false; sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
 function doSave() { if (sim.s.scripted) return; try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
 function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} applyVoice(); try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); } catch (e) { homeModal(); } }
 function render() {
@@ -1450,7 +1495,7 @@ function act(a, el) {
       if (d.case && d.report) sim.acknowledge112(d.case, d.report);
       break;
     case 'install-app': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (!sim) homeModal(); }); } break;
-    case 'start': newGame(); break;
+    case 'start': { const di = $('opt-date'); if (di && di.value) window._opt.date = di.value; const hi = $('opt-hour'); if (hi) window._opt.hour = Number(hi.value); saveOpts(); newGame(); break; }
     case 'tutorial': startTutorial(); break;
     case 'tut-next': tutNext(true); break;
     case 'tut-skip': tutEnd(); break;
@@ -1591,6 +1636,8 @@ document.addEventListener('pointercancel', ev => dragEnd(ev, true));
 document.addEventListener('input', ev => {
   if (ev.target && ev.target.id === 'case-search') { caseSearch = ev.target.value; renderCases(); }
   if (ev.target && ev.target.id === 'lib-probability') { window._opt.libero.presence = Number(ev.target.value); saveOpts(); const out = $('lib-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
+  if (ev.target && ev.target.id === 'opt-hour') { window._opt.hour = Number(ev.target.value); saveOpts(); return; }
+  if (ev.target && ev.target.id === 'opt-date') { window._opt.date = ev.target.value; saveOpts(); return; }
   if (ev.target && ev.target.id === 'mu-probability') { window._opt.muProbability = Number(ev.target.value); saveOpts(); const out = $('mu-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
 });
 document.addEventListener('change', ev => {

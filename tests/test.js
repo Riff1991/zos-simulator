@@ -653,7 +653,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     if (rr.length) {
       withDz++;
       if (rr[0].id !== 'dz-in' || !/^nabírá se: /.test(rr[0].text)) throw new Error('první datovka musí být „nabírá se“');
-      if (rr[0].at >= c.readyAt || c.readyAt - c.createdAt < 180 || c.readyAt - c.createdAt > 300) throw new Error('nabírání datovkového případu má trvat 3–5 min');
+      if (rr[0].at >= c.readyAt || c.readyAt - c.createdAt < 250 || c.readyAt - c.createdAt > 450 || c.dzUntil - c.createdAt < 180 || c.dzUntil - c.createdAt > 300) throw new Error('datovka má trvat 3–5 min a nabírání dalších 70–150 s');
       if (c.agencies && Object.values(c.agencies).some(a => a.auto)) autoAg++;
     } else if (c.agNeed && !need) need = c;
   }
@@ -711,4 +711,58 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (!c.lzsEval || !['zapomenute', null].includes(c.lzsEval.kind)) throw new Error('lzsEval: neočekávaný druh');
   if (!sim.summary().lzs) throw new Error('summary má obsahovat LZS hodnocení');
   console.log('kalkulátor LZS: svit, H1/1 a H1/2, prahy, zpoždění, hodnocení true');
+}
+
+// ---------- počasí, relace, rychlost, auto rádio ----------
+{
+  const WXM = require('../src/weather.js');
+  // pravidla LZS: den/noc minima, vítr 25–35 kt konzultace, nad 35 kt neletovo
+  const base = { temp: 10, wind: 8, gust: 12, dir: 270, vis: 10000, base: 3000, precip: 0, snow: 0, code: 3, fog: false, thunder: false, shower: false, ice: false, cloudLow: 40 };
+  const st = (o, night) => WXM.lzs(Object.assign({}, base, o), night).status;
+  if (st({}, false) !== 'clear') throw new Error('LZS: dobré počasí má být letové');
+  if (st({ wind: 28 }, false) !== 'consult') throw new Error('LZS: vítr 28 kt = konzultace');
+  if (st({ wind: 38 }, false) !== 'neletovo') throw new Error('LZS: vítr nad 35 kt = neletovo');
+  if (st({ vis: 1200 }, false) !== 'neletovo' || st({ vis: 2500 }, true) !== 'neletovo') throw new Error('LZS: minima viditelnosti den 1500 / noc 3000');
+  if (st({ base: 250 }, false) !== 'neletovo' || st({ base: 1000 }, true) !== 'neletovo') throw new Error('LZS: minima základny den 300 / noc 1200 ft');
+  if (st({ ice: true }, false) !== 'neletovo' || st({ thunder: true }, false) !== 'neletovo') throw new Error('LZS: námraza a bouřka = neletovo');
+  if (st({ vis: 2000 }, false) !== 'consult') throw new Error('LZS: těsně nad minimy = konzultace');
+  if (!(WXM.travelMul(Object.assign({}, base, { ice: true }), 'N2') > WXM.travelMul(Object.assign({}, base, { precip: 1 }), 'N2'))) throw new Error('náledí zpomaluje víc než déšť');
+  if (!(WXM.travelMul(Object.assign({}, base, { ice: true }), 'N1') < WXM.travelMul(Object.assign({}, base, { ice: true }), 'N4'))) throw new Error('N1 ztrácí méně než N4');
+  if (WXM.caseMul(Object.assign({}, base, { ice: true }), 'dn_lehke') <= 1 || WXM.caseMul(Object.assign({}, base, { temp: 33 }), 'porucha') <= 1) throw new Error('náledí a horko zvyšují váhy případů');
+  // simulace: deterministická, 72 h
+  const a = WXM.simulate('2026-01-10', 5), b = WXM.simulate('2026-01-10', 5);
+  if (a.length !== 72 || JSON.stringify(a) !== JSON.stringify(b)) throw new Error('simulace počasí musí být deterministická (72 h)');
+  if (!(a.every(h => Number.isFinite(h.temp) && h.vis > 0 && h.base > 0))) throw new Error('simulované počasí má neplatné hodnoty');
+  // engine s počasím: horní lišta, status, rychlost
+  const sim = new Sim({ seed: 11, mode: 'shift', startHour: 9, date: '2026-01-10', weather: { src: 'sim', hours: a } });
+  sim.step(600);
+  const o = sim.wxObs();
+  if (!o || !['clear', 'consult', 'neletovo'].includes(sim._lzsWeatherStatus())) throw new Error('engine: počasí nebo stav LZS');
+  if (sim.dateInfo().label.split(' ')[0] !== 'so') throw new Error('10. 1. 2026 je sobota: ' + sim.dateInfo().label);
+  JSON.parse(sim.serialize());
+  // rychlost: stojící 0, jedoucí > 0
+  const k = sim.s.crews.find(x => x.type === 'RZP' && x.state === 'base'); if (!k || sim.speedKmh(k) !== 0) throw new Error('stojící posádka 0 km/h');
+  // relace při vyslání vracející se posádky
+  const sm = new Sim({ seed: 3, mode: 'shift', startHour: 9, radio: 'interactive' });
+  sm.s.ev.nextSpawn = 1e9;
+  const c1 = sm._spawn({ ind: 'trauma', n: 3, where: 'ulice', intake: 0 }); c1.status = 'waiting';
+  const rz = sm.s.crews.find(x => x.type === 'RZP' && x.state === 'base');
+  rz.state = 'free'; rz.lat = rz.home.lat + 0.1; rz.lon = rz.home.lon; sm._go(rz, rz.home.lat, rz.home.lon, 'RET');
+  if (!sm.assign(c1.id, rz.id).ok) throw new Error('assign relace');
+  if (!rz.relayHold) throw new Error('vracející se posádka čeká na relaci');
+  sm.step(60); if (rz.state !== 'call') throw new Error('bez relace posádka nevyjíždí');
+  const e = sm.s.radioQ.find(x => x.kind === 'dispatch' && x.crewId === rz.id); if (!e) throw new Error('relace čeká na tlačítko Volat posádku');
+  const nlog = sm.s.log.length; sm.radioZosCall(e.id);
+  if (rz.relayHold) throw new Error('po relaci se posádka uvolní');
+  if (sm.s.log.slice(nlog).filter(x => x.kind === 'crew').length < 5) throw new Error('relace má 5 řádků');
+  sm.step(200); if (rz.state !== 'enroute') throw new Error('po relaci posádka vyjede');
+  // auto režim: přepis relace se uloží pro panel Rádio
+  const sa = new Sim({ seed: 3, mode: 'shift', startHour: 9, radio: 'auto' });
+  sa.s.ev.nextSpawn = 1e9;
+  const c2 = sa._spawn({ ind: 'trauma', n: 3, where: 'ulice', intake: 0 }); c2.status = 'waiting';
+  const r2 = sa.s.crews.find(x => x.type === 'RZP' && x.state === 'base');
+  r2.state = 'free'; r2.lat = r2.home.lat + 0.1; r2.lon = r2.home.lon; sa._go(r2, r2.home.lat, r2.home.lon, 'RET');
+  sa.assign(c2.id, r2.id);
+  if (!(sa.s.autoRadio && sa.s.autoRadio.length && sa.s.autoRadio[0].lines.length === 5)) throw new Error('auto rádio: přepis relace pro panel');
+  console.log('počasí, relace při vyslání, rychlost, auto rádio true');
 }

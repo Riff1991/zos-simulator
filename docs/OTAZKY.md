@@ -218,3 +218,17 @@ Zdroj: dispečerský web „Výpočet úspory LZS“ (vlastní zdrojový kód od
 - Vzorec: úspora = čas pozemně − (čas LZS + zpoždění nemocnice). H1/1 (LZS od začátku): čas LZS = let z místa do nemocnice. H1/2 (posádka už na místě): čas LZS = max(vzlet + let základna→místo + 10 min předání; zbývající ošetření) + let místo→nemocnice, čas pozemně navíc obsahuje zbývající ošetření. Indikace letu: úspora ≥ 15 min „Ano“, 10–14 „Možná“, jinak „Ne“.
 - Čas pozemně se ve hře počítá z routeru (reálné silnice, transport s VRZ), ne z databáze průměrů jako na webu.
 - Ve hře: doporučení v bloku LZS v detailu výjezdu (tabulka čtyř nemocnic, H1/1 nebo H1/2 podle toho, jestli už je na místě posádka). Po směně v souhrnu hodnocení rozhodnutí o LZS: správně vyslaná, hraniční, zbytečná a zapomenutá (zapomenutá jen u N1 při letovém počasí).
+
+### Várka v0.23.0 – sebrané bugy a nápady (15. 11. 2026, anketa)
+- Volající „pacient sám“ jen při AVPU-A (nebo bez AVPU); při AVPU-U/P/V a u křečí nevolá pacient sám.
+- Datové zprávy: nová záložka „Datové zprávy“ (vedle Uzavřené) pro první zprávu z 112/158/150 („nabírá se: …“) bez N, klasifikace, upřesnění, poznámky a čísla. Pak „Nabírá se“ (naše linka, 70–150 s), pak Čekající. Případy bez datovky začínají rovnou v „Nabírá se“. Časování: datovka 180–300 s + nabírání 70–150 s.
+- Nabírá se: karta ukazuje jen operátora a linku; při nabírání N1 záložka bliká a jmenuje se „Nabírá se N1“, v detailu zůstane jen předpoplach. Řádek N1 má značku „N1“.
+- Datovka musí odpovídat případu (cyklista jen s pádem venku, napadení jen s násilím, pokousání jen s pokousáním, text ze symptomů).
+- PČR/HZS z výzvy: bez červené lišty a bez blikání, ve stavu „Doplnit: PČR“, případ zůstává v Právě řešené, vysílá se přetažením dlaždice. Červená lišta zůstává u požadavků od posádky.
+- Barvy posádek: červená = v akci (výjezd, na místě, transport, předávání), zelená = volná, šedá = ukončená na základně; cíl = oranžový štítek „nemocnice, oddělení“ (Právě řešené a panel případu).
+- Rádio v auto režimu: v panelu se ukáže přepis probíhající relace (obě strany), pak zmizí; hlas stejně. Hláška „je schopen překladu“ se v auto režimu nezodpovídá sama (čeká na dispečera); po vypršení vstřícné posádka dojede sama.
+- Výslovnost: slovník (urgentní, Prachatice → Prachaťice, ARO → áro).
+- Rychlost posádky: počítá se z posunu za 5 s herního času, ukáže se v panelu posádky a štítkem u vozu na mapě; stojí = 0 km/h; LZS v km/h i uzlech.
+- FR: štítek s názvem jednotky (odlišná barva) v Právě řešené, panelu případu a Uzavřené.
+- Relace při vyslání posádky, která se vrací na základnu (nebo předává): ZCB101 → příjem → „ukončete se, mám pro vás další výjezd, obec, klasifikace N“ → „jsme ukončení“ → díky, konec. Spouští tlačítko „Volat posádku“, výjezd začíná až po relaci. Posádka na základně bez relace.
+- Počasí: skutečná historická data (Open-Meteo archiv, 1 bod pro kraj, stažení celého dne při startu, cache), záloha simulace; datum a hodina při startu; horní lišta s datem, dnem, teplotou, větrem (km/h, kt, směr) a stavem LZS; LZS podle dohlednosti, základny oblačnosti, větru (25–35 kt konzultace, nad 35 kt neletovo), námrazy a bouřek, den/noc NVIS; mírné zpomalení jízdy (déšť −8 %, sníh −15 %, náledí −25 %, mlha −5 %); vliv na druhy případů (náledí, horko, mráz, bouřky). Plán směn podle dne v týdnu (např. Dačice bez RV Po a Út) je samostatný krok.

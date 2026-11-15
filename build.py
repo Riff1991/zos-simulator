@@ -5,7 +5,7 @@ rd = lambda p: open(p, encoding='utf8').read()
 strip = lambda s: re.sub(r'\nif \(typeof module.*?\n', '\n', s)
 d = strip(rd('src/data.js')) + strip(rd('src/people.js'))
 symptoms = 'const ZOS_SYMPTOMS = ' + rd('src/symptoms.json').strip() + ';\n'
-e = strip(rd('src/messages.js')) + strip(rd('src/engine.js'))
+e = strip(rd('src/messages.js')) + strip(rd('src/weather.js')) + strip(rd('src/engine.js'))
 m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src/mask.geojson') + ';\n')
 u = strip(rd('src/voice.js')) + strip(rd('src/tutorial.js')) + rd('src/ui.js')
 t = rd('src/template.html')

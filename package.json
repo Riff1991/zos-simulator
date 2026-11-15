@@ -7,7 +7,7 @@
     "build": "python3 build.py",
     "serve": "python3 -m http.server -d site 8765",
     "data": "bash pipeline/run.sh",
-    "lint": "npx eslint@9 src/messages.js src/voice.js src/tts-worker.js src/data.js src/people.js src/engine.js src/router.js src/tutorial.js src/ui.js",
+    "lint": "npx eslint@9 src/messages.js src/weather.js src/voice.js src/tts-worker.js src/data.js src/people.js src/engine.js src/router.js src/tutorial.js src/ui.js",
     "audit": "node tests/content_audit.js",
     "smoke": "python3 tests/browser_smoke.py",
     "check": "npm run lint && npm test && python3 build.py"

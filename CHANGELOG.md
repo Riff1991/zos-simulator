@@ -8,6 +8,30 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.23.0 – 2026-11-15
+
+> Počasí z historických dat, nové záložky Datové zprávy a Nabírá se, relace při vyslání vracející se posádky, rychlost vozidel a řada oprav.
+
+**Nové**
+- Počasí: skutečná historická data podle zvoleného data hry (jeden bod pro kraj, stažení při startu, uloženo do cache); bez sítě nebo u dnešního data se počasí simuluje. V nové směně lze zvolit datum a hodinu začátku. Horní lišta ukazuje datum a den v týdnu, teplotu a oblohu, vítr (km/h, uzly, směr) a stav LZS.
+- LZS podle minim HEMS: den dohlednost 1 500 m a základna 300 ft, noc s NVIS 3 000 m a 1 200 ft; vítr 25–35 kt konzultace, nad 35 kt neletovo (simulované omezení); námraza a bouřka neletovo. Rychlost vrtulníku vůči zemi zohledňuje vítr.
+- Počasí zpomaluje jízdu (déšť −8 %, sníh −15 %, náledí −25 %, mlha −5 %; N1 méně, N4 a návrat více) a mění váhy případů (náledí a bouřky víc nehod a pádů, horko víc kolapsů a tonutí, mráz víc podchlazení, požárů a otrav CO).
+- Záložka „Datové zprávy“: první zpráva z 112, 150 nebo 158 („nabírá se: …“) bez naléhavosti, klasifikace, upřesnění a čísla události. Potom „Nabírá se“ (naše linka), pak Čekající. Datovka trvá 180–300 s, nabírání dalších 70–150 s.
+- Nabírá se: karta ukazuje jen operátora a linku; při N1 záložka bliká a jmenuje se „Nabírá se N1“, v detailu je jen předpoplach.
+- Rychlost posádky (po 5 s herního času) v panelu posádky a štítkem u vozu na mapě; LZS v km/h i uzlech.
+- Relace při vyslání posádky, která se vrací na základnu: tlačítko „Volat posádku“, 5řádková relace a výjezd až po ní. V automatickém režimu se přepis ukáže v panelu Rádio a zmizí.
+- Štítek First respondera (název jednotky) v seznamu výjezdů, v panelu případu i v uzavřených.
+
+**Změny a opravy**
+- Volající „pacient sám“ jen při AVPU-A; při AVPU-U/P/V a u křečí nevolá.
+- Datovka odpovídá případu: cyklista jen s cyklistou venku, napadení jen s napadením, pokousání jen s pokousáním; text zpráv vychází ze symptomů. Otevření bytu jen u bytů a domů.
+- PČR/HZS z výzvy: bez červené lišty a bez blikání, ve stavu „Doplnit: PČR“; vysílá se přetažením dlaždice. Požadavky od posádky z terénu zůstávají červené.
+- Barvy posádek: červená v akci, zelená volná, šedá na základně; cíl je oranžový štítek.
+- Hláška „je schopen překladu“ se v automatickém režimu sama nezodpovídá; po vypršení posádka dojede sama bez trestu.
+- Výslovnost: slovník (urgentní, Prachatice → Prachaťice, ARO → ááro).
+
+---
+
 ## v0.22.0 – 2026-11-15
 
 > LZS se řídí podle kalkulátoru časové úspory: doporučení v detailu výjezdu a hodnocení rozhodnutí o LZS po směně.

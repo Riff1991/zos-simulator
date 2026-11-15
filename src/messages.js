@@ -237,9 +237,16 @@ const ZOS_EXTMSG = (function () {
 
   // ---------- pád cyklisty ----------
   function cyklista(ctx) {
-    const r = ctx.r, out = [];
-    out.push({ src: r() < 0.5 ? 'tctv' : 'pcr', dt: ri(r, 20, 90), text: join([`Pád cyklisty – ${ctx.addr}`, pickF(r, ['bez přilby, bolest hlavy', 's přilbou, bolest ramene', 'bolest kyčle, nemůže vstát', 'krvácí z obličeje', 'sražen autem, osoba leží']), maybe(r, 0.4, pickF(r, ['řidič odjel', 'řidič na místě']))]) });
-    if (r() < 0.5) out.push({ src: 'pcr', dt: ri(r, 130, 320), text: pickF(r, ['osoba při vědomí, komunikuje', 'osoba leží, nehýbe končetinou', 'místo zajištěno, přístup bezpečný']) });
+    const r = ctx.r, out = [], sym = String(ctx.sym || ''), has = re => re.test(sym);
+    const pool = ['pád z kola'];
+    if (has(/HLAV|KOMOČ/)) pool.push('bez přilby, bolest hlavy', 's přilbou, bolest hlavy');
+    if (has(/RAMENO|PAŽE|HORNÍ KONČ|LOKET|PŘEDLOKTÍ/)) pool.push('s přilbou, bolest ramene');
+    if (has(/STEHNO|PÁNEV|KRČEK|DOLNÍ KONČ|KOLENO|KOTNÍK|BÉREC/)) pool.push('bolest kyčle, nemůže vstát');
+    if (has(/OBLIČEJ|NOS|OTEVŘENÉ RÁNY|KRVÁC/)) pool.push('krvácí z obličeje');
+    if (has(/SRAŽENÍ|PŘEJETÍ/)) pool.push('sražen autem, osoba leží');
+    out.push({ src: r() < 0.5 ? 'tctv' : 'pcr', dt: ri(r, 20, 90), text: join([`Pád cyklisty – ${ctx.addr}`, pickF(r, pool), has(/SRAŽENÍ|PŘEJETÍ/) ? maybe(r, 0.4, pickF(r, ['řidič odjel', 'řidič na místě'])) : '']) });
+    const calm = ['osoba při vědomí, komunikuje'], down = ['osoba leží, nehýbe končetinou'];
+    if (r() < 0.5) out.push({ src: 'pcr', dt: ri(r, 130, 320), text: pickF(r, (has(/AVPU-[UPV]|PARÉZ|BEZVĚDOM/) ? down : calm).concat(['místo zajištěno, přístup bezpečný'])) });
     return out;
   }
 
@@ -249,7 +256,9 @@ const ZOS_EXTMSG = (function () {
   const KINDS = { dn, ecall: c => ecall(c, false), ecallMed: c => ecall(c, true), otevreni, pozar, psych, napadeni, intox, obeseni, tonuti, zachrana, asistPcr,
     padVyska: W(padVyska), pracUraz: W(pracUraz), kprSvedci: W(kprSvedci), pokousani: W(pokousani), domNasili: W(domNasili), zver: W(zver), vlak: W(vlak), vytah: W(vytah), co: W(co), plyn: W(plyn), cyklista: W(cyklista) };
   // který typ zpráv a s jakou pravděpodobností patří k indikaci
-  function kindFor(ind, where, r) {
+  function kindFor(ind, where, r, sym) {
+    sym = String(sym || '').toLocaleUpperCase('cs-CZ');
+    const has = re => re.test(sym);
     const out = (k, p) => (r() < p ? k : null);
     const street = ['ulice', 'verejne'].includes(where);
     const mix = arr => { const x = r(); let acc = 0; for (const [k, p] of arr) { acc += p; if (x < acc) return k; } return null; };
@@ -258,10 +267,14 @@ const ZOS_EXTMSG = (function () {
       case 'dn_lehke': {
         const x = r();
         if (where === 'silnice' && x < 0.1) return ['zver'];
-        if (street && x < 0.18) return ['cyklista'];
+        if (where === 'ulice' && has(/CYKLIST|KOLOBĚŽ/) && x < 0.5) return ['cyklista'];
         return x < 0.8 ? (r() < 0.22 ? ['ecall'] : ['dn']) : null;
       }
-      case 'asist': { const x = r(); return x < 0.5 ? ['otevreni'] : x < 0.65 ? ['pozar'] : x < 0.82 ? ['asistPcr'] : where === 'silnice' ? ['ecall'] : ['otevreni']; }
+      case 'asist': { // otevření bytu jen tam, kde je byt/dům; na silnici eCall nebo asistence PČR
+        const x = r(), home = ['byt', 'rd', 'domov', 'prov'].includes(where);
+        if (where === 'silnice') return x < 0.6 ? ['ecall'] : ['asistPcr'];
+        return x < 0.5 ? (home ? ['otevreni'] : ['asistPcr']) : x < 0.65 ? ['pozar'] : x < 0.82 ? ['asistPcr'] : (home ? ['otevreni'] : ['asistPcr']);
+      }
       case 'popal': return mix([[['pozar'], 0.5], [['plyn'], 0.06]]);
       case 'psych': return mix([[['psych'], 0.42], [['domNasili'], ['byt', 'rd'].includes(where) ? 0.08 : 0]]);
       case 'obeseni': return out(['obeseni'], 0.75);
@@ -271,10 +284,11 @@ const ZOS_EXTMSG = (function () {
       case 'amput': return ['prov', 'rd'].includes(where) ? out(['pracUraz'], 0.85) : null;
       case 'trauma':
         if (where === 'priroda') return out(['zachrana'], 0.4);
-        if (street) return mix([[['napadeni'], 0.18], [['cyklista'], 0.1], [['pokousani'], 0.05]]);
-        if (where === 'prov') return mix([[['pracUraz'], 0.3], [['padVyska'], 0.12]]);
-        if (where === 'rd') return mix([[['padVyska'], 0.07], [['domNasili'], 0.03], [['pokousani'], 0.03]]);
-        if (where === 'byt') return out(['domNasili'], 0.04);
+        // druh datovky musí odpovídat symptomům případu (cyklista jen s cyklistou venku, napadení jen s napadením…)
+        if (street) return mix([[['napadeni'], has(/NAPADENÍ(?! ZVÍŘETEM)|BODNÉ|STŘELNÉ/) ? 0.5 : 0], [['cyklista'], where === 'ulice' && has(/CYKLIST|KOLOBĚŽ/) ? 0.5 : 0], [['pokousani'], has(/NAPADENÍ ZVÍŘETEM/) ? 0.5 : 0]]);
+        if (where === 'prov') return mix([[['pracUraz'], has(/ZAVALENÍ|ELEKTRICK|AMPUTAC|OTEVŘEN|ZLOMENIN/) ? 0.3 : 0], [['padVyska'], has(/PÁD Z VÝŠE/) ? 0.4 : 0]]);
+        if (where === 'rd') return mix([[['padVyska'], has(/PÁD Z VÝŠE/) ? 0.4 : 0], [['domNasili'], has(/NAPADENÍ(?! ZVÍŘETEM)/) ? 0.4 : 0], [['pokousani'], has(/NAPADENÍ ZVÍŘETEM/) ? 0.4 : 0]]);
+        if (where === 'byt') return out(['domNasili'], has(/NAPADENÍ(?! ZVÍŘETEM)/) ? 0.4 : 0);
         return null;
       case 'porucha': case 'dusnost': case 'kreceU': case 'hrudnik':
         if (where === 'silnice') return out(['ecallMed'], 0.5);
