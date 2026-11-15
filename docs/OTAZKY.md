@@ -202,3 +202,9 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - Vstřícná jízda: dlaždici periferní RZP lze přetáhnout na dlaždici volné RZP z oblasti u nemocnice a naopak. Informace o schopnosti překladu je v detailu výjezdu i posádky.
 - Druhý klik na rozbalený výjezd v seznamu ho sbalí.
 - Výpadky zvuku: příčinou bylo zahlcení nebo zaseknutí hlasového modulu při rychlém běhu hry. Opraveno frontou s předsyntézou jedné věty, časovými limity a restartem modulu.
+
+### Vrstva pokrytí na mapě (15. 11. 2026)
+- Heatmapa pokrytí je volitelná vrstva přímo v mapě, přepínač „Pokrytí“ v liště nahoře v okně mapy, výchozí stav vypnuto.
+- Typ zobrazení volí hráč: Izochrony (plynulé pásy s vrstevnicemi), Buňky (šestiúhelníková mřížka), Bílá místa (jen díry mimo limit šrafovaně s popisky). Limit dojezdu 15 / 20 / 25 min (výchozí 20).
+- Data jsou živá a reálná: dojezd po silniční síti (ROUTER.coverage) z aktuálně volných RZP, režim jízdy N2, počítá se znovu při změně dostupnosti vozů (nejvýš co pár vteřin). Mimo plnou mapu (SVG záloha) vrstva není.
+- Stat řádek: podíl území v limitu, nejhorší místo, počet slabých oblastí.

@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.4 – 2026-11-15
+
+> Na mapě je nová volitelná vrstva Pokrytí: kam se do limitu dostane nejbližší volná RZP. Přepínač je v liště nahoře v okně mapy, výchozí stav je vypnuto.
+
+- Tři zobrazení: Izochrony (plynulé pásy s vrstevnicemi), Buňky (šestiúhelníky) a Bílá místa (jen díry mimo limit, šrafovaně a s popisky).
+- Limit dojezdu 15 / 20 / 25 min, ukázka podílu území v limitu, nejhoršího místa a počtu slabých oblastí.
+- Živé a reálné: dojezd po silniční síti z aktuálně volných RZP (režim N2), přepočítává se při změně dostupnosti vozů.
+
+---
+
 ## v0.21.3 – 2026-11-15
 
 > Datové zprávy od HZS a PČR jsou stručné a jen k věci: bezpečnost přístupu, počet zraněných, vyprošťování a nebezpečí. Kritické zprávy jsou červeně. Víc druhů událostí, datovka přichází před výzvou a složky jedou samy.

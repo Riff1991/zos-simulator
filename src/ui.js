@@ -13,7 +13,7 @@ function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window.
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 // ---------- nastavení (vzhled, písmo, zvuk, hra) ----------
 const SET_KEY = 'zos_jck_settings_v1';
-const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false, voice: !(window.innerWidth < 760), voiceTempo: 0.75, voiceEngine: 'cloud', ttsUrl: '', radioInteractive: true, radioSlow: true };
+const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false, voice: !(window.innerWidth < 760), voiceTempo: 0.75, voiceEngine: 'cloud', ttsUrl: '', covType: 'iso', covLimit: 20, radioInteractive: true, radioSlow: true };
 let settings = Object.assign({}, SET_DEF);
 try { settings = Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (_) {}
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (_) {} }
@@ -92,7 +92,7 @@ const panelWindows = { map: null, radio: null };
 try { mainPanelHidden = Object.assign(mainPanelHidden, JSON.parse(localStorage.getItem(PANEL_LAYOUT_KEY) || '{}')); } catch (_) {}
 if (satellitePanel) document.body.dataset.panel = satellitePanel;
 let tabCase = 'waiting', tabRadio = 'ČB', view = 'cases', caseSearch = '';
-let layers = { base: true, hosp: true, crews: true, cases: true, fr: true };
+let layers = { base: true, hosp: true, crews: true, cases: true, fr: true, cov: false };
 let vb = { x: 30, y: 30, w: 970, h: 940 };
 let lastT = performance.now(), seenLog = 0, saveAt = 0, modalOpen = false, audio = null, sugOpen = true;
 const okresCache = {};
@@ -477,8 +477,160 @@ ${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${e
 // ---------- mapa ----------
 const KRAJ = [[49.70, 14.40], [49.68, 14.80], [49.60, 15.05], [49.35, 15.25], [49.15, 15.50], [48.95, 15.35], [48.78, 15.05], [48.72, 14.80], [48.62, 14.55], [48.60, 14.30], [48.62, 14.0], [48.75, 13.82], [48.88, 13.70], [49.05, 13.55], [49.20, 13.65], [49.40, 13.80], [49.58, 14.0], [49.70, 14.15]];
 const VLT = [[48.64, 14.23], [48.78, 14.33], [48.97, 14.47], [49.06, 14.43], [49.22, 14.42], [49.35, 14.39], [49.55, 14.15]];
+// ---------- vrstva pokrytí: kam se do limitu dostane nejbližší volná RZP (živě, po silniční síti) ----------
+const COV_TYPES = [['iso', 'Izochrony'], ['hex', 'Buňky'], ['gap', 'Bílá místa']];
+const COV_STOPS = [[4, [25, 195, 165]], [10, [79, 210, 138]], [14, [182, 220, 76]], [17, [241, 210, 60]], [20, [245, 154, 47]], [24, [229, 72, 62]], [30, [163, 23, 63]]];
+const COV = { geom: null, targets: null, nx: 0, ny: 0, w: 1500, h: 0, last: 0, sig: '', stat: null, gaps: [], on: false };
+function covCol(t) {
+  if (t <= COV_STOPS[0][0]) return COV_STOPS[0][1];
+  for (let i = 1; i < COV_STOPS.length; i++) {
+    if (t <= COV_STOPS[i][0]) { const a = COV_STOPS[i - 1], b = COV_STOPS[i], f = (t - a[0]) / (b[0] - a[0]); return [0, 1, 2].map(k => Math.round(a[1][k] + (b[1][k] - a[1][k]) * f)); }
+  }
+  return COV_STOPS[COV_STOPS.length - 1][1];
+}
+const covRgb = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const covMerc = la => Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360));
+const covLat = m => (2 * Math.atan(Math.exp(m)) - Math.PI / 2) * 180 / Math.PI;
+function covInRing(ring, x, y) { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+function covGeom() {
+  if (COV.geom) return COV.geom;
+  const mp = (GLMASK.features ? GLMASK.features[0] : GLMASK).geometry.coordinates;
+  const hole = mp[0][1], encl = mp.slice(1).map(p => p[0]);
+  let w = 1e9, e = -1e9, s = 1e9, n = -1e9;
+  for (const [lo, la] of hole) { w = Math.min(w, lo); e = Math.max(e, lo); s = Math.min(s, la); n = Math.max(n, la); }
+  const yT = covMerc(n), yB = covMerc(s);
+  COV.h = Math.round(COV.w * (yT - yB) / ((e - w) * Math.PI / 180));
+  return (COV.geom = { hole, encl, w, e, s, n, yT, yB });
+}
+function covGrid() {
+  if (COV.targets) return;
+  const g = covGeom(), NX = 110, NY = Math.round(NX * ((g.n - g.s) * 111) / ((g.e - g.w) * 72.8));
+  COV.nx = NX; COV.ny = NY; COV.targets = []; COV.inside = [];
+  for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
+    const lo = g.w + (g.e - g.w) * (i + 0.5) / NX, la = covLat(g.yT - (g.yT - g.yB) * (j + 0.5) / NY);
+    COV.targets.push([la, lo]);
+    COV.inside.push(covInRing(g.hole, lo, la) && !g.encl.some(r => covInRing(r, lo, la)));
+  }
+}
+function covPx(lo, la) { const g = COV.geom; return [(lo - g.w) / (g.e - g.w) * COV.w, (g.yT - covMerc(la)) / (g.yT - g.yB) * COV.h]; }
+function covPath() {
+  const g = COV.geom, p = new Path2D();
+  for (const ring of [g.hole].concat(g.encl)) { ring.forEach(([lo, la], i) => { const [x, y] = covPx(lo, la); if (i) p.lineTo(x, y); else p.moveTo(x, y); }); p.closePath(); }
+  return p;
+}
+function covGaps(T, lim) {
+  const NX = COV.nx, NY = COV.ny, seen = new Uint8Array(NX * NY), out = [];
+  const bad = k => COV.inside[k] && T[k] > lim;
+  for (let k0 = 0; k0 < NX * NY; k0++) {
+    if (seen[k0] || !bad(k0)) continue;
+    const st = [k0], comp = []; seen[k0] = 1;
+    while (st.length) {
+      const k = st.pop(); comp.push(k);
+      const i = k % NX, j = (k - i) / NX;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= NX || jj >= NY) continue; const kk = jj * NX + ii; if (!seen[kk] && bad(kk)) { seen[kk] = 1; st.push(kk); } }
+    }
+    if (comp.length < 6) continue;
+    let sx = 0, sy = 0, mx = 0, wk = comp[0];
+    for (const k of comp) { sx += COV.targets[k][1]; sy += COV.targets[k][0]; if (T[k] > mx) { mx = T[k]; wk = k; } }
+    const cx = sx / comp.length, cy = sy / comp.length;
+    let place = '', bd = 1e9;
+    for (const tw of D.towns) { const dx = (cx - tw.lon) * 72.8, dy = (cy - tw.lat) * 111, d = dx * dx + dy * dy; if (d < bd) { bd = d; place = tw.n; } }
+    out.push({ n: comp.length, lon: COV.targets[wk][1], lat: COV.targets[wk][0], max: mx, place });
+  }
+  return out.sort((a, b) => b.n - a.n);
+}
+function covDraw(T, type, lim) {
+  const W = COV.w, H = COV.h, NX = COV.nx, NY = COV.ny, cw = W / NX, ch = H / NY;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d'), clip = covPath();
+  const field = fn => {
+    const o = document.createElement('canvas'); o.width = NX; o.height = NY;
+    const oc = o.getContext('2d'), im = oc.createImageData(NX, NY);
+    for (let k = 0; k < NX * NY; k++) { const p = fn(T[k], COV.inside[k]); im.data[k * 4] = p[0]; im.data[k * 4 + 1] = p[1]; im.data[k * 4 + 2] = p[2]; im.data[k * 4 + 3] = p[3]; }
+    oc.putImageData(im, 0, 0); return o;
+  };
+  const contour = (L, w, style) => {
+    c.beginPath();
+    for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
+      const a = T[j * NX + i], b = T[j * NX + i + 1], cc = T[(j + 1) * NX + i + 1], d = T[(j + 1) * NX + i];
+      const idx = (a > L ? 8 : 0) | (b > L ? 4 : 0) | (cc > L ? 2 : 0) | (d > L ? 1 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const x = (i + 0.5) * cw, y = (j + 0.5) * ch, lp = (p, q) => (L - p) / (q - p);
+      const tp = [x + lp(a, b) * cw, y], rt = [x + cw, y + lp(b, cc) * ch], bt = [x + lp(d, cc) * cw, y + ch], lf = [x, y + lp(a, d) * ch];
+      const seg = (p, q) => { c.moveTo(p[0], p[1]); c.lineTo(q[0], q[1]); };
+      switch (idx) {
+        case 1: case 14: seg(lf, bt); break; case 2: case 13: seg(bt, rt); break; case 3: case 12: seg(lf, rt); break;
+        case 4: case 11: seg(tp, rt); break; case 5: seg(tp, lf); seg(bt, rt); break; case 6: case 9: seg(tp, bt); break;
+        case 7: case 8: seg(tp, lf); break; case 10: seg(tp, rt); seg(lf, bt); break;
+      }
+    }
+    c.lineWidth = w; c.strokeStyle = style; c.stroke();
+  };
+  c.save(); c.clip(clip, 'evenodd');
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  if (type === 'iso') {
+    c.globalAlpha = 0.8; c.drawImage(field((t, ins) => { if (!ins) return [0, 0, 0, 0]; const k = covCol(t); return [k[0], k[1], k[2], t > lim ? 175 : 150]; }), 0, 0, W, H); c.globalAlpha = 1;
+    for (const L of [8, 12, 16]) if (L < lim) contour(L, 1.5, 'rgba(255,255,255,.3)');
+    contour(lim, 3.5, 'rgba(255,255,255,.95)');
+  } else if (type === 'hex') {
+    const R = 24, hw = Math.sqrt(3) * R, dy = 1.5 * R; let row = 0;
+    for (let y = R * 0.5; y < H + R; y += dy, row++) for (let x = (row % 2 ? hw / 2 : 0); x < W + hw; x += hw) {
+      if (!c.isPointInPath(clip, x, y, 'evenodd')) continue;
+      const ix = Math.min(NX - 1, Math.max(0, Math.floor(x / cw))), iy = Math.min(NY - 1, Math.max(0, Math.floor(y / ch))), t = T[iy * NX + ix], k = covCol(t);
+      c.beginPath();
+      for (let q = 0; q < 6; q++) { const a = Math.PI / 180 * (60 * q - 30), px = x + (R - 2.4) * Math.cos(a), py = y + (R - 2.4) * Math.sin(a); if (q) c.lineTo(px, py); else c.moveTo(px, py); }
+      c.closePath(); c.fillStyle = covRgb(k, t > lim ? 0.92 : 0.8); c.fill();
+      if (t > lim) { c.strokeStyle = 'rgba(255,235,230,.8)'; c.lineWidth = 2; c.stroke(); c.beginPath(); c.moveTo(x - R * 0.35, y + R * 0.35); c.lineTo(x + R * 0.35, y - R * 0.35); c.stroke(); }
+    }
+  } else {
+    c.drawImage(field((t, ins) => (ins && t <= lim ? [25, 195, 165, 46] : [0, 0, 0, 0])), 0, 0, W, H);
+    contour(lim, 2.5, 'rgba(60,220,190,.7)'); contour(lim * 0.6, 1.5, 'rgba(60,220,190,.3)');
+    const gap = field((t, ins) => (ins && t > lim ? [255, 255, 255, Math.min(255, 150 + (t - lim) * 14)] : [0, 0, 0, 0]));
+    const hc = document.createElement('canvas'); hc.width = W; hc.height = H; const hx = hc.getContext('2d');
+    hx.fillStyle = 'rgba(229,72,62,.42)'; hx.fillRect(0, 0, W, H); hx.strokeStyle = 'rgba(255,170,160,.85)'; hx.lineWidth = 3;
+    for (let d = -H; d < W; d += 14) { hx.beginPath(); hx.moveTo(d, H); hx.lineTo(d + H, 0); hx.stroke(); }
+    hx.globalCompositeOperation = 'destination-in'; hx.imageSmoothingEnabled = true; hx.drawImage(gap, 0, 0, W, H);
+    c.drawImage(hc, 0, 0);
+  }
+  c.restore();
+  return cv.toDataURL('image/png');
+}
+function covBarHTML() {
+  if (!layers.cov) return '';
+  const seg = COV_TYPES.map(([k, l]) => `<button data-cov-type="${k}" class="${settings.covType === k ? 'on' : ''}">${l}</button>`).join('');
+  const lim = [15, 20, 25].map(m => `<button data-cov-lim="${m}" class="${settings.covLimit === m ? 'on' : ''}">${m} min</button>`).join('');
+  const sw = (c, t) => `<i class="sw" style="background:${c}"></i>${t}`;
+  const leg = settings.covType === 'gap'
+    ? sw('rgba(25,195,165,.6)', 'v dosahu') + sw('repeating-linear-gradient(45deg,#e5483e 0 2px,transparent 2px 4px)', 'mimo limit')
+    : [[6, 'do 8'], [12, '12'], [15, '15'], [18, '18'], [22, '22'], [27, '27+']].map(([t, l]) => sw(`rgb(${covCol(t).join(',')})`, l)).join('') + ' min';
+  const st = COV.stat ? `<span class="covstat">v limitu <b>${COV.stat.pct} %</b> · nejhorší místo <b>${COV.stat.worst} min</b> · slabých oblastí <b>${COV.stat.gaps}</b> · volných RZP <b>${COV.stat.src}</b></span>` : '<span class="covstat">počítám…</span>';
+  return `${seg}<span class="covsep"></span>${lim}<span class="covsep"></span>${leg}<br>${st}`;
+}
+function covStep(force) {
+  if (!layers.cov || !GL || !glReady || !sim || !ROUTER.ready) return;
+  const now = performance.now();
+  const crews = sim.s.crews.filter(k => k.type === 'RZP' && sim.avail(k));
+  const sig = settings.covType + '|' + settings.covLimit + '|' + crews.map(k => { const p = sim.pos(k); return k.id + ':' + p.lat.toFixed(2) + ':' + p.lon.toFixed(2); }).join(',');
+  if (!force && (sig === COV.sig || now - COV.last < 3000)) return;
+  COV.last = now; COV.sig = sig;
+  try {
+    covGrid();
+    const lim = settings.covLimit || 20, T = sim.coverageSecs(COV.targets).map(s => Math.min(90, s / 60));
+    const url = covDraw(T, settings.covType || 'iso', lim);
+    const g = COV.geom, src = GL.getSource('cov');
+    if (src) src.updateImage({ url, coordinates: [[g.w, g.n], [g.e, g.n], [g.e, g.s], [g.w, g.s]] });
+    let tot = 0, ok = 0, worst = 0;
+    for (let k = 0; k < T.length; k++) if (COV.inside[k]) { tot++; if (T[k] <= lim) ok++; if (T[k] > worst) worst = T[k]; }
+    COV.gaps = covGaps(T, lim);
+    COV.stat = { pct: tot ? Math.round(ok / tot * 100) : 100, worst: Math.round(worst), gaps: COV.gaps.length, src: crews.length };
+    const gs = GL.getSource('covgaps');
+    if (gs) gs.setData({ type: 'FeatureCollection', features: settings.covType === 'gap' ? COV.gaps.slice(0, 6).map(b => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [b.lon, b.lat] }, properties: { lab: `${b.place} · ${Math.round(b.max)} min` } })) : [] });
+    setHTML($('covbar'), covBarHTML());
+  } catch (err) { console.warn('pokrytí', err); }
+}
 function renderToolsOnce() {
-  setHTML($('maptools'), [['base', 'Základny'], ['hosp', 'Nemocnice'], ['fr', 'FR'], ['crews', 'Vozidla'], ['cases', 'Případy']].map(([k, l]) => `<button data-layer="${k}" class="${layers[k] ? '' : 'off'}">${l}</button>`).join('') + '<button data-act="zoomin">＋</button><button data-act="zoomout">－</button><button data-act="zoomreset">⌂</button>');
+  setHTML($('covbar'), covBarHTML());
+  setHTML($('maptools'), [['base', 'Základny'], ['hosp', 'Nemocnice'], ['fr', 'FR'], ['crews', 'Vozidla'], ['cases', 'Případy'], ['cov', 'Pokrytí']].map(([k, l]) => `<button data-layer="${k}" class="${layers[k] ? '' : 'off'}">${l}</button>`).join('') + '<button data-act="zoomin">＋</button><button data-act="zoomout">－</button><button data-act="zoomreset">⌂</button>');
 }
 
 const BASE_HTML = (() => {
@@ -608,7 +760,10 @@ function glInit() {
       const empty = { type: 'FeatureCollection', features: [] };
       for (const s of ['routes', 'stations', 'hosp', 'heliport', 'fr', 'cases', 'crews']) GL.addSource(s, { type: 'geojson', data: empty });
       GL.addSource('selroute', { type: 'geojson', data: empty });
+      { const cg = covGeom(); GL.addSource('cov', { type: 'image', url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', coordinates: [[cg.w, cg.n], [cg.e, cg.n], [cg.e, cg.s], [cg.w, cg.s]] }); GL.addSource('covgaps', { type: 'geojson', data: empty }); }
       GL.addLayer({ id: 'routes', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'col'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 3, 14, 6], 'line-opacity': 0.85 } });
+      GL.addLayer({ id: 'cov', type: 'raster', source: 'cov', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.9, 'raster-fade-duration': 0 } }, 'routes');
+      GL.addLayer({ id: 'cov-gaps', type: 'symbol', source: 'covgaps', layout: { 'visibility': 'none', 'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'text-anchor': 'bottom', 'text-offset': [0, -0.6], 'text-padding': 4 }, paint: { 'text-color': '#ffe3df', 'text-halo-color': '#7d1d17', 'text-halo-width': 2 } });
       GL.addLayer({ id: 'stations', type: 'circle', source: 'stations', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 4.5, 13, 7], 'circle-color': '#fffdf4', 'circle-stroke-color': '#263b4a', 'circle-stroke-width': 1.6 } });
       GL.addLayer({ id: 'stations-l', type: 'symbol', source: 'stations', minzoom: 10, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top' }, paint: { 'text-color': '#2d4153', 'text-halo-color': '#fff', 'text-halo-width': 1.4 } });
       GL.addLayer({ id: 'hosp', type: 'circle', source: 'hosp', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 6, 13, 10], 'circle-color': '#fff', 'circle-stroke-color': '#c0281f', 'circle-stroke-width': 2 } });
@@ -686,7 +841,7 @@ function glApplyLayers() {
   if (!glReady) return;
   const vis = (ids, on) => ids.forEach(id => GL.getLayer(id) && GL.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   vis(['stations', 'stations-l', 'stations-house'], layers.base); vis(['hosp', 'hosp-t', 'hosp-l', 'heliport', 'heliport-l'], layers.hosp);
-  vis(['fr-aed', 'fr-l'], layers.fr); vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
+  vis(['cov', 'cov-gaps'], layers.cov); vis(['fr-aed', 'fr-l'], layers.fr); vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
@@ -709,6 +864,7 @@ function glUpdate(force) {
   if (!glReady) return;
   followStep();
   const now = performance.now(); if (!force && now - glLast < 250) return; glLast = now;
+  covStep();
   const blink = Math.floor(now / 500) % 2 ? 1 : 0.45;
   const cases = [], crews = [], routes = [];
   for (const cs of sim.s.cases) {
@@ -1443,7 +1599,13 @@ document.addEventListener('click', ev => {
   }
   const tc = t.closest('[data-tabcase]'); if (tc) { tabCase = tc.dataset.tabcase; render(); return; }
   const tr = t.closest('[data-tabradio]'); if (tr) { tabRadio = tr.dataset.tabradio; render(); return; }
-  const ly = t.closest('[data-layer]'); if (ly) { layers[ly.dataset.layer] = !layers[ly.dataset.layer]; renderToolsOnce(); glApplyLayers(); render(); return; }
+  const ct = t.closest('[data-cov-type]'); if (ct) { settings.covType = ct.dataset.covType; saveSettings(); covStep(true); renderToolsOnce(); return; }
+  const cl = t.closest('[data-cov-lim]'); if (cl) { settings.covLimit = Number(cl.dataset.covLim); saveSettings(); covStep(true); renderToolsOnce(); return; }
+  const ly = t.closest('[data-layer]'); if (ly) {
+    const k = ly.dataset.layer;
+    if (k === 'cov' && !layers.cov && !(GL && glReady)) { toast('Vrstva pokrytí potřebuje plnou mapu (MapLibre).', 'warn'); return; }
+    layers[k] = !layers[k]; renderToolsOnce(); glApplyLayers(); if (k === 'cov' && layers.cov) covStep(true); render(); return;
+  }
   const ho = t.closest('[data-hosp]'); if (ho) { toast('Avízo předáno: ' + D.hospitals.find(h => h.id === ho.dataset.hosp).name, ''); return; }
   if (t.closest('#map')) return;
   // klik do volného místa pod případy sbalí všechny karty (žádný není rozkliknutý do detailu)
@@ -1470,7 +1632,7 @@ $('btn-end').addEventListener('click', () => { if (sim) { sim.s.ended = true; sp
   const svg = $('map'), wrap = $('mapwrap'); let mapDrag = null;
   wrap.addEventListener('pointerdown', ev => {
     if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-    if (ev.target.closest('#maptools,.maplibregl-ctrl')) return;
+    if (ev.target.closest('#maptools,#covbar,.maplibregl-ctrl')) return;
     if (GL) return; // MapLibre potřebuje své vlastní mouse/touch události.
     if (!GL && svg.style.display === 'none') return;
     const m = !GL && ev.target.closest('[data-case],[data-crew]');

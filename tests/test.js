@@ -669,3 +669,13 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (!need.agencies[k].penal) throw new Error('nepřiřazená složka se má po 6 min trestat');
   console.log('datovky: nabírá se → výzva za 3–5 min, složky, věkový filtr true');
 }
+// vrstva pokrytí: dojezd nejbližší volné RZP po silnicích (živě podle dostupnosti vozů)
+{
+  const sim = new Sim({ seed: 91, mode: 'free', startHour: 10, muEnabled: false });
+  const cb = ZOS_DATA.towns.find(t => t.n === 'České Budějovice');
+  const near = sim.coverageSecs([[cb.lat, cb.lon]])[0];
+  if (!(near > 0 && near < 15 * 60)) throw new Error('pokrytí: v ČB má být dojezd pod 15 min, je ' + near);
+  for (const c of sim.s.crews) if (c.type === 'RZP') { c.state = 'off'; }
+  if (sim.coverageSecs([[cb.lat, cb.lon]])[0] !== Infinity) throw new Error('pokrytí: bez volných RZP má být nekonečno');
+  console.log('vrstva pokrytí: dojezd z volných RZP true');
+}

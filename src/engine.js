@@ -2612,6 +2612,18 @@ class Sim {
     return lag <= 240 ? 15 : lag <= 600 ? 10 : 5;
   }
 
+  // doba dojezdu nejbližší volné RZP (po silniční síti, režim N2) k seznamu bodů [[lat, lon], …]; pro vrstvu pokrytí na mapě
+  coverageSecs(targets) {
+    const crews = this.s.crews.filter(c => c.type === 'RZP' && this.avail(c)).map(c => this.pos(c));
+    if (!crews.length) return targets.map(() => Infinity);
+    let times = null;
+    if (typeof ROUTER !== 'undefined' && ROUTER.ready) times = ROUTER.coverage(crews.map(p => [p.lat, p.lon, 60]), targets);
+    return targets.map((tg, i) => {
+      let best = times ? times[i] : 1e9;
+      if (!times) for (const p of crews) { const e2 = travelSec(p.lat, p.lon, tg[0], tg[1]) + 60; if (e2 < best) best = e2; }
+      return driveSec(best, 'N2');
+    });
+  }
   _coverage() {
     const s = this.s, cv = s.cov;
     if (s.t < cv.next) return;
