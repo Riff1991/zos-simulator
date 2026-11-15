@@ -58,7 +58,11 @@ const ZOS_DATA = {
 
   lzs: {
     id: 'lzs', name: 'LZS Planá', short: 'LZS', oblast: 'ČB', lat: 48.9441617, lon: 14.4448708,
-    speedKnots: 130, activationDay: [150, 210], activationNight: [360, 480],
+    // Konstanty z kalkulátoru časové úspory LZS (dispečerský web): rychlost, vzlet ve dne / v noci, předání pacienta a zpoždění nemocnic.
+    // Den a noc podle občanského úsvitu a soumraku u základny. Prahy indikace letu: úspora ≥ 15 min „Ano“, ≥ 10 min „Možná“.
+    speedKmh: 215, takeoffDay: 180, takeoffNight: 600, handoverSec: 600, savedMinimal: 10, savedOptimal: 15,
+    hospitalDelaySec: { 'h-cb': 480, 'h-jh': 180, 'h-pi': 360, 'h-ta': 360 },
+    activationDay: [180, 180], activationNight: [600, 600],
     // LKCC, aktuálně publikovaný heliport u NEM ČB; souřadnice z VFR příručky AIM.
     heliport: { name: 'Heliport NEM ČB (LKCC)', lat: 48.962036, lon: 14.462650 },
   },

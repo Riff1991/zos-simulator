@@ -211,3 +211,10 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 
 ### Pípání (15. 11. 2026)
 - Pípnutí a toast jen u věcí, které něco znamenají: nový případ, kritická (červená) datovka, žádost posádky, trestné body a termíny. Nekritické datovky (včetně „nabírá se“) jen v logu a v horním pruhu hlášení, bez pípnutí. Drobné „opožděný výjezd“ jen toast bez zvuku.
+
+### Kalkulátor časové úspory LZS (15. 11. 2026)
+Zdroj: dispečerský web „Výpočet úspory LZS“ (vlastní zdrojový kód od uživatele). Do hry se přebírá jen logika a konstanty, žádná osobní data ani klíče z webu.
+- Konstanty z kalkulátoru platí i pro LZS ve hře: rychlost 215 km/h (vzdušnou čarou), vzlet 3 min ve dne a 10 min v noci, předání pacienta 10 min, zpoždění nemocnic (ČB 8, JH 3, Písek 6, Tábor 6 min). Den a noc podle občanského úsvitu a soumraku u základny LZS (datum je skutečné v prohlížeči).
+- Vzorec: úspora = čas pozemně − (čas LZS + zpoždění nemocnice). H1/1 (LZS od začátku): čas LZS = let z místa do nemocnice. H1/2 (posádka už na místě): čas LZS = max(vzlet + let základna→místo + 10 min předání; zbývající ošetření) + let místo→nemocnice, čas pozemně navíc obsahuje zbývající ošetření. Indikace letu: úspora ≥ 15 min „Ano“, 10–14 „Možná“, jinak „Ne“.
+- Čas pozemně se ve hře počítá z routeru (reálné silnice, transport s VRZ), ne z databáze průměrů jako na webu.
+- Ve hře: doporučení v bloku LZS v detailu výjezdu (tabulka čtyř nemocnic, H1/1 nebo H1/2 podle toho, jestli už je na místě posádka). Po směně v souhrnu hodnocení rozhodnutí o LZS: správně vyslaná, hraniční, zbytečná a zapomenutá (zapomenutá jen u N1 při letovém počasí).

@@ -205,7 +205,7 @@ function lzsSupportHtml(c) {
   const own = sim.crewOf('lzs');
   if (sim.avail(own)) return '';
   const rows = D.lzsSupport.map(item => {
-    const k = sim.crewOf(item.id), nightBlocked = item.dayOnly && !sim._isDay();
+    const k = sim.crewOf(item.id), nightBlocked = item.dayOnly && !sim._isLzsDay();
     const requested = k && k.supportRequested && k.supportRequestedFor === c.id && sim.avail(k);
     const eta = k ? sim.etaFor(k, c.lat, c.lon) : 0;
     const button = requested
@@ -308,6 +308,7 @@ function renderDetail() {
   }
   const wx = sim._lzsWeatherStatus(), wxLabel = wx === 'clear' ? 'bez omezení' : wx === 'consult' ? 'na konzultaci' : 'neletovo';
   h += `<div class="multi-patient"><b>LZS · ${wxLabel}</b>${wx === 'consult' ? `<br>${c.lzsConsult?.status === 'pending' ? 'Čeká se na rozhodnutí pilota.' : c.lzsConsult?.status === 'approved' ? 'Pilot let povolil.' : c.lzsConsult?.status === 'declined' ? 'Pilot let nedoporučil.' : `<button class="btn" data-act="lzs-consult" data-case="${c.id}">Konzultovat s pilotem</button>`}` : ''}</div>`;
+  h += lzsAdviceHtml(c);
   if (c.lzsActive && c.lzsTechRequired) h += `<div class="multi-patient"><b>Technická součinnost LZS · nepřístupný terén</b><br>${c.lzsTechDone ? 'Přístup k pacientovi je zajištěn.' : c.lzsTechRequested ? 'HZS zajišťuje přístup.' : `<button class="btn" data-act="lzs-tech" data-case="${c.id}">Vyžádat technickou součinnost HZS</button>`}</div>`;
   if (c.mu) {
     const role = sim.s.muPlayerRole;
@@ -972,6 +973,20 @@ function focusOn(lat, lon) {
   };
   requestAnimationFrame(() => requestAnimationFrame(fly));
 }
+function lzsAdviceHtml(c) {
+  if (c.typ === 'sekundární' || c.mu || c.status === 'closed') return '';
+  const adv = sim.lzsAdvice(c.id); if (!adv || !adv.rows.length) return '';
+  const lab = { ano: 'Ano', mozna: 'Možná', ne: 'Ne' };
+  const rows = adv.rows.map(r => `<div class="lzs-row lz-${r.level}"><b>${esc(r.name)}</b><b>${r.saving > 0 ? '+' : ''}${r.saving} min · ${lab[r.level]}</b><small>pozemně ${r.groundMin} min · LZS ${r.lzsMin}${r.delayMin ? ' + ' + r.delayMin : ''} min</small></div>`).join('');
+  const head = adv.mode === 'h12' ? `H1/2, ošetření ještě asi ${adv.treat} min` : 'H1/1';
+  return `<div class="multi-patient"><b>LZS podle kalkulátoru · ${head} · vzlet ${adv.takeoffMin} min (${adv.day ? 'den' : 'noc'})</b><div class="lzs-adv">${rows}</div><small style="color:#5a6a7a">Úspora = pozemně − (LZS + zpoždění nemocnice). Ano od 15 min, možná od 10 min.</small></div>`;
+}
+function lzsEndHtml(sm) {
+  const z = sm.lzs; if (!z || !(z.sentOk + z.sentMaybe + z.sentWasted + z.missed)) return '';
+  const r = (l, v) => `<tr><td style="padding:2px 14px 2px 0;color:#5a6a7a">${l}</td><td><b>${v}</b></td></tr>`;
+  const log = (z.log || []).map(e => `<li>${esc(e.num)} · ${esc(e.txt)}</li>`).join('');
+  return `<div style="margin:8px 0"><b>LZS podle kalkulátoru</b><table style="margin:4px 0;width:auto">${r('Správně vyslaná (úspora od 15 min)', z.sentOk)}${r('Hraniční (10 až 14 min)', z.sentMaybe)}${r('Zbytečně vyslaná (pod 10 min)', z.sentWasted)}${r('Zapomenutá (N1, letové počasí, úspora od 15 min)', z.missed)}</table>${log ? `<ul style="margin:2px 0 0 16px;padding:0">${log}</ul>` : ''}</div>`;
+}
 function transferInfo(cs) {
   const v = cs && cs.vstricna; if (!v || cs.typ === 'sekundární') return '';
   const area = v.areaName || '';
@@ -1296,6 +1311,7 @@ function endModal() {
 <div class="bar"><i style="width:${Math.min(100, sm.total)}%"></i></div>
 <table style="margin:10px 0;width:auto">${m('Průměrné hodnocení případů', sm.caseAvg.toFixed(1))}${m('Pokrytí území', sm.coverage.toFixed(0) + ' %')}${m('Případů celkem', sm.cases)}${m('Neobslouženo', sm.unserved)}${m('N1 průměrně k pacientovi', sm.avgN1 == null ? '–' : (sm.avgN1 / 60).toFixed(1) + ' min')}${m('Příjezd do 20 min od vyslání', sm.legalPct == null ? '–' : sm.legalPct.toFixed(0) + ' %')}${m('Přesměrování posádek', sm.diversions)}${m('Dokončené sekundární převozy', sm.secondaryCompleted)}${m('Sekundární převozy v toleranci ±15 min', sm.secondaryOnTime)}${m('Průměr bodů za sekundární převoz', sm.secondaryAvg == null ? '–' : sm.secondaryAvg.toFixed(0) + ' / 100')}</table>
 ${sm.opsPoints || sm.opsLog.length ? `<p>Provozní body: <b>${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints}</b> · základní skóre ${sm.baseTotal.toFixed(1)}</p>${sm.opsLog.length ? `<details open><summary>Za co byly provozní body (${sm.opsLog.length})</summary><ul style="max-height:180px;overflow:auto">${sm.opsLog.slice().reverse().map(x => `<li>${sim.clockAt(x.t)} · ${x.delta > 0 ? '+' : ''}${x.delta} b. · ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}` : ''}
+${lzsEndHtml(sm)}
 ${worst.length ? '<b>Nejhorší případy</b><table style="margin-top:4px">' + worst.map(c => `<tr><td style="padding:2px 10px 2px 0">${c.num} N${c.nOrig}</td><td style="padding-right:10px">${esc(c.klasif)}</td><td><b>${Math.round(c.score.total)}</b> · ${why(c)}</td></tr>`).join('') + '</table>' : ''}
 <p style="margin-top:12px"><button class="btn pri" data-act="again">Nová směna</button> <button class="btn" data-act="rules" data-back="game">Pravidla a hodnocení</button></p></div>`);
 }

@@ -13,7 +13,20 @@ function travelSec(a, b, c, d, mult) {
   const km = roadKm(a, b, c, d);
   return Math.max(25, km / speedFor(km) * 3600 * (mult || 1));
 }
-function heliSec(a, b, c, d) { return hav(a, b, c, d) / (130 * 1.852) * 3600; }
+function heliSec(a, b, c, d) { return hav(a, b, c, d) / ((ZOS_DATA.lzs && ZOS_DATA.lzs.speedKmh) || 215) * 3600; }
+// občanský úsvit a soumrak (slunce 6° pod obzorem) pro datum a polohu; vrací místní čas (Praha) v hodinách
+function civilTwilight(dateISO, lat, lon) {
+  const [Y, M, D] = dateISO.split('-').map(Number), r = Math.PI / 180;
+  const jd = Date.UTC(Y, M - 1, D, 12) / 86400000 + 2440587.5;
+  const n = Math.ceil(jd - 2451545.0 + 0.0008), js = n - lon / 360;
+  const Mm = (357.5291 + 0.98560028 * js) % 360, C = 1.9148 * Math.sin(Mm * r) + 0.02 * Math.sin(2 * Mm * r) + 0.0003 * Math.sin(3 * Mm * r);
+  const lam = (Mm + C + 180 + 102.9372) % 360, jt = 2451545.0 + js + 0.0053 * Math.sin(Mm * r) - 0.0069 * Math.sin(2 * lam * r);
+  const sd = Math.sin(lam * r) * Math.sin(23.4397 * r), cd = Math.cos(Math.asin(sd));
+  const co = (Math.sin(-6 * r) - Math.sin(lat * r) * sd) / (Math.cos(lat * r) * cd), w = Math.acos(Math.max(-1, Math.min(1, co))) / r;
+  const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const loc = j => { const p = fmt.formatToParts(new Date((j - 2440587.5) * 86400000)); return Number(p.find(x => x.type === 'hour').value) + Number(p.find(x => x.type === 'minute').value) / 60; };
+  return { dawn: loc(jt - w / 360), dusk: loc(jt + w / 360) };
+}
 // Jízda k události s výstražnými zařízeními je rychlejší než běžný provoz (faktor času jízdy).
 // Doba jízdy podle režimu (směrnice Primární zásah pozemních prostředků + úprava pravidel jízdy s VRZ).
 // Router počítá po třídách silnic rychlostmi N2/N3 (limit + 30: dálnice 150, mimo obec 120, na horších silnicích méně).
@@ -87,6 +100,7 @@ class Sim {
     const s = this.s = {
       v: 1, seed, rs: seed, t: 0, radioMode: opts.radio === 'interactive' ? 'interactive' : 'auto', radioQ: [], rqSeq: 0, secondaryEnabled: opts.secondaryEnabled !== false, muEnabled: opts.muEnabled !== false, muProbability: Math.max(0, Math.min(100, Number(opts.muProbability == null ? 10 : opts.muProbability))),
       startHour: opts.startHour != null ? opts.startHour : 7,
+      date: opts.date || (typeof window !== 'undefined' ? new Date().toISOString().slice(0, 10) : '2026-06-21'),
       mode: opts.mode || 'shift', diff: opts.diff || 1, rateMul: opts.rateMul || 1,
       shiftLen: 12 * 3600, ended: false, logId: 1, caseSeq: 0,
       cases: [], crews: [], log: [],
@@ -498,6 +512,15 @@ class Sim {
     return String(Math.floor(sec / 3600)).padStart(2, '0') + ':' + String(Math.floor(sec % 3600 / 60)).padStart(2, '0');
   }
   _isDay() { const h = this.hour(); return h >= 7 && h < 19; }
+  // den pro LZS = mezi občanským úsvitem a soumrakem u základny LZS (jako v kalkulátoru časové úspory)
+  _lzsTwilight() {
+    const s = this.s, d0 = s.date || (typeof window !== 'undefined' ? new Date().toISOString().slice(0, 10) : '2026-06-21');
+    const [Y, M, D] = d0.split('-').map(Number), off = Math.floor((s.startHour * 3600 + s.t) / 86400);
+    const key = new Date(Date.UTC(Y, M - 1, D + off)).toISOString().slice(0, 10);
+    this._twc = this._twc || {};
+    return this._twc[key] || (this._twc[key] = civilTwilight(key, ZOS_DATA.lzs.lat, ZOS_DATA.lzs.lon));
+  }
+  _isLzsDay() { const tw = this._lzsTwilight(), h = this.hour(); return h >= tw.dawn && h < tw.dusk; }
   _sunWindow() {
     const lat = 49.2 * Math.PI / 180, day = this.s.dayOfYear || 172;
     const decl = 23.44 * Math.PI / 180 * Math.sin(2 * Math.PI * (284 + day) / 365);
@@ -684,7 +707,7 @@ class Sim {
   _turnout(c, urgency) {
     if (c.type === 'MU') return this.rr(240, 420);
     if (c.type === 'LZS') {
-      const range = this._isDay() ? (c.activationDay || ZOS_DATA.lzs.activationDay) : (c.activationNight || ZOS_DATA.lzs.activationNight);
+      const range = this._isLzsDay() ? (c.activationDay || ZOS_DATA.lzs.activationDay) : (c.activationNight || ZOS_DATA.lzs.activationNight);
       return this.rr(range[0], range[1]);
     }
     if (urgency === 4) return c.state === 'base' ? this.rr(55, 115) : this.rr(15, 35);
@@ -694,8 +717,44 @@ class Sim {
     return c.state === 'base' ? this.rr(55, 115) : this.rr(15, 35);
   }
   _lzActivationExpected(c) {
-    const range = this._isDay() ? ((c && c.activationDay) || ZOS_DATA.lzs.activationDay) : ((c && c.activationNight) || ZOS_DATA.lzs.activationNight);
+    const range = this._isLzsDay() ? ((c && c.activationDay) || ZOS_DATA.lzs.activationDay) : ((c && c.activationNight) || ZOS_DATA.lzs.activationNight);
     return (range[0] + range[1]) / 2;
+  }
+  // kalkulátor časové úspory LZS: řádek pro jednu cílovou nemocnici
+  // h11 = LZS od začátku (čas LZS = let z místa do nemocnice), h12 = posádka už na místě (vzlet + let na místo + předání, ošetření)
+  _lzsRows(cs, mode, treat) {
+    const L = ZOS_DATA.lzs, takeoff = (this._isLzsDay() ? L.takeoffDay : L.takeoffNight) / 60;
+    const fl = (a, b, c, d) => Math.round(hav(a, b, c, d) / L.speedKmh * 60);
+    const tm = 'P' + Math.min(3, Math.max(2, cs.n || 3));
+    return Object.keys(L.hospitalDelaySec).map(id => {
+      const h = ZOS_DATA.hospitals.find(x => x.id === id); if (!h) return null;
+      const ground = Math.round(driveSec(this._eta(cs.lat, cs.lon, h.lat, h.lon), tm) / 60) + (mode === 'h12' ? treat : 0);
+      const delay = Math.round(L.hospitalDelaySec[id] / 60);
+      const fScene = fl(L.lat, L.lon, cs.lat, cs.lon), fHosp = fl(cs.lat, cs.lon, h.lat, h.lon);
+      const lzsMin = mode === 'h12' ? Math.max(takeoff + fScene + L.handoverSec / 60, treat) + fHosp : fHosp;
+      const saving = ground - (lzsMin + delay);
+      return { id, name: h.short, groundMin: ground, lzsMin, delayMin: delay, saving, level: saving >= L.savedOptimal ? 'ano' : saving >= L.savedMinimal ? 'mozna' : 'ne' };
+    }).filter(Boolean);
+  }
+  lzsAdvice(caseId) {
+    const cs = this.caseOf(caseId); if (!cs || cs.typ === 'sekundární' || cs.mu) return null;
+    const onScene = cs.crews.some(id => { const k = this.crewOf(id); return k && k.type === 'RZP' && k.caseId === cs.id && k.state === 'onscene'; });
+    let treat = 0;
+    if (onScene && cs.firstArrive != null && cs.scene) treat = Math.max(0, Math.round(((cs.scene[0] + cs.scene[1]) / 2 - (this.s.t - cs.firstArrive) / 60) / 5) * 5);
+    const mode = onScene ? 'h12' : 'h11', day = this._isLzsDay();
+    return { mode, treat, day, takeoffMin: (day ? ZOS_DATA.lzs.takeoffDay : ZOS_DATA.lzs.takeoffNight) / 60, rows: this._lzsRows(cs, mode, treat) };
+  }
+  // hodnocení rozhodnutí o LZS po uzavření případu (H1/1, nejbližší nemocnice z kalkulátoru)
+  _lzsEval(cs) {
+    const a = this.s.agg, z = a.lzs || (a.lzs = { sentOk: 0, sentMaybe: 0, sentWasted: 0, missed: 0, log: [] });
+    if (cs.unserved || cs.mu || cs.typ === 'sekundární' || !cs.arrived) return;
+    const rows = this._lzsRows(cs, 'h11', 0); if (!rows.length) return;
+    const r = rows.reduce((b, x) => (!b || x.groundMin < b.groundMin ? x : b), null), sent = !!cs.lzsActive;
+    let kind = null;
+    if (sent) { if (r.level === 'ano') { z.sentOk++; kind = 'ok'; } else if (r.level === 'mozna') { z.sentMaybe++; kind = 'hranicni'; } else { z.sentWasted++; kind = 'zbytecne'; } }
+    else if (r.level === 'ano' && cs.nOrig === 1 && cs.wxAtCall === 'clear') { z.missed++; kind = 'zapomenute'; }
+    cs.lzsEval = { saving: r.saving, level: r.level, hospital: r.name, sent, kind };
+    if ((kind === 'zbytecne' || kind === 'zapomenute') && z.log.length < 8) z.log.push({ num: cs.num, txt: `${kind === 'zapomenute' ? 'zapomenutá' : 'zbytečně vyslaná'}, úspora ${r.saving} min (${r.name})` });
   }
   etaFor(c, lat, lon, n) {
     const p = this.pos(c), mode = 'N' + Math.min(4, Math.max(1, n || 2));
@@ -913,7 +972,7 @@ class Sim {
     if (!cs || !c || !c.externalLzs) return { ok: false, msg: 'Požádat lze jen o posádku LZS z jiného kraje.' };
     if (cs.status === 'closed' || cs.status === 'intake' || cs.typ === 'sekundární') return { ok: false, msg: 'LZS lze žádat jen k otevřenému primárnímu výjezdu.' };
     if (this.avail(own)) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
-    if (c.externalDayOnly && !this._isDay()) return { ok: false, msg: `${c.name} je v simulaci dostupná jen v denní době.` };
+    if (c.externalDayOnly && !this._isLzsDay()) return { ok: false, msg: `${c.name} je v simulaci dostupná jen v denní době.` };
     if (c.state !== 'off' || c.supportRequested) return { ok: false, msg: `${c.name} už není k dispozici.` };
     c.supportRequested = true; c.supportRequestedFor = cs.id; c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon;
     this.L('alert', `Požádáno o mezikrajskou spolupráci: ${c.name} k ${cs.num}.`, cs.id, c.id);
@@ -1765,7 +1824,7 @@ class Sim {
     }
     if (c.status === 'intake') {
       if (t >= c.readyAt) {
-        c.status = 'waiting';
+        c.status = 'waiting'; c.wxAtCall = this._lzsWeatherStatus();
         this.L('case', `Nový případ ${c.num}: N${c.n}${c.dyn ? ' dyn.' : ''} – ${c.klasif}, ${c.addr}`, c.id);
         // výzva obsahuje příznak PČR / HZS, ale nepřišla datovkou: složku musí přiřadit dispečer
         if (c.agNeed) {
@@ -2571,6 +2630,7 @@ class Sim {
     }
     if (cs.unserved) this._opsScore(-8, `neobsloužený případ ${cs.num}`, cs.id);
     cs.score = this._scoreCase(cs);
+    this._lzsEval(cs);
     const a = s.agg, w = { 1: 3, 2: 2, 3: 1 }[cs.nOrig] || 1;
     a.sw += w; a.sv += w * cs.score.total; a.closed++;
     if (cs.unserved) a.unserved++;
@@ -2658,7 +2718,7 @@ class Sim {
     const opsPoints = a.opsPoints || 0;
     const total = Math.max(0, Math.min(100, baseTotal + opsPoints));
     return {
-      total, baseTotal, opsPoints, opsLog: a.opsLog || [], caseAvg, coverage: cov, closed: a.closed, unserved: a.unserved, diversions: a.diversions,
+      total, baseTotal, opsPoints, opsLog: a.opsLog || [], lzs: a.lzs || null, caseAvg, coverage: cov, closed: a.closed, unserved: a.unserved, diversions: a.diversions,
       avgN1: a.arrN1 ? a.arrSum1 / a.arrN1 : null, legalPct: a.legalN ? a.legalOk / a.legalN * 100 : null,
       secondaryCompleted: a.secondaryCount || 0, secondaryAvg: a.secondaryCount ? a.secondarySum / a.secondaryCount : null,
       secondaryOnTime: a.secondaryOnTime || 0,
@@ -2669,4 +2729,4 @@ class Sim {
   static restore(json) { return new Sim(null, typeof json === 'string' ? JSON.parse(json) : json); }
 }
 
-if (typeof module !== 'undefined') module.exports = { Sim, hav, travelSec };
+if (typeof module !== 'undefined') module.exports = { Sim, hav, travelSec, civilTwilight };

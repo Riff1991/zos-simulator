@@ -8,6 +8,17 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.22.0 – 2026-11-15
+
+> LZS se řídí podle kalkulátoru časové úspory: doporučení v detailu výjezdu a hodnocení rozhodnutí o LZS po směně.
+
+- Detail výjezdu: blok „LZS podle kalkulátoru“ ukazuje pro NEM ČB, JH, Písek a Tábor čas pozemně, čas LZS se zpožděním nemocnice, úsporu a verdikt Ano (od 15 min) / Možná (od 10 min) / Ne. Před příjezdem posádky počítá H1/1, po příjezdu H1/2 se zbývajícím ošetřením.
+- Konstanty z kalkulátoru platí i pro let ve hře: 215 km/h, vzlet 3 min ve dne a 10 min v noci, předání pacienta 10 min a zpoždění nemocnic (ČB 8, JH 3, Písek 6, Tábor 6 min).
+- Den a noc pro LZS podle občanského úsvitu a soumraku u základny (v prohlížeči podle skutečného data), ne pevně 7 až 19 h.
+- Souhrn po směně: LZS správně vyslaná, hraniční, zbytečná a zapomenutá (zapomenutá jen u N1 při letovém počasí a úspoře od 15 min).
+
+---
+
 ## v0.21.6 – 2026-11-15
 
 > Opravená poloha výjezdové základny Jindřichův Hradec.

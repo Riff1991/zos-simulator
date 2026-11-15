@@ -679,3 +679,36 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (sim.coverageSecs([[cb.lat, cb.lon]])[0] !== Infinity) throw new Error('pokrytí: bez volných RZP má být nekonečno');
   console.log('vrstva pokrytí: dojezd z volných RZP true');
 }
+// kalkulátor časové úspory LZS: občanský úsvit/soumrak, vzorce H1/1 a H1/2, hodnocení po směně
+{
+  const { civilTwilight } = require('../src/engine.js');
+  const tw = civilTwilight('2026-11-15', 48.944468, 14.445144);
+  if (Math.abs(tw.dawn - 6.6) > 0.05 || Math.abs(tw.dusk - 16.93) > 0.05) throw new Error('občanský svit nesedí s kalkulátorem: ' + tw.dawn + ' / ' + tw.dusk);
+  const sim = new Sim({ seed: 17, mode: 'free', startHour: 10, muEnabled: false, date: '2026-11-15' });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  if (!sim._isLzsDay()) throw new Error('v 10 h má být pro LZS den');
+  sim.s.startHour = 2; if (sim._isLzsDay()) throw new Error('ve 2 h má být pro LZS noc');
+  sim.s.startHour = 10;
+  const c = sim._spawn({ ind: 'trauma', n: 1, where: 'ulice' });
+  c.status = 'waiting'; sim.s.cases.push(c);
+  const adv = sim.lzsAdvice(c.id);
+  if (!adv || adv.mode !== 'h11' || adv.rows.length !== 4) throw new Error('lzsAdvice: čekám H1/1 a 4 nemocnice');
+  for (const r of adv.rows) {
+    if (r.saving !== r.groundMin - (r.lzsMin + r.delayMin)) throw new Error('úspora musí být pozemně − (LZS + zpoždění)');
+    if (r.level !== (r.saving >= 15 ? 'ano' : r.saving >= 10 ? 'mozna' : 'ne')) throw new Error('prahy indikace letu 15 / 10 min');
+  }
+  const delays = Object.fromEntries(adv.rows.map(r => [r.id, r.delayMin]));
+  if (delays['h-cb'] !== 8 || delays['h-jh'] !== 3 || delays['h-pi'] !== 6 || delays['h-ta'] !== 6) throw new Error('zpoždění nemocnic z kalkulátoru');
+  // H1/2: čas LZS nesmí být kratší než zbývající ošetření a vzlet je v noci delší
+  const day12 = sim._lzsRows(c, 'h12', 30), dayTakeoff = adv.takeoffMin;
+  if (day12.some(r => r.lzsMin < 30)) throw new Error('H1/2: LZS nejdřív po ošetření');
+  sim.s.startHour = 2; const nightAdv = sim.lzsAdvice(c.id); sim.s.startHour = 10;
+  if (!(nightAdv.takeoffMin === 10 && dayTakeoff === 3)) throw new Error('vzlet 3 min ve dne, 10 min v noci');
+  // hodnocení po směně
+  const rzp = sim.suggest(c.id, 'RZP')[0]; sim.assign(c.id, rzp.crewId);
+  c.arrived = true; c.wxAtCall = 'clear'; c.nOrig = 1; c.lzsActive = false;
+  sim._lzsEval(c);
+  if (!c.lzsEval || !['zapomenute', null].includes(c.lzsEval.kind)) throw new Error('lzsEval: neočekávaný druh');
+  if (!sim.summary().lzs) throw new Error('summary má obsahovat LZS hodnocení');
+  console.log('kalkulátor LZS: svit, H1/1 a H1/2, prahy, zpoždění, hodnocení true');
+}
