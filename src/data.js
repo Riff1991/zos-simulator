@@ -76,26 +76,27 @@ const ZOS_DATA = {
     { id: 'lzs-krems', name: 'LZS Krems (Dolní Rakousko)', code: 'KR91', oblast: 'JH', region: 'DR', foreign: true, lat: 48.4086, lon: 15.6139, dayOnly: true, activationDay: [240, 360] },
     { id: 'lzs-straubing', name: 'LZS Straubing (Bavorsko)', code: 'KR92', oblast: 'ST', region: 'BY', foreign: true, lat: 48.8997, lon: 12.5517, activationDay: [240, 360], activationNight: [420, 600] },
   ],
-  // Sousední kraje a země (mezikrajská spolupráce). Rakousko: jen LZS, pozemní pomoc se prakticky nepoužívá.
+  // Sousední kraje a země (mezikrajská spolupráce). Rakousko a Bavorsko: jen LZS, pozemní pomoc ze zahraničí se prakticky nepoužívá.
   neighbors: {
     VY: { name: 'Kraj Vysočina', short: 'Vysočina', sign: 'ZOS Vysočina' }, PL: { name: 'Plzeňský kraj', short: 'Plzeňský', sign: 'ZOS Plzeň' },
     SC: { name: 'Středočeský kraj', short: 'Středočeský', sign: 'ZOS Střední Čechy' }, BY: { name: 'Bavorsko', short: 'Bavorsko', sign: 'ZOS Bavorsko', foreign: true },
     HR: { name: 'Horní Rakousko', short: 'Horní Rakousko', sign: 'ZOS Horní Rakousko', foreign: true }, DR: { name: 'Dolní Rakousko', short: 'Dolní Rakousko', sign: 'ZOS Dolní Rakousko', foreign: true },
   },
-  // Pozemní posádky sousedních krajů a Bavorska na základnách u hranice. Názvy základen jsou orientační, volací znaky fiktivní.
+  // Pozemní posádky sousedních krajů na základnách u hranice (jen české kraje; Rakousko a Bavorsko jen LZS).
+  // Polohy základen podle veřejné mapy obcí se základnou ZZS (zachrannasluzba.cz); volací znaky jsou fiktivní.
   nbGround: [
-    { id: 'nb-vy-pel', name: 'VY Pelhřimov RZP', code: '8101', region: 'VY', lat: 49.4306, lon: 15.2206 },
-    { id: 'nb-vy-tel', name: 'VY Telč RZP', code: '8102', region: 'VY', lat: 49.1844, lon: 15.4531 },
-    { id: 'nb-vy-jih', name: 'VY Jihlava RZP', code: '8103', region: 'VY', lat: 49.3961, lon: 15.5912 },
-    { id: 'nb-pl-hor', name: 'PL Horažďovice RZP', code: '8201', region: 'PL', lat: 49.3189, lon: 13.7011 },
-    { id: 'nb-pl-sus', name: 'PL Sušice RZP', code: '8202', region: 'PL', lat: 49.2311, lon: 13.5206 },
-    { id: 'nb-pl-kla', name: 'PL Klatovy RZP', code: '8203', region: 'PL', lat: 49.3950, lon: 13.2950 },
-    { id: 'nb-sc-sed', name: 'SČ Sedlčany RZP', code: '8301', region: 'SC', lat: 49.6603, lon: 14.4258 },
-    { id: 'nb-sc-pri', name: 'SČ Příbram RZP', code: '8302', region: 'SC', lat: 49.6896, lon: 14.0103 },
-    { id: 'nb-sc-vot', name: 'SČ Votice RZP', code: '8303', region: 'SC', lat: 49.6408, lon: 14.6411 },
-    { id: 'nb-by-fre', name: 'BY Freyung RTW', code: '8401', region: 'BY', foreign: true, lat: 48.8083, lon: 13.5503 },
-    { id: 'nb-by-gra', name: 'BY Grafenau RTW', code: '8402', region: 'BY', foreign: true, lat: 48.8581, lon: 13.3967 },
-    { id: 'nb-by-wal', name: 'BY Waldkirchen RTW', code: '8403', region: 'BY', foreign: true, lat: 48.7300, lon: 13.6000 },
+    { id: 'nb-vy-tel', name: 'VY Telč RZP', code: '8101', region: 'VY', lat: 49.1832, lon: 15.4543 },
+    { id: 'nb-vy-jem', name: 'VY Jemnice RZP', code: '8102', region: 'VY', lat: 49.0190, lon: 15.5699 },
+    { id: 'nb-vy-poc', name: 'VY Počátky RZP', code: '8103', region: 'VY', lat: 49.2602, lon: 15.2402 },
+    { id: 'nb-vy-pac', name: 'VY Pacov RZP', code: '8104', region: 'VY', lat: 49.4708, lon: 15.0017 },
+    { id: 'nb-vy-kam', name: 'VY Kamenice n. L. RZP', code: '8105', region: 'VY', lat: 49.3029, lon: 15.0750 },
+    { id: 'nb-pl-sus', name: 'PL Sušice RZP', code: '8201', region: 'PL', lat: 49.2317, lon: 13.5204 },
+    { id: 'nb-pl-hor', name: 'PL Horažďovice RZP', code: '8202', region: 'PL', lat: 49.3207, lon: 13.7010 },
+    { id: 'nb-pl-nep', name: 'PL Nepomuk RZP', code: '8203', region: 'PL', lat: 49.4862, lon: 13.5823 },
+    { id: 'nb-sc-bre', name: 'SČ Březnice RZP', code: '8301', region: 'SC', lat: 49.5576, lon: 13.9506 },
+    { id: 'nb-sc-vot', name: 'SČ Votice RZP', code: '8302', region: 'SC', lat: 49.6401, lon: 14.6381 },
+    { id: 'nb-sc-kra', name: 'SČ Krásná Hora RZP', code: '8303', region: 'SC', lat: 49.6046, lon: 14.2774 },
+    { id: 'nb-sc-sed', name: 'SČ Sedlčany RZP', code: '8304', region: 'SC', lat: 49.6606, lon: 14.4266 },
   ],
 
   // Sady MU (vozidla pro řešení následků mimořádných událostí), dislokace ČB, Tábor, Strakonice, J. Hradec.

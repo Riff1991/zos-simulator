@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.24.1 – 2026-11-16
+
+> Základny sousedních krajů podle veřejné mapy a upřesněný rozsah zahraničí.
+
+- Pozemní základny sousedů jsou jen skutečné obce u hranice (souřadnice a názvy podle veřejné mapy obcí se základnou ZZS): Vysočina Telč, Jemnice, Počátky, Pacov, Kamenice nad Lipou; Plzeňský kraj Sušice, Horažďovice, Nepomuk; Středočeský kraj Březnice, Votice, Krásná Hora nad Vltavou, Sedlčany.
+- Bavorsko i Rakousko jen LZS; pozemní posádky ze zahraničí ve hře nejsou.
+- Cizí pozemní posádku lze požádat do 50 km od její základny (dřív 70 km).
+
+---
+
 ## v0.24.0 – 2026-11-16
 
 > Mezikrajská a přeshraniční spolupráce, předělaný panel Rádio a řada oprav z minulých verzí (včetně opravy výslovnosti, která v 0.23.x nefungovala).

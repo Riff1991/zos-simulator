@@ -91,6 +91,7 @@ class Sim {
         externalDayOnly: !!support.dayOnly, activationDay: support.activationDay || [150, 210], activationNight: support.activationNight || [360, 480],
         ext: true, region: support.region, foreign: !!support.foreign,
       }));
+      this.s.crews = this.s.crews.filter(c => !c.externalGround || c.state !== 'off' || (ZOS_DATA.nbGround || []).some(g => g.id === c.id));   // zrušené základny ze starších uložených her
       for (const g of ZOS_DATA.nbGround || []) if (!existing.has(g.id)) this.s.crews.push(this._mk(this._nbGroundOpts(g)));
       for (const crew of this.s.crews) if (crew.externalLzs && !crew.ext) { crew.ext = true; const sp = ZOS_DATA.lzsSupport.find(x => x.id === crew.id); if (sp) { crew.region = sp.region; crew.foreign = !!sp.foreign; } }
       if (!this.s.libero) this.s.libero = Sim.liberoSettings();
@@ -1082,7 +1083,7 @@ class Sim {
       if (best <= 1200) return { ok: false, msg: `Vlastní volná RZP je do ${Math.ceil(best / 60)} min; o pomoc z jiného kraje lze žádat, až když je dojezd nad 20 min nebo není žádná volná.` };
       const d = hav(cs.lat, cs.lon, c.home.lat, c.home.lon);
       if (c.foreign && d > 30) return { ok: false, msg: `${c.name} pomáhá jen v příhraničním pásu (do 30 km od základny).` };
-      if (d > 70) return { ok: false, msg: `${c.name} je příliš daleko (${Math.round(d)} km).` };
+      if (d > 50) return { ok: false, msg: `${c.name} je příliš daleko (${Math.round(d)} km, limit je 50 km).` };
     }
     c.nbAsk = { caseId, askedAt: t, answerAt: t + this.rr(60, 180), state: 'asked' };
     this.L('alert', `Požádáno o pomoc: ${c.name} (${nb.short}) k ${cs.num}. Čeká se na odpověď operačního střediska.`, cs.id, c.id);

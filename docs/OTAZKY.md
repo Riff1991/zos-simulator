@@ -254,3 +254,5 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 - UI: dlaždice „Sousední kraje“ v přehledu posádek (stav volná / vyslaná / mimo), základny sousedů a jedoucí cizí posádky na mapě jinou barvou.
 - Kroky: 1) naše žádosti o pomoc (pozemní i LZS, dlaždice, mapa, odpověď střediska), 2) žádosti sousedů o nás (hovor, nabídka, bodování, Planá pryč), 3) zahraničí (rakouské a bavorské základny, zahraniční LZS).
 - Upřesnění (15. 11. 2026): u Rakouska jen LZS, pozemní pomoc se prakticky nepoužívá (žádné rakouské pozemní základny). Bavorsko zatím beze změny (příhraniční pás pozemní i LZS), čeká na potvrzení.
+
+- Základny sousedů (16. 11. 2026): upraveno podle veřejné mapy obcí se základnou ZZS (zachrannasluzba.cz, souřadnice a názvy obcí): Vysočina Telč, Jemnice, Počátky, Pacov, Kamenice nad Lipou; Plzeňský Sušice, Horažďovice, Nepomuk; Středočeský Březnice, Votice, Krásná Hora nad Vltavou, Sedlčany. Bavorsko jen LZS. Limit vzdálenosti cizí pozemní posádky 50 km. Seznam FR se nemění.
