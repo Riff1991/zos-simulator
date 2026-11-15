@@ -188,10 +188,10 @@ function renderLiveAlerts() {
     const crew = c.crews.map(id => sim.crewOf(id)).find(k => k && k.type === 'RZP');
     return `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${esc((c.rvReq.kind || 'zhoršení stavu').toLocaleUpperCase('cs-CZ'))} · ${esc(c.num)} · N${c.n}${crew ? ' · ' + esc(crew.name) : ''} · ${esc(c.klasif)} — klikni pro otevření</span>${x('rv:' + c.id)}</div>`;
   });
-  const reportHtml = reports.map(({ c, r }) => `<div class="live-alert report-alert" role="button" tabindex="0" data-case="${c.id}" data-report="${esc(r.id)}"><span class="alert-txt">☎ ${esc(r.source || 'Linka 112')} · ${esc(c.num)}: ${esc(r.text)} — klikni pro otevření</span>${x(c.id + ':' + r.id, ` data-case="${c.id}" data-report="${esc(r.id)}"`)}</div>`);
+  const reportHtml = reports.map(({ c, r }) => `<div class="live-alert report-alert${r.red ? ' red' : ''}" role="button" tabindex="0" data-case="${c.id}" data-report="${esc(r.id)}"><span class="alert-txt">☎ ${esc(r.source || 'Linka 112')} · ${esc(c.num)}: ${esc(r.text)} — klikni pro otevření</span>${x(c.id + ':' + r.id, ` data-case="${c.id}" data-report="${esc(r.id)}"`)}</div>`);
   const corReq = sim.s.cases.filter(c => c.status !== 'closed' && c.coroner && c.coroner.state === 'available' && !alertHidden.has(`cor:${c.id}`));
   const corHtml = corReq.map(c => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ KORONER K DISPOZICI · ${esc(c.num)} — klikni a přetáhni dlaždici KORONER na případ</span>${x(`cor:${c.id}`)}</div>`);
-  const agencyHtml = agencyReq.map(({ c, k }) => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ POSÁDKA ŽÁDÁ ${k === 'pcr' ? 'POLICII' : 'HASIČE'} · ${esc(c.num)} · ${esc(c.agencies[k].why || '')} — klikni a přetáhni dlaždici ${k === 'pcr' ? 'PČR' : 'HZS'} na případ</span>${x(`ag:${c.id}:${k}`)}</div>`);
+  const agencyHtml = agencyReq.map(({ c, k }) => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${c.agencies[k].fromCall ? 'VÝZVA VYŽADUJE' : 'POSÁDKA ŽÁDÁ'} ${k === 'pcr' ? 'POLICII' : 'HASIČE'} · ${esc(c.num)} · ${esc(c.agencies[k].why || '')} — klikni a přetáhni dlaždici ${k === 'pcr' ? 'PČR' : 'HZS'} na případ</span>${x(`ag:${c.id}:${k}`)}</div>`);
   setHTML($('alerts-live'), requestHtml.concat(corHtml, agencyHtml, reportHtml).join(''));
 }
 
@@ -343,9 +343,10 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 <dt>Adresa</dt><dd>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span><br><span style="font-weight:400;color:#5a6a7a">Jihočeský kraj, okres ${esc(okresOf(c))}, obec ${esc(c.town)}<br>${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</span></dd>
 <dt>Popis místa</dt><dd>${esc(c.place)}</dd>
 <dt>Pacienti</dt><dd>${c.mu ? c.mu.cas + ' zraněných (zbývá ošetřit ' + c.mu.left + ')' : (c.patientCount || 1) > 1 ? `${c.patientCount} zranění (zbývá ošetřit ${c.patientsRemaining})` : esc(c.desc)}</dd>
+${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>` : ''}
 <dt>Oznámil</dt><dd>${esc(c.src)} · nabíral ${esc(c.op)}</dd></dl>`;
   const reports = (c.radioReports || []).filter(r => r.received);
-  if (reports.length) h += `<div class="report-panel"><b>${c.mu ? 'Situační hlášení' : 'Průběžná hlášení'}</b><ul>${reports.map(r => `<li><time>${esc(sim.clockAt(r.receivedAt))}</time> <b>${esc(r.source || (c.mu ? 'Situační hlášení' : 'Linka 112'))}:</b> ${esc(r.text)}${r.fields ? `<ul>${Object.entries(r.fields).filter(([,v]) => v).map(([k,v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>${c.status === 'waiting' || c.status === 'active' ? '<button class="btn pri" data-act="sug">Reagovat – otevřít nabídku posádek</button>' : ''}</div>`;
+  if (reports.length) h += `<div class="report-panel"><b>${c.mu ? 'Situační hlášení' : 'Průběžná hlášení'}</b><ul>${reports.map(r => `<li${r.red ? ' class="red"' : ''}><time>${esc(sim.clockAt(r.receivedAt))}</time> <b>${esc(r.source || (c.mu ? 'Situační hlášení' : 'Linka 112'))}:</b> ${esc(r.text)}${r.fields ? `<ul>${Object.entries(r.fields).filter(([,v]) => v).map(([k,v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>${c.status === 'waiting' || c.status === 'active' ? '<button class="btn pri" data-act="sug">Reagovat – otevřít nabídku posádek</button>' : ''}</div>`;
   if (c.mu && c.mu.hospitalInfoReceived) {
     const caps = c.mu.hospitalCapacities || [];
     h += `<div class="report-panel"><b>Nemocniční příjem (simulovaný)</b>${caps.map(cap => { const hp = D.hospitals.find(x => x.id === cap.hospitalId); return hp ? `<div class="row"><span>${esc(hp.short)}</span><span>${esc(cap.state)} · ${cap.remaining} míst v herním modelu</span><button class="btn" data-act="mu-hospital" data-case="${c.id}" data-hospital="${hp.id}" ${cap.state === 'dočasně nepřijímá' ? 'disabled' : ''}>Směrovat</button></div>` : ''; }).join('')}</div>`;
@@ -452,7 +453,7 @@ function renderCrews() {
 <dl><dt>Rádio</dt><dd>${esc(k.code)} · ${k.type === 'RV' ? 'RV (lékař)' : k.type === 'LZS' ? 'RLP vrtulník' : k.type === 'MU' ? 'MU modul' : k.type === 'LIB' ? 'LIBERO – lékař bez vozu, jen přes den' : k.res ? 'RZP záloha' : k.rlp ? 'RZP + lékař LIBERO (dočasně RLP)' : 'RZP'}${k.zzum ? ' · ZZUM' : ''}</dd>
 <dt>Členové</dt><dd>${esc(k.members.join(', '))}</dd>
 <dt>Uskutečněné výjezdy</dt><dd>${k.callsCompleted || 0}</dd>
-${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${esc(cs.klasif)}</a></dd>` : ''}${k.dest ? `<dt>Cíl</dt><dd>${esc(k.dest.name)}</dd>` : ''}</dl>`;
+${cs ? `<dt>Případ</dt><dd><a href="#" data-case="${cs.id}">${esc(cs.num)} ${esc(cs.klasif)}</a></dd>` : ''}${cs && transferInfo(cs) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(cs))}</dd>` : ''}${k.dest ? `<dt>Cíl</dt><dd>${esc(k.dest.name)}</dd>` : ''}</dl>`;
   if (k.type === 'RZP' && (k.state === 'base' || k.state === 'call') && sim.liberoFor(k)) p += `<button class="btn pri" data-act="libero" data-crew="${k.id}">+ LIBERO (dočasně RLP)</button>`;
   if (k.type === 'RZP' && k.liberoId) p += `<button class="btn" data-act="unlibero" data-crew="${k.id}">− LIBERO (odpřadit lékaře)</button>`;
   if (k.type === 'LIB' && k.withCrew) p += `<button class="btn" data-act="unlibero" data-crew="${k.withCrew}">Odpřadit od ${esc((sim.crewOf(k.withCrew) || {}).name || 'RZP')}</button>`;
@@ -814,6 +815,20 @@ function focusOn(lat, lon) {
     } else pendingMapFocus = { lat, lon };
   };
   requestAnimationFrame(() => requestAnimationFrame(fly));
+}
+function transferInfo(cs) {
+  const v = cs && cs.vstricna; if (!v || cs.typ === 'sekundární') return '';
+  const area = v.areaName || '';
+  switch (v.state) {
+    case 'offered': return `schopen překladu – vstřícná jízda možná: přetáhni volnou RZP z oblasti ${area} na periferní posádku (nebo naopak)`;
+    case 'self-unavailable': return 'schopen překladu, ale v oblasti není volná RZP – posádka dojede sama';
+    case 'dispatched': { const h = sim.crewOf(v.helperCrewId); return `schopen překladu – vstřícná jízda jede${h ? ' (' + h.name + ')' : ''}`; }
+    case 'declined': return 'schopen překladu, vstřícná jízda odmítnuta – posádka dojede sama';
+    case 'expired': return 'vstřícná jízda vypršela – posádka dojede sama';
+    case 'not-suitable': return 'není schopen překladu – posádka dojede sama';
+    case 'not-needed': return 'překlad není potřeba (krátká trasa)';
+    default: return '';
+  }
 }
 function selectCaseFromElement(caseElement, clickedElement) {
   sel.c = caseElement.dataset.case; syncSelectionToMain();
@@ -1339,7 +1354,21 @@ function dropTarget(x, y) {
   const e = document.elementFromPoint(x, y);
   if (e && e.closest('[data-case]') && !e.closest('#modal')) return e.closest('[data-case]');
   if (e && e.closest('[data-drop-case]')) { const el = e.closest('[data-drop-case]'); return { dataset: { case: el.dataset.dropCase }, classList: el.classList }; }
+  const ct = e && e.closest('.tile[data-crew]');
+  if (ct && !ct.closest('#modal') && !/^x-/.test(ct.dataset.crew)) return { dataset: { crew: ct.dataset.crew }, classList: ct.classList };
   const id = glCaseAt(x, y); return id ? { dataset: { case: id }, classList: { add() {}, remove() {} } } : null;
+}
+// vstřícná jízda přetažením: periferní RZP s pacientem ↔ volná RZP z oblasti u nemocnice
+function dropOnCrew(aId, bId) {
+  const a = sim.crewOf(aId), b = sim.crewOf(bId); if (!a || !b || a.id === b.id) return;
+  for (const [pri, hlp] of [[a, b], [b, a]]) {
+    const cs = pri.caseId && sim.caseOf(pri.caseId);
+    if (cs && cs.vstricna && cs.vstricna.state === 'offered' && cs.vstricna.primaryCrewId === pri.id) {
+      const r = sim.assignVstricna(cs.id, hlp.id); sel.c = cs.id; sel.k = hlp.id;
+      toast(r.ok ? `${hlp.name} → vstřícná jízda k ${pri.name}` : r.msg, r.ok ? '' : 'warn'); render(); return;
+    }
+  }
+  toast('Posádky lze propojit jen při vstřícné jízdě: pacient musí být schopen překladu a periferní RZP ho veze.', 'warn');
 }
 document.addEventListener('pointerdown', ev => {
   const t = ev.target.closest('.tile[data-crew], .chip[data-crew]');
@@ -1369,6 +1398,7 @@ function dragEnd(ev, cancel) {
   suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
   if (cancel) return;
   const tg = dropTarget(ev.clientX, ev.clientY); if (!tg) return;
+  if (tg.dataset.crew && !tg.dataset.case && !tg.dataset.dropCase) { if (!/^x-/.test(d.id)) dropOnCrew(d.id, tg.dataset.crew); return; }
   if (/^x-/.test(d.id)) {
     const acs = sim.caseOf(tg.dataset.case || tg.dataset.dropCase); if (!acs) return;
     const r = sim.sendAgency(acs.id, d.id.slice(2)); sel.c = acs.id;
@@ -1416,6 +1446,8 @@ document.addEventListener('click', ev => {
   const ly = t.closest('[data-layer]'); if (ly) { layers[ly.dataset.layer] = !layers[ly.dataset.layer]; renderToolsOnce(); glApplyLayers(); render(); return; }
   const ho = t.closest('[data-hosp]'); if (ho) { toast('Avízo předáno: ' + D.hospitals.find(h => h.id === ho.dataset.hosp).name, ''); return; }
   if (t.closest('#map')) return;
+  // klik do volného místa pod případy sbalí všechny karty (žádný není rozkliknutý do detailu)
+  if (t.closest('#cases') && !t.closest('[data-case]') && !t.closest('[data-crew]') && !t.closest('button') && !t.closest('input')) { if (sel.c) { sel.c = null; syncSelectionToMain(); render(); } return; }
   const ck = t.closest('[data-crew]'), cc = t.closest('[data-case]');
   if (ck && !t.closest('#modal')) {
     ev.preventDefault();
@@ -1427,7 +1459,9 @@ document.addEventListener('click', ev => {
     render(); return;
   }
   if (cc) {
-    ev.preventDefault(); selectCaseFromElement(cc, t);
+    ev.preventDefault();
+    if (t.closest('#cases') && sel.c === cc.dataset.case && !t.closest('[data-crew]') && !t.closest('button, a, input, summary, [data-act]')) { sel.c = null; syncSelectionToMain(); render(); return; }
+    selectCaseFromElement(cc, t);
   }
 });
 $('btn-end').addEventListener('click', () => { if (sim) { sim.s.ended = true; speed = 0; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} endModal(); } });

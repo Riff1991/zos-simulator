@@ -500,7 +500,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   let wake = null, texts = [], tp = 0;
   for (let i = 0; i < 2500; i++) { const c = sim._spawn(); if (!wake && c.fate === 'wakes') wake = c; for (const r of c.radioReports || []) texts.push(r.text); if (/transport pacienta/i.test(c.up)) tp++; }
   if (tp) throw new Error('příznak Transport pacienta se stále generuje');
-  if (texts.length < 200 || new Set(texts).size / texts.length < 0.95) throw new Error('datové zprávy IZS se opakují');
+  if (texts.length < 200 || new Set(texts.filter(x => !/^nabírá se/.test(x))).size / texts.filter(x => !/^nabírá se/.test(x)).length < 0.92) throw new Error('datové zprávy IZS se opakují');
   if (!wake) throw new Error('chybí případ, kdy se pacient probírá');
   wake.status = 'active'; sim.s.cases.push(wake); sim.s.t = wake.wakeAt + 1; sim._caseStep(wake);
   if (wake.n !== 2 || wake.nDopl !== 2) throw new Error('probírající se pacient nesnížil naléhavost na doplňkovou N2');
@@ -638,4 +638,34 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     if (!sim.removeLibero(rz.id).ok || rz.rlp || lib.state !== 'base') throw new Error('LIBERO se neodpřáhlo');
   }
   console.log('FR, ZZUM příznak, návrat v režimu N3, odpřažení LIBERO true');
+}
+// datovky: nejdřív „nabírá se“, složky přiřazené rovnou, vyžadované složky u výzev bez datovky, věkový filtr
+{
+  const sim = new Sim({ seed: 733, mode: 'free', startHour: 10, muEnabled: false });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  let withDz = 0, autoAg = 0, need = null;
+  for (let i = 0; i < 1500; i++) {
+    const c = sim._spawn();
+    const U = c.up.toUpperCase();
+    if (c.age < 12 && /ALKOHOL|DROGY/.test(U)) throw new Error('alkohol/drogy u dítěte do 12 let: ' + c.up);
+    if (c.age < 5 && /AGRES/.test(U)) throw new Error('agresivní dítě do 5 let: ' + c.up);
+    const rr = c.radioReports || [];
+    if (rr.length) {
+      withDz++;
+      if (rr[0].id !== 'dz-in' || !/^nabírá se: /.test(rr[0].text)) throw new Error('první datovka musí být „nabírá se“');
+      if (rr[0].at >= c.readyAt || c.readyAt - c.createdAt < 180 || c.readyAt - c.createdAt > 300) throw new Error('nabírání datovkového případu má trvat 3–5 min');
+      if (c.agencies && Object.values(c.agencies).some(a => a.auto)) autoAg++;
+    } else if (c.agNeed && !need) need = c;
+  }
+  if (!withDz || !autoAg) throw new Error('chybí případy s datovkou nebo automaticky přiřazenou složkou');
+  if (!need) throw new Error('chybí výzva s příznakem PČR/HZS bez datovky');
+  // dokud se případ nabírá, složku nevyžadujeme; po převzetí výzvy ano
+  if (need.agencies) throw new Error('složka se nesmí vyžadovat během nabírání');
+  need.readyAt = sim.s.t; sim.s.cases.push(need); sim._caseStep(need);
+  const k = need.agNeed === null && Object.keys(need.agencies || {})[0];
+  if (!k || need.agencies[k].state !== 'requested' || !need.agencies[k].fromCall) throw new Error('výzva s příznakem má vyžadovat složku');
+  if (sim._agencyHold(need)) throw new Error('vyžadovaná složka nesmí zdržet posádku');
+  sim.s.t += 400; sim._agencyStep(need);
+  if (!need.agencies[k].penal) throw new Error('nepřiřazená složka se má po 6 min trestat');
+  console.log('datovky: nabírá se → výzva za 3–5 min, složky, věkový filtr true');
 }

@@ -182,3 +182,23 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - ZZUM příznak lze zapnout, jen když je k případu vyslána RZP ze ZZUM stanoviště; u N1 ne (lékař povinný).
 - Zásahová jednotka PČR z Českého Krumlova: modelována jen jako datové zprávy OS KŘP s dojezdem 12–25 min (okres ČK) / 30–65 min (jinde).
 - Rádio: přepis relace se v okně ukáže po 3,5 s, řádky terminálu po 4 s a dalších ~2,3 s za sebou (skutečný čas).
+
+### Datové zprávy – zeštíhlení (15. 11. 2026, anketa)
+- Styl: jen podstatné pro ZOS. Bezpečnost přístupu, počet zraněných, vyprošťování, ohrožení života a nebezpečí. Žádné složení jednotek (CAS, RZA, JSDH…), žádné ETA „kdo jede“.
+- Vyřazeno: odtah a úklid vozovky, dokumentace nehody, měření místa, výslech svědků; řízení dopravy, objízdné trasy, dechové zkoušky, ztotožnění osob.
+- Popis nehody ponechán, ale bez barev: jen typ (osobní vozidlo, dodávka, nákladní vozidlo, kamion, autobus, motocykl, skútr, cyklista…) a druh střetu.
+- eCall: jen poloha, hlas volajícího a případné upřesnění; bez paliva, počtu osob s pásy, přesnosti GPS a směru jízdy.
+- Červeně: bezpečnost přístupu (včetně „bezpečno, ZZS může“), počet zraněných, vyprošťování, ohrožení života a nebezpečí (KPR, požár/kouř/únik, zbraň/útočník, LZS). Ostatní zprávy normálně.
+
+### Datové zprávy, složky a výzvy (15. 11. 2026, anketa)
+- Výzvy mají víc odpovídat datovkám: rozšířit repertoár druhů událostí podle indikací v databázi (pád z výšky, pracovní úraz, KPR svědků, pokousání, domácí násilí, střet se zvěří, vlak, výtah, CO, plyn, cyklista + víc variant stávajících). Počet případů s datovkou jen mírně roste, jde o realistické typy (DN, požáry, tonutí, oběšení, napadení, psychiatrie, asistence, úrazy v terénu, otevírání bytu, veřejná místa). Zbytek zůstává jen z linky 155.
+- Pořadí u případu s datovkou: nejdřív datovka „nabírá se: <druh> – <adresa>“ (linka 112 / 150 / 158), náš výjezd (výzva) přijde po 3–5 min od začátku nabírání, potom postupně podrobnosti.
+- Složky: u případů, které přijdou datovkou z 112/150/158, je složka (PČR a/nebo HZS) přiřazena rovnou. U ostatních výzev s příznakem PČR/HZS (např. „+ PČR“, „Asistence u zásahu HZS“, „Na žádost PČR“) složku vyžadujeme: červené upozornění s dlaždicí jako u lékaře, po ~6 min trestný bod. Posádka kvůli tomu nečeká.
+- Nesmysly: filtr podle věku. Alkohol a drogy až od 12 let, agresivita až od 5 let (žádné agresivní nebo opilé dítě 0 let). Intoxikace alkoholem je možná od 12 let.
+- UI: kliknutí do volného místa pod seznamem případů sbalí všechny karty (žádný případ není rozkliknutý do detailu).
+
+### Indikace, vstřícná jízda, hlas (15. 11. 2026)
+- Indikace (Intoxikace, Bolesti na hrudi, Dušnost, Dopravní nehoda…) zůstává u případu vždy stejná a nadřazená; datovka může měnit jen popis. Zpráva „nabírá se“ začíná indikací a ukazuje zdroj (KOPIS HZS / OS KŘP / TCTV 112 / eCall) a linku.
+- Vstřícná jízda: dlaždici periferní RZP lze přetáhnout na dlaždici volné RZP z oblasti u nemocnice a naopak. Informace o schopnosti překladu je v detailu výjezdu i posádky.
+- Druhý klik na rozbalený výjezd v seznamu ho sbalí.
+- Výpadky zvuku: příčinou bylo zahlcení nebo zaseknutí hlasového modulu při rychlém běhu hry. Opraveno frontou s předsyntézou jedné věty, časovými limity a restartem modulu.

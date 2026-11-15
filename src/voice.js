@@ -3,7 +3,7 @@
 const ZOS_VOICE = (function () {
   let worker = null, state = 'off', progress = 0, err = '', ctx = null, master = null, volume = 0.6, tempo = 0.75;
   // cloudový hlas (Azure Speech přes vlastní proxy); Piper zůstává offline záloha
-  let pReady = false, cloudUrl = '', cloudDown = false, cloudErrors = 0;
+  let pReady = false, cloudUrl = '', cloudDown = false, cloudErrors = 0, stalls = 0, restarts = 0;
   function setCloud(url) { const u = String(url || '').trim().replace(/\/+$/, ''); if (u !== cloudUrl) { cloudUrl = u; cloudDown = false; cloudErrors = 0; cache.clear(); } }
   let reqSeq = 0; const pending = new Map(), cache = new Map(), queue = [];
   let playing = false, listeners = [], speakListeners = [];
@@ -35,7 +35,7 @@ const ZOS_VOICE = (function () {
         const p = pending.get(m.id); if (!p) return; pending.delete(m.id);
         if (m.type === 'audio') p.resolve({ pcm: m.pcm, sr: m.sampleRate }); else { p.resolve(null); if (m.error) { err = m.error; } }
       };
-      worker.onerror = e => { pReady = false; if (cloudUrl) return; state = 'error'; err = (e && e.message) || 'chyba načtení hlasu'; emit(); for (const p of pending.values()) p.resolve(null); pending.clear(); };
+      worker.onerror = e => { pReady = false; for (const p of pending.values()) p.resolve(null); pending.clear(); if (cloudUrl) { worker = null; return; } state = 'error'; err = (e && e.message) || 'chyba načtení hlasu'; emit(); worker = null; if (restarts < 4) setTimeout(restartWorker, 1500); };
       worker.postMessage({ type: 'init' });
     } catch (e) { state = 'error'; err = String(e && e.message || e); emit(); }
   }
@@ -87,12 +87,28 @@ const ZOS_VOICE = (function () {
     const viaPiper = () => {
       if (!worker || !pReady) { if (cloudUrl && !worker) enable(true, true); return Promise.resolve(null); }
       const id = ++reqSeq;
-      return new Promise(resolve => { pending.set(id, { resolve }); worker.postMessage({ type: 'say', id, text: tx, ls: v.ls, ns: v.ns, nw: v.nw }); });
+      return new Promise(resolve => {
+        pending.set(id, { resolve });
+        setTimeout(() => { if (pending.has(id)) { pending.delete(id); resolve(null); } }, 25000);
+        worker.postMessage({ type: 'say', id, text: tx, ls: v.ls, ns: v.ns, nw: v.nw });
+      });
     };
     if (!cloudUrl && (!worker || state !== 'ready')) return Promise.resolve(null);
     const pr = cloudUrl && !cloudDown ? synthCloud(tx, v).then(r => r || viaPiper()) : viaPiper();
     cache.set(ck, pr); if (cache.size > 80) cache.delete(cache.keys().next().value);
+    pr.then(r => { if (!r) cache.delete(ck); });
     return pr;
+  }
+  // po opakovaném zaseknutí se Piper worker restartuje (WASM po delší hře občas přestane odpovídat)
+  function restartWorker() {
+    if (restarts >= 4) return;
+    restarts++; stalls = 0;
+    try { if (worker) worker.terminate(); } catch (e) { /* ignore */ }
+    worker = null; pReady = false;
+    for (const p of pending.values()) p.resolve(null);
+    pending.clear(); cache.clear();
+    if (state === 'ready' || state === 'loading' || state === 'error') { state = 'off'; emit(); }
+    enable(true, !!cloudUrl);
   }
   // Azure Speech přes proxy (cloudflare/tts-proxy.js): MP3 → PCM; při chybě se vrací null a použije se Piper
   async function synthCloud(tx, v) {
@@ -164,7 +180,7 @@ const ZOS_VOICE = (function () {
   function say(text, key) {
     if (!text) return;
     if (queue.length > 6) queue.splice(0, queue.length - 4);
-    queue.push({ text, key, p: state === 'ready' ? synth(text, key) : null, at: performance.now() });
+    queue.push({ text, key, p: null, at: performance.now() });
     pump();
   }
   async function pump() {
@@ -175,10 +191,13 @@ const ZOS_VOICE = (function () {
         if (performance.now() - it.at > 45000) continue;
         const c = audioCtx(); if (!c) break;
         const v = voiceOf(it.key);
-        const res = it.p ? await it.p : null;
+        if (state === 'ready' && !it.p) it.p = synth(it.text, it.key);
+        const nx = queue[0]; if (nx && state === 'ready' && !nx.p) nx.p = synth(nx.text, nx.key);
+        const res = it.p ? await Promise.race([it.p, new Promise(r => setTimeout(() => r(null), 22000))]) : null;
+        if (it.p && !res && ++stalls >= 3) restartWorker(); else if (res) stalls = 0;
         if (!res || !res.pcm || !res.pcm.length) { emitSpeak(it.key, true); await chirpOnly(v.zos); emitSpeak(it.key, false); continue; }
         let ab;
-        try { ab = await render(res.pcm, res.sr, vfor(res, v)); } catch (e) { await chirpOnly(v.zos); continue; }
+        try { ab = await Promise.race([render(res.pcm, res.sr, vfor(res, v)), new Promise((_, rej) => setTimeout(() => rej(new Error('render timeout')), 12000))]); } catch (e) { await chirpOnly(v.zos); continue; }
         emitSpeak(it.key, true);
         await new Promise(resolve => { const s = c.createBufferSource(); s.buffer = ab; s.connect(master); s.onended = resolve; s.start(); setTimeout(resolve, ab.duration * 1000 + 800); });
         emitSpeak(it.key, false);
@@ -200,7 +219,7 @@ const ZOS_VOICE = (function () {
   }
   const DEMO = [['ZCB101, zde ZCB313, příjem.', '313'], ['ZCB101 na příjmu.', 'zos'], ['ZCB313: pacienta máme ve voze, jedeme do Jindřichova Hradce na urgentní příjem, pacient je schopen překladu.', '313'], ['ZCB101 rozumí, naproti z Jindřichova Hradce posádka 312.', 'zos'], ['ZCB313 rozumí, naproti 312 z Jindřichova Hradce.', '313']];
   function demo() { for (const [t, k] of DEMO) say(t.replace(/^ZCB\d+: /, ''), k); }
-  function prefetch(text, key) { if (state === 'ready') synth(text, key); }
+  function prefetch(text, key) { if (state === 'ready' && pending.size < 3 && queue.length < 4) synth(text, key); }
   function busy() { return playing || queue.length > 0; }
   return { enable, unlock, setVolume, setTempo, setCloud, onSpeak, say, prefetch, status, onChange, speakable, busy, chirp: zos => chirpOnly(!!zos), demo, renderExchange, DEMO };
 })();

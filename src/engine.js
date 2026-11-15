@@ -388,10 +388,10 @@ class Sim {
       const a = A[kind]; if (!a) continue;
       const nm = kind === 'pcr' ? 'PČR' : 'HZS';
       if (a.state === 'sent' && t >= a.arriveAt) { a.state = 'onscene'; this.L('sys', `${cs.num}: ${nm} na místě.`, cs.id); }
-      if (a.state === 'requested' && !a.penal && t - a.reqAt > 360) { a.penal = true; this._opsScore(-1, `nevyrozuměná ${nm} na žádost posádky u ${cs.num}`, cs.id); }
+      if (a.state === 'requested' && !a.penal && t - a.reqAt > 360) { a.penal = true; this._opsScore(-1, `nevyrozuměná ${nm} ${a.fromCall ? 'dle výzvy' : 'na žádost posádky'} u ${cs.num}`, cs.id); }
     }
   }
-  _agencyHold(cs) { const A = cs.agencies || {}; return ['pcr', 'hzs'].some(k => A[k] && A[k].reqAt != null && (A[k].state === 'requested' || A[k].state === 'sent') && this.s.t - A[k].reqAt < 2400); }
+  _agencyHold(cs) { const A = cs.agencies || {}; return ['pcr', 'hzs'].some(k => A[k] && A[k].reqAt != null && !A[k].fromCall && (A[k].state === 'requested' || A[k].state === 'sent') && this.s.t - A[k].reqAt < 2400); }
   // posádka žádá součinnost (rádiem)
   _requestAgency(crew, cs, kind, why) {
     const A = cs.agencies || (cs.agencies = {});
@@ -1146,10 +1146,11 @@ class Sim {
   _typicalSymptom(c) {
     const ind = ZOS_DATA.indications.find(i => i.id === c.ind);
     if (!ind) return null;
-    const have = new Set((c.symptoms || []).map(x => x.toLocaleLowerCase('cs-CZ')));
+    const nk = x => x.replace(/^[^0-9A-Za-zÁ-žÀ-ÿ]+/, '').trim().toLocaleLowerCase('cs-CZ');
+    const have = new Set((c.symptoms || []).map(nk));
     for (let i = 0; i < 6; i++) {
       let set; try { set = this._symptomSet(ind.symptomKey || ind.klasif, 2); } catch (e) { return null; }
-      const pool = set.filter(x => !have.has(x.toLocaleLowerCase('cs-CZ')) && !/DYNAMICKÁ|DOSPĚLÝ|DÍTĚ|ZZUM|PEDIATR|NEDÝCHÁ|BEZVĚDOMÍ|AVPU-U|KPR|^[#(]/i.test(x));
+      const pool = set.filter(x => !have.has(nk(x)) && !/DYNAMICKÁ|DOSPĚLÝ|DÍTĚ|ZZUM|PEDIATR|NEDÝCHÁ|BEZVĚDOMÍ|AVPU-U|KPR|^[#(]/i.test(x));
       if (pool.length) return this.pick(pool);
     }
     return null;
@@ -1345,7 +1346,10 @@ class Sim {
     const isChild = symptomText.includes('DÍTĚ');
     const minAge = isChild ? 0 : symptomText.includes('DOSPĚLÝ') ? Math.max(18, ind.age[0]) : ind.age[0];
     const maxAge = isChild ? 17 : ind.age[1];
-    const age = over.age != null ? over.age : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
+    // věkový filtr: žádný opilý, zadrogovaný nebo agresivní kojenec (alkohol/drogy až od 12 let, agrese od 5 let)
+    const ageMin = /ALKOHOL|DROGY/.test(symptomText) ? 12 : /AGRES/.test(symptomText) ? 5 : 0;
+    const age0 = over.age != null ? over.age : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
+    const age = over.age == null && age0 < ageMin ? this.ri(ageMin, Math.max(maxAge, ageMin)) : age0;
     const whKey = over.where || this._pickWhere(ind, age);
     // veřejná místa pod „ulicí“: nádraží, úřady, obchody, sport, ubytování (reálná místa z OSM)
     let poiKey = whKey;
@@ -1388,10 +1392,14 @@ class Sim {
     const town = { n: townN };
     const isRoadAccident = ind.id === 'dn_poly' || ind.id === 'dn_lehke';
     const patientCount = over.patientCount != null ? over.patientCount : !isRoadAccident ? 1 : symptomText.includes('VÍCE ZRANĚNÝCH') ? this.ri(2, 4) : this.rnd() < 0.025 ? this.ri(2, 3) : 1;
-    const intake = over.intake != null ? over.intake : n === 1 ? this.ri(70, 150) : this.ri(90, 200); // podle říjnového vzorku (medián volání→výzva 141 s u N1)
-    const poznamka = this._zosNote(ind, up, whKey);
     const extKinds = over.extKinds !== undefined ? over.extKinds : EXTMSG.kindFor(ind.id, poiKey, () => this.rnd());
-    const radioReports = extKinds ? this._extReports(extKinds, { t, intake, patientCount, up, addr, town: townN, okres, where: whKey, sex, lat, lon }) : [];
+    // případ s datovkou: nejdřív „nabírá se“ (112/150/158), výzva za 3–5 min, pak podrobnosti; složky jedou samy
+    const dzFirst = !!extKinds && over.extKinds === undefined;
+    const intake = over.intake != null ? over.intake : dzFirst ? this.ri(180, 300) : n === 1 ? this.ri(70, 150) : this.ri(90, 200); // podle říjnového vzorku (medián volání→výzva 141 s u N1)
+    const poznamka = this._zosNote(ind, up, whKey);
+    const eo = { t, intake, patientCount, up, addr, town: townN, okres, where: whKey, sex, lat, lon };
+    const radioReports = extKinds ? this._extReports(extKinds, eo) : [];
+    if (dzFirst) radioReports.unshift({ id: 'dz-in', at: t + this.ri(8, 35), received: false, acknowledged: false, source: EXTMSG.intakeSource(extKinds[0], () => this.rnd()), text: EXTMSG.intakeText(extKinds[0], addr, ind.klasif), red: false });
     const placeDescription = this._placeText(D.place && D.place[poiKey] ? poiKey : whKey);
     const placeText = this.rnd() < 0.2 ? placeDescription.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : placeDescription;
     const op = 'OP-' + this.pick(['A', 'B', 'C', 'D']);
@@ -1413,9 +1421,20 @@ class Sim {
       hospType, trans: this.rnd() < ind.trans, scene: ind.scene, pocet: patientCount, patientCount, patientsRemaining: patientCount, patientsHandled: 0, radioReports,
       poznamka: noteFull, ozn: oznName, oznRel, patientName, ageText: this._ageText(age),
       phone,
-      src: extKinds && this.rnd() < 0.6 ? EXTMSG.SRC_CALL[extKinds[0]] : this.pick(['Linka 155', 'Linka 155', 'Linka 155', 'Linka 112', '112 – přeposláno']), op,
+      src: extKinds && (dzFirst || this.rnd() < 0.6) ? EXTMSG.SRC_CALL[extKinds[0]] : this.pick(['Linka 155', 'Linka 155', 'Linka 155', 'Linka 112', '112 – přeposláno']), op,
       intake,
     });
+    if (dzFirst) {
+      const ag = Object.assign({}, eo.ag);
+      if (/PČR/.test(up)) ag.pcr = true;
+      if (/HZS/.test(up)) ag.hzs = true;
+      if (Object.keys(ag).length) { c.agencies = {}; for (const k of Object.keys(ag)) c.agencies[k] = { state: 'sent', sentAt: t + 20, arriveAt: t + intake + this.rr(240, 840), auto: true }; }
+    } else if (!extKinds && over.extKinds === undefined && !over.symptoms) {
+      const need = [];
+      if (/PČR/.test(up)) need.push('pcr');
+      if (/HZS/.test(up)) need.push('hzs');
+      if (need.length) c.agNeed = need;
+    }
     if (ind.id === 'resus' || ind.id === 'nzo' || this._isApneicUnresponsive(symptoms)) {
       // výsledek KPR: odhad podle věku (ostrá data o výsledku s věkem nejsou k dispozici)
       const old = age >= 80, mid = age >= 65;
@@ -1452,9 +1471,10 @@ class Sim {
       for (let tries = 0; tries < 8; tries++) { items = EXTMSG.KINDS[k](ctx); if (!items.some(x => hist.includes(x.text))) break; }
       out = out.concat(items);
     }
+    o.ag = EXTMSG.agenciesFor(kinds, ctx);
     out.sort((a, b) => a.dt - b.dt);
     for (const x of out) { hist.push(x.text); if (hist.length > 400) hist.shift(); }
-    return out.map((x, i) => Object.assign({ id: `dz-${i + 1}`, at: o.t + o.intake + x.dt, received: false, acknowledged: false, source: this.pick(EXTMSG.SRC[x.src] || ['Linka 112']), text: x.text }, x.patientCount ? { patientCount: x.patientCount } : {}));
+    return out.map((x, i) => Object.assign({ id: `dz-${i + 1}`, at: o.t + o.intake + x.dt, received: false, acknowledged: false, source: this.pick(EXTMSG.SRC[x.src] || ['Linka 112']), text: x.text, red: !!EXTMSG.isRed(x.text, x.patientCount) }, x.patientCount ? { patientCount: x.patientCount } : {}));
   }
   _muFirstSceneReport(cs, crew, at) {
     const m = cs.mu;
@@ -1746,6 +1766,12 @@ class Sim {
       if (t >= c.readyAt) {
         c.status = 'waiting';
         this.L('case', `Nový případ ${c.num}: N${c.n}${c.dyn ? ' dyn.' : ''} – ${c.klasif}, ${c.addr}`, c.id);
+        // výzva obsahuje příznak PČR / HZS, ale nepřišla datovkou: složku musí přiřadit dispečer
+        if (c.agNeed) {
+          const A = c.agencies || (c.agencies = {});
+          for (const k of c.agNeed) if (!A[k]) { A[k] = { state: 'requested', reqAt: t, why: 'příznak ve výzvě', fromCall: true }; this.L('req', `${c.num}: výzva vyžaduje ${k === 'pcr' ? 'PČR' : 'HZS'} (${A[k].why})`, c.id); }
+          c.agNeed = null;
+        }
       }
       return;
     }

@@ -8,6 +8,27 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.3 – 2026-11-15
+
+> Datové zprávy od HZS a PČR jsou stručné a jen k věci: bezpečnost přístupu, počet zraněných, vyprošťování a nebezpečí. Kritické zprávy jsou červeně. Víc druhů událostí, datovka přichází před výzvou a složky jedou samy.
+
+- Zprávy bez techniky jednotek (CAS, RZA…), bez odtahů, úklidu, dokumentace nehody, řízení dopravy, dechových zkoušek a ztotožňování.
+- Popis nehody bez barev vozidel, jen typ (osobní vozidlo, dodávka, kamion, motocykl, cyklista…).
+- eCall jen s polohou a hlasem volajícího, bez paliva, počtu osob, přesnosti GPS a směru.
+- Červeně: bezpečnost přístupu, počet zraněných, vyprošťování, ohrožení života a nebezpečí (v horním upozornění i v panelu případu).
+- Víc druhů událostí s datovkou: pád z výšky, pracovní úraz, KPR svědků, pokousání psem, domácí násilí, střet se zvěří, střet s vlakem, uvíznutí ve výtahu, otrava CO, únik plynu, pád cyklisty. Pestřejší následné zprávy.
+- Případy s datovkou: nejdřív datovka „nabírá se: … (112/150/158)“, výzva přijde po 3–5 min, pak postupně podrobnosti. Složky PČR/HZS jedou rovnou samy.
+- Výzvy s příznakem PČR/HZS bez datovky: červené upozornění „výzva vyžaduje policii/hasiče“, přiřadit dlaždici; po ~6 min trestný bod. Posádka kvůli tomu nečeká.
+- Věkový filtr: žádný opilý ani agresivní kojenec (alkohol a drogy až od 12 let, agrese od 5 let).
+- Kliknutí do volného místa pod seznamem případů sbalí všechny karty.
+- Kliknutí na rozbalený výjezd v seznamu ho sbalí.
+- První datovka „nabírá se: <indikace> – <upřesnění> – <adresa>“ ukazuje zdroj (KOPIS HZS / OS KŘP / TCTV 112 / eCall) a linku (112, 150, 158). Indikace zůstává nadřazená; zpráva o opilé osobě se už neobjeví u dušnosti, bolesti na hrudi, poruchy vědomí ani křečí.
+- Vstřícná jízda přetažením: dlaždici periferní RZP s pacientem přetáhněte na dlaždici volné RZP z oblasti u nemocnice, nebo naopak. Informace „schopen překladu“ je v detailu výjezdu i v detailu posádky.
+- Hlas: opravy výpadků zvuku. Fronta už nezahlcuje hlasový modul při rychlém běhu hry (syntéza se spouští až těsně před přehráním), zaseklé požadavky se po čase zahodí a hlasový modul se po opakovaném zaseknutí nebo pádu znovu spustí.
+- Oprava: příznak „Otevírání bytu“ se u asistence mohl objevit dvakrát.
+
+---
+
 ## v0.21.2 – 2026-11-15
 
 > Rádio: na konci každé relace je ticho a pípnutí konce vysílání, takže se poslední slabika věty neztrácí. Zvuk vysílačky je realističtější (jemné digitální vrčení kodeku, míň drsné zkreslení, bez náhodných výpadků) a každá posádka mluví jiným mužským hlasem.

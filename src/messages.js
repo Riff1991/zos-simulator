@@ -2,10 +2,8 @@
 // Texty se skládají z mnoha částí podle typu události a fáze zásahu; engine hlídá, aby se neopakovaly.
 // Vše je smyšlené, jednotky a obce se odvozují od místa události.
 const ZOS_EXTMSG = (function () {
-  const HZS_ST = ['České Budějovice', 'Tábor', 'Písek', 'Strakonice', 'Jindřichův Hradec', 'Prachatice', 'Český Krumlov', 'Dačice', 'Milevsko', 'Třeboň', 'Týn nad Vltavou', 'Trhové Sviny', 'Vimperk', 'Blatná', 'Kaplice', 'Soběslav', 'Vodňany', 'Volary'];
   const SRC = { hzs: ['DZ HZS · KOPIS JčK', 'DZ 150 · KOPIS HZS', 'KOPIS HZS JčK'], pcr: ['DZ PČR · OS KŘP JčK', 'DZ 158 · OS PČR', 'OS KŘP JčK'], ecall: ['eCall · TCTV 112'], tctv: ['DZ 112 · TCTV JčK', 'TCTV 112'] };
-  const COLORS = ['bílá', 'černá', 'stříbrná', 'šedá', 'modrá', 'červená', 'zelená', 'tmavě modrá', 'vínová', 'béžová', 'žlutá', 'oranžová'];
-  const CARS = ['OA', 'OA', 'OA', 'OA', 'dodávka', 'SUV', 'OA kombi', 'pick-up', 'OA s přívěsem'];
+  const CARS = ['osobní vozidlo', 'osobní vozidlo', 'osobní vozidlo', 'osobní vozidlo', 'dodávka', 'SUV', 'osobní vozidlo (kombi)', 'pick-up', 'osobní vozidlo s přívěsem'];
   const HEAVY = ['nákladní vozidlo', 'kamion s návěsem', 'traktor s vlekem', 'autobus', 'cisterna', 'sklápěč', 'zemědělský stroj'];
   const TWO = ['motocykl', 'skútr', 'cyklista', 'elektrokoloběžka', 'moped', 'čtyřkolka'];
   const DIRS = ['na', 've směru na', 'směr'];
@@ -15,29 +13,11 @@ const ZOS_EXTMSG = (function () {
   const join = parts => parts.filter(Boolean).join(', ').replace(/\s+/g, ' ').trim();
   const cap = s => s ? s[0].toLocaleUpperCase('cs-CZ') + s.slice(1) : s;
 
-  function nearestSt(ctx) { // nejbližší stanice HZS podle názvu obce (zjednodušeně), jinak náhodná okolní
-    if (HZS_ST.includes(ctx.town)) return ctx.town;
-    return ctx.hzsNear || pickF(ctx.r, HZS_ST);
-  }
-  function units(ctx, heavy) {
-    const r = ctx.r, st = nearestSt(ctx), u = [];
-    const tech = heavy ? pickF(r, ['CAS 20 + RZA', 'CAS 30 + VYA', 'CAS 20, RZA', 'CAS 30, CAS 20, RZA', 'RZA + CAS 20']) : pickF(r, ['CAS 20', 'CAS 30', 'CAS 20 + VEA', 'RZA', 'CAS 20 + DA']);
-    u.push(`HZS PS ${st} (${tech})`);
-    if (r() < 0.6 && ctx.town && ctx.town !== st) u.push(`JSDH ${ctx.town}${maybe(r, 0.5, ' (' + pickF(r, ['CAS 20', 'DA-L1Z', 'CAS 32', 'DA']) + ')')}`);
-    if (heavy && r() < 0.3) u.push(`HZS PS ${pickF(r, HZS_ST.filter(x => x !== st))} – ${pickF(r, ['VYA', 'AZ 30', 'TA', 'jeřáb', 'VEA'])}`);
-    return u.join(', ');
-  }
-  function patrol(ctx, traffic) {
-    const r = ctx.r, t = ctx.town || 'obce';
-    if (traffic && r() < 0.55) return pickF(r, [`hlídka DI ${ctx.okres || t}`, `dopravní inspektorát ${ctx.okres || t}`, `hlídka DI`]);
-    return pickF(r, [`hlídka OOP ${t}`, `hlídka OOP ${t}`, `hlídka PMJ`, `hlídka OOP ${t} a PMJ`, `motohlídka`, ctx.big ? `MP ${t}` : `hlídka OOP ${t}`]);
-  }
-  const eta = r => `${pickF(r, ['ETA', 'dojezd', 'předpokládaný příjezd'])} ${ri(r, 3, 15)} min`;
 
   // ---------- dopravní nehoda ----------
   function dn(ctx) {
     const r = ctx.r, heavy = r() < 0.18, two = !heavy && r() < 0.2;
-    const car = () => `${pickF(r, CARS)} (barva ${pickF(r, COLORS)})`;
+    const car = () => pickF(r, CARS);
     const v1 = car(), v2 = heavy ? pickF(r, HEAVY) : two ? pickF(r, TWO) : car();
     const single = r() < 0.38;
     const what = single ? `${v1} – ${pickF(r, ['mimo vozovku', 'v příkopu', 'na střeše v poli', 'náraz do stromu', 'náraz do sloupu', 'na boku v protisměru', 'v potoce', 'náraz do svodidel', 'sjetí ze srázu', 'náraz do zídky', 'přes zábradlí mostu', 'náraz do zastávky'])}`
@@ -48,35 +28,30 @@ const ZOS_EXTMSG = (function () {
     const persons = ctx.patientCount > 1 ? `${ctx.patientCount} zranění` : pickF(r, ['1 zraněný', 'zraněná 1 osoba', 'počet zraněných neznámý', 'zatím 1 zraněný, další se ověřují', 'osoby se pohybují kolem vozidel', 'řidič ve vozidle', 'svědci hlásí zraněnou osobu']);
     // 1. první zpráva (HZS nebo PČR)
     const first = r() < (trapped || heavy ? 0.7 : 0.45) ? 'hzs' : 'pcr';
-    if (first === 'hzs') out.push({ src: 'hzs', dt: ri(r, 25, 110), text: join([`DN ${pickF(r, ['se zraněním', 'osobních vozidel', 'se zraněním osob', ''])}`.trim() + ` – ${where}`, what, persons, trapped ? pickF(r, ['osoba zaklíněná ve vozidle', 'řidič zaklíněný, nutné vyproštění', 'uvězněná osoba na místě spolujezdce', 'zaklíněné dolní končetiny řidiče']) : maybe(r, 0.5, pickF(r, ['únik provozních kapalin', 'vozidlo kouří z motorového prostoru', 'vozidla blokují oba pruhy', 'trosky na vozovce', 'airbagy aktivovány'])), `vysláno: ${units(ctx, trapped || heavy)}`]) });
-    else out.push({ src: 'pcr', dt: ri(r, 25, 110), text: join([`DN – ${where}`, what, persons, `${patrol(ctx, true)} ${pickF(r, ['vyslána', 'na cestě', 'jede na místo', 'vyslána, ' + eta(r)])}`, maybe(r, 0.4, pickF(r, ['viník z místa ujel', 'svědci na místě', 'provoz stojí', 'tvoří se kolona', 'oznamovatel u vozidla'])), maybe(r, 0.35, 'HZS vyrozuměn')]) });
+    const hazard = trapped ? pickF(r, ['osoba zaklíněná ve vozidle', 'řidič zaklíněný, nutné vyproštění', 'uvězněná osoba na místě spolujezdce', 'zaklíněné dolní končetiny řidiče']) : maybe(r, 0.5, pickF(r, ['únik provozních kapalin', 'vozidlo kouří z motorového prostoru', 'vozidla blokují oba pruhy', 'airbagy aktivovány']));
+    if (first === 'hzs') out.push({ src: 'hzs', dt: ri(r, 25, 110), text: join([`DN – ${where}`, what, persons, hazard]) });
+    else out.push({ src: 'pcr', dt: ri(r, 25, 110), text: join([`DN – ${where}`, what, persons, maybe(r, 0.35, 'oznamovatel u vozidla')]) });
     // 2. upřesnění počtu / situace
     if (ctx.patientCount > 1) out.push({ src: r() < 0.5 ? 'hzs' : 'pcr', dt: ri(r, 120, 260), patientCount: ctx.patientCount, text: join([pickF(r, ['upřesnění', 'doplnění', 'situace na místě']) + `: ${ctx.patientCount} zraněných`, pickF(r, [`z toho ${ri(r, 1, Math.max(1, ctx.patientCount - 1))} vážně`, 'jedna osoba nekomunikuje', 'dítě ve vozidle', 'jedna osoba ležící u vozovky', 'zranění v obou vozidlech', 'dva zranění chodí po místě']), maybe(r, 0.4, pickF(r, ['požadavek na další posádky ZZS', 'zvažte LZS', 'svolejte další prostředky']))]) });
-    else if (ctx.extraPerson) out.push({ src: 'pcr', dt: ri(r, 120, 260), patientCount: 2, text: join([`${patrol(ctx, true)} na místě`, pickF(r, ['ve druhém vozidle další zraněná osoba', 'nalezen druhý účastník mimo vozovku', 'spolujezdec udává bolest hrudníku', 'další zraněný – cyklista u krajnice']), 'celkem 2 zranění']) });
+    else if (ctx.extraPerson) out.push({ src: 'pcr', dt: ri(r, 120, 260), patientCount: 2, text: join([pickF(r, ['ve druhém vozidle další zraněná osoba', 'nalezen druhý účastník mimo vozovku', 'spolujezdec udává bolest hrudníku', 'další zraněný – cyklista u krajnice']), 'celkem 2 zranění']) });
     else out.push({ src: first === 'hzs' ? 'pcr' : 'hzs', dt: ri(r, 120, 280), text: first === 'hzs'
-      ? join([`${patrol(ctx, true)} ${pickF(r, ['na místě', 'dorazila', 'na místě od ' + ctx.clock(ri(r, 3, 8))])}`, pickF(r, ['řídí dopravu', 'uzavírá úsek', 'kyvadlový provoz', 'objízdná trasa přes obec', 'jeden pruh průjezdný', 'komunikace neprůjezdná, ZZS příjezd od ' + (ctx.dirTown || 'obce')]), maybe(r, 0.4, pickF(r, ['dechová zkouška u řidiče pozitivní', 'řidič bez řidičského oprávnění', 'dechová zkouška negativní', 'účastníci mimo vozidla', 'zjišťuje se totožnost']))])
-      : join([`${units(ctx, trapped || heavy).split(',')[0]} ${pickF(r, ['na místě', 'příjezd na místo', 'na místě – průzkum'])}`, pickF(r, ['protipožární opatření', 'odpojení akumulátoru', 'zajištění vozidla proti pohybu', 'zasypávání provozních kapalin sorbentem', 'osvětlení místa', 'stabilizace vozidla']), maybe(r, 0.5, pickF(r, ['všechny osoby mimo vozidla', 'osoby vyprošťovat není třeba', 'řidič sedí ve vozidle, při vědomí', 'zraněný ošetřován svědky']))]) });
-    // 3. vyproštění / ukončení
+      ? join([pickF(r, ['místo zajištěno, přístup bezpečný', 'ZZS příjezd od ' + (ctx.dirTown || 'obce') + ', přístup bezpečný', 'vyčkejte u vozidla PČR, přístup zatím nezajištěn', 'komunikace průjezdná jedním pruhem, ZZS může k pacientům']), maybe(r, 0.4, pickF(r, ['účastníci mimo vozidla', 'řidič při vědomí, komunikuje']))])
+      : join([pickF(r, ['protipožární opatření provedena, přístup bezpečný', 'vozidlo zajištěno, ZZS může k pacientům', 'únik provozních kapalin, do zajištění nevstupovat k vozidlu', 'vozidlo nestabilní, vyčkejte na zajištění']), maybe(r, 0.5, pickF(r, ['všechny osoby mimo vozidla', 'osoby vyprošťovat není třeba', 'řidič sedí ve vozidle, při vědomí', 'zraněný ošetřován svědky']))]) });
+    // 3. vyproštění
     if (trapped) out.push({ src: 'hzs', dt: ri(r, 300, 620), text: pickF(r, [
-      `${pickF(r, ['zahájeno', 'probíhá'])} vyproštění ${pickF(r, ['hydraulickým nářadím', 'odstřižením střechy', 'otevřením dveří řidiče', 'roztažením karoserie'])}, ${pickF(r, ['odhad', 'předpoklad'])} ${ri(r, 8, 25)} min`,
+      `${pickF(r, ['zahájeno', 'probíhá'])} vyproštění, ${pickF(r, ['odhad', 'předpoklad'])} ${ri(r, 8, 25)} min`,
       `vyproštění ${pickF(r, ['ukončeno', 'dokončeno'])}, osoba ${pickF(r, ['předána ZZS', 'na páteřní desce u vozidla', 'předána posádce ZZS'])}`,
       `zaklíněná osoba – ${pickF(r, ['přístup k pacientovi zleva', 'přístup zadními dveřmi', 'osoba při vědomí, komunikuje', 'osoba nekomunikuje'])}, vyproštění pokračuje`]) });
-    else if (r() < 0.6) out.push({ src: r() < 0.5 ? 'pcr' : 'hzs', dt: ri(r, 360, 900), text: pickF(r, [
-      `${pickF(r, ['odtah', 'vyproštění vozidla'])} objednán, ${pickF(r, ['komunikace uzavřena', 'provoz řízen', 'úsek průjezdný jedním pruhem'])} ${maybe(r, 0.5, 'do odvezení pacienta')}`.trim(),
-      `${pickF(r, ['místo zajištěno', 'jednotka ukončuje činnost', 'úklid vozovky'])}, ${pickF(r, ['ZZS průjezd zajištěn', 'kolona v obou směrech', 'objížďka přes ' + (ctx.dirTown || 'obec')])}`,
-      `šetření na místě, ${pickF(r, ['dokumentace DN', 'výslech svědků', 'měření místa', 'čeká se na výjezdovou skupinu'])}`]) });
     return out;
   }
 
   // ---------- eCall ----------
   function ecall(ctx, medical) {
     const r = ctx.r, out = [], auto = !medical && r() < 0.7;
-    const veh = `${pickF(r, ['M1 osobní', 'M1 osobní', 'N1 dodávka', 'M1 osobní (SUV)'])}, ${pickF(r, ['benzín', 'nafta', 'hybrid', 'elektro', 'LPG'])}`;
-    const pax = medical ? ri(r, 1, 3) : ri(r, 1, 4);
     const voice = medical ? pickF(r, ['řidič hlásí, že spolujezdec zkolaboval', 'řidička udává, že manžel nereaguje', 'spolujezdec hlásí křeče u řidiče, vozidlo stojí na krajnici', 'řidič udává bolest na hrudi, stojí na odpočívadle', 'volající hlásí silnou dušnost dítěte ve voze'])
       : pickF(r, ['bez odezvy', 'bez odezvy, slyšet sténání', 'řidič komunikuje, udává bolest krku', 'řidička plače, nedokáže popsat situaci', 'hovor přerušen', 'spolujezdec hlásí krvácení řidiče', 'řidič zmatený, neví kde je', 'hlasové spojení nenavázáno']);
-    out.push({ src: 'ecall', dt: ri(r, 15, 60), text: join([`${auto ? 'Automatický' : 'Manuální'} eCall – ${ctx.addr}`, `vozidlo ${veh}`, `${pax} ${pax === 1 ? 'osoba' : 'osoby'} (pásy)`, `poloha GPS ±${pickF(r, [5, 10, 15, 25, 40, 80])} m`, `směr jízdy ${pickF(r, ['S', 'J', 'V', 'Z', 'SV', 'JZ', 'SZ', 'JV'])}`, `hlas: ${voice}`]) });
-    if (!medical) out.push({ src: r() < 0.6 ? 'hzs' : 'pcr', dt: ri(r, 100, 240), text: join([pickF(r, ['k eCall', 'eCall – upřesnění', 'navazující hlášení k eCall']), pickF(r, ['další oznamovatel potvrzuje nehodu', 'vozidlo na střeše mimo vozovku', 'vozidlo v lese cca 20 m od silnice', 'vozidlo stojí v protisměru', 'svědek u vozidla, řidič při vědomí', 'oznamovatel neví, zda je ve voze další osoba']), r() < 0.5 ? `vysláno: ${units(ctx, false)}` : `${patrol(ctx, true)} vyslána`]) });
+    out.push({ src: 'ecall', dt: ri(r, 15, 60), text: join([`${auto ? 'Automatický' : 'Manuální'} eCall – ${ctx.addr}`, `hlas: ${voice}`]) });
+    if (!medical) out.push({ src: r() < 0.6 ? 'hzs' : 'pcr', dt: ri(r, 100, 240), text: join([pickF(r, ['k eCall', 'eCall – upřesnění', 'navazující hlášení k eCall']), pickF(r, ['další oznamovatel potvrzuje nehodu', 'vozidlo na střeše mimo vozovku', 'vozidlo v lese cca 20 m od silnice', 'vozidlo stojí v protisměru', 'svědek u vozidla, řidič při vědomí', 'oznamovatel neví, zda je ve voze další osoba'])]) });
     else if (r() < 0.6) out.push({ src: 'tctv', dt: ri(r, 80, 200), text: join(['eCall – zpětné volání', pickF(r, ['stav beze změny', 'pacient se probírá', 'vozidlo stojí na ' + pickF(r, ['odpočívadle', 'krajnici', 'parkovišti u benzinky']), 'volající bude u vozidla s výstražnými světly', 'kolemjedoucí zastavil a pomáhá'])]) });
     return out;
   }
@@ -84,13 +59,13 @@ const ZOS_EXTMSG = (function () {
   // ---------- technická pomoc – otevření bytu / domu ----------
   function otevreni(ctx) {
     const r = ctx.r, out = [];
-    const why = pickF(r, ['osoba za dveřmi nereaguje', 'senior nebere telefon několik dní', 'soused slyší volání o pomoc', 'pádem se nemůže zvednout, dveře zamčené', 'zápach z bytu, osoba nevychází', 'rodina se nemůže dovolat, klíče nemá', 'pečovatelka se nedostane dovnitř', 'pes v bytě štěká, nájemník nevychází', 'dítě samo v bytě, matka zkolabovala']);
-    out.push({ src: 'hzs', dt: ri(r, 20, 90), text: join([`TP – otevření ${ctx.where === 'rd' ? 'RD' : 'bytu'} – ${ctx.addr}${ctx.floor ? ', ' + ctx.floor : ''}`, why, `${units(ctx, false)}, ${eta(r)}`, maybe(r, 0.5, 'PČR vyrozuměna')]) });
-    if (r() < 0.6) out.push({ src: 'pcr', dt: ri(r, 120, 300), text: join([`${patrol(ctx)} ${pickF(r, ['na místě', 'dorazila', 'u dveří'])}`, pickF(r, ['čeká na HZS', 'osoba za dveřmi sténá', 'přes okno vidět ležící osobu', 'kontaktuje příbuzné', 'byt v 1. patře, okno pootevřené', 'soused má náhradní klíč – nepasuje'])]) });
+    const why = pickF(r, ['osoba za dveřmi nereaguje', 'senior nebere telefon několik dní', 'soused slyší volání o pomoc', 'pádem se nemůže zvednout, dveře zamčené', 'zápach z bytu, osoba nevychází', 'rodina se nemůže dovolat, klíče nemá', 'pečovatelka se nedostane dovnitř', 'dítě samo v bytě, matka zkolabovala']);
+    out.push({ src: 'hzs', dt: ri(r, 20, 90), text: join([`TP – otevření ${ctx.where === 'rd' ? 'RD' : 'bytu'} – ${ctx.addr}${ctx.floor ? ', ' + ctx.floor : ''}`, why]) });
+    if (r() < 0.6) out.push({ src: 'pcr', dt: ri(r, 120, 300), text: pickF(r, ['osoba za dveřmi sténá', 'přes okno vidět ležící osobu', 'osoba za dveřmi nereaguje na oslovení', 'z bytu zápach, osoba nereaguje']) });
     out.push({ src: 'hzs', dt: ri(r, 300, 660), text: pickF(r, [
-      `dveře otevřeny ${pickF(r, ['planžetou', 'přes balkon', 'odvrtáním vložky', 'oknem z žebříku', 'násilně'])}, osoba ${pickF(r, ['leží v předsíni, při vědomí', 'na zemi v koupelně, komunikuje', 'nereaguje, dýchá', 'zmatená, podchlazená', 'sedí na zemi, nemůže vstát'])}`,
-      `vstup do ${ctx.where === 'rd' ? 'domu' : 'bytu'} zajištěn, osoba ${pickF(r, ['předána ZZS', 'u ní jednotka', 'při vědomí, poraněná hlava', 'leží u postele'])}`,
-      `otevřeno, ${pickF(r, ['osoba ležící, dýchá', 'senior po pádu, bolest kyčle', 'osoba bez reakce na oslovení', 'osoba při vědomí, dehydrovaná'])}; ${pickF(r, ['byt předán PČR', 'jednotka zůstává do příjezdu ZZS', 'zajištění bytu po odjezdu'])}`]) });
+      `dveře otevřeny, osoba ${pickF(r, ['leží v předsíni, při vědomí', 'na zemi v koupelně, komunikuje', 'nereaguje, dýchá', 'zmatená, podchlazená', 'sedí na zemi, nemůže vstát'])}`,
+      `vstup do ${ctx.where === 'rd' ? 'domu' : 'bytu'} zajištěn, osoba ${pickF(r, ['předána ZZS', 'při vědomí, poraněná hlava', 'leží u postele'])}`,
+      `otevřeno, ${pickF(r, ['osoba ležící, dýchá', 'senior po pádu, bolest kyčle', 'osoba bez reakce na oslovení', 'osoba při vědomí, dehydrovaná'])}`]) });
     return out;
   }
 
@@ -98,9 +73,9 @@ const ZOS_EXTMSG = (function () {
   function pozar(ctx) {
     const r = ctx.r, out = [];
     const obj = pickF(r, ['bytu', 'kuchyně v bytě', 'RD', 'podkroví RD', 'garáže', 'kůlny u RD', 'sklepa bytového domu', 'chaty', 'dílny', 'osobního vozidla', 'komína', 'kotelny', 'stodoly', 'skladové haly', 'popelnic u domu']);
-    out.push({ src: 'hzs', dt: ri(r, 20, 80), text: join([`Požár ${obj} – ${ctx.addr}`, pickF(r, ['silné zakouření', 'plameny z okna', 'hustý dým ze střechy', 'kouř na chodbě domu', 'oznamovatel hasí sám', 'ohořelá osoba venku']), pickF(r, ['I. stupeň poplachu', 'II. stupeň poplachu', 'zvláštní stupeň poplachu', 'I. SP']), `vysláno: ${units(ctx, true)}`]) });
-    out.push({ src: 'hzs', dt: ri(r, 180, 420), text: join([`${pickF(r, ['jednotka na místě', 'průzkum ukončen', 'VZ hlásí'])}`, pickF(r, ['jedna osoba s popáleninami rukou předána ZZS', 'evakuace domu, osoba nadýchaná zplodin', 'osoba vyvedena ze zakouřeného bytu', 'majitel popálený při hašení', 'dvě osoby nadýchané kouře', 'senior vynesen z bytu, kašle']), pickF(r, ['požár lokalizován', 'probíhá hašení', 'odvětrání prostor', 'měření CO', 'dohašování'])]) });
-    if (r() < 0.5) out.push({ src: r() < 0.5 ? 'hzs' : 'pcr', dt: ri(r, 480, 900), text: pickF(r, ['požár zlikvidován, příčina se šetří', 'PČR zajišťuje místo, vyšetřovatel na cestě', 'byt neobyvatelný, sociální odbor vyrozuměn', 'koncentrace CO v normě, obyvatelé se vracejí', 'jednotka HZS ukončuje zásah']) });
+    out.push({ src: 'hzs', dt: ri(r, 20, 80), text: join([`Požár ${obj} – ${ctx.addr}`, pickF(r, ['silné zakouření', 'plameny z okna', 'hustý dým ze střechy', 'kouř na chodbě domu', 'oznamovatel hasí sám', 'ohořelá osoba venku'])]) });
+    out.push({ src: 'hzs', dt: ri(r, 180, 420), text: join([pickF(r, ['jedna osoba s popáleninami rukou předána ZZS', 'evakuace domu, osoba nadýchaná zplodin', 'osoba vyvedena ze zakouřeného bytu', 'majitel popálený při hašení', 'dvě osoby nadýchané kouře', 'senior vynesen z bytu, kašle']), pickF(r, ['požár lokalizován', 'probíhá hašení', 'dohašování', 'přístup k pacientům bezpečný'])]) });
+    if (r() < 0.4) out.push({ src: 'hzs', dt: ri(r, 480, 900), text: pickF(r, ['koncentrace CO v normě, obyvatelé se vracejí', 'požár zlikvidován, přístup bezpečný']) });
     return out;
   }
 
@@ -108,7 +83,7 @@ const ZOS_EXTMSG = (function () {
   function psych(ctx) {
     const r = ctx.r, out = [], who = ctx.sex === 'Ž' ? 'žena' : 'muž';
     const beh = pickF(r, [`${who} vyhrožuje sebevraždou`, `${who} stojí na mostě, hrozí skokem`, `${who} se zavřel v bytě, vyhrožuje podřezáním`, `${who} agresivní, ničí vybavení bytu`, `${who} zmatený, bloudí po silnici`, `${who} slyší hlasy, ohrožuje rodinu`, `${who} pod vlivem, napadá kolemjdoucí`, `${who} na střeše domu`, `${who} s nožem, sebepoškozování`, `${who} po požití léků, píše rozlučkové SMS`, `${who} v rozrušení, odmítá pomoc`, `${who} nahý venku, nekomunikuje`]);
-    out.push({ src: 'pcr', dt: ri(r, 20, 90), text: join([`${ctx.addr}`, beh, `${patrol(ctx)} ${pickF(r, ['vyslána', 'na cestě', 'na místě', 'vyslána, ' + eta(r)])}`, maybe(r, 0.5, pickF(r, ['oznamuje rodina', 'oznamuje soused', 'oznamovatel sám', 'oznámení z KIC', 'oznamuje kamarád z jiného kraje']))]) });
+    out.push({ src: 'pcr', dt: ri(r, 20, 90), text: join([`${ctx.addr}`, beh, maybe(r, 0.5, pickF(r, ['oznamuje rodina', 'oznamuje soused', 'oznamovatel sám', 'oznámení z KIC']))]) });
     // zabarikádovaná osoba v bytě/domě → zásahová jednotka PČR z Českého Krumlova (simulovaný čas dojezdu)
     const barricade = /zavřel se v bytě|odmítá otevřít/.test(beh);
     if (barricade) {
@@ -133,69 +108,216 @@ const ZOS_EXTMSG = (function () {
   // ---------- napadení / trauma na veřejnosti ----------
   function napadeni(ctx) {
     const r = ctx.r, out = [];
-    out.push({ src: 'pcr', dt: ri(r, 20, 90), text: join([`Napadení – ${ctx.addr}`, pickF(r, ['rvačka více osob', 'muž udeřen lahví do hlavy', 'pobodání, útočník utekl', 'napadení v baru', 'napadení na zastávce', 'domácí násilí, žena zraněná', 'napadení cyklisty řidičem', 'potyčka před diskotékou', 'senior okraden a sražen na zem']), `${patrol(ctx)} ${pickF(r, ['vyslána', 'na cestě', 'na místě'])}`, maybe(r, 0.5, pickF(r, ['útočník na místě', 'útočník utekl směr centrum', 'pachatel zadržen', 'popis pachatele se zjišťuje']))]) });
+    out.push({ src: 'pcr', dt: ri(r, 20, 90), text: join([`Napadení – ${ctx.addr}`, pickF(r, ['rvačka více osob', 'muž udeřen lahví do hlavy', 'pobodání', 'napadení v baru', 'napadení na zastávce', 'domácí násilí, žena zraněná', 'napadení cyklisty řidičem', 'potyčka před diskotékou', 'senior okraden a sražen na zem']), maybe(r, 0.6, pickF(r, ['útočník na místě', 'útočník utekl směr centrum', 'pachatel zadržen']))]) });
     out.push({ src: 'pcr', dt: ri(r, 150, 400), text: pickF(r, [
       `hlídka na místě, ${pickF(r, ['místo zajištěno', 'útočník zadržen', 'zraněný krvácí z hlavy', 'zraněný při vědomí, opilý', 'více zraněných – upřesní'])}`,
-      `${pickF(r, ['pachatel zajištěn', 'pátrání po pachateli', 'svědci vyslechnuti'])}, ZZS ${pickF(r, ['bezpečný přístup', 'čekat na pokyn hlídky', 'najet ke vchodu'])}`]) });
+      `${pickF(r, ['pachatel zajištěn', 'pátrání po pachateli'])}, ZZS ${pickF(r, ['bezpečný přístup', 'čekat na pokyn hlídky', 'najet ke vchodu'])}`]) });
     return out;
   }
 
   // ---------- osoba ležící / intoxikace ----------
   function intox(ctx) {
     const r = ctx.r, out = [];
-    out.push({ src: r() < 0.75 ? 'pcr' : 'tctv', dt: ri(r, 20, 100), text: join([`${ctx.addr}`, pickF(r, ['osoba ležící na chodníku', 'muž leží u zastávky, nereaguje', 'osoba silně opilá, nemůže stát', 'žena leží na lavičce, zvrací', 'mladiství po požití alkoholu', 'osoba v autě, nereaguje na klepání', 'muž spadl ze schodů, opilý', 'osoba pod vlivem drog, zmatená']), `${patrol(ctx)} ${pickF(r, ['vyslána', 'u osoby', 'na cestě'])}`]) });
+    out.push({ src: r() < 0.75 ? 'pcr' : 'tctv', dt: ri(r, 20, 100), text: join([`${ctx.addr}`, pickF(r, ['osoba ležící na chodníku', 'muž leží u zastávky, nereaguje', 'osoba silně opilá, nemůže stát', 'žena leží na lavičce, zvrací', 'mladiství po požití alkoholu', 'osoba v autě, nereaguje na klepání', 'muž spadl ze schodů, opilý', 'osoba pod vlivem drog, zmatená']), ]) });
     if (r() < 0.7) out.push({ src: 'pcr', dt: ri(r, 140, 380), text: pickF(r, [
-      `hlídka u osoby, ${pickF(r, ['dýchá, nereaguje', 'reaguje na bolest', 'zvrací', 'krvácí z obličeje', 'agresivní, vulgární'])}${maybe(r, 0.5, ', dechová zkouška ' + (ri(r, 15, 38) / 10).toFixed(1) + ' ‰')}`,
-      `osoba ${pickF(r, ['ztotožněna', 'bez dokladů', 'známá z dřívějška'])}, ${pickF(r, ['k vyšetření před PZS', 'ZZS k posouzení stavu', 'hlídka zůstává'])}`]) });
+      `hlídka u osoby, ${pickF(r, ['dýchá, nereaguje', 'reaguje na bolest', 'zvrací', 'krvácí z obličeje', 'agresivní, vulgární'])}`,
+      `${pickF(r, ['ZZS k posouzení stavu', 'přístup k osobě bezpečný', 'osoba agresivní, vyčkejte u vozidla PČR'])}`]) });
     return out;
   }
 
   function obeseni(ctx) {
     const r = ctx.r, out = [];
-    out.push({ src: 'pcr', dt: ri(r, 15, 70), text: join([`${ctx.addr}`, pickF(r, ['nalezena oběšená osoba', 'osoba visí v garáži', 'oběšení na půdě', 'osoba oběšená v lese', 'rodina sundala osobu z oprátky']), `${patrol(ctx)} ${pickF(r, ['vyslána', 'na cestě, ' + eta(r)])}`]) });
+    out.push({ src: 'pcr', dt: ri(r, 15, 70), text: join([`${ctx.addr}`, pickF(r, ['nalezena oběšená osoba', 'osoba visí v garáži', 'oběšení na půdě', 'osoba oběšená v lese', 'rodina sundala osobu z oprátky']), ]) });
     out.push({ src: 'pcr', dt: ri(r, 120, 320), text: pickF(r, ['hlídka na místě, osoba sundána, zahájena KPR', 'hlídka na místě, osoba studená, ztuhlá', 'hlídka provádí KPR, AED připojen', 'osoba sundána, dýchá chrčivě', 'místo zajištěno, kriminální služba vyrozuměna']) });
     return out;
   }
 
   function tonuti(ctx) {
     const r = ctx.r, out = [];
-    out.push({ src: 'hzs', dt: ri(r, 15, 70), text: join([`Tonutí – ${ctx.addr}`, pickF(r, ['osoba zmizela pod hladinou', 'dítě vytaženo z bazénu', 'plavec v bezvědomí na hladině', 'rybář spadl z loďky', 'osoba v řece u jezu', 'koupající se nevyplaval']), `vysláno: ${units(ctx, false)}${maybe(r, 0.5, ', ' + pickF(r, ['potápěči', 'člun', 'vodní záchranná služba']))}`]) });
+    out.push({ src: 'hzs', dt: ri(r, 15, 70), text: join([`Tonutí – ${ctx.addr}`, pickF(r, ['osoba zmizela pod hladinou', 'dítě vytaženo z bazénu', 'plavec v bezvědomí na hladině', 'rybář spadl z loďky', 'osoba v řece u jezu', 'koupající se nevyplaval'])]) });
     out.push({ src: 'hzs', dt: ri(r, 160, 400), text: pickF(r, ['osoba vytažena svědky, probíhá KPR', 'jednotka na místě, pátrání pod hladinou', 'osoba vytažena, dýchá, podchlazená', 'člun na vodě, osoba nalezena', 'svědci zahájili KPR na břehu']) });
     return out;
   }
 
   function zachrana(ctx) {
     const r = ctx.r, out = [];
-    out.push({ src: 'hzs', dt: ri(r, 25, 100), text: join([`Záchrana osoby – ${ctx.addr}`, pickF(r, ['pád ze skály', 'turista se zraněnou nohou, nemůže jít', 'pád ze stromu při kácení', 'cyklista ve strži', 'houbař zabloudil, zranění', 'pád z posedu', 'osoba zavalena kmenem']), `${units(ctx, false)}${maybe(r, 0.5, ' + lezecká skupina')}`, maybe(r, 0.5, 'navigace podle aplikace Záchranka')]) });
+    out.push({ src: 'hzs', dt: ri(r, 25, 100), text: join([`Záchrana osoby – ${ctx.addr}`, pickF(r, ['pád ze skály', 'turista se zraněnou nohou, nemůže jít', 'pád ze stromu při kácení', 'cyklista ve strži', 'houbař zabloudil, zranění', 'pád z posedu', 'osoba zavalena kmenem']), maybe(r, 0.5, 'navigace podle aplikace Záchranka')]) });
     out.push({ src: 'hzs', dt: ri(r, 240, 600), text: pickF(r, ['jednotka u pacienta, transport na nosítkách k cestě', 'nalezen, přístup pro sanitku jen k závoře', 'transport k cestě cca 400 m, odhad 15 min', 'pacient vyproštěn, předávací bod u rozcestí', 'terén nepřístupný – zvažte LZS']) });
     return out;
   }
 
   function asistPcr(ctx) {
     const r = ctx.r;
-    return [{ src: 'pcr', dt: ri(r, 20, 90), text: join([`${ctx.addr}`, pickF(r, ['zadržená osoba udává bolest na hrudi', 'osoba po zákroku hlídky, krvácí z obočí', 'řidič při silniční kontrole zkolaboval', 'osoba v cele, křeče', 'nalezen bezdomovec, podchlazený', 'žádost o asistenci při převozu osoby', 'nalezen senior bloudící v noci']), `${patrol(ctx)} ${pickF(r, ['u osoby', 'na místě', 'čeká u vozidla'])}`]) }];
+    return [{ src: 'pcr', dt: ri(r, 20, 90), text: join([`${ctx.addr}`, pickF(r, ['zadržená osoba udává bolest na hrudi', 'osoba po zákroku hlídky, krvácí z obočí', 'řidič při silniční kontrole zkolaboval', 'osoba v cele, křeče', 'nalezen bezdomovec, podchlazený', 'žádost o asistenci při převozu osoby', 'nalezen senior bloudící v noci'])]) }];
   }
 
-  const KINDS = { dn, ecall: c => ecall(c, false), ecallMed: c => ecall(c, true), otevreni, pozar, psych, napadeni, intox, obeseni, tonuti, zachrana, asistPcr };
+  // ---------- pád z výšky ----------
+  function padVyska(ctx) {
+    const r = ctx.r, out = [];
+    const odkud = pickF(r, ['ze střechy', 'z lešení', 'z žebříku', 'ze stromu při prořezávce', 'z okna v patře', 'ze stohu', 'z ložné plochy nákladního vozidla', 'ze zdi při opravě']);
+    out.push({ src: r() < 0.55 ? 'tctv' : 'hzs', dt: ri(r, 25, 90), text: join([`Pád ${odkud} – ${ctx.addr}`, pickF(r, ['výška asi 2 m', 'výška asi 3 m', 'výška asi 5 m', 'výška přes 6 m']), pickF(r, ['osoba při vědomí, bolest zad', 'osoba nereaguje, dýchá', 'osoba nehybná, krvácí z hlavy', 'osoba nemůže hýbat nohama', 'osoba leží, komunikuje'])]) });
+    out.push({ src: r() < 0.5 ? 'hzs' : 'pcr', dt: ri(r, 150, 330), text: pickF(r, ['podezření na poranění páteře, osoba nesmí hýbat', 'zraněný ošetřován kolegy, přístup bezpečný', 'osoba dýchá, krvácí z ucha', 'přístup k pacientovi po žebříku, zajištěno', 'osoba leží na zádech, bolest pánve']) });
+    return out;
+  }
+
+  // ---------- pracovní úraz ----------
+  function pracUraz(ctx) {
+    const r = ctx.r, out = [];
+    ctx.trappedWork = r() < 0.2;
+    out.push({ src: r() < 0.6 ? 'tctv' : 'pcr', dt: ri(r, 25, 90), text: join([`Pracovní úraz – ${ctx.addr}`, pickF(r, ['pila', 'lis', 'vysokozdvižný vozík', 'soustruh', 'řetězová pila', 'zemědělský stroj', 'pás dopravníku']), ctx.trappedWork ? pickF(r, ['ruka zaklíněná ve stroji, nutné vyproštění', 'noha zaklíněná pod strojem', 'zavalení břemenem, osoba zaklíněná']) : pickF(r, ['amputace prstů', 'rozsáhlé řezné poranění ruky', 'poranění oka', 'popálení horkým olejem', 'zasažení elektrickým proudem', 'zavalení břemenem, osoba vyprostěna kolegy'])]) });
+    out.push({ src: 'hzs', dt: ri(r, 140, 340), text: ctx.trappedWork ? pickF(r, ['stroj vypnut, zahájeno vyproštění, odhad ' + ri(r, 10, 30) + ' min', 'vyproštění probíhá, osoba při vědomí']) : pickF(r, ['stroj vypnut, přístup bezpečný', 'kolegové zastavili krvácení, přístup bezpečný', 'osoba při vědomí, komunikuje', 'amputát zajištěn ve sterilním obalu']) });
+    return out;
+  }
+
+  // ---------- osoba bez známek života, KPR svědků ----------
+  function kprSvedci(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: r() < 0.6 ? 'tctv' : 'pcr', dt: ri(r, 15, 70), text: join([`${ctx.addr}`, pickF(r, ['osoba bez známek života', 'muž se zhroutil, nedýchá', 'žena na zemi, nereaguje, nedýchá', 'osoba kolabovala a nereaguje']), pickF(r, ['svědci zahájili KPR', 'KPR zatím nikdo nezačal, oznamovatel instruován', 'AED na místě', 'telefonická instruktáž KPR probíhá'])]) });
+    out.push({ src: r() < 0.5 ? 'pcr' : 'hzs', dt: ri(r, 140, 340), text: pickF(r, ['KPR probíhá, AED připojen', 'KPR probíhá, výboj nedoporučen', 'laická KPR trvá, AED dodán na místo', 'osoba pořád bez reakce, KPR bez přerušení']) });
+    return out;
+  }
+
+  // ---------- pokousání psem ----------
+  function pokousani(ctx) {
+    const r = ctx.r, out = [];
+    const volny = r() < 0.35;
+    out.push({ src: r() < 0.6 ? 'pcr' : 'tctv', dt: ri(r, 20, 90), text: join([`Pokousání psem – ${ctx.addr}`, pickF(r, ['rány na paži', 'rány na noze', 'poranění obličeje', 'pokousán do stehna', 'dítě pokousáno do hlavy']), volny ? pickF(r, ['pes stále volně, agresivní', 'pes utekl, není zajištěn']) : pickF(r, ['pes zajištěn majitelem', 'pes zavřen v domě', 'majitel na místě'])]) });
+    out.push({ src: 'pcr', dt: ri(r, 130, 330), text: volny ? pickF(r, ['pes stále volně, vyčkejte u vozidla PČR', 'pes zajištěn, přístup bezpečný']) : pickF(r, ['přístup bezpečný', 'krvácení z rány zastaveno svědky']) });
+    return out;
+  }
+
+  // ---------- domácí násilí ----------
+  function domNasili(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: 'pcr', dt: ri(r, 20, 90), text: join([`Domácí násilí – ${ctx.addr}`, pickF(r, ['žena zraněná v obličeji', 'muž zraněn nožem', 'žena po napadení, krvácí z hlavy', 'zraněná osoba leží na zemi', 'zraněné dítě v bytě']), pickF(r, ['agresor v bytě, agresivní', 'agresor odešel', 'agresor pod vlivem alkoholu, na místě', 'agresor zadržen'])]) });
+    out.push({ src: 'pcr', dt: ri(r, 140, 360), text: pickF(r, ['agresor zadržen, přístup bezpečný', 'agresor stále v bytě, ZZS vyčkejte u vozidla PČR', 'místo zajištěno, ZZS může k pacientovi', 'agresor omezen, zraněná osoba při vědomí']) });
+    return out;
+  }
+
+  // ---------- střet se zvěří ----------
+  function zver(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: r() < 0.5 ? 'pcr' : 'tctv', dt: ri(r, 25, 100), text: join([`Střet se zvěří – ${ctx.addr}`, pickF(r, CARS), pickF(r, ['řidič při vědomí, bolest krku', 'řidič zraněný, krvácí z čela', 'řidič bez zranění, vozidlo nepojízdné', 'spolujezdec zraněn']), maybe(r, 0.5, pickF(r, ['zvíře na vozovce', 'zvíře uhynulo', 'zvíře utekla do lesa']))]) });
+    if (r() < 0.6) out.push({ src: 'pcr', dt: ri(r, 120, 300), text: pickF(r, ['řidič sedí ve vozidle, komunikuje', 'vozidlo mimo vozovku, přístup bezpečný', 'řidič vystoupil, drží se za krk']) });
+    return out;
+  }
+
+  // ---------- střet s vlakem ----------
+  function vlak(ctx) {
+    const r = ctx.r, out = [];
+    const co = pickF(r, ['osobním vozidlem', 'osobou', 'traktorem', 'dodávkou']);
+    out.push({ src: r() < 0.5 ? 'hzs' : 'pcr', dt: ri(r, 20, 80), text: join([`Střet vlaku s ${co} – železniční přejezd, ${ctx.addr}`, 'železniční doprava zastavena', pickF(r, ['osoba zaklíněná ve vozidle', 'více zraněných', 'osoba pod vlakem, nemluví', 'zraněný strojvedoucí'])]) });
+    out.push({ src: 'hzs', dt: ri(r, 130, 320), text: pickF(r, ['napájení trakce vypnuto, přístup bezpečný', 'trakce pod napětím, do kolejiště nevstupovat', 'zajištěno, ZZS může k pacientům', 'vyproštění zahájeno, odhad ' + ri(r, 12, 30) + ' min']) });
+    return out;
+  }
+
+  // ---------- uvíznutí ve výtahu ----------
+  function vytah(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: 'hzs', dt: ri(r, 20, 80), text: join([`Uvíznutí ve výtahu – ${ctx.addr}`, pickF(r, ['osoba udává bolest na hrudi', 'osoba má dušnost', 'osoba zkolabovala', 'těhotná žena, bolesti', 'senior, nevolnost, nekomunikuje dobře'])]) });
+    out.push({ src: 'hzs', dt: ri(r, 150, 360), text: pickF(r, ['výtah zablokován mezi patry, osoba při vědomí', 'dveře otevřeny, osoba předána ZZS', 'osoba nereaguje, probíhá otevření kabiny', 'kabina otevřena, přístup k pacientovi volný']) });
+    return out;
+  }
+
+  // ---------- otrava CO ----------
+  function co(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: r() < 0.5 ? 'hzs' : 'tctv', dt: ri(r, 20, 90), text: join([`Podezření na otravu CO – ${ctx.addr}`, pickF(r, ['více osob s nevolností a bolestí hlavy', 'rodina zvrací, bolest hlavy', 'osoba bezvědomá v koupelně', 'detektor CO houká, osoby slabé']), maybe(r, 0.5, pickF(r, ['plynový kotel v provozu', 'topení na tuhá paliva', 'karma v koupelně']))]) });
+    out.push({ src: 'hzs', dt: ri(r, 150, 360), text: pickF(r, ['objekt odvětrán, měření CO v normě, přístup bezpečný', 'koncentrace CO stále vysoká, ZZS nevstupovat do objektu', 'osoby vyvedeny ven, ZZS může k pacientům']) });
+    return out;
+  }
+
+  // ---------- únik plynu / výbuch ----------
+  function plyn(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: 'hzs', dt: ri(r, 20, 80), text: join([`${pickF(r, ['Výbuch plynu', 'Únik plynu a požár', 'Exploze v domě'])} – ${ctx.addr}`, pickF(r, ['popálená osoba venku', 'osoba zavalená troskami', 'dvě osoby popálené', 'osoba s poraněním hlavy'])]) });
+    out.push({ src: 'hzs', dt: ri(r, 150, 360), text: pickF(r, ['hrozí další výbuch, do prostoru nevstupovat', 'přívod plynu uzavřen, přístup bezpečný', 'osoby vyneseny, ZZS může k pacientům', 'dohašování, přístup bezpečný']) });
+    return out;
+  }
+
+  // ---------- pád cyklisty ----------
+  function cyklista(ctx) {
+    const r = ctx.r, out = [];
+    out.push({ src: r() < 0.5 ? 'tctv' : 'pcr', dt: ri(r, 20, 90), text: join([`Pád cyklisty – ${ctx.addr}`, pickF(r, ['bez přilby, bolest hlavy', 's přilbou, bolest ramene', 'bolest kyčle, nemůže vstát', 'krvácí z obličeje', 'sražen autem, osoba leží']), maybe(r, 0.4, pickF(r, ['řidič odjel', 'řidič na místě']))]) });
+    if (r() < 0.5) out.push({ src: 'pcr', dt: ri(r, 130, 320), text: pickF(r, ['osoba při vědomí, komunikuje', 'osoba leží, nehýbe končetinou', 'místo zajištěno, přístup bezpečný']) });
+    return out;
+  }
+
+  // neutrální doplňky (nic o bezpečnosti ani stavu pacienta), které zvyšují pestrost následných zpráv
+  const DET = ['oznamovatel zůstává na místě', 'oznamovatel čeká u vchodu', 'u pacienta jsou svědci', 'u pacienta příbuzný', 'příjezd po zpevněné komunikaci', 'místo označeno výstražným trojúhelníkem', 'okolo se shromáždili lidé', 'navádět bude volající', 'silný déšť', 'špatná viditelnost', 'veřejné osvětlení nefunguje', 'místo hůře dohledatelné, čeká navádějící osoba', 'vstup hlavní bránou', 'vjezd z boční ulice', 'parkování u místa omezené', 'pacient udává bolest', 'oznamovatel ve stresu', 'volající komunikuje s dispečinkem', 'kolem dokola neosvětlený terén', 'sníh na vozovce'];
+  const W = f => c => { const it = f(c); it.forEach((x, i) => { if (i > 0 && c.r() < 0.55) x.text += ', ' + pickF(c.r, DET); }); return it; };
+  const KINDS = { dn, ecall: c => ecall(c, false), ecallMed: c => ecall(c, true), otevreni, pozar, psych, napadeni, intox, obeseni, tonuti, zachrana, asistPcr,
+    padVyska: W(padVyska), pracUraz: W(pracUraz), kprSvedci: W(kprSvedci), pokousani: W(pokousani), domNasili: W(domNasili), zver: W(zver), vlak: W(vlak), vytah: W(vytah), co: W(co), plyn: W(plyn), cyklista: W(cyklista) };
   // který typ zpráv a s jakou pravděpodobností patří k indikaci
   function kindFor(ind, where, r) {
     const out = (k, p) => (r() < p ? k : null);
+    const street = ['ulice', 'verejne'].includes(where);
+    const mix = arr => { const x = r(); let acc = 0; for (const [k, p] of arr) { acc += p; if (x < acc) return k; } return null; };
     switch (ind) {
-      case 'dn_poly': return r() < 0.3 ? ['ecall', 'dn'] : ['dn'];
-      case 'dn_lehke': return r() < 0.75 ? (r() < 0.22 ? ['ecall'] : ['dn']) : null;
+      case 'dn_poly': return where === 'silnice' && r() < 0.05 ? ['vlak'] : r() < 0.3 ? ['ecall', 'dn'] : ['dn'];
+      case 'dn_lehke': {
+        const x = r();
+        if (where === 'silnice' && x < 0.1) return ['zver'];
+        if (street && x < 0.18) return ['cyklista'];
+        return x < 0.8 ? (r() < 0.22 ? ['ecall'] : ['dn']) : null;
+      }
       case 'asist': { const x = r(); return x < 0.5 ? ['otevreni'] : x < 0.65 ? ['pozar'] : x < 0.82 ? ['asistPcr'] : where === 'silnice' ? ['ecall'] : ['otevreni']; }
-      case 'popal': return out(['pozar'], 0.55);
-      case 'psych': return out(['psych'], 0.45);
+      case 'popal': return mix([[['pozar'], 0.5], [['plyn'], 0.06]]);
+      case 'psych': return mix([[['psych'], 0.42], [['domNasili'], ['byt', 'rd'].includes(where) ? 0.08 : 0]]);
       case 'obeseni': return out(['obeseni'], 0.75);
       case 'tonuti': return out(['tonuti'], 0.8);
       case 'intox': return ['ulice', 'verejne', 'silnice'].includes(where) ? out(['intox'], 0.4) : null;
-      case 'trauma': return where === 'priroda' ? out(['zachrana'], 0.4) : ['ulice', 'verejne'].includes(where) ? out(['napadeni'], 0.2) : null;
-      case 'porucha': case 'kreceU': case 'hrudnik': case 'dusnost': return where === 'silnice' ? out(['ecallMed'], 0.5) : ['ulice', 'verejne'].includes(where) ? out(['intox'], 0.08) : null;
+      case 'resus': case 'nzo': return street || where === 'prov' ? out(['kprSvedci'], 0.4) : out(['kprSvedci'], 0.08);
+      case 'amput': return ['prov', 'rd'].includes(where) ? out(['pracUraz'], 0.85) : null;
+      case 'trauma':
+        if (where === 'priroda') return out(['zachrana'], 0.4);
+        if (street) return mix([[['napadeni'], 0.18], [['cyklista'], 0.1], [['pokousani'], 0.05]]);
+        if (where === 'prov') return mix([[['pracUraz'], 0.3], [['padVyska'], 0.12]]);
+        if (where === 'rd') return mix([[['padVyska'], 0.07], [['domNasili'], 0.03], [['pokousani'], 0.03]]);
+        if (where === 'byt') return out(['domNasili'], 0.04);
+        return null;
+      case 'porucha': case 'dusnost': case 'kreceU': case 'hrudnik':
+        if (where === 'silnice') return out(['ecallMed'], 0.5);
+        if (['byt', 'prov'].includes(where)) return mix([[['vytah'], 0.02], [['co'], ind === 'dusnost' || ind === 'porucha' ? 0.025 : 0]]);
+        return null;
+      case 'neuro': case 'zvraceni': case 'bolest': case 'horecka': return ['byt', 'rd'].includes(where) ? out(['co'], 0.015) : null;
       default: return null;
     }
   }
-  const SRC_CALL = { dn: 'Linka 112', ecall: '112 – eCall', ecallMed: '112 – eCall', otevreni: 'Linka 150 – DZ HZS', pozar: 'Linka 150 – DZ HZS', tonuti: 'Linka 150 – DZ HZS', zachrana: 'Linka 150 – DZ HZS', psych: 'Linka 158 – DZ PČR', napadeni: 'Linka 158 – DZ PČR', intox: 'Linka 158 – DZ PČR', obeseni: 'Linka 158 – DZ PČR', asistPcr: 'Linka 158 – DZ PČR' };
-  return { KINDS, SRC, SRC_CALL, kindFor, pick: pickF };
+  const SRC_CALL = { dn: 'Linka 112', ecall: '112 – eCall', ecallMed: '112 – eCall', otevreni: 'Linka 150 – DZ HZS', pozar: 'Linka 150 – DZ HZS', tonuti: 'Linka 150 – DZ HZS', zachrana: 'Linka 150 – DZ HZS', psych: 'Linka 158 – DZ PČR', napadeni: 'Linka 158 – DZ PČR', intox: 'Linka 158 – DZ PČR', obeseni: 'Linka 158 – DZ PČR', asistPcr: 'Linka 158 – DZ PČR',
+    padVyska: 'Linka 112', pracUraz: 'Linka 112', kprSvedci: 'Linka 112', pokousani: 'Linka 158 – DZ PČR', domNasili: 'Linka 158 – DZ PČR', zver: 'Linka 112', vlak: 'Linka 150 – DZ HZS', vytah: 'Linka 150 – DZ HZS', co: 'Linka 150 – DZ HZS', plyn: 'Linka 150 – DZ HZS', cyklista: 'Linka 112' };
+  // první datovka: co se právě nabírá
+  const LABEL = { dn: 'dopravní nehoda', ecall: 'eCall – dopravní nehoda', ecallMed: 'eCall – zdravotní potíže řidiče', otevreni: 'technická pomoc – otevření bytu', pozar: 'požár', psych: 'psychiatrický pacient', napadeni: 'napadení', intox: 'osoba ležící na veřejnosti', obeseni: 'oběšení', tonuti: 'tonutí', zachrana: 'záchrana osoby v terénu', asistPcr: 'asistence u zásahu PČR',
+    padVyska: 'pád z výšky', pracUraz: 'pracovní úraz', kprSvedci: 'osoba bez známek života', pokousani: 'pokousání psem', domNasili: 'domácí násilí', zver: 'střet se zvěří', vlak: 'střet s vlakem', vytah: 'uvíznutí ve výtahu', co: 'podezření na otravu CO', plyn: 'únik plynu / výbuch', cyklista: 'pád cyklisty' };
+  const intakeText = (kind, addr, klasif) => {
+    let sub = LABEL[kind] || '';
+    const kl = String(klasif || '').toLocaleLowerCase('cs-CZ');
+    if (kl && sub.toLocaleLowerCase('cs-CZ').includes(kl)) sub = sub.replace(new RegExp(kl, 'i'), '').replace(/^[\s–]+|[\s–]+$/g, '');
+    return `nabírá se: ${[klasif, sub].filter(Boolean).join(' – ') || 'událost'} – ${addr}`;
+  };
+  // zdroj první datovky: KOPIS HZS (linka 150) / OS KŘP PČR (linka 158) / TCTV 112 (linka 112) / eCall
+  function intakeSource(kind, r) {
+    const s = SRC_CALL[kind] || 'Linka 112';
+    const [src, line] = /eCall/.test(s) ? ['ecall', '112'] : /150/.test(s) ? ['hzs', '150'] : /158/.test(s) ? ['pcr', '158'] : ['tctv', '112'];
+    return `${pickF(r, SRC[src])} · linka ${line}`;
+  }
+  // které složky u datovky přijedou samy (pravděpodobnosti podle druhu události)
+  const AG_RULES = {
+    dn: c => ({ pcr: 0.9, hzs: c.trapped ? 0.9 : 0.25 }), ecall: () => ({ pcr: 0.5, hzs: 0.3 }), otevreni: () => ({ hzs: 1, pcr: 0.5 }), pozar: () => ({ hzs: 1, pcr: 0.35 }),
+    psych: () => ({ pcr: 1 }), napadeni: () => ({ pcr: 1 }), intox: () => ({ pcr: 1 }), obeseni: () => ({ pcr: 1 }), tonuti: () => ({ hzs: 1, pcr: 0.4 }), zachrana: () => ({ hzs: 1 }), asistPcr: () => ({ pcr: 1 }),
+    padVyska: () => ({ hzs: 0.3, pcr: 0.3 }), pracUraz: c => ({ pcr: 0.5, hzs: c.trappedWork ? 1 : 0 }), kprSvedci: () => ({ pcr: 0.55 }), pokousani: () => ({ pcr: 0.55 }), domNasili: () => ({ pcr: 1 }),
+    zver: () => ({ pcr: 0.5 }), vlak: () => ({ pcr: 1, hzs: 0.8 }), vytah: () => ({ hzs: 1 }), co: () => ({ hzs: 1 }), plyn: () => ({ hzs: 1, pcr: 0.7 }), cyklista: () => ({ pcr: 0.15 }),
+  };
+  function agenciesFor(kinds, ctx) {
+    const ag = {};
+    for (const k of kinds) { const rule = AG_RULES[k]; if (!rule) continue; for (const [a, p] of Object.entries(rule(ctx))) if (p > 0 && ctx.r() < p) ag[a] = true; }
+    return ag;
+  }
+
+  // červeně se zobrazují jen zprávy kritické pro ZOS: bezpečnost přístupu, počet zraněných, vyprošťování, ohrožení života a nebezpečí
+  const RED_RE = /bezpečn|nezajištěn|vyčkejte|nevstupovat|zbraň|nůž|útočník|zabarikád|zásahová jednotka|zraněn|zranění|vyprošt|zaklíněn|uvězn|KPR|bez reakce|nereaguje|nekomunikuje|ztuhl|studená|požár|plamen|kouř|dým|zakouř|únik|nadýchan|popálen|oběšen|LZS|tonutí|pod hladinou|bezvědom|sebevražd|podřez|skokem|sebepošk|krvácí|AED|otrav|výbuch|exploze|napětím|agresor|agresivní|zavalen|amputac|pes stále volně/i;
+  const isRed = (text, patientCount) => !!patientCount || RED_RE.test(String(text || ''));
+  return { KINDS, SRC, SRC_CALL, kindFor, pick: pickF, isRed, intakeText, intakeSource, agenciesFor };
 })();
 
 if (typeof module !== 'undefined') module.exports = ZOS_EXTMSG;
