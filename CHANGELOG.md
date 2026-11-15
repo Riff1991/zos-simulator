@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.5 – 2026-11-15
+
+> Míň zbytečného pípání: nekritické datovky se jen zapíšou do logu, pípají a vyskakují jen kritické (červené). Drobné varování „opožděný výjezd“ má jen toast bez pípnutí.
+
+---
+
 ## v0.21.4 – 2026-11-15
 
 > Na mapě je nová volitelná vrstva Pokrytí: kam se do limitu dostane nejbližší volná RZP. Přepínač je v liště nahoře v okně mapy, výchozí stav je vypnuto.

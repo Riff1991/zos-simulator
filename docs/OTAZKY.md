@@ -208,3 +208,6 @@ Agent: pokládej po blocích, každou otázku s možnostmi A/B/C/D + „Jiné: �
 - Typ zobrazení volí hráč: Izochrony (plynulé pásy s vrstevnicemi), Buňky (šestiúhelníková mřížka), Bílá místa (jen díry mimo limit šrafovaně s popisky). Limit dojezdu 15 / 20 / 25 min (výchozí 20).
 - Data jsou živá a reálná: dojezd po silniční síti (ROUTER.coverage) z aktuálně volných RZP, režim jízdy N2, počítá se znovu při změně dostupnosti vozů (nejvýš co pár vteřin). Mimo plnou mapu (SVG záloha) vrstva není.
 - Stat řádek: podíl území v limitu, nejhorší místo, počet slabých oblastí.
+
+### Pípání (15. 11. 2026)
+- Pípnutí a toast jen u věcí, které něco znamenají: nový případ, kritická (červená) datovka, žádost posádky, trestné body a termíny. Nekritické datovky (včetně „nabírá se“) jen v logu a v horním pruhu hlášení, bez pípnutí. Drobné „opožděný výjezd“ jen toast bez zvuku.

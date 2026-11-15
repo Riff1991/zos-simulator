@@ -1755,7 +1755,8 @@ class Sim {
           c.patientsRemaining = Math.max(0, c.patientCount - (c.patientsHandled || 0));
           c.desc = `${c.patientCount} zranění při dopravní nehodě; počet upřesnily složky IZS.`;
         }
-        this.L('alert', `${c.num} · ${report.source || (c.mu ? 'Situační hlášení' : 'linka 112')}: ${report.text}`, c.id);
+        // nekritické datovky (red === false) jen do logu bez pípnutí a toastu; kritické (červené) a ostatní hlášení pípají jako dřív
+        this.L(report.red === false ? 'sys' : 'alert', `${c.num} · ${report.source || (c.mu ? 'Situační hlášení' : 'linka 112')}: ${report.text}`, c.id);
       }
       if (report.received && !report.acknowledged && !report.scoreApplied && t - report.receivedAt >= 180) {
         report.scoreApplied = true;

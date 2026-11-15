@@ -1167,7 +1167,7 @@ function pollLog() {
     }
     const newCall = e.kind === 'case' && e.txt.startsWith('Nový případ ');
     if (newCall) { toast(e.txt, /: N1\b/.test(e.txt) ? 'alert' : ''); newCallTone(); if (settings.autoPauseN1 && /: N1\b/.test(e.txt) && speed > 0) { speed = 0; toast('Pauza: nová N1. Pokračuj mezerníkem nebo rychlostí nahoře.', 'alert'); } }
-    else if (e.kind === 'req' || e.kind === 'alert' || e.kind === 'deadline' || e.kind === 'warn' || (e.kind === 'case' && /: N1/.test(e.txt))) { toast(e.txt, e.kind === 'case' || e.kind === 'deadline' || e.kind === 'req' ? 'alert' : e.kind); if (e.kind === 'deadline') alarmBeep(); else beep(e.kind === 'req' ? 660 : 880); }
+    else if (e.kind === 'req' || e.kind === 'alert' || e.kind === 'deadline' || e.kind === 'warn' || (e.kind === 'case' && /: N1/.test(e.txt))) { toast(e.txt, e.kind === 'case' || e.kind === 'deadline' || e.kind === 'req' ? 'alert' : e.kind); if (e.kind === 'deadline') alarmBeep(); else if (!(e.kind === 'warn' && /opožděný výjezd/.test(e.txt))) beep(e.kind === 'req' ? 660 : 880); }
   }
   if (vstricnaIncoming) vstricnaTone();
 }
