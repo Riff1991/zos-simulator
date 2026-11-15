@@ -227,13 +227,23 @@ function lzsSupportHtml(c) {
   return `<div class="sug"><h4>Mezikrajská výpomoc LZS <small>(vlastní vrtulník je nedostupný)</small></h4>${rows}</div>`;
 }
 const dzOf = c => (c.radioReports || []).find(r => r.id === 'dz-in');
+// postupné plnění karty při nabírání na naší lince: adresa → indikace → příznaky po jednom → N, pacient, oznamovatel, poznámka
+function intakeView(c) {
+  const t = sim.s.t, t0 = c.dzUntil != null ? c.dzUntil : c.createdAt;
+  const p = Math.max(0, Math.min(1, (t - t0) / Math.max(1, c.readyAt - t0)));
+  const syms = symptomsOf(c).map(x => String(x).replace(/^[^0-9A-Za-zÀ-ž]+/, ''));
+  const addr = p >= 0.12, klasif = p >= 0.35, nSyms = p < 0.45 ? 0 : Math.min(syms.length, Math.ceil(syms.length * Math.min(1, (p - 0.45) / 0.45)));
+  const tail = p >= 0.92;
+  const src = c.dzUntil != null ? `nabráno z: ${c.src}` : c.src;
+  return { p, addr, klasif, syms: syms.slice(0, nSyms), tail, n1: c.n === 1 && addr, src };
+}
 function renderCases() {
   const s = sim.s;
   const by = st => s.cases.filter(c => c.status === st);
   const pendingDispatch = c => c.status === 'active' && missingInitialDispatch(c).length > 0;
   const dz = by('intake').filter(c => c.phase === 'dz' && dzOf(c) && dzOf(c).received), intake = by('intake').filter(c => c.phase !== 'dz'), closed = by('closed');
   const act = by('active').filter(c => !pendingDispatch(c)), wait = s.cases.filter(c => c.status === 'waiting' || pendingDispatch(c));
-  const intakeN1 = intake.some(c => c.n === 1);
+  const intakeN1 = intake.some(c => intakeView(c).n1);
   const tabs = [['waiting', 'Čekající', wait.length], ['active', 'Právě řešené', act.length], ['intake', intakeN1 ? 'Nabírá se N1' : 'Nabírá se', intake.length], ['closed', 'Uzavřené', closed.length], ['dz', 'Datové zprávy', dz.length]];
   setHTML($('tabs-cases'), tabs.map(([k, l, n]) => {
     const classes = [tabCase === k ? 'on' : '', (k === 'waiting' && wait.length > 0 && tabCase !== 'waiting') || (k === 'intake' && intakeN1 && tabCase !== 'intake') ? 'waiting-alert' : ''].filter(Boolean).join(' ');
@@ -251,7 +261,14 @@ function renderCases() {
     const intk = c.status === 'intake';
     // fáze 1: jen datová zpráva; fáze 2: jen operátor a linka (nic dalšího o případu dispečer ještě nezná)
     if (intk && tabCase === 'dz') { const r = dzOf(c); return `<article class="case-card dz-row ${sel.c === c.id ? 'sel' : ''}" data-case="${c.id}" tabindex="0"><div class="case-top"><span class="case-priority dz">DZ</span><div class="case-address"><strong>${esc(r.text)}</strong><small>${esc(r.source || '')} · ${esc(sim.clockAt(r.receivedAt != null ? r.receivedAt : c.createdAt))}</small></div></div></article>`; }
-    if (intk) return `<article class="case-card is-intake ${sel.c === c.id ? 'sel' : ''}" data-case="${c.id}" tabindex="0"><div class="case-top"><span class="case-priority">${c.n === 1 ? 'N1' : '…'}</span><div class="case-address"><strong>${esc(c.op)} nabírá výzvu</strong><small>${esc(c.src)}</small></div><span class="case-status">Výzva se připravuje</span></div></article>`;
+    if (intk) {
+      const v = intakeView(c), nTag = v.tail || v.n1 ? `N${c.n}` : '…', patient = c.patientName || c.desc || '';
+      return `<article class="case-card is-intake n${v.tail || v.n1 ? c.n : 3} ${sel.c === c.id ? 'sel' : ''}" data-case="${c.id}" tabindex="0">
+      <div class="case-top"><span class="case-priority">${nTag}</span><div class="case-address"><strong>${v.addr ? esc(c.addr) + ` <span class="okr">${esc(okrAbbr(c))}</span>` : esc(c.op) + ' nabírá výzvu'}</strong><small>${v.addr ? esc(c.town || '') + (c.okres ? ' · okres ' + esc(c.okres) : '') : esc(v.src)}</small></div><span class="case-status">Výzva se připravuje</span></div>
+      <div class="case-main"><div class="case-class"><b>${v.klasif ? esc(c.klasif) : ''}</b></div><div class="case-up">${v.klasif ? `<span class="field-label">Upřesnění</span>${esc(v.syms.join(', ') || '…')}` : ''}</div><div class="case-meta">${esc(c.op)} nabírá výzvu · ${esc(v.src)}</div></div>
+      ${v.tail ? `<div class="case-bottom"><span class="case-patient">${esc(patient)}</span><span class="case-scene">${esc(c.poznamka || '')}</span></div>` : ''}
+    </article>`;
+    }
     const rvPending = c.rvReq && !c.rvReq.cancelled && c.rvReq.satT == null && !c.docAssigned && c.status !== 'closed';
     const missing = missingInitialDispatch(c);
     const agMissing = ['pcr', 'hzs'].filter(k => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested' && c.agencies[k].fromCall).map(k => k === 'pcr' ? 'PČR' : 'HZS');
@@ -314,13 +331,14 @@ function renderDetail() {
   const intk = c.status === 'intake';
   if (intk) {
     const prealerted = (c.prealertCrewIds || []).map(id => sim.crewOf(id)).filter(Boolean);
-    const prealert = c.n === 1 && c.phase !== 'dz'
+    const iv = c.phase === 'dz' ? null : intakeView(c);
+    const prealert = c.n === 1 && c.phase !== 'dz' && iv.addr
       ? `<div class="prealert-panel"><p>Probíhá nabírání N1. Posádkám můžeš dát předpoplach ještě před dokončením výzvy. Posádky zatím nevyjíždějí.</p>${prealerted.length
         ? `<b>Předpoplach přijat: ${prealerted.map(k => esc(k.name)).join(', ')}</b>`
         : `<button class="btn red" data-act="prealert" data-case="${c.id}">Předpoplach posádkám</button>`}</div>`
       : '';
     const dr = dzOf(c);
-    const what = c.phase === 'dz' ? `<p><b>Datová zpráva</b><br>${dr ? `${esc(dr.source || '')}: ${esc(dr.text)}` : ''}</p><p>Událost se zatím předává na naši linku.</p>` : `<p>${esc(c.op)} nabírá výzvu · ${esc(c.src)}</p><p>Calltaker ještě nabírá výzvu…</p>`;
+    const what = c.phase === 'dz' ? `<p><b>Datová zpráva</b><br>${dr ? `${esc(dr.source || '')}: ${esc(dr.text)}` : ''}</p><p>Událost se zatím předává na naši linku.</p>` : `<p>${esc(c.op)} nabírá výzvu · ${esc(iv.src)}</p><dl>${iv.addr ? `<dt>Adresa</dt><dd>${esc(c.addr)}<br><small>${esc(c.town || '')}${c.okres ? ' · okres ' + esc(c.okres) : ''}</small></dd>` : ''}${iv.klasif ? `<dt>Klasifikace</dt><dd>${esc(c.klasif)}</dd>` : ''}${iv.syms.length ? `<dt>Upřesnění</dt><dd>${esc(iv.syms.join(', '))}</dd>` : ''}${iv.tail ? `<dt>Naléhavost</dt><dd>N${c.n}</dd><dt>Pacient</dt><dd>${esc(c.patientName || c.desc || '')}</dd>${c.poznamka ? `<dt>Poznámka</dt><dd>${esc(c.poznamka)}</dd>` : ''}` : ''}</dl><p>Calltaker ještě nabírá výzvu…</p>`;
     const earlyReports = (c.radioReports || []).filter(r => r.received && r.id !== 'dz-in').map(r => `<li><time>${esc(sim.clockAt(r.receivedAt))}</time> ${esc(r.source || 'Linka 112')}: ${esc(r.text)}</li>`).join('');
     const reportsHtml = earlyReports ? `<div class="report-panel"><b>Průběžné zprávy linky 112</b><ul>${earlyReports}</ul></div>` : '';
     setHTML($('detail'), `<div class="panel dgrid"><div class="dc1"><h3>${c.phase === 'dz' ? 'Datová zpráva' : 'Nabírá se výzva'}</h3>` + what + prealert + reportsHtml + '</div></div>'); return;

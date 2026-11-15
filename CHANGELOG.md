@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.23.1 – 2026-11-15
+
+> Oprava: karta ve „Nabírá se“ se plní postupně, ne prázdná.
+
+- Běžná výzva na lince 155: ve „Nabírá se“ se postupně objeví adresa, indikace, příznaky po jednom a nakonec naléhavost, pacient a poznámka; poté případ spadne do Čekajících. Číslo události se ukáže až v Čekajících.
+- N1 se pozná hned, jakmile je vidět adresa: záložka začne blikat („Nabírá se N1“) a dispečer může dát předpoplach vybrané posádce.
+- Případ z 112, 150 nebo 158: nejdřív datové zprávy, potom stejné postupné plnění se štítkem „nabráno z: …“.
+
+---
+
 ## v0.23.0 – 2026-11-15
 
 > Počasí z historických dat, nové záložky Datové zprávy a Nabírá se, relace při vyslání vracející se posádky, rychlost vozidel a řada oprav.
