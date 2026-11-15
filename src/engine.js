@@ -89,7 +89,10 @@ class Sim {
         id: support.id, type: 'LZS', name: support.name, code: support.code, oblast: support.oblast, st: support.id,
         lat: support.lat, lon: support.lon, dayOn: false, nightOn: false, externalLzs: true,
         externalDayOnly: !!support.dayOnly, activationDay: support.activationDay || [150, 210], activationNight: support.activationNight || [360, 480],
+        ext: true, region: support.region, foreign: !!support.foreign,
       }));
+      for (const g of ZOS_DATA.nbGround || []) if (!existing.has(g.id)) this.s.crews.push(this._mk(this._nbGroundOpts(g)));
+      for (const crew of this.s.crews) if (crew.externalLzs && !crew.ext) { crew.ext = true; const sp = ZOS_DATA.lzsSupport.find(x => x.id === crew.id); if (sp) { crew.region = sp.region; crew.foreign = !!sp.foreign; } }
       if (!this.s.libero) this.s.libero = Sim.liberoSettings();
       for (const l of ZOS_DATA.libero || []) if (!existing.has(l.id)) this._addLibero(l);
       const lzsCodes = { lzs: 'KR13', 'lzs-jihlava': 'KR12', 'lzs-praha': 'KR01', 'lzs-plzen': 'KR07' };
@@ -226,9 +229,10 @@ class Sim {
     const s = this.s, q = s.radioQ || (s.radioQ = []);
     const e = Object.assign({ id: 'rq' + (s.rqSeq = (s.rqSeq || 0) + 1), t: s.t, crewId: crew.id, code: crew.code, callCodes: crew.code, name: crew.name, caseId: cs ? cs.id : null, msg, opts, kind, state: 'calling', tries: 1, nextAt: s.t + 45 }, extra || {});
     q.push(e); if (q.length > 50) q.splice(0, q.length - 50);
-    this.L('crew', `ZCB101, zde ${this._csign(e.callCodes)}, příjem.`, e.caseId, crew.id);
+    this.L('crew', `ZCB101, zde ${this._esign(e)}, příjem.`, e.caseId, crew.id);
     return e;
   }
+  _esign(e) { return e.sign || this._csign(e.callCodes || e.code); }
   _csign(codes) { return /^K/.test(String(codes)) ? String(codes).replace(/^K(\d+)/, 'Kryštof $1') : `ZCB${codes}`; }
   // relace posádky → ZOS. Interaktivně čeká na dispečera; automaticky se přehraje celá i s výchozí odpovědí.
   _crewCall(crew, cs, msg, opts, kind, callCodes, forceInteractive) {
@@ -269,11 +273,11 @@ class Sim {
   _zosSay(crew, cs, msg, reply, thanks) {
     const id = cs ? cs.id : null, lines = [];
     const say = (who, txt) => { this.L('crew', txt, id, crew.id); lines.push({ who, text: txt }); };
-    say('zos', `ZCB${crew.code}, ZCB101.`);
+    say('zos', `ZCB${crew.code}, zde ZCB101, příjem.`);
     say('crew', `ZCB${crew.code} na příjmu.`);
     say('zos', `ZCB101: ${msg}`);
     say('crew', `ZCB${crew.code} rozumí${reply ? ', ' + reply : ''}.`);
-    if (thanks) say('zos', 'ZCB101 díky, konec.');
+    say('zos', 'ZCB101 díky, konec.');
     this._autoRadio(crew, cs, lines);
   }
   // ---------- relace při vyslání posádky, která se vrací na základnu ----------
@@ -465,7 +469,7 @@ class Sim {
     this.s.radioMode = mode === 'interactive' ? 'interactive' : 'auto';
     if (this.s.radioMode === 'auto') for (const e of this.s.radioQ || []) if ((e.state === 'calling' || e.state === 'open' || e.state === 'zos') && !e.forceInteractive) {
       if (e.state === 'zos') { const k = this.crewOf(e.crewId); e.state = 'done'; if (k) this._zosSay(k, e.caseId ? this.caseOf(e.caseId) : null, e.msg, e.reply); continue; }
-      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId); this.L('crew', `${this._csign(e.callCodes || e.code)}: ${e.msg}`, e.caseId, e.crewId); }
+      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId); this.L('crew', `${this._esign(e)}: ${e.msg}`, e.caseId, e.crewId); }
       e.state = 'open'; const def = (e.opts || []).find(x => x.def) || (e.opts || [])[0]; this.radioReply(e.id, def ? def.k : null, true);
     }
   }
@@ -474,7 +478,7 @@ class Sim {
     const e = this.radioEntry(id); if (!e || e.state !== 'calling') return { ok: false };
     e.state = 'open'; e.openedAt = this.s.t; e.nextAt = this.s.t + 120;
     this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId);
-    this.L('crew', `${this._csign(e.callCodes || e.code)}: ${e.msg}`, e.caseId, e.crewId);
+    this.L('crew', `${this._esign(e)}: ${e.msg}`, e.caseId, e.crewId);
     return { ok: true };
   }
   radioReply(id, k, auto) {
@@ -490,6 +494,9 @@ class Sim {
     const cs = e.caseId ? this.caseOf(e.caseId) : null;
     if (o.act === 'vj-assign' && cs) { const r = this.assignVstricna(cs.id, o.crewId); if (!r.ok) { this.L('warn', r.msg, cs.id); if (cs.vstricna && cs.vstricna.state === 'offered') this.declineVstricna(cs.id); } }
     else if (o.act === 'vj-decline' && cs) this.declineVstricna(cs.id, auto);
+    else if (o.act === 'nb-send') this._nbAccept(this._nbReq(e.nbId), o.crewId);
+    else if (o.act === 'nb-decline') this._nbDecline(this._nbReq(e.nbId));
+    else if (o.act === 'nb-later') this._nbLater(this._nbReq(e.nbId));
     else if (o.act === 'vj-self' && cs) this.L('crew', `ZCB${e.code} rozumí, jedeme sami.`, cs.id, e.crewId);
     else if (o.act === 'rv-ack' && cs) { if (!cs.docAssigned) { cs.rvForgetAt = this.s.t + 180; cs.rvForgetCrew = o.crewId; } } // posádku vysílá dispečer ručně; když zapomene, vyšle ji po prodlení kolega
     else if (o.act === 'assign' && cs) { const r = this.assign(cs.id, o.crewId); if (!r.ok) this.L('warn', `${cs.num}: ${r.msg || 'posádku se nepodařilo vyslat'} – vyber posádku ručně.`, cs.id); }
@@ -507,9 +514,16 @@ class Sim {
       if (e.state === 'done' || e.state === 'missed') continue;
       const cs = e.caseId ? this.caseOf(e.caseId) : null;
       if (e.kind === 'vj' && (!cs || !cs.vstricna || cs.vstricna.state !== 'offered')) { e.state = 'done'; e.doneAt = t; continue; }
+      if (e.kind === 'nbreq') { // žádost sousedního kraje: vyprší podle žádosti (−1 b.), ne podle obecné relace
+        const rq = this._nbReq(e.nbId);
+        if (!rq || rq.state !== 'open') { e.state = 'done'; e.doneAt = t; continue; }
+        if (t >= rq.expireAt) { this._nbTimeout(rq); e.state = 'missed'; continue; }
+        if (e.state === 'calling' && t >= e.nextAt && e.tries < 3) { e.tries++; e.nextAt = t + 45; this.L('crew', `ZCB101, zde ${this._esign(e)}, příjem. (${e.tries}. volání)`, null, e.crewId); }
+        continue;
+      }
       if (e.state === 'zos') { if (t >= e.nextAt || (cs && cs.status === 'closed')) { e.state = 'missed'; if (e.kind === 'dispatch') { const k = this.crewOf(e.crewId); if (k && k.relayHold) { if (!cs || cs.status === 'closed' || k.caseId !== e.caseId) k.relayHold = false; else { this._relayRelease(k, cs, 0); this.L('warn', `ZCB${e.code}: výjezd zadán bez rádiové relace.`, e.caseId, e.crewId); } } } } continue; }
       if (t < e.nextAt) continue;
-      if (e.state === 'calling' && e.tries < 3) { e.tries++; e.nextAt = t + 45; this.L('crew', `ZCB101, zde ${this._csign(e.callCodes || e.code)}, příjem. (${e.tries}. volání)`, e.caseId, e.crewId); continue; }
+      if (e.state === 'calling' && e.tries < 3) { e.tries++; e.nextAt = t + 45; this.L('crew', `ZCB101, zde ${this._esign(e)}, příjem. (${e.tries}. volání)`, e.caseId, e.crewId); continue; }
       // bez odezvy: posádka si poradí sama, dispečer ztrácí provozní bod
       const wasCalling = e.state === 'calling';
       if (!e.noPenalty) this._opsScore(-1, `${wasCalling ? 'nepřijatá' : 'nedokončená'} relace ZCB${e.code}`, e.caseId);
@@ -660,9 +674,10 @@ class Sim {
     s.crews.push(this._mk({ id: 'lzs', type: 'LZS', name: lz.name, code: 'KR13', oblast: lz.oblast, st: 'lzs', lat: lz.lat, lon: lz.lon, dayOn: true, nightOn: true, fixed: true }));
     for (const support of D.lzsSupport) s.crews.push(this._mk({
       id: support.id, type: 'LZS', name: support.name, code: support.code, oblast: support.oblast, st: support.id,
-      lat: support.lat, lon: support.lon, dayOn: false, nightOn: false, externalLzs: true,
+      lat: support.lat, lon: support.lon, dayOn: false, nightOn: false, externalLzs: true, ext: true, region: support.region, foreign: !!support.foreign,
       externalDayOnly: !!support.dayOnly, activationDay: support.activationDay || [150, 210], activationNight: support.activationNight || [360, 480],
     }));
+    for (const g of D.nbGround || []) s.crews.push(this._mk(this._nbGroundOpts(g)));
     for (const m of D.mu) {
       const st = D.stations.find(x => x.id === m.stationId);
       s.crews.push(this._mk({ id: m.id, type: 'MU', name: m.name, code: m.no ? String(m.no) : m.name.replace('MU ', 'MU-'), oblast: m.oblast, st: m.stationId, lat: st.lat, lon: st.lon, dayOn: true, nightOn: true, fixed: true }));
@@ -673,6 +688,7 @@ class Sim {
       s.crews.push(this._mk({ id: r.id, type: 'RZP', name: r.name, code: code(r.oblast, 'Z'), oblast: r.oblast, st: r.stationId, lat: st.lat, lon: st.lon, dayOn: false, nightOn: false, res: true }));
     }
   }
+  _nbGroundOpts(g) { return { id: g.id, type: 'RZP', name: g.name, code: g.code, oblast: 'EXT', st: g.id, lat: g.lat, lon: g.lon, dayOn: false, nightOn: false, ext: true, externalGround: true, region: g.region, foreign: !!g.foreign }; }
   _mk(o) {
     return Object.assign({
       state: 'off', until: 0, caseId: null, mv: null, home: { lat: o.lat, lon: o.lon },
@@ -716,14 +732,14 @@ class Sim {
         const dayKey = Math.floor((s.startHour * 3600 + s.t - 7 * 3600) / 86400);
         if (c.liberoDay !== dayKey) { c.liberoDay = dayKey; c.liberoPresent = this._liberoRoll(c); }
       }
-      const want = c.libero ? day && c.liberoPresent : c.externalLzs ? !!c.supportRequested && !(c.externalDayOnly && !day) : c.fixed ? true : (day ? c.dayOn : c.nightOn);
+      const want = c.libero ? day && c.liberoPresent : c.ext ? !!c.supportRequested && !(c.externalDayOnly && !day) : c.fixed ? true : (day ? c.dayOn : c.nightOn);
       if (want) {
         c.pendingOff = false;
         if (c.state === 'off') { c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; c.mv = null; if (announce) this.L('crew', `${c.name}: přihlášena`, null, c.id); }
       } else {
         if (c.state === 'base' || c.state === 'free') {
           const p = this.pos(c); c.lat = p.lat; c.lon = p.lon; c.mv = null; c.state = 'off';
-          if (c.externalLzs && c.externalDayOnly) { c.supportRequested = false; c.supportRequestedFor = null; }
+          if (c.ext && c.externalDayOnly) { c.supportRequested = false; c.supportRequestedFor = null; }
           if (announce) this.L('crew', `${c.name}: odhlášena`, null, c.id);
         } else if (c.state !== 'off') c.pendingOff = true;
       }
@@ -765,7 +781,7 @@ class Sim {
       case 'free': return 'Volný';
       case 'base': return 'Na základně';
       case 'activating': return 'Aktivace';
-      case 'second': return 'Sekundární převoz';
+      case 'second': return c.nbMission ? `Pomoc sousedovi: ${c.nbMission.place}` : 'Sekundární převoz';
       default: return 'Nepřihlášena';
     }
   }
@@ -967,6 +983,7 @@ class Sim {
     const out = [];
     for (const k of this.s.crews) {
       if (!this.avail(k) || k.type !== kind) continue;
+      if (k.ext && k.supportRequestedFor !== c.id) continue;   // cizí posádky jen po souhlasu k tomuto případu
       const target = role === 'heli-transfer' ? this._heliportForCase(c) : { lat: c.lat, lon: c.lon };
       const eta = this.etaFor(k, target.lat, target.lon, c.n);
       const p = this.pos(k);
@@ -1043,16 +1060,153 @@ class Sim {
     this.L('crew', `${c.name}: aktivace zálohy (za 20 min)`, null, c.id);
     return { ok: true };
   }
-  requestLzsSupport(caseId, crewId) {
-    const cs = this.caseOf(caseId), c = this.crewOf(crewId), own = this.crewOf('lzs');
-    if (!cs || !c || !c.externalLzs) return { ok: false, msg: 'Požádat lze jen o posádku LZS z jiného kraje.' };
-    if (cs.status === 'closed' || cs.status === 'intake' || cs.typ === 'sekundární') return { ok: false, msg: 'LZS lze žádat jen k otevřenému primárnímu výjezdu.' };
-    if (this.avail(own)) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
-    if (c.externalDayOnly && !this._isLzsDay()) return { ok: false, msg: `${c.name} je v simulaci dostupná jen v denní době.` };
+  requestLzsSupport(caseId, crewId) { return this.requestNeighbor(caseId, crewId); }
+
+  // ---------- mezikrajská a přeshraniční spolupráce ----------
+  // Naše žádost o cizí posádku (pozemní z Vysočiny, Plzeňska, Středních Čech, Bavorska nebo LZS): odpověď operačního střediska po 60–180 s,
+  // souhlas přibližně 70 %, jinak odmítnutí s důvodem. Pozemní jen když vlastní volná posádka není do 20 min.
+  requestNeighbor(caseId, crewId) {
+    const cs = this.caseOf(caseId), c = this.crewOf(crewId), t = this.s.t;
+    if (!cs || !c || !c.ext) return { ok: false, msg: 'Požádat lze jen posádku z jiného kraje.' };
+    if (cs.status === 'closed' || cs.status === 'intake' || cs.typ === 'sekundární') return { ok: false, msg: 'Pomoc lze žádat jen k otevřenému primárnímu výjezdu.' };
+    const nb = ZOS_DATA.neighbors[c.region] || { short: '' };
+    if (c.nbAsk && c.nbAsk.state === 'asked') return { ok: false, msg: `${c.name}: už čekáme na odpověď.` };
+    if (c.nbBusyUntil && t < c.nbBusyUntil) return { ok: false, msg: `${c.name} před chvílí odmítla; zkus jiného souseda nebo později.` };
     if (c.state !== 'off' || c.supportRequested) return { ok: false, msg: `${c.name} už není k dispozici.` };
-    c.supportRequested = true; c.supportRequestedFor = cs.id; c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon;
-    this.L('alert', `Požádáno o mezikrajskou spolupráci: ${c.name} k ${cs.num}.`, cs.id, c.id);
-    return { ok: true };
+    if (c.externalLzs) {
+      if (this.avail(this.crewOf('lzs'))) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
+      if (c.externalDayOnly && !this._isLzsDay()) return { ok: false, msg: `${c.name} je v simulaci dostupná jen v denní době.` };
+    } else {
+      const own = this.s.crews.filter(k => k.type === 'RZP' && !k.ext && this.avail(k)).map(k => this.etaFor(k, cs.lat, cs.lon, cs.n));
+      const best = own.length ? Math.min(...own) : Infinity;
+      if (best <= 1200) return { ok: false, msg: `Vlastní volná RZP je do ${Math.ceil(best / 60)} min; o pomoc z jiného kraje lze žádat, až když je dojezd nad 20 min nebo není žádná volná.` };
+      const d = hav(cs.lat, cs.lon, c.home.lat, c.home.lon);
+      if (c.foreign && d > 30) return { ok: false, msg: `${c.name} pomáhá jen v příhraničním pásu (do 30 km od základny).` };
+      if (d > 70) return { ok: false, msg: `${c.name} je příliš daleko (${Math.round(d)} km).` };
+    }
+    c.nbAsk = { caseId, askedAt: t, answerAt: t + this.rr(60, 180), state: 'asked' };
+    this.L('alert', `Požádáno o pomoc: ${c.name} (${nb.short}) k ${cs.num}. Čeká se na odpověď operačního střediska.`, cs.id, c.id);
+    return { ok: true, msg: `Požádáno: ${c.name}. Odpověď přijde za 1–3 min.` };
+  }
+  _nbRelease(c) {
+    c.supportRequested = false; c.supportRequestedFor = null; c.nbAsk = null;
+    if (c.state === 'base') { c.state = 'off'; c.lat = c.home.lat; c.lon = c.home.lon; c.mv = null; }
+  }
+  _nbAnswer(c, cs) {
+    const t = this.s.t, a = c.nbAsk, nb = ZOS_DATA.neighbors[c.region] || { sign: 'ZOS soused', short: '' };
+    if (!cs || cs.status === 'closed') { c.nbAsk = null; return; }
+    let p = c.externalLzs ? 0.75 : 0.7; if (c.foreign) p *= 0.85;
+    if (this.rnd() < p) {
+      a.state = 'accepted'; c.supportRequested = true; c.supportRequestedFor = cs.id; c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; c.mv = null;
+      this.L('alert', `${nb.sign}: souhlasí – ${c.name} k ${cs.num}.`, cs.id, c.id);
+      if (c.externalLzs) { // žádost a vyslání jsou jeden krok
+        const r = this.assign(cs.id, c.id);
+        if (!r.ok) { this.L('warn', `${c.name}: ${r.msg || 'vyslání se nepodařilo'}`, cs.id, c.id); this._nbRelease(c); }
+      } else this.L('req', `${cs.num}: ${c.name} čeká na vyslání – vyber ji v nabídce posádek nebo přetáhni dlaždici znovu na případ.`, cs.id, c.id);
+    } else {
+      const reasons = c.externalLzs ? ['LZS je na jiném letu', 'vrtulník je v technické přípravě', 'posádka je mimo dosah počasí'] : ['nemáme volnou posádku', 'posádka je na výjezdu', 'posádka je na převozu'];
+      a.state = 'declined'; c.nbBusyUntil = t + this.rr(900, 2400);
+      this.L('warn', `${nb.sign}: odmítá – ${this.pick(reasons)} (${c.name}, ${cs.num}).`, cs.id, c.id);
+    }
+  }
+  _nbReq(id) { return (this.s.nbq || []).find(x => x.id === id) || null; }
+  // žádosti sousedních krajů o naše posádky: plán na směnu (1–3 pozemní, 0–2 LZS)
+  _nbPlan(t0) {
+    const plan = [], n = this.ri(1, 3), m = this.ri(0, 2), span = 12 * 3600;
+    for (let i = 0; i < n; i++) plan.push({ at: t0 + this.rr(1500, span - 1500), kind: 'ground' });
+    for (let i = 0; i < m; i++) plan.push({ at: t0 + this.rr(1500, span - 1500), kind: 'lzs' });
+    return plan.sort((a, b) => a.at - b.at);
+  }
+  _nbSchedule() {
+    const s = this.s, t = s.t; if (s.scripted) return;
+    const ev = s.ev;
+    if (!ev.nbPlan) ev.nbPlan = this._nbPlan(t);
+    while (ev.nbPlan.length && ev.nbPlan[0].at <= t) this._nbSpawn(ev.nbPlan.shift().kind);
+    if (!ev.nbPlan.length && s.mode === 'free') ev.nbPlan = this._nbPlan(t + 3600);
+  }
+  _nbSpawn(kind) {
+    const s = this.s, t = s.t, D = ZOS_DATA;
+    if (kind === 'lzs') {
+      const lz = this.crewOf('lzs');
+      if (!lz || !this.avail(lz) || this._lzsWeatherStatus() === 'neletovo') { s.ev.nbPlan.push({ at: t + this.rr(900, 1800), kind }); s.ev.nbPlan.sort((a, b) => a.at - b.at); return; }
+    }
+    const region = this.pick(kind === 'ground' ? ['VY', 'PL', 'SC'] : ['VY', 'PL', 'SC', 'BY', 'HR', 'DR']);
+    const bases = (D.nbGround || []).filter(g => g.region === region);
+    let place, lat, lon;
+    if (bases.length) {
+      const b = this.pick(bases);
+      place = 'okolí ' + b.name.replace(/^[A-ZČŠŘÚ]{2} /, '').replace(/ (RZP|RTW)$/, ''); lat = b.lat + this.rr(-0.05, 0.05); lon = b.lon + this.rr(-0.07, 0.07);
+    } else {
+      const P = region === 'HR' ? ['Freistadt', 48.5106, 14.5026] : ['Gmünd', 48.7667, 14.9833];
+      place = 'okolí ' + P[0]; lat = P[1] + this.rr(-0.05, 0.05); lon = P[2] + this.rr(-0.07, 0.07);
+    }
+    const rq = { id: 'nq' + (s.nbSeq = (s.nbSeq || 0) + 1), kind, region, rtype: kind === 'ground' ? (this.rnd() < 0.25 ? 'RV' : 'RZP') : 'LZS', place, lat, lon,
+      indik: this.pick(['bolest na hrudi, N1', 'dušnost, N2', 'trauma, N2', 'porucha vědomí, N2', 'křečové stavy, N2', 'dopravní nehoda, N1']), t, state: 'open', expireAt: t + this.rr(180, 300), recallAt: null };
+    (s.nbq || (s.nbq = [])).push(rq);
+    if (s.nbq.length > 40) s.nbq.shift();
+    this._nbCall(rq, true);
+  }
+  _nbCall(rq, first) {
+    const s = this.s, D = ZOS_DATA, nb = D.neighbors[rq.region], pseudo = { id: 'nbop-' + rq.region, code: rq.region, name: nb.sign }, opts = [];
+    let msg;
+    if (rq.kind === 'lzs') {
+      msg = `žádáme o LZS Planá, ${rq.place}, ${rq.indik}. Můžete pomoci?`;
+      opts.push({ k: 'nbs', label: 'Vyhovět – Planá odletí (pryč asi hodinu)', say: `ZCB101 rozumí, Planá vzlétá k vám, ${rq.place}.`, ok: true, act: 'nb-send', crewId: 'lzs' });
+    } else {
+      msg = `žádáme o ${rq.rtype === 'RV' ? 'lékaře (RV)' : 'RZP'} do lokality ${rq.place}, ${rq.indik}. Můžete pomoci?`;
+      const cand = s.crews.filter(k => !k.ext && k.type === rq.rtype && this.avail(k)).map(k => ({ k, eta: this._eta(k.lat, k.lon, rq.lat, rq.lon) })).sort((a, b) => a.eta - b.eta).slice(0, 3);
+      cand.forEach((x, i) => opts.push({ k: 'nbs' + i, label: `Vyslat ${x.k.name} (ZCB${x.k.code}) · ETA ${Math.max(1, Math.round(x.eta / 60))} min`, say: `ZCB101 rozumí, vysíláme ${x.k.name}, ZCB${x.k.code}.`, ok: true, act: 'nb-send', crewId: x.k.id }));
+    }
+    opts.push({ k: 'nbx', label: 'Odmítnout', say: 'ZCB101: bohužel nemůžeme vyhovět, nemáme volnou posádku.', ok: true, act: 'nb-decline' });
+    opts.push({ k: 'nbl', label: 'Zjistím a ozvu se', say: 'ZCB101: zjistíme a ozveme se.', ok: true, act: 'nb-later' });
+    this._rq(pseudo, null, msg, opts, 'nbreq', { sign: nb.sign, callCodes: rq.region, nbId: rq.id, forceInteractive: true, noPenalty: true });
+    if (first) this.L('alert', `${nb.sign} žádá o ${rq.kind === 'lzs' ? 'LZS Planá' : rq.rtype === 'RV' ? 'lékaře' : 'RZP'} – ${rq.place}. Ozvou se rádiem.`);
+  }
+  _nbAccept(rq, crewId) {
+    if (!rq || rq.state !== 'open') return;
+    const s = this.s, t = s.t, nb = ZOS_DATA.neighbors[rq.region], k = this.crewOf(crewId);
+    if (!k || !this.avail(k)) { this.L('warn', `${nb.sign}: ${k ? k.name : 'posádka'} už není volná, žádost zůstává otevřená.`); return; }
+    const dur = this.rr(2400, 5400), p = this.pos(k);
+    if (k.type !== 'LZS') {
+      const others = s.crews.filter(x => !x.ext && x.type === k.type && x.oblast === k.oblast && x.id !== k.id && this.avail(x)).length;
+      this._opsScore(others >= 1 ? 1 : -1, others >= 1 ? `výpomoc sousednímu kraji, v oblasti zůstává volná posádka (${k.name})` : `výpomoc sousednímu kraji, oblast ${k.oblast} zůstala bez volné posádky (${k.name})`, null);
+    }
+    k.lat = p.lat; k.lon = p.lon; k.mv = null; k.state = 'second'; k.until = t + dur; k.caseId = null;
+    k.nbMission = { region: rq.region, place: `${nb.short} – ${rq.place}`, until: t + dur };
+    rq.state = 'accepted'; rq.crewId = k.id;
+    this.L('sys', `${k.name}: vysláno na pomoc (${nb.short}, ${rq.place}), návrat asi za ${Math.round(dur / 60)} min.`, null, k.id);
+  }
+  _nbDecline(rq) {
+    if (!rq || rq.state !== 'open') return;
+    const s = this.s, nb = ZOS_DATA.neighbors[rq.region];
+    rq.state = 'declined';
+    if (rq.kind === 'ground') {
+      const could = s.crews.some(k => !k.ext && k.type === rq.rtype && this.avail(k) && s.crews.some(x => !x.ext && x.type === k.type && x.oblast === k.oblast && x.id !== k.id && this.avail(x)));
+      if (could) this._opsScore(-1, `odmítnutí žádosti sousedního kraje (${nb.short}), přestože šlo posádku uvolnit`, null);
+    }
+    this.L('sys', `${nb.sign}: žádost odmítnuta.`);
+  }
+  _nbLater(rq) {
+    if (!rq || rq.state !== 'open') return;
+    rq.recallAt = this.s.t + this.rr(60, 120); rq.expireAt = Math.min(rq.t + 600, rq.expireAt + 150);
+  }
+  _nbTimeout(rq) {
+    if (!rq || rq.state !== 'open') return;
+    const nb = ZOS_DATA.neighbors[rq.region];
+    rq.state = 'timeout';
+    this._opsScore(-1, `žádost sousedního kraje (${nb.short}) zůstala bez odpovědi`, null);
+    this.L('warn', `${nb.sign}: bez odpovědi, žádost zrušena.`);
+  }
+  _nbStep() {
+    const s = this.s, t = s.t;
+    for (const c of s.crews) {
+      const a = c.nbAsk; if (!a) continue;
+      if (a.state === 'asked' && t >= a.answerAt) this._nbAnswer(c, this.caseOf(a.caseId));
+      else if (a.state === 'accepted' && c.state === 'base' && !c.caseId && t > a.answerAt + 600) { this.L('warn', `${c.name}: nebyla vyslána, spolupráce zrušena.`, a.caseId, c.id); this._nbRelease(c); }
+      else if (a.state === 'declined' && t >= (c.nbBusyUntil || 0)) c.nbAsk = null;
+    }
+    this._nbSchedule();
+    for (const rq of s.nbq || []) if (rq.state === 'open' && rq.recallAt != null && t >= rq.recallAt) { rq.recallAt = null; this._nbCall(rq, false); }
   }
   assign(caseId, crewId, role) {
     const s = this.s, t = s.t;
@@ -1062,7 +1216,7 @@ class Sim {
     if (!this.avail(c)) return { ok: false, msg: 'Posádka není volná.' };
     if (c.caseId === cs.id) return { ok: false, msg: 'Posádka už u případu je.' };
     if (cs.exitus && !(cs.exam && cs.exam.needed && !cs.exam.done && c.type === 'RV')) return { ok: false, msg: cs.exam && cs.exam.needed && !cs.exam.done ? 'Na prohlídku zemřelého vyšli RV.' : 'Na místě exitus, další posádka není potřeba.' };
-    if (c.externalLzs && (!c.supportRequested || c.supportRequestedFor !== cs.id)) return { ok: false, msg: 'Nejprve požádej o mezikrajskou spolupráci pro tento případ.' };
+    if (c.ext && (!c.supportRequested || c.supportRequestedFor !== cs.id)) return { ok: false, msg: 'Nejprve požádej o mezikrajskou spolupráci pro tento případ.' };
     if (c.externalLzs && this.avail(this.crewOf('lzs'))) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
     if (c.type === 'LZS' && cs.lzsActive) return { ok: false, msg: 'K případu už byla vyslána LZS.' };
     if (c.type === 'LZS') {
@@ -1082,9 +1236,9 @@ class Sim {
     const eta = this.etaFor(c, target.lat, target.lon, cs.n);
     const doc = c.type === 'RV' || c.type === 'LZS' || !!c.rlp;
     // efektivita volby (první pozemní posádka)
-    if (c.type === 'RZP' && role !== 'heli-transfer' && cs.effRatio == null) {
+    if (c.type === 'RZP' && !c.ext && role !== 'heli-transfer' && cs.effRatio == null) {
       let best = eta, bestK = c;
-      for (const k of s.crews) if (k.type === 'RZP' && this.avail(k)) { const e = this.etaFor(k, cs.lat, cs.lon, cs.n); if (e < best) { best = e; bestK = k; } }
+      for (const k of s.crews) if (k.type === 'RZP' && !k.ext && this.avail(k)) { const e = this.etaFor(k, cs.lat, cs.lon, cs.n); if (e < best) { best = e; bestK = k; } }
       // vzdálenější posádka je v pořádku, pokud by nejbližší nechala svou oblast bez volné RZP
       const justified = bestK.id !== c.id && this._freeRzp(bestK.oblast, bestK.id) === 0 && this._freeRzp(c.oblast, c.id) >= 1;
       cs.pick = { best, chosen: eta, justified };
@@ -1186,7 +1340,7 @@ class Sim {
       cs.lzsPatientToHospital = false; cs.lzsLandedAt = null; cs.lzsReadyAt = null;
       cs.lzsTransferCrewId = null; cs.lzsTransferred = false; cs.lzsHeliportAlerted = false;
     }
-    if (c.externalLzs) { c.supportRequested = false; c.supportRequestedFor = null; }
+    if (c.ext) { c.supportRequested = false; c.supportRequestedFor = null; }
     if ((c.type === 'RV' || c.type === 'LZS' || c.rlp) && !cs.crews.some(id => { const k = this.crewOf(id); return k && (k.type === 'RV' || k.type === 'LZS' || k.rlp); })) {
       cs.docAssigned = false; cs.docAssignT = null;
       if (cs.rvReq) {
@@ -1288,7 +1442,7 @@ class Sim {
     const have = new Set((c.symptoms || []).map(nk));
     for (let i = 0; i < 6; i++) {
       let set; try { set = this._symptomSet(ind.symptomKey || ind.klasif, 2); } catch (e) { return null; }
-      const pool = set.filter(x => !have.has(nk(x)) && !/DYNAMICKÁ|DOSPĚLÝ|DÍTĚ|ZZUM|PEDIATR|NEDÝCHÁ|BEZVĚDOMÍ|AVPU-U|KPR|^[#(]/i.test(x));
+      const pool = set.filter(x => !have.has(nk(x)) && !/DYNAMICKÁ|DOSPĚLÝ|DÍTĚ|ZZUM|PEDIATR|NEDÝCHÁ|BEZVĚDOMÍ|AVPU-U|KPR|^[#(]/i.test(x) && this._cleanSymptoms((c.symptoms || []).concat([x])).includes(x)); // bez protichůdných příznaků
       if (pool.length) return this.pick(pool);
     }
     return null;
@@ -1480,7 +1634,7 @@ class Sim {
     const rvNeed = n === 1 || (n === 2 && !dyn);
     const rvLater = !rvNeed && (over.rvLater != null ? over.rvLater : this.rnd() < (ind.rvP || 0));
     const rvReqKind = rvLater ? (over.rvReqKind || (this.rnd() < 0.5 ? 'zhoršení stavu' : 'posouzení stavu')) : null;
-    const up = symptoms.join(', '), symptomText = up.toLocaleUpperCase('cs-CZ');
+    let up = symptoms.join(', '), symptomText = up.toLocaleUpperCase('cs-CZ');
     const isChild = symptomText.includes('DÍTĚ');
     const minAge = isChild ? 0 : symptomText.includes('DOSPĚLÝ') ? Math.max(18, ind.age[0]) : ind.age[0];
     const maxAge = isChild ? 17 : ind.age[1];
@@ -1529,8 +1683,11 @@ class Sim {
     this._remember(lat, lon, '');
     const town = { n: townN };
     const isRoadAccident = ind.id === 'dn_poly' || ind.id === 'dn_lehke';
-    const patientCount = over.patientCount != null ? over.patientCount : !isRoadAccident ? 1 : symptomText.includes('VÍCE ZRANĚNÝCH') ? this.ri(2, 4) : this.rnd() < 0.025 ? this.ri(2, 3) : 1;
     const extKinds = over.extKinds !== undefined ? over.extKinds : EXTMSG.kindFor(ind.id, poiKey, () => this.rnd(), symptomText);
+    // podezření na otravu CO: případ dostane příznak Oxid uhelnatý a jde o víc osob (rodina, domácnost)
+    const hasCo = !!(extKinds && extKinds.includes('co'));
+    if (hasCo && !over.symptoms && !symptomText.includes('OXID UHELNATÝ')) { symptoms = symptoms.concat(['^Oxid uhelnatý']); up = symptoms.join(', '); symptomText = up.toLocaleUpperCase('cs-CZ'); }
+    const patientCount = over.patientCount != null ? over.patientCount : hasCo ? this.ri(2, 4) : !isRoadAccident ? 1 : symptomText.includes('VÍCE ZRANĚNÝCH') ? this.ri(2, 4) : this.rnd() < 0.025 ? this.ri(2, 3) : 1;
     // případ s datovkou: nejdřív „nabírá se“ (112/150/158), výzva za 3–5 min, pak podrobnosti; složky jedou samy
     const dzFirst = !!extKinds && over.extKinds === undefined;
     // fáze 1 (datovka z 112/150/158) 180–300 s, fáze 2 (nabírání na naší lince) jako u běžných případů; podle říjnového vzorku (medián volání→výzva 141 s u N1)
@@ -1538,7 +1695,7 @@ class Sim {
     const dzDur = dzFirst ? (over.intake != null ? Math.round(over.intake * 0.6) : this.ri(180, 300)) : 0;
     const intake = over.intake != null ? over.intake : dzFirst ? dzDur + (n === 1 ? this.ri(70, 150) : this.ri(70, 150)) : ownIntake;
     const poznamka = this._zosNote(ind, up, whKey);
-    const eo = { t, intake, patientCount, up, addr, town: townN, okres, where: whKey, sex, lat, lon };
+    const eo = { t, intake, patientCount, n, up, addr, town: townN, okres, where: whKey, sex, lat, lon };
     const radioReports = extKinds ? this._extReports(extKinds, eo) : [];
     if (dzFirst) radioReports.unshift({ id: 'dz-in', at: t + this.ri(8, 35), received: false, acknowledged: false, source: EXTMSG.intakeSource(extKinds[0], () => this.rnd()), text: EXTMSG.intakeText(extKinds[0], addr, ind.klasif), red: false });
     const placeDescription = this._placeText(D.place && D.place[poiKey] ? poiKey : whKey);
@@ -1559,7 +1716,7 @@ class Sim {
       ind: ind.id, klasif: ind.klasif, typ: 'primární', up, symptoms, charakter: D.charaktery[wd.ch], where: whKey, place: placeText.toLocaleLowerCase('cs-CZ'), n, dyn, rvNeed, rvLater, rvReqKind,
       initialDispatchRequired: n === 1 || (n === 2 && !dyn) ? ['RZP', 'RV'] : ['RZP'], initialDispatchSent: [],
       rvP: ind.rvP || 0, zzumInd: !!ind.zzum, addr, town: town.n, okres, cast, lat, lon, age, sex, child: age < 18, burnCenterCandidate: ind.id === 'popal' && symptomText.includes('ROZSÁHLÉ'),
-      desc: patientCount > 1 ? `${patientCount} zranění při dopravní nehodě; hlavní pacient: ${this._person(age, sex)}, ${age} let.` : `${this._person(age, sex)}, ${age} let. ${ind.klasif}.`,
+      desc: patientCount > 1 ? `${patientCount} ${hasCo ? 'osob s podezřením na otravu CO' : 'zranění při dopravní nehodě'}; hlavní pacient: ${this._person(age, sex)}, ${age} let.` : `${this._person(age, sex)}, ${age} let. ${ind.klasif}.`,
       hospType, trans: this.rnd() < ind.trans, scene: ind.scene, pocet: patientCount, patientCount, patientsRemaining: patientCount, patientsHandled: 0, radioReports,
       poznamka: noteFull, ozn: oznName, oznRel, patientName, ageText: this._ageText(age),
       phone,
@@ -1598,12 +1755,28 @@ class Sim {
     return c;
   }
   // datové zprávy od HZS / PČR / eCall k případu; texty se v rámci směny neopakují
+  // upřesnění z datové zprávy zvýší naléhavost (např. amputace prstů u N3 → N2 dynamická nebo plná), lékař se doplní a posádky se informují rádiem
+  _upgradeCase(c, up) {
+    const t = this.s.t, dyn = this.rnd() < 0.6, label = `N${up.n}${dyn ? ' dynamickou' : ''}`;
+    c.n = up.n; c.nDopl = up.n; c.dyn = dyn; c.rvNeed = true;
+    c.symptoms = (c.symptoms || []).filter(x => !/DYNAMICKÁ INDIKACE/i.test(x));
+    if (!c.symptoms.some(x => x === up.symptom)) c.symptoms.push(up.symptom);
+    if (dyn) c.symptoms.push('DYNAMICKÁ INDIKACE');
+    c.up = c.symptoms.join(', ');
+    if (!c.docAssigned) {
+      c.initialDispatchRequired = c.initialDispatchRequired || [];
+      if (!c.initialDispatchRequired.includes('RV')) c.initialDispatchRequired.push('RV');
+      c.waitSince = t;
+    }
+    this.L('req', `${c.num}: upřesnění z datové zprávy – zvyšuje se naléhavost na ${label} (${up.symptom.replace(/^[^0-9A-Za-zÀ-ž]+/, '')})`, c.id);
+    for (const k of c.crews.map(id => this.crewOf(id)).filter(k => k && k.type !== 'LZS' && k.type !== 'MU' && ['call', 'enroute', 'onscene'].includes(k.state))) this._zosCall(k, c, `zvyšujeme naléhavost na ${label}, posíláme lékaře.`);
+  }
   _extReports(kinds, o) {
     const D = ZOS_DATA, hist = this.s.ev.extHist || (this.s.ev.extHist = []);
     const near = (n, filter) => D.towns.filter(filter || (() => true)).map(tw => [tw, hav(o.lat, o.lon, tw.lat, tw.lon)]).sort((a, b) => a[1] - b[1]).slice(0, n).map(x => x[0]);
     const hzsTowns = ['České Budějovice', 'Tábor', 'Písek', 'Strakonice', 'Jindřichův Hradec', 'Prachatice', 'Český Krumlov', 'Dačice', 'Milevsko', 'Třeboň', 'Týn nad Vltavou', 'Trhové Sviny', 'Vimperk', 'Blatná', 'Kaplice', 'Soběslav', 'Vodňany', 'Volary'];
     const hzs = near(1, tw => hzsTowns.includes(tw.n))[0], dirs = near(4, tw => tw.n !== o.town), twn = D.towns.find(tw => tw.n === o.town);
-    const ctx = { r: () => this.rnd(), sym: String(o.up || '').toLocaleUpperCase('cs-CZ'), addr: o.addr, town: o.town, okres: o.okres, where: o.where, sex: o.sex, patientCount: o.patientCount,
+    const ctx = { r: () => this.rnd(), n: o.n, sym: String(o.up || '').toLocaleUpperCase('cs-CZ'), addr: o.addr, town: o.town, okres: o.okres, where: o.where, sex: o.sex, patientCount: o.patientCount,
       trapped: /UVĚZNĚNÝ|ZAKLÍNĚ/i.test(o.up), extraPerson: o.patientCount === 1 && this.rnd() < 0.025, big: !!(twn && twn.w >= 10),
       hzsNear: hzs ? hzs.n : null, dirTown: dirs.length ? this.pick(dirs).n : null, floor: o.where === 'byt' ? `${this.ri(1, 6)}. patro` : '',
       clock: min => this.clockAt(o.t + o.intake - min * 60) };
@@ -1616,7 +1789,7 @@ class Sim {
     o.ag = EXTMSG.agenciesFor(kinds, ctx);
     out.sort((a, b) => a.dt - b.dt);
     for (const x of out) { hist.push(x.text); if (hist.length > 400) hist.shift(); }
-    return out.map((x, i) => Object.assign({ id: `dz-${i + 1}`, at: o.t + o.intake + x.dt, received: false, acknowledged: false, source: this.pick(EXTMSG.SRC[x.src] || ['Linka 112']), text: x.text, red: !!EXTMSG.isRed(x.text, x.patientCount) }, x.patientCount ? { patientCount: x.patientCount } : {}));
+    return out.map((x, i) => Object.assign({ id: `dz-${i + 1}`, at: o.t + o.intake + x.dt, received: false, acknowledged: false, source: this.pick(EXTMSG.SRC[x.src] || ['Linka 112']), text: x.text, red: x.red != null ? x.red : !!EXTMSG.isRed(x.text, x.patientCount) }, x.patientCount ? { patientCount: x.patientCount } : {}, x.upgrade ? { upgrade: x.upgrade } : {}));
   }
   _muFirstSceneReport(cs, crew, at) {
     const m = cs.mu;
@@ -1863,7 +2036,8 @@ class Sim {
 
     for (const c of s.cases) if (c.status !== 'closed') this._caseStep(c);
     this._lzsRadio();
-    if (s.radioMode === 'interactive') this._radioStep();
+    this._radioStep();
+    this._nbStep();
     this._runMuAssistant();
     for (const cs of s.cases) if (cs.vstricna && cs.vstricna.state === 'offered' && t >= cs.vstricna.expiresAt) {
       this.declineVstricna(cs.id, true);
@@ -1895,8 +2069,9 @@ class Sim {
         if (report.patientCount && report.patientCount > c.patientCount) {
           c.patientCount = report.patientCount; c.pocet = report.patientCount;
           c.patientsRemaining = Math.max(0, c.patientCount - (c.patientsHandled || 0));
-          c.desc = `${c.patientCount} zranění při dopravní nehodě; počet upřesnily složky IZS.`;
+          c.desc = `${c.patientCount} zraněných; počet upřesnily složky IZS.`;
         }
+        if (report.upgrade && c.status !== 'closed' && !c.mu && !c.exitus && c.n > report.upgrade.n) this._upgradeCase(c, report.upgrade);
         // nekritické datovky (red === false) jen do logu bez pípnutí a toastu; kritické (červené) a ostatní hlášení pípají jako dřív
         this.L(report.red === false ? 'sys' : 'alert', `${c.num} · ${report.source || (c.mu ? 'Situační hlášení' : 'linka 112')}: ${report.text}`, c.id);
       }
@@ -2112,7 +2287,7 @@ class Sim {
         if (c.res && t >= c.dutyEnd) { c.state = 'off'; this.L('crew', `${c.name}: záloha odhlášena`, null, c.id); }
         break;
       case 'second':
-        if (t >= c.until) { c.state = 'base'; this.L('crew', `${c.name}: zpět po sekundárním převozu`, null, c.id); if (c.pendingOff) this._toBase(c); }
+        if (t >= c.until) { const nbm = c.nbMission; c.state = 'base'; c.nbMission = null; this.L('crew', nbm ? `${c.name}: zpět po pomoci sousednímu kraji (${nbm.place})` : `${c.name}: zpět po sekundárním převozu`, null, c.id); if (c.pendingOff) this._toBase(c); }
         break;
       case 'free':
         if (t >= c.until) { c.lat = c.mv.b[0]; c.lon = c.mv.b[1]; c.mv = null; c.retLights = false; this._toBase(c); }
@@ -2435,7 +2610,7 @@ class Sim {
     const dur = this._goAir(c, home.lat, home.lon);
     c.until = t + dur; c.state = 'free'; c.caseId = null; c.caseRole = null; c.arrivedAt = null; c.dest = null; c.lzsLeg = 'returning';
     c.callsCompleted = (c.callsCompleted || 0) + 1;
-    if (c.externalLzs) { c.supportRequested = false; c.supportRequestedFor = null; }
+    if (c.ext) { c.supportRequested = false; c.supportRequestedFor = null; }
     if (cs) {
       cs.lzsState = 'vrtulník se vrací na základnu';
       cs.crews = cs.crews.filter(id => id !== c.id);
@@ -2675,8 +2850,8 @@ class Sim {
     const t = this.s.t;
     c.mv = null;
     if (c.liberoId) this._detachLibero(c);
-    if (c.externalLzs && !c.supportRequested) { c.state = 'off'; c.pendingOff = false; c.lat = c.home.lat; c.lon = c.home.lon; }
-    else if (c.pendingOff) { c.state = 'off'; c.pendingOff = false; c.lat = c.home.lat; c.lon = c.home.lon; if (c.externalLzs && c.externalDayOnly) { c.supportRequested = false; c.supportRequestedFor = null; } this.L('crew', `${c.name}: odhlášena`, null, c.id); }
+    if (c.ext && !c.supportRequested) { c.state = 'off'; c.pendingOff = false; c.lat = c.home.lat; c.lon = c.home.lon; }
+    else if (c.pendingOff) { c.state = 'off'; c.pendingOff = false; c.lat = c.home.lat; c.lon = c.home.lon; if (c.ext && c.externalDayOnly) { c.supportRequested = false; c.supportRequestedFor = null; } this.L('crew', `${c.name}: odhlášena`, null, c.id); }
     else if (c.res && t >= c.dutyEnd) { c.state = 'off'; c.lat = c.home.lat; c.lon = c.home.lon; }
     else { c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; }
     c.lzsLeg = null; c.hospitalRun = null;
@@ -2760,7 +2935,7 @@ class Sim {
 
   // doba dojezdu nejbližší volné RZP (po silniční síti, režim N2) k seznamu bodů [[lat, lon], …]; pro vrstvu pokrytí na mapě
   coverageSecs(targets) {
-    const crews = this.s.crews.filter(c => c.type === 'RZP' && this.avail(c)).map(c => this.pos(c));
+    const crews = this.s.crews.filter(c => c.type === 'RZP' && !c.ext && this.avail(c)).map(c => this.pos(c));
     if (!crews.length) return targets.map(() => Infinity);
     let times = null;
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) times = ROUTER.coverage(crews.map(p => [p.lat, p.lon, 60]), targets);
@@ -2774,7 +2949,7 @@ class Sim {
     const s = this.s, cv = s.cov;
     if (s.t < cv.next) return;
     cv.next = s.t + 90;
-    const crews = s.crews.filter(c => c.type === 'RZP' && this.avail(c)).map(c => this.pos(c));
+    const crews = s.crews.filter(c => c.type === 'RZP' && !c.ext && this.avail(c)).map(c => this.pos(c));
     const T = ZOS_DATA.towns;
     let times = null;
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) times = ROUTER.coverage(crews.map(p => [p.lat, p.lon, 60]), T.map(tw => [tw.lat, tw.lon]));

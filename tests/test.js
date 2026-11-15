@@ -427,7 +427,7 @@ console.log('case click moves map camera true');
       { id: 2, kind: 'crew', txt: 'Vstřícná jízda přijata.' },
     ] } }, seenLog: 0,
     isVstricnaRadioMessage: text => /vstřícn|vstricn/i.test(String(text || '')),
-    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {},
+    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {}, radioParse: () => null, radioFeed: [],
     performance: { now: () => Date.now() }, setTimeout() {}, renderRadio() {}, logDueAt: new Map(), logLastDue: 0,
   };
   vm.runInNewContext(fn[0] + '\npollLog(); pollLog();', ctx);
@@ -765,4 +765,111 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   sa.assign(c2.id, r2.id);
   if (!(sa.s.autoRadio && sa.s.autoRadio.length && sa.s.autoRadio[0].lines.length === 5)) throw new Error('auto rádio: přepis relace pro panel');
   console.log('počasí, relace při vyslání, rychlost, auto rádio true');
+}
+
+// ---------- výslovnost a rozpoznání rádiových hlášek (hlídá i rozbité regulární výrazy) ----------
+{
+  const vm = require('vm'), fs = require('fs');
+  const ctx = { window: {}, performance: { now: () => 0 }, setTimeout, clearTimeout, console, navigator: {}, localStorage: { getItem() { return null; } } };
+  vm.runInNewContext(fs.readFileSync(__dirname + '/../src/voice.js', 'utf8') + ';this.V=ZOS_VOICE;', ctx);
+  const sp = t => ctx.V.speakable(t);
+  if (!/Prachaťice/.test(sp('Nemocnice Prachatice'))) throw new Error('výslovnost: Prachatice → Prachaťice');
+  if (!/Prachaťic\b/.test(sp('do Prachatic'))) throw new Error('výslovnost: Prachatic → Prachaťic');
+  if (!/úrgentní/i.test(sp('Urgentní příjem'))) throw new Error('výslovnost: urgentní');
+  if (!/ááro/.test(sp('jedeme na ARO'))) throw new Error('výslovnost: ARO → ááro');
+  for (const f of ['src/ui.js', 'src/voice.js', 'src/messages.js', 'src/engine.js', 'src/weather.js']) {
+    const s = fs.readFileSync(__dirname + '/../' + f, 'utf8');
+    if (/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(s)) throw new Error('řídicí znak ve zdroji (rozbitý regulární výraz): ' + f);
+  }
+  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const parse = new Function(ui.match(/function radioParse\(txt\) \{[\s\S]*?\n\}/)[0] + ';return radioParse;')();
+  const exp = [['ZCB101, zde ZCB713, příjem.', 'crew'], ['ZCB713 na příjmu.', 'crew'], ['ZCB713, zde ZCB101, příjem.', 'zos'], ['ZCB713, ZCB101: poprosím ukončete se.', 'zos'],
+    ['ZCB713: jsme ukončení, můžete posílat.', 'crew'], ['ZCB101 díky, konec.', 'zos'], ['ZCB101: rozumím.', 'zos'], ['ZCB101, zde ZOS Vysočina, příjem.', 'crew'], ['ZOS Vysočina: žádáme o RZP.', 'crew']];
+  for (const [t, who] of exp) { const r = parse(t); if (!r || r.who !== who) throw new Error('radioParse: ' + t + ' → ' + JSON.stringify(r)); }
+  if (parse('RZP1 (127): výzva k případu P1001') !== null) throw new Error('radioParse: ne každý log je rádio');
+  console.log('výslovnost, rozpoznání rádiových hlášek, žádné řídicí znaky true');
+}
+
+// ---------- CO, DN podle příznaků, změna naléhavosti po upřesnění, tvar relace ZOS ----------
+{
+  const EX = require('../src/messages.js');
+  const mk = seed => { const s = new Sim({ seed, mode: 'shift', startHour: 9, radio: 'interactive' }); s.s.ev.nextSpawn = 1e9; return s; };
+  // CO: případ dostane příznak Oxid uhelnatý a víc osob
+  const s1 = mk(21), co = s1._spawn({ ind: 'porucha', where: 'byt', extKinds: ['co'], intake: 0 });
+  if (!/oxid uhelnat/i.test(co.up) || co.patientCount < 2 || co.patientCount > 4) throw new Error('CO: příznak Oxid uhelnatý a 2–4 osoby: ' + co.up + ' / ' + co.patientCount);
+  if (!/CO/.test(co.radioReports[0].text)) throw new Error('CO: datovka');
+  // DN: chodec sražený vozidlem, + HZS → první datovka od HZS a text o chodci
+  const s2 = mk(22), dn = s2._spawn({ ind: 'dn_lehke', where: 'silnice', extKinds: ['dn'], symptoms: ['Dospělý', '´Chodec', '´Osobní automobil', '´Sražení vozidlem nad 35km/h', '+ HZS'], intake: 0 });
+  const dr = dn.radioReports.filter(r => r.id !== 'dz-in');
+  if (!dr.length || !/chod(ec|c)/i.test(dr[0].text)) throw new Error('DN: datovka má odpovídat příznaku Chodec: ' + (dr[0] && dr[0].text));
+  if (!/KOPIS|HZS/.test(dr[0].source)) throw new Error('DN: příznak + HZS → první datovka od HZS: ' + dr[0].source);
+  // pracovní úraz N3: někdy přijde upřesnění s amputací (upgrade)
+  let up = 0; for (let i = 1; i <= 60; i++) { let k = i * 7919 + 13; const rr = () => { k = (k * 16807) % 2147483647; return k / 2147483647; }; const items = EX.KINDS.pracUraz({ r: rr, sym: '', addr: 'Test 1', n: 3, patientCount: 1 }); if (items.some(x => x.upgrade && x.upgrade.n === 2)) up++; }
+  if (!up) throw new Error('pracovní úraz N3: očekávám upřesnění s amputací');
+  // změna naléhavosti: N3 → N2, doplní se RV, posádka dostane relaci
+  const s3 = mk(23), c3 = s3._spawn({ ind: 'trauma', n: 3, where: 'prov', intake: 0 }); c3.status = 'waiting';
+  const rz = s3.suggest(c3.id, 'RZP')[0]; s3.assign(c3.id, rz.crewId); s3.step(300);
+  const before = s3.s.log.length; s3._upgradeCase(c3, { n: 2, symptom: '´Amputace prstů' });
+  if (c3.n !== 2 || !c3.up.includes('Amputace prstů') || !c3.initialDispatchRequired.includes('RV')) throw new Error('upgrade: N2, příznak a požadavek RV');
+  if (!s3.s.radioQ.some(e => e.kind === 'zos' && /naléhavost na N2/.test(e.msg))) throw new Error('upgrade: posádka má dostat relaci o změně naléhavosti');
+  // tvar relace ZOS: 5 řádků, první „zde ZCB101, příjem“
+  const s4 = mk(24), k4 = s4.s.crews.find(x => x.type === 'RZP'), n4 = s4.s.log.length; s4._zosSay(k4, null, 'test', 'ok');
+  const lines = s4.s.log.slice(n4).filter(x => x.kind === 'crew').map(x => x.txt);
+  if (lines.length !== 5 || !/zde ZCB101, příjem/.test(lines[0]) || !/díky, konec/.test(lines[4])) throw new Error('relace ZOS má mít 5 řádků: ' + JSON.stringify(lines));
+  console.log('CO, DN podle příznaků, změna naléhavosti po upřesnění, tvar relace true');
+}
+
+// ---------- mezikrajská spolupráce ----------
+{
+  const mk = (seed, radio) => { const s = new Sim({ seed, mode: 'shift', startHour: 9, radio: radio || 'interactive' }); s.s.ev.nextSpawn = 1e9; s.s.ev.nbPlan = []; return s; };
+  // naše žádost o pozemní posádku: odemčeno až při dojezdu nad 20 min / žádná volná; odpověď po 60–180 s
+  let accepted = null, declined = 0;
+  for (let seed = 1; seed <= 40 && !accepted; seed++) {
+    const sim = mk(seed), cs = sim._spawn({ ind: 'trauma', n: 3, where: 'ulice', intake: 0, at: { lat: 49.261, lon: 13.904, addr: 'Test 1, Strakonice', town: 'Strakonice' } }); cs.status = 'waiting';
+    const nbc = sim.crewOf('nb-pl-sus');
+    const early = sim.requestNeighbor(cs.id, nbc.id);
+    if (early.ok) throw new Error('pomoc z jiného kraje nesmí jít, když je vlastní volná RZP do 20 min');
+    for (const k of sim.s.crews) if (!k.ext && k.type === 'RZP') k.state = 'off';
+    const r = sim.requestNeighbor(cs.id, nbc.id);
+    if (!r.ok) throw new Error('žádost o cizí posádku: ' + r.msg);
+    if (sim.requestNeighbor(cs.id, nbc.id).ok) throw new Error('duplicitní žádost');
+    sim.step(200);
+    if (nbc.nbAsk && nbc.nbAsk.state === 'accepted') accepted = { sim, cs, nbc }; else declined++;
+  }
+  if (!accepted) throw new Error('žádost: za 40 seedů žádný souhlas');
+  { const { sim, cs, nbc } = accepted;
+    if (nbc.state !== 'base' || nbc.supportRequestedFor !== cs.id) throw new Error('po souhlasu čeká cizí posádka na vyslání');
+    if (!sim.suggest(cs.id, 'RZP').some(x => x.crewId === nbc.id)) throw new Error('souhlasící cizí posádka je v nabídce');
+    if (!sim.assign(cs.id, nbc.id).ok) throw new Error('vyslání cizí posádky');
+    const other = sim._spawn({ ind: 'trauma', n: 3, where: 'ulice', intake: 0 }); other.status = 'waiting';
+    if (sim.suggest(other.id, 'RZP').some(x => x.crewId === nbc.id)) throw new Error('cizí posádka nesmí být v nabídce k jinému případu');
+  }
+  // žádost souseda o naši posádku: hovor, nabídka, body, vysláno pryč; bez odpovědi −1
+  { const sim = mk(5, 'auto'); sim._nbSpawn('ground');
+    const rq = sim.s.nbq[0], e = sim.s.radioQ.find(x => x.kind === 'nbreq');
+    if (!rq || !e || !e.opts.some(o => o.act === 'nb-send') || !e.opts.some(o => o.act === 'nb-decline') || !e.sign) throw new Error('žádost souseda: hovor s nabídkou');
+    const pts = sim.s.agg.opsPoints, send = e.opts.find(o => o.act === 'nb-send');
+    sim.radioAnswer(e.id); sim.radioReply(e.id, send.k);
+    const k = sim.crewOf(send.crewId);
+    if (k.state !== 'second' || !k.nbMission || rq.state !== 'accepted') throw new Error('vyhovění: posádka pryč na pomoc');
+    if (sim.s.agg.opsPoints === pts) throw new Error('vyhovění se hodnotí');
+    sim.step(k.nbMission.until - sim.s.t + 10); if (k.state === 'second') throw new Error('posádka se po pomoci vrací');
+  }
+  { const sim = mk(6, 'auto'); sim._nbSpawn('ground'); const pts = sim.s.agg.opsPoints; sim.step(400);
+    if (sim.s.nbq[0].state !== 'timeout' || sim.s.agg.opsPoints !== pts - 1) throw new Error('bez odpovědi: −1 b. a zrušeno'); }
+  { const sim = mk(7, 'auto'); sim._nbSpawn('lzs'); const rq = sim.s.nbq[0];
+    if (rq) { const e = sim.s.radioQ.find(x => x.kind === 'nbreq'); sim.radioAnswer(e.id); sim.radioReply(e.id, e.opts.find(o => o.act === 'nb-send').k);
+      if (sim.crewOf('lzs').state !== 'second') throw new Error('Planá po souhlasu pryč'); if (sim.avail(sim.crewOf('lzs'))) throw new Error('Planá pryč není dostupná'); } }
+  // naše žádost o LZS jinde: sloučená žádost a vyslání
+  { let ok = false;
+    for (let seed = 1; seed <= 30 && !ok; seed++) {
+      const sim = mk(seed), cs = sim._spawn({ ind: 'trauma', n: 1, where: 'ulice', intake: 0 }); cs.status = 'waiting';
+      sim.crewOf('lzs').state = 'off'; sim.crewOf('lzs').fixed = false;
+      const r = sim.requestNeighbor(cs.id, 'lzs-praha'); if (!r.ok) continue;
+      sim.step(200);
+      const k = sim.crewOf('lzs-praha');
+      if (k.nbAsk && k.nbAsk.state === 'accepted') { if (k.caseId !== cs.id) throw new Error('souhlas LZS = rovnou vysláno'); ok = true; }
+    }
+    if (!ok) throw new Error('žádost o LZS: žádný souhlas'); }
+  console.log('mezikrajská spolupráce: žádosti, odpovědi, žádosti sousedů, Planá true');
 }

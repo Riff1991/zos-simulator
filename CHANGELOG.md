@@ -8,6 +8,31 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.24.0 – 2026-11-16
+
+> Mezikrajská a přeshraniční spolupráce, předělaný panel Rádio a řada oprav z minulých verzí (včetně opravy výslovnosti, která v 0.23.x nefungovala).
+
+**Mezikrajská a přeshraniční spolupráce**
+- Nová skupina dlaždic „Sousední kraje“: pozemní posádky z Vysočiny, Plzeňského a Středočeského kraje a z Bavorska u hranice (základny a volací znaky jsou orientační a fiktivní) a LZS z Jihlavy, Prahy, Plzně, Lince, Kremsu a Straubingu. Rakousko jen LZS. Základny sousedů jsou i na mapě.
+- Naše žádost o pozemní posádku: přetažením dlaždice na případ. Jde jen když vlastní volná RZP není do 20 minut (nebo žádná volná); cizí posádky jen do 70 km, zahraniční v pásu do 30 km od základny. Operační středisko odpoví za 60–180 s (souhlas přibližně 70 %, jinak odmítnutí s důvodem a pauza u té základny). Po souhlasu se posádka vyšle z nabídky nebo opětovným přetažením, veze pacienta do naší nemocnice a vrací se domů.
+- Naše žádost o LZS z jiného kraje: „Požádat a vyslat“ je jeden krok s odpovědí střediska; v nabídce je ETA a odhad délky nasazení. Dřív byly všechny externí LZS fialové a nefunkční.
+- Žádosti sousedů o nás: 1–3× za směnu o RZP nebo RV a 0–2× o LZS Planá. Ozvou se jako relace v rádiu s volbami Vyslat (nabídka tří posádek s ETA), Odmítnout, Zjistím a ozvu se. Vyhovění se hodnotí podle zbylého pokrytí v oblasti, odmítnutí tam, kde šlo pomoci, a žádost bez odpovědi do 3–5 minut se ruší s −1 b. Planá po souhlasu odletí asi na hodinu a nelze ji odvolat.
+
+**Rádio**
+- Panel Rádio je živý chat se dvěma stranami (ZOS vlevo, posádka vpravo, čitelný text); řádky se ukazují přesně, když je hlas řekne, a po konci zůstanou 6 s.
+- Všechny relace ZOS mají tvar „zde ZCB101, příjem“ → na příjmu → zpráva → potvrzení → díky, konec; opraven chybějící první řádek.
+- „Je schopen překladu“ se v automatickém režimu nezodpovídá a po vypršení nic netrestá.
+
+**Případy a datovky**
+- Datovka podle příznaků: dopravní nehoda (chodec, motocyklista, cyklista, nákladní auto…) a odesílatel podle „+ HZS“ a „+ PČR“.
+- Otrava CO přidá příznak Oxid uhelnatý a 2–4 osoby. Upřesnění „amputace prstů“ u N3 změní naléhavost na N2, doplní RV a oznámí to posádkám.
+
+**Opravy**
+- Slovník výslovnosti (urgentní, Prachatice, ARO) v 0.23.x nefungoval kvůli chybným regulárním výrazům; opraveno a hlídá to test.
+- Karta ve „Nabírá se“ se plní postupně (v0.23.1) a zůstává ve verzi.
+
+---
+
 ## v0.23.1 – 2026-11-15
 
 > Oprava: karta ve „Nabírá se“ se plní postupně, ne prázdná.

@@ -68,9 +68,34 @@ const ZOS_DATA = {
   },
   // Modelované žádosti o výpomoc; letištní/heliportové souřadnice jsou veřejné orientační body.
   lzsSupport: [
-    { id: 'lzs-jihlava', name: 'LZS Jihlava (výpomoc)', code: 'KR12', oblast: 'JH', lat: 49.39853, lon: 15.56794, dayOnly: true, activationDay: [150, 210] },
-    { id: 'lzs-praha', name: 'LZS Praha (výpomoc)', code: 'KR01', oblast: 'ČB', lat: 50.1008, lon: 14.26, activationDay: [150, 210], activationNight: [360, 480] },
-    { id: 'lzs-plzen', name: 'LZS Plzeň (výpomoc)', code: 'KR07', oblast: 'ST', lat: 49.6753, lon: 13.2744, activationDay: [150, 210], activationNight: [360, 480] },
+    { id: 'lzs-jihlava', name: 'LZS Jihlava (výpomoc)', code: 'KR12', oblast: 'JH', region: 'VY', lat: 49.39853, lon: 15.56794, dayOnly: true, activationDay: [150, 210] },
+    { id: 'lzs-praha', name: 'LZS Praha (výpomoc)', code: 'KR01', oblast: 'ČB', region: 'SC', lat: 50.1008, lon: 14.26, activationDay: [150, 210], activationNight: [360, 480] },
+    { id: 'lzs-plzen', name: 'LZS Plzeň (výpomoc)', code: 'KR07', oblast: 'ST', region: 'PL', lat: 49.6753, lon: 13.2744, activationDay: [150, 210], activationNight: [360, 480] },
+    // zahraniční LZS (Rakousko, Bavorsko): modelované orientační základny, volací znaky fiktivní
+    { id: 'lzs-linz', name: 'LZS Linz (Horní Rakousko)', code: 'KR90', oblast: 'ČB', region: 'HR', foreign: true, lat: 48.2332, lon: 14.1875, activationDay: [240, 360], activationNight: [420, 600] },
+    { id: 'lzs-krems', name: 'LZS Krems (Dolní Rakousko)', code: 'KR91', oblast: 'JH', region: 'DR', foreign: true, lat: 48.4086, lon: 15.6139, dayOnly: true, activationDay: [240, 360] },
+    { id: 'lzs-straubing', name: 'LZS Straubing (Bavorsko)', code: 'KR92', oblast: 'ST', region: 'BY', foreign: true, lat: 48.8997, lon: 12.5517, activationDay: [240, 360], activationNight: [420, 600] },
+  ],
+  // Sousední kraje a země (mezikrajská spolupráce). Rakousko: jen LZS, pozemní pomoc se prakticky nepoužívá.
+  neighbors: {
+    VY: { name: 'Kraj Vysočina', short: 'Vysočina', sign: 'ZOS Vysočina' }, PL: { name: 'Plzeňský kraj', short: 'Plzeňský', sign: 'ZOS Plzeň' },
+    SC: { name: 'Středočeský kraj', short: 'Středočeský', sign: 'ZOS Střední Čechy' }, BY: { name: 'Bavorsko', short: 'Bavorsko', sign: 'ZOS Bavorsko', foreign: true },
+    HR: { name: 'Horní Rakousko', short: 'Horní Rakousko', sign: 'ZOS Horní Rakousko', foreign: true }, DR: { name: 'Dolní Rakousko', short: 'Dolní Rakousko', sign: 'ZOS Dolní Rakousko', foreign: true },
+  },
+  // Pozemní posádky sousedních krajů a Bavorska na základnách u hranice. Názvy základen jsou orientační, volací znaky fiktivní.
+  nbGround: [
+    { id: 'nb-vy-pel', name: 'VY Pelhřimov RZP', code: '8101', region: 'VY', lat: 49.4306, lon: 15.2206 },
+    { id: 'nb-vy-tel', name: 'VY Telč RZP', code: '8102', region: 'VY', lat: 49.1844, lon: 15.4531 },
+    { id: 'nb-vy-jih', name: 'VY Jihlava RZP', code: '8103', region: 'VY', lat: 49.3961, lon: 15.5912 },
+    { id: 'nb-pl-hor', name: 'PL Horažďovice RZP', code: '8201', region: 'PL', lat: 49.3189, lon: 13.7011 },
+    { id: 'nb-pl-sus', name: 'PL Sušice RZP', code: '8202', region: 'PL', lat: 49.2311, lon: 13.5206 },
+    { id: 'nb-pl-kla', name: 'PL Klatovy RZP', code: '8203', region: 'PL', lat: 49.3950, lon: 13.2950 },
+    { id: 'nb-sc-sed', name: 'SČ Sedlčany RZP', code: '8301', region: 'SC', lat: 49.6603, lon: 14.4258 },
+    { id: 'nb-sc-pri', name: 'SČ Příbram RZP', code: '8302', region: 'SC', lat: 49.6896, lon: 14.0103 },
+    { id: 'nb-sc-vot', name: 'SČ Votice RZP', code: '8303', region: 'SC', lat: 49.6408, lon: 14.6411 },
+    { id: 'nb-by-fre', name: 'BY Freyung RTW', code: '8401', region: 'BY', foreign: true, lat: 48.8083, lon: 13.5503 },
+    { id: 'nb-by-gra', name: 'BY Grafenau RTW', code: '8402', region: 'BY', foreign: true, lat: 48.8581, lon: 13.3967 },
+    { id: 'nb-by-wal', name: 'BY Waldkirchen RTW', code: '8403', region: 'BY', foreign: true, lat: 48.7300, lon: 13.6000 },
   ],
 
   // Sady MU (vozidla pro řešení následků mimořádných událostí), dislokace ČB, Tábor, Strakonice, J. Hradec.

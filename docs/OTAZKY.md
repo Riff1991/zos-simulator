@@ -232,3 +232,25 @@ Zdroj: dispečerský web „Výpočet úspory LZS“ (vlastní zdrojový kód od
 - FR: štítek s názvem jednotky (odlišná barva) v Právě řešené, panelu případu a Uzavřené.
 - Relace při vyslání posádky, která se vrací na základnu (nebo předává): ZCB101 → příjem → „ukončete se, mám pro vás další výjezd, obec, klasifikace N“ → „jsme ukončení“ → díky, konec. Spouští tlačítko „Volat posádku“, výjezd začíná až po relaci. Posádka na základně bez relace.
 - Počasí: skutečná historická data (Open-Meteo archiv, 1 bod pro kraj, stažení celého dne při startu, cache), záloha simulace; datum a hodina při startu; horní lišta s datem, dnem, teplotou, větrem (km/h, kt, směr) a stavem LZS; LZS podle dohlednosti, základny oblačnosti, větru (25–35 kt konzultace, nad 35 kt neletovo), námrazy a bouřek, den/noc NVIS; mírné zpomalení jízdy (déšť −8 %, sníh −15 %, náledí −25 %, mlha −5 %); vliv na druhy případů (náledí, horko, mráz, bouřky). Plán směn podle dne v týdnu (např. Dačice bez RV Po a Út) je samostatný krok.
+
+### Rádio – živý přepis (15. 11. 2026, anketa)
+- Panel Rádio ukazuje hovor jako chat se dvěma stranami (ZOS vlevo zeleně, posádka vpravo modře, světlý text). Řádky se objevují přesně ve chvíli, kdy je hlas řekne (skutečný čas, nezávisle na rychlosti hry); po posledním řádku zůstane 6 s a zmizí. V interaktivním režimu je přepis nad tlačítky odpovědí. LZS se podepisuje „Kryštof 13“.
+- Zdrojem je fronta `radioFeed` z `pollLog` (ne log, který se ořezává), rozpoznání řádků sdílí hlas i panel (`radioParse`).
+
+### Další úpravy (15. 11. 2026, anketa)
+- Otrava CO: datovka „podezření na otravu CO“ přidá případu příznak Oxid uhelnatý a počet osob 2–4; indikace se nemění (dítě AVPU-U zůstává N2 bez dynamiky). Text datovky odpovídá počtu osob a stavu.
+- Relace ZOS → posádka mají vždy tvar: „ZCBxxx, zde ZCB101, příjem“ → „na příjmu“ → zpráva → potvrzení → „díky, konec“.
+- Upřesnění z datovky může zvýšit naléhavost: po nabrání jako N3 přijde „amputace prstů“ → vždy N2 (60 % dynamická, 40 % plná), přidá se příznak a požadavek na RV (vyslání zvolí dispečer), posádky dostanou relaci „zvyšujeme naléhavost na N2…, posíláme lékaře“.
+- Datovka dopravní nehody vychází z příznaků případu (chodec, motocyklista, cyklista, nákladní automobil, rotace…); příznaky „+ HZS“ a „+ PČR“ určují odesílatele první zprávy a přítomnost složky.
+
+### Mezikrajská a přeshraniční spolupráce (15. 11. 2026, anketa – zadání, zatím neimplementováno)
+Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středočeským krajem (15. 8. 2013) a Plzeňským krajem (27. 10. 2015); ujednání o přeshraniční spolupráci s Dolním a Horním Rakouskem a Bavorskem (pohraniční území, vzájemná pomoc, když vlastní služba nestihne včas, jen oprávněné organizace; Rakousko: Notruf NÖ a Červený kříž). Zdroj: bakalářská práce ZZS JčK (kap. 6), rámcová smlouva ČR–Rakousko.
+- Toky: (1) naše žádost o LZS z jiného kraje (stávající, vylepšit), (2) naše žádost o pozemní posádku z jiného kraje, (3) žádost jiného kraje o naši pozemní posádku, (4) žádost jiného kraje o naši LZS (Planá).
+- Sousedé: Vysočina, Plzeňský, Středočeský kraj, Rakousko a Bavorsko (příhraniční pás, pozemní posádky i LZS). Konkrétní posádky na základnách u hranice (seznam základen navrhne Claude ke schválení; volací znaky fiktivní).
+- Naše žádost o pozemní posádku: až když vlastní volná posádka není do 20 min (nebo žádná volná); vysílá se přetažením dlaždice „Sousední kraje“ na případ. Odpověď operačního střediska po 60–180 s herního času: souhlas 70 %, jinak odmítnutí s důvodem (nemáme volnou / vlastní výjezd / posádka na převozu); po odmítnutí lze zkusit jiného souseda. Cizí posádka vozí pacienta do naší nemocnice podle indikace a pak se vrací na svou základnu.
+- Žádosti souseda o naši pozemní posádku: 1–3× za směnu; ozve se jako relace v panelu Rádio s volbami Vyhovět / Odmítnout / Zjistím; dispečer vybírá konkrétní posádku z nabídky s ETA; bodování podle zbytku pokrytí (vyhovět s jinou volnou RZP v oblasti +1, oblast zůstane bez RZP −1; odmítnutí bez trestu, když je oblast prázdná, −1 když mohla pomoci); bez odpovědi do 3–5 min automaticky odmítnuto a −1 b.
+- Žádosti souseda o Planou: 0–2× za směnu; po souhlasu je Planá pryd a nelze ji odvolat.
+- Naše žádost o LZS: odpověď střediska s prodlevou a možným odmítnutím, přidat zahraniční LZS, sloučit Požádat a Vyslat, ukázat ETA včetně aktivace a délky nasazení. Dnešní blok z nabídky posádek se mění: všechny externí LZS jsou fialové („nepřihlášená“) a vypadají nefunkčně.
+- UI: dlaždice „Sousední kraje“ v přehledu posádek (stav volná / vyslaná / mimo), základny sousedů a jedoucí cizí posádky na mapě jinou barvou.
+- Kroky: 1) naše žádosti o pomoc (pozemní i LZS, dlaždice, mapa, odpověď střediska), 2) žádosti sousedů o nás (hovor, nabídka, bodování, Planá pryč), 3) zahraničí (rakouské a bavorské základny, zahraniční LZS).
+- Upřesnění (15. 11. 2026): u Rakouska jen LZS, pozemní pomoc se prakticky nepoužívá (žádné rakouské pozemní základny). Bavorsko zatím beze změny (příhraniční pás pozemní i LZS), čeká na potvrzení.

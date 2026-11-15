@@ -16,18 +16,32 @@ const ZOS_EXTMSG = (function () {
 
   // ---------- dopravní nehoda ----------
   function dn(ctx) {
-    const r = ctx.r, heavy = r() < 0.18, two = !heavy && r() < 0.2;
+    const r = ctx.r, sym = String(ctx.sym || ''), has = (...k) => k.some(x => sym.includes(x));
+    // druh nehody vychází z příznaků výzvy (chodec, motocyklista, cyklista, nákladní automobil…)
+    const noHeavy = has('OSOBNÍ AUTOMOBIL', 'CHODEC', 'MOTOCYKLISTA', 'CYKLISTA', 'KOLOBĚŽKA', 'ROTACE');
+    const heavy = has('NÁKLADNÍ') || (!noHeavy && r() < 0.18), two = !heavy && !noHeavy && r() < 0.2;
     const car = () => pickF(r, CARS);
     const v1 = car(), v2 = heavy ? pickF(r, HEAVY) : two ? pickF(r, TWO) : car();
     const single = r() < 0.38;
-    const what = single ? `${v1} – ${pickF(r, ['mimo vozovku', 'v příkopu', 'na střeše v poli', 'náraz do stromu', 'náraz do sloupu', 'na boku v protisměru', 'v potoce', 'náraz do svodidel', 'sjetí ze srázu', 'náraz do zídky', 'přes zábradlí mostu', 'náraz do zastávky'])}`
+    const whatRand = single ? `${v1} – ${pickF(r, ['mimo vozovku', 'v příkopu', 'na střeše v poli', 'náraz do stromu', 'náraz do sloupu', 'na boku v protisměru', 'v potoce', 'náraz do svodidel', 'sjetí ze srázu', 'náraz do zídky', 'přes zábradlí mostu', 'náraz do zastávky'])}`
       : pickF(r, [`střet 2 vozidel: ${v1} × ${v2}`, `čelní střet: ${v1} × ${v2}`, `boční střet: ${v1} × ${v2}`, `srážka na křižovatce: ${v1} × ${v2}`, `náraz zezadu: ${v1} × ${v2}`, `řetězová nehoda ${ri(r, 3, 5)} vozidel`, `${v2} × ${v1}, ${pickF(r, ['střet při předjíždění', 'střet v zatáčce', 'nedání přednosti'])}`]);
+    let custom = '';
+    if (has('CHODEC')) custom = pickF(r, [`sražený chodec: ${v1}`, `chodec sražen vozidlem (${v1})`, `střet vozidla s chodcem: ${v1}`]) + (has('PŘEJETÍ') ? ', přejetí' : '') + (has('SRAŽENÍ VOZIDLEM NAD') ? ', vyšší rychlost' : '');
+    else if (has('MOTOCYKLISTA')) custom = pickF(r, [`střet: motocykl × ${v1}`, 'motocykl – pád na vozovce', `${v1} × motocykl`]);
+    else if (has('CYKLISTA')) custom = `střet cyklisty s vozidlem: ${v1}`;
+    else if (has('KOLOBĚŽKA')) custom = `střet elektrokoloběžky s vozidlem: ${v1}`;
+    else if (has('VLAK')) custom = 'střet vozidla s vlakem na přejezdu';
+    else if (has('ROTACE VOZIDLA')) custom = `${v1} na střeše mimo vozovku`;
+    else if (has('KATAPULTÁŽ')) custom = `${v1} – osoba vymrštěna z vozidla`;
+    else if (has('NÁKLADNÍ')) custom = pickF(r, [`střet: ${v2} × ${v1}`, `${v2} – střet s osobním vozidlem`]);
+    const what = custom || whatRand;
     const where = pickF(r, [ctx.addr, `${ctx.addr}, ${pickF(r, DIRS)} ${ctx.dirTown || ctx.town}`, `${ctx.addr}, km ${ri(r, 2, 48)}`]);
     const out = [];
     const trapped = ctx.trapped;
     const persons = ctx.patientCount > 1 ? `${ctx.patientCount} zranění` : pickF(r, ['1 zraněný', 'zraněná 1 osoba', 'počet zraněných neznámý', 'zatím 1 zraněný, další se ověřují', 'osoby se pohybují kolem vozidel', 'řidič ve vozidle', 'svědci hlásí zraněnou osobu']);
     // 1. první zpráva (HZS nebo PČR)
-    const first = r() < (trapped || heavy ? 0.7 : 0.45) ? 'hzs' : 'pcr';
+    const wantH = has('+ HZS'), wantP = has('+ PČR');   // odesílatel první zprávy podle příznaků výzvy
+    const first = wantH && !wantP ? 'hzs' : wantP && !wantH ? 'pcr' : r() < (trapped || heavy ? 0.7 : 0.45) ? 'hzs' : 'pcr';
     const hazard = trapped ? pickF(r, ['osoba zaklíněná ve vozidle', 'řidič zaklíněný, nutné vyproštění', 'uvězněná osoba na místě spolujezdce', 'zaklíněné dolní končetiny řidiče']) : maybe(r, 0.5, pickF(r, ['únik provozních kapalin', 'vozidlo kouří z motorového prostoru', 'vozidla blokují oba pruhy', 'airbagy aktivovány']));
     if (first === 'hzs') out.push({ src: 'hzs', dt: ri(r, 25, 110), text: join([`DN – ${where}`, what, persons, hazard]) });
     else out.push({ src: 'pcr', dt: ri(r, 25, 110), text: join([`DN – ${where}`, what, persons, maybe(r, 0.35, 'oznamovatel u vozidla')]) });
@@ -164,8 +178,10 @@ const ZOS_EXTMSG = (function () {
   function pracUraz(ctx) {
     const r = ctx.r, out = [];
     ctx.trappedWork = r() < 0.2;
-    out.push({ src: r() < 0.6 ? 'tctv' : 'pcr', dt: ri(r, 25, 90), text: join([`Pracovní úraz – ${ctx.addr}`, pickF(r, ['pila', 'lis', 'vysokozdvižný vozík', 'soustruh', 'řetězová pila', 'zemědělský stroj', 'pás dopravníku']), ctx.trappedWork ? pickF(r, ['ruka zaklíněná ve stroji, nutné vyproštění', 'noha zaklíněná pod strojem', 'zavalení břemenem, osoba zaklíněná']) : pickF(r, ['amputace prstů', 'rozsáhlé řezné poranění ruky', 'poranění oka', 'popálení horkým olejem', 'zasažení elektrickým proudem', 'zavalení břemenem, osoba vyprostěna kolegy'])]) });
-    out.push({ src: 'hzs', dt: ri(r, 140, 340), text: ctx.trappedWork ? pickF(r, ['stroj vypnut, zahájeno vyproštění, odhad ' + ri(r, 10, 30) + ' min', 'vyproštění probíhá, osoba při vědomí']) : pickF(r, ['stroj vypnut, přístup bezpečný', 'kolegové zastavili krvácení, přístup bezpečný', 'osoba při vědomí, komunikuje', 'amputát zajištěn ve sterilním obalu']) });
+    out.push({ src: r() < 0.6 ? 'tctv' : 'pcr', dt: ri(r, 25, 90), text: join([`Pracovní úraz – ${ctx.addr}`, pickF(r, ['pila', 'lis', 'vysokozdvižný vozík', 'soustruh', 'řetězová pila', 'zemědělský stroj', 'pás dopravníku']), ctx.trappedWork ? pickF(r, ['ruka zaklíněná ve stroji, nutné vyproštění', 'noha zaklíněná pod strojem', 'zavalení břemenem, osoba zaklíněná']) : pickF(r, (ctx.n && ctx.n > 2 ? [] : ['amputace prstů']).concat(['rozsáhlé řezné poranění ruky', 'poranění oka', 'popálení horkým olejem', 'zasažení elektrickým proudem', 'zavalení břemenem, osoba vyprostěna kolegy']))]) });
+    out.push({ src: 'hzs', dt: ri(r, 140, 340), text: ctx.trappedWork ? pickF(r, ['stroj vypnut, zahájeno vyproštění, odhad ' + ri(r, 10, 30) + ' min', 'vyproštění probíhá, osoba při vědomí']) : pickF(r, ['stroj vypnut, přístup bezpečný', 'kolegové zastavili krvácení, přístup bezpečný', 'osoba při vědomí, komunikuje', (ctx.n && ctx.n > 2 ? 'osoba při vědomí, komunikuje' : 'amputát zajištěn ve sterilním obalu')]) });
+    // po nabrání jako N3 přijde upřesnění: amputace prstů → vždy změna naléhavosti na N2 (dynamickou nebo plnou), posádce se oznámí rádiem
+    if (ctx.n === 3 && !ctx.trappedWork && r() < 0.5) out.push({ src: r() < 0.5 ? 'tctv' : 'hzs', dt: ri(r, 170, 330), upgrade: { n: 2, symptom: '´Amputace prstů' }, red: true, text: join([`Pracovní úraz – ${ctx.addr}`, 'upřesnění: amputace prstů, amputát zajištěn', 'masivní krvácení zastaveno tlakovým obvazem']) });
     return out;
   }
 
@@ -221,8 +237,11 @@ const ZOS_EXTMSG = (function () {
 
   // ---------- otrava CO ----------
   function co(ctx) {
-    const r = ctx.r, out = [];
-    out.push({ src: r() < 0.5 ? 'hzs' : 'tctv', dt: ri(r, 20, 90), text: join([`Podezření na otravu CO – ${ctx.addr}`, pickF(r, ['více osob s nevolností a bolestí hlavy', 'rodina zvrací, bolest hlavy', 'osoba bezvědomá v koupelně', 'detektor CO houká, osoby slabé']), maybe(r, 0.5, pickF(r, ['plynový kotel v provozu', 'topení na tuhá paliva', 'karma v koupelně']))]) });
+    const r = ctx.r, out = [], n = ctx.patientCount || 1, sym = String(ctx.sym || '');
+    const unc = /AVPU-U|BEZVĚDOM/.test(sym);
+    const who = n > 1 ? pickF(r, [`${n} osoby s nevolností a bolestí hlavy`, `rodina zvrací, bolest hlavy (${n} osob)`, `detektor CO houká, ${n} osoby slabé`].concat(unc ? [`${n} osob, jedna bezvědomá v koupelně`] : []))
+      : pickF(r, ['osoba s nevolností a bolestí hlavy, detektor CO houká'].concat(unc ? ['osoba bezvědomá v koupelně'] : []));
+    out.push({ src: r() < 0.5 ? 'hzs' : 'tctv', dt: ri(r, 20, 90), patientCount: n > 1 ? n : undefined, text: join([`Podezření na otravu CO – ${ctx.addr}`, who, maybe(r, 0.5, pickF(r, ['plynový kotel v provozu', 'topení na tuhá paliva', 'karma v koupelně']))]) });
     out.push({ src: 'hzs', dt: ri(r, 150, 360), text: pickF(r, ['objekt odvětrán, měření CO v normě, přístup bezpečný', 'koncentrace CO stále vysoká, ZZS nevstupovat do objektu', 'osoby vyvedeny ven, ZZS může k pacientům']) });
     return out;
   }
@@ -317,7 +336,7 @@ const ZOS_EXTMSG = (function () {
   }
   // které složky u datovky přijedou samy (pravděpodobnosti podle druhu události)
   const AG_RULES = {
-    dn: c => ({ pcr: 0.9, hzs: c.trapped ? 0.9 : 0.25 }), ecall: () => ({ pcr: 0.5, hzs: 0.3 }), otevreni: () => ({ hzs: 1, pcr: 0.5 }), pozar: () => ({ hzs: 1, pcr: 0.35 }),
+    dn: c => ({ pcr: String(c.sym || '').includes('+ PČR') ? 1 : 0.85, hzs: c.trapped || String(c.sym || '').includes('+ HZS') ? 0.95 : 0.2 }), ecall: () => ({ pcr: 0.5, hzs: 0.3 }), otevreni: () => ({ hzs: 1, pcr: 0.5 }), pozar: () => ({ hzs: 1, pcr: 0.35 }),
     psych: () => ({ pcr: 1 }), napadeni: () => ({ pcr: 1 }), intox: () => ({ pcr: 1 }), obeseni: () => ({ pcr: 1 }), tonuti: () => ({ hzs: 1, pcr: 0.4 }), zachrana: () => ({ hzs: 1 }), asistPcr: () => ({ pcr: 1 }),
     padVyska: () => ({ hzs: 0.3, pcr: 0.3 }), pracUraz: c => ({ pcr: 0.5, hzs: c.trappedWork ? 1 : 0 }), kprSvedci: () => ({ pcr: 0.55 }), pokousani: () => ({ pcr: 0.55 }), domNasili: () => ({ pcr: 1 }),
     zver: () => ({ pcr: 0.5 }), vlak: () => ({ pcr: 1, hzs: 0.8 }), vytah: () => ({ hzs: 1 }), co: () => ({ hzs: 1 }), plyn: () => ({ hzs: 1, pcr: 0.7 }), cyklista: () => ({ pcr: 0.15 }),

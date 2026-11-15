@@ -72,8 +72,8 @@ const ZOS_VOICE = (function () {
     return out.join(' ');
   }
   // slovník výslovnosti: fonetický zápis pro slova, která hlas čte po svém (doplňuj sem)
-  const PRON = [[/Prachatic(e|ích|ím|emi|ích)?/gi, (m, e) => 'Prachaťic' + (e || '')], [/Protivín(a|ě|em)?/gi, (m, e) => 'Proťivín' + (e || '')],
-    [/urgentn(í|ího|ímu|ím|ích|ími)/gi, (m, e) => 'úrgentn' + e], [/urgent/gi, 'úrgent'], [/A\.?R\.?O\.?/gi, 'ááro']];
+  const PRON = [[/\bPrachatic(e|ích|ím|emi|ích)?\b/gi, (m, e) => 'Prachaťic' + (e || '')], [/\bProtivín(a|ě|em)?\b/gi, (m, e) => 'Proťivín' + (e || '')],
+    [/(?<![\p{L}])urgentn(í|ího|ímu|ím|ích|ími)(?![\p{L}])/giu, (m, e) => 'úrgentn' + e], [/\burgent\b/gi, 'úrgent'], [/\bA\.?R\.?O\.?\b/gi, 'ááro']];
   function pron(t) { for (const [re, to] of PRON) t = t.replace(re, to); return t; }
   function speakable(text) {
     let t = String(text || '').replace(/\s*\(\d+\. volání\)/g, '').replace(/[()]/g, ', ');
