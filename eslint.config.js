@@ -6,7 +6,7 @@ const shared = {
 };
 const browser = ['window', 'document', 'location', 'navigator', 'localStorage', 'sessionStorage', 'performance', 'requestAnimationFrame',
   'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'fetch', 'console', 'URL', 'Blob', 'Response', 'DecompressionStream', 'Image',
-  'matchMedia', 'getComputedStyle', 'BroadcastChannel', 'AudioContext', 'innerWidth', 'innerHeight', 'Event', 'CustomEvent', 'HTMLElement', 'screen', 'open', 'alert', 'confirm', 'URLSearchParams', 'ResizeObserver', 'OfflineAudioContext']
+  'matchMedia', 'getComputedStyle', 'BroadcastChannel', 'AbortController', 'AudioContext', 'innerWidth', 'innerHeight', 'Event', 'CustomEvent', 'HTMLElement', 'screen', 'open', 'alert', 'confirm', 'URLSearchParams', 'ResizeObserver', 'OfflineAudioContext']
   .reduce((o, k) => (o[k] = 'readonly', o), {});
 const node = { module: 'writable', require: 'readonly', process: 'readonly', __dirname: 'readonly', global: 'writable', console: 'readonly', Buffer: 'readonly' };
 module.exports = [

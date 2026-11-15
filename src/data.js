@@ -91,6 +91,8 @@ const ZOS_DATA = {
     pi: { rzp: ['PISEK_RZP1', 'PISEK_RZP2', 'PISEK_RZP3'], rv: ['PISEK_RV'], rzpNo: [713, 715, 711], rvNo: [719] }, milevsko: { rzp: ['MILEVSKO'], rzpNo: [716] }, cimelice: { rzp: ['CIMELICE_RZP'], rzpNo: [718] },
     ta: { rzp: ['TA_RZP1', 'TA_RZP2', 'TA_RZP3'], rv: ['TA_RV'], rzpNo: [218, 215, 214], rvNo: [219] }, sobeslav: { rzp: ['SOBESLAV'], rzpNo: [224] }, mvozice: { rzp: ['VOZICE_RZP'], rzpNo: [220] }, oparany: { rzp: ['OPARANY_RZP'], rzpNo: [212] }, veseli: { rzp: ['VESELI'], rzpNo: [225] },
   },
+  // Adresa cloudflare Workeru s hlasem Azure (viz cloudflare/README.md); prázdné = jen offline Piper. Hráč ji může přepsat v Nastavení.
+  ttsUrl: 'https://zos-tts.zos-vojtech.workers.dev',
   // First respondeři (FR): jednotky, které mohou dorazit k pacientovi dřív než ZZS a převzít TANR od svědků.
   // Typy: HZS (profesionální), JPO2/JPO3 (obecní/dobrovolní), JPO4 (závodní), PCR (hlídka), VZS (vodní záchranná služba), HS (horská služba). Souřadnice dodal uživatel.
   frTypes: {

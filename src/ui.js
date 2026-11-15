@@ -13,7 +13,7 @@ function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window.
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 // ---------- nastavení (vzhled, písmo, zvuk, hra) ----------
 const SET_KEY = 'zos_jck_settings_v1';
-const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false, voice: !(window.innerWidth < 760), voiceTempo: 0.75, radioInteractive: true, radioSlow: true };
+const SET_DEF = { theme: 'auto', font: 1, sound: true, volume: 60, speed: 5, autoPauseN1: false, hints: false, voice: !(window.innerWidth < 760), voiceTempo: 0.75, voiceEngine: 'cloud', ttsUrl: '', radioInteractive: true, radioSlow: true };
 let settings = Object.assign({}, SET_DEF);
 try { settings = Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (_) {}
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (_) {} }
@@ -908,11 +908,14 @@ function voiceStatusText() {
   if (typeof ZOS_VOICE === 'undefined') return '';
   const v = ZOS_VOICE.status();
   if (!settings.voice) return 'jen tóny vysílačky';
+  if (v.cloud === 'on' && v.state === 'ready') return 'připraveno (cloud – Vlasta a Antonín)';
+  if (v.cloud === 'down') return 'cloud nedostupný, používám offline hlas (Piper)';
   return v.state === 'ready' ? 'připraveno' : v.state === 'loading' ? `stahuji hlas ${Math.round(v.progress * 100)} % (jednorázově ~80 MB)` : v.state === 'error' ? 'hlas nelze načíst: ' + v.err : '';
 }
 function applyVoice() {
   if (typeof ZOS_VOICE === 'undefined' || satellitePanel) return;
   ZOS_VOICE.unlock(); ZOS_VOICE.setVolume((settings.volume || 0) / 100 * 1.1); ZOS_VOICE.setTempo(settings.voiceTempo);
+  ZOS_VOICE.setCloud(settings.voiceEngine === 'cloud' ? (settings.ttsUrl || D.ttsUrl || '') : '');
   ZOS_VOICE.enable(!!settings.voice && !!settings.sound);
 }
 if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onChange(() => { const el = $('voice-status'); if (el) el.textContent = voiceStatusText(); if (sim) renderRadioLive(); });
@@ -1028,6 +1031,8 @@ function settingsModal(fromGame) {
     <div class="setrow"><b>Hlasitost</b><span>${seg('volume', [[30, 'Tichá'], [60, 'Střední'], [100, 'Hlasitá']])}</span></div>
     <div class="setrow"><b>Rádio</b><span>${seg('radioInteractive', [[true, 'Odpovídám sám'], [false, 'Automaticky']])}</span></div>
     <div class="setrow"><b>Hlas posádek</b><span>${seg('voice', [[true, 'Zapnutý'], [false, 'Vypnutý']])} <button class="btn" data-act="test-voice">Vyzkoušet</button> <small id="voice-status">${esc(voiceStatusText())}</small></span></div>
+    <div class="setrow"><b>Zdroj hlasu</b><span>${seg('voiceEngine', [['cloud', 'Cloud (Azure)'], ['piper', 'Offline (Piper)']])}</span></div>
+    <div class="setrow"><b>Adresa cloudu</b><span><input id="tts-url" type="url" placeholder="${esc(D.ttsUrl || 'https://….workers.dev')}" value="${esc(settings.ttsUrl || '')}" style="width:100%;min-width:200px"></span></div>
     <div class="setrow"><b>Tempo hlasu</b><span>${seg('voiceTempo', [[0.85, 'Klidné'], [0.75, 'Normální'], [0.66, 'Rychlé'], [0.58, 'Velmi rychlé']])}</span></div>
     <div class="setrow"><b>Zpomalit hru při relaci</b><span>${seg('radioSlow', [[true, 'Ano (1×)'], [false, 'Ne']])}</span></div>
     <div class="setrow"><b>Výchozí rychlost</b><span>${seg('speed', [[1, '1×'], [2, '2×'], [5, '5×'], [10, '10×']])}</span></div>
@@ -1386,11 +1391,14 @@ document.addEventListener('input', ev => {
   if (ev.target && ev.target.id === 'lib-probability') { window._opt.libero.presence = Number(ev.target.value); saveOpts(); const out = $('lib-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
   if (ev.target && ev.target.id === 'mu-probability') { window._opt.muProbability = Number(ev.target.value); saveOpts(); const out = $('mu-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
 });
+document.addEventListener('change', ev => {
+  if (ev.target && ev.target.id === 'tts-url') { settings.ttsUrl = ev.target.value.trim(); saveSettings(); applyVoice(); const el = $('voice-status'); if (el) el.textContent = voiceStatusText(); }
+});
 document.addEventListener('click', ev => {
   if (suppressClick) { ev.preventDefault(); return; }
   const t = ev.target;
   const se = t.closest('[data-set]');
-  if (se) { const k = se.dataset.set, v = se.dataset.val; settings[k] = v === 'true' ? true : v === 'false' ? false : isNaN(Number(v)) ? v : Number(v); saveSettings(); applyTheme(); if (k === 'speed' && sim) { speed = settings.speed; savedSpeed = speed; } if (['voice', 'sound', 'volume', 'voiceTempo'].includes(k)) applyVoice(); if (k === 'radioInteractive' && sim) sim.setRadioMode(settings.radioInteractive ? 'interactive' : 'auto'); settingsModal(window._setFromGame); return; }
+  if (se) { const k = se.dataset.set, v = se.dataset.val; settings[k] = v === 'true' ? true : v === 'false' ? false : isNaN(Number(v)) ? v : Number(v); saveSettings(); applyTheme(); if (k === 'speed' && sim) { speed = settings.speed; savedSpeed = speed; } if (['voice', 'sound', 'volume', 'voiceTempo', 'voiceEngine'].includes(k)) applyVoice(); if (k === 'radioInteractive' && sim) sim.setRadioMode(settings.radioInteractive ? 'interactive' : 'auto'); settingsModal(window._setFromGame); return; }
   const o = t.closest('[data-opt]'); if (o) { window._opt[o.dataset.opt] = o.dataset.val; shiftModal(); return; }
   const lm = t.closest('[data-libmode]'); if (lm) { window._opt.libero.modes[lm.dataset.libmode] = lm.dataset.val; window._libOpen = true; shiftModal(); return; }
   const ls = t.closest('[data-libset]'); if (ls) { const r = sim.setLiberoMode(ls.dataset.libset, ls.dataset.val); if (!r.ok) toast(r.msg, 'warn'); else { if (window._opt && window._opt.libero) { window._opt.libero.modes[ls.dataset.libset] = ls.dataset.val; saveOpts(); } render(); } return; }

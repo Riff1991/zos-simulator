@@ -1,0 +1,7 @@
+name = "zos-tts"
+main = "tts-proxy.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://riff1991.github.io,http://localhost:8765,http://127.0.0.1:8765"
+# tajné proměnné se nastavují příkazem (ne sem): wrangler secret put AZURE_KEY / AZURE_REGION

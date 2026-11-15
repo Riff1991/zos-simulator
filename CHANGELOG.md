@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.21.2 – 2026-11-15
+
+> Rádio: na konci každé relace je ticho a pípnutí konce vysílání, takže se poslední slabika věty neztrácí. Zvuk vysílačky je realističtější (jemné digitální vrčení kodeku, míň drsné zkreslení, bez náhodných výpadků) a každá posádka mluví jiným mužským hlasem.
+
+- Rádio: ticho a pípnutí na konci relace, odstup mezi relacemi, zrušené náhodné výpadky uprostřed vět.
+- Hlasy: dispečer je hlubší a pomalejší mužský hlas, posádky jsou vyšší, každá s jinou výškou a tempem. ORL se čte jako slovo.
+- Cloudový hlas (volitelný): Azure Speech zdarma, hlas Antonín (dispečer i posádky odlišené výškou a tempem), přes vlastní Cloudflare Worker (návod v cloudflare/README.md). Nastavení → Zdroj hlasu / Adresa cloudu. Když cloud selže, hra sama použije offline Piper.
+
+---
+
 ## v0.21.1 – 2026-11-14
 
 > Opraven systém majáků: posádky jedou k případu i s pacientem vždy na majáky (rychlost se liší podle naléhavosti N1–N3), bez majáků se vracejí. Režim N3 je návrat na majáky na pokyn dispečera; RV dál než 10 min od základny se vrací na majáky samo.
