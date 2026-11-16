@@ -1,7 +1,7 @@
 """Úplná databáze adres z OSM pro jihočeské okresy → site/addr.json (stejný formát jako dřív).
 
 Rozdíl proti addr_extract.py + addr.py: adresní body bez `addr:city` se nezahazují, obec se doplní z hranic obcí (admin_level 8),
-případně z nejbližšího sídla (place), okres z hranic okresů (admin_level 7). Všechno se čte přímo z pbf, bez externích dat.
+případně z nejbližšího sídla (place), okres z hranic okresů (admin_level 5). Všechno se čte přímo z pbf, bez externích dat.
 
 Použití: python3 pipeline/addr_full.py work/jihocesky.osm.pbf        (vyžaduje: pip install osmium shapely)
 Výstup: site/addr.json, work/out/addr_report.txt (počty podle obcí).
@@ -35,7 +35,7 @@ class H(osmium.SimpleHandler):
     def area(self, a):
         t = a.tags
         try:
-            if t.get('boundary') == 'administrative' and t.get('admin_level') in ('7', '8') and t.get('name'):
+            if t.get('boundary') == 'administrative' and t.get('admin_level') in ('5', '8') and t.get('name'):
                 g = shapely.wkb.loads(wkb.create_multipolygon(a), hex=True)
                 (obce if t['admin_level'] == '8' else okresy).append((t['name'], g))
                 return
@@ -53,7 +53,7 @@ def main(path):
     for name, g in okresy:
         n = name.replace('okres ', '').strip()
         if n in WANT: ok_geo.append((WANT.index(n), g))
-    assert ok_geo, 'v datech nejsou hranice okresů (admin_level 7)'
+    assert ok_geo, 'v datech nejsou hranice okresů (admin_level 5)'
     ok_tree = STRtree([g for _, g in ok_geo])
     ob_tree = STRtree([g for _, g in obce]) if obce else None
     pl_tree = STRtree([Point(lon, lat) for _, lat, lon in places])
@@ -89,7 +89,7 @@ def main(path):
         A += [round(lat * 1e5), round(lon * 1e5), si(st), si(city), si(num), si(sub), ok, cp]
     strings = [None] * len(S)
     for s, i in S.items(): strings[i] = s
-    json.dump({'okresy': WANT, 's': strings, 'a': A}, open('site/addr.json', 'w'), ensure_ascii=False, separators=(',', ':'))
+    json.dump({'okresy': WANT, 's': strings, 'a': A}, open('site/addr.json', 'w', encoding='utf8'), ensure_ascii=False, separators=(',', ':'))
     print('site/addr.json', os.path.getsize('site/addr.json'), 'B, strings', len(strings))
     os.makedirs('work/out', exist_ok=True)
     cnt = collections.Counter(c for _, _, _, c, _, _, _, _ in out)

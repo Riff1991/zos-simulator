@@ -1,5 +1,5 @@
 import pandas as pd, numpy as np, json, collections
-A=json.load(open('../../site/addr.json'))
+A=json.load(open('../../site/addr.json',encoding='utf8'))
 a=A['a']; S=A['s']; n=len(a)//8
 cnt=collections.Counter(S[a[i*8+3]] for i in range(n))
 tot=sum(cnt.values()); print('adresních bodů',tot,'obcí',len(cnt))
@@ -20,5 +20,5 @@ rl=sum(r for _,r,_,_ in rows); al=sum(aa for _,_,aa,_ in rows)
 mo=(1-rl)/(1-al); print(f'\nvyjmenované obce: reálně {rl*100:.1f} % událostí, {al*100:.1f} % adres; násobek ostatních ×{mo:.2f}')
 ms=[m for _,_,_,m in rows]; print('násobky: medián %.2f, p10 %.2f, p90 %.2f, max %.1f'%(np.median(ms),np.quantile(ms,.1),np.quantile(ms,.9),max(ms)))
 mul={o:round(min(6,m),2) for o,_,_,m in rows}
-json.dump({'mul':mul,'other':round(mo,3)},open('obecmul.json','w'),ensure_ascii=False)
+json.dump({'mul':mul,'other':round(mo,3)},open('obecmul.json','w',encoding='utf8'),ensure_ascii=False)
 print('počet položek',len(mul))
