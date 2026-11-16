@@ -239,7 +239,7 @@ console.log('LZS heliport alert at five minutes true');
 // A distant, suitable single-patient transport can be handed over to a local RZP en route.
 const vjSim = new Sim({ seed: 113, mode: 'free', startHour: 10, muEnabled: false });
 vjSim.s.ev.nextSpawn = vjSim.s.ev.nextSecond = vjSim.s.ev.nextMU = 999999;
-const vjCase = vjSim._spawn(); vjCase.status = 'active'; vjCase.n = 3; vjCase.dyn = true; vjCase.klasif = 'Bolest'; vjCase.trans = true; vjCase.patientCount = 1; vjCase.pocet = 1;
+const vjCase = vjSim._spawn(); vjCase.status = 'active'; vjCase.n = 3; vjCase.dyn = true; vjCase.klasif = 'Bolest'; vjCase.ind = 'bolest'; vjCase.symptoms = []; vjCase.trans = true; vjCase.patientCount = 1; vjCase.pocet = 1;
 vjCase.lat = ZOS_DATA.stations.find(x => x.id === 'dacice').lat; vjCase.lon = ZOS_DATA.stations.find(x => x.id === 'dacice').lon; vjCase.hospType = 'okresni'; vjCase.targetHospitalId = 'h-jh';
 const vjPrimary = vjSim.crewOf('dacice-r0'), vjHelper = vjSim.crewOf('jh-r0');
 if (!vjPrimary || !vjHelper || !vjSim.avail(vjPrimary) || !vjSim.avail(vjHelper)) throw new Error('Vstřícná jízda test setup did not have local crews');
@@ -257,7 +257,7 @@ console.log('Vstřícná jízda rendezvous, handover and destination transport t
 {
   const sim = new Sim({ seed: 113, mode: 'free', startHour: 10, muEnabled: false });
   sim.s.ev.nextSpawn = sim.s.ev.nextSecond = sim.s.ev.nextMU = 999999;
-  const cs = sim._spawn(); cs.status = 'active'; cs.n = 3; cs.dyn = true; cs.klasif = 'Bolest'; cs.trans = true; cs.patientCount = 1; cs.pocet = 1;
+  const cs = sim._spawn(); cs.status = 'active'; cs.n = 3; cs.dyn = true; cs.klasif = 'Bolest'; cs.ind = 'bolest'; cs.symptoms = []; cs.trans = true; cs.patientCount = 1; cs.pocet = 1;
   const dc = ZOS_DATA.stations.find(x => x.id === 'dacice'); cs.lat = dc.lat; cs.lon = dc.lon; cs.hospType = 'okresni'; cs.targetHospitalId = 'h-jh';
   const pr = sim.crewOf('dacice-r0'), he = sim.crewOf('jh-r0');
   pr.caseId = cs.id; pr.state = 'onscene'; cs.crews.push(pr.id);
@@ -895,6 +895,10 @@ console.log('vstřícná jízda radio highlight tone fires once true');
       n++;
     }
     if (n !== 60) throw new Error('test N1'); }
+  // vstřícná: kdo se překládá (chodící N3 ano, N1 / nosítka / DKK / CMP ne)
+  { const sim = mk(5), T = (o) => sim._transferable(Object.assign({ n: 3, ind: 'bolest', symptoms: [], klasif: 'Bolest' }, o));
+    if (!T({})) throw new Error('chodící N3 má jít překládat');
+    if (T({ n: 1 }) || T({ ind: 'cmp' }) || T({ symptoms: ['IMOBILNÍ'] }) || T({ ind: 'trauma', symptoms: ['ZLOMENINA DKK'] }) || T({ n: 2, ind: 'hrudnik' }) || T({ child: true, n: 2 })) throw new Error('nepřekládat N1/CMP/imobilní/DKK/hrudník N2/dítě N2'); }
   console.log('mezikrajská spolupráce: žádosti, odpovědi, žádosti sousedů, Planá true');
 }
 

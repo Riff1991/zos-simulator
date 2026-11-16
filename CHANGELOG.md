@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.30.2 – 2026-11-16
+
+> Vstřícná jízda se nabízí častěji a o překladu rozhoduje typ pacienta.
+
+### Opravy
+- **Vstřícná jízda se nenabízí jen tehdy, když je jízda do nemocnice z místa zásahu pod 15 min.** Dřív ji hra potlačovala i podle základny posádky a podle náhodného „krátká trasa“ (např. Suchdol).
+- **Posádka „dojede sama“ jen u pacientů, které nejde překládat:** N1, nosítka, imobilní a nechodící, zlomeniny DKK, CMP, porucha vědomí, děti v N1–N2, hrudník a arytmie v N2 a další. Trauma HKK vzácně ano, chodící N3 ano.
+
 ## v0.30.1 – 2026-11-16
 
 > Opravy převozu.

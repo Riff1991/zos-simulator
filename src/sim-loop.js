@@ -707,22 +707,31 @@ class SimLoop {
     if (!cs.triage) cs.triage = { why: this.pick(['mechanismus', 'mechanismus', 'anatomie', 'fyziologie']), vent: this.rnd() < 0.75 ? 'spontánně ventilující' : 'UPV' };
     return `, polytrauma, ${cs.sex === 'Ž' ? 'žena' : 'muž'} ${cs.age} let, triage pozitivní – ${cs.triage.why}, ${cs.triage.vent}, dojezd ${mins} minut`;
   }
+  // Může pacient přestoupit ze sanitky do sanitky (vstřícná jízda)? Ne: nosítka, imobilní, nechodící, DKK, N1, kritické stavy. Situační případy rozhoduje náhoda.
+  _transferable(cs) {
+    if (cs.n === 1 || cs.nOrig === 1 || cs.exitus || cs.mu) return false;
+    const sym = (cs.symptoms || []).join(' ') + ' ' + (cs.klasif || '');
+    if (/imobil|ležící|nechod|vozík|nosítk|páteř|DKK|dolní konč|stehn|kyčl|bérec|bezvěd|AVPU-[PU]|KPR|křeč|dynamick/i.test(sym)) return false;
+    if (['resus', 'nzo', 'tonuti', 'obeseni', 'popal', 'amput', 'dn_poly', 'dn_lehke', 'cmp', 'porucha', 'gyn', 'czs', 'asist', 'trauma_dite'].includes(cs.ind)) return false;
+    if (cs.child && cs.n <= 2) return false;
+    if (cs.n === 2 && ['hrudnik', 'aryt', 'dusnost', 'alerg', 'krvac', 'intox', 'neuro'].includes(cs.ind)) return false;
+    if (cs.ind === 'trauma') return /HKK|horní konč|ruk[auy]|zápěstí|předloktí|loket|rameno|prst/i.test(sym) && this.rnd() < 0.25;
+    if (cs.where === 'domov' && this.rnd() < 0.7) return false;
+    return cs.n === 3 ? true : this.rnd() < 0.45;
+  }
   _announceVstricna(rzp, cs, hospital, routeDuration, baseMsg, ackOpts) {
     const distanceSec = this._eta(rzp.mv.a[0], rzp.mv.a[1], hospital.lat, hospital.lon);
-    const trauma = /trauma|dopravní nehoda|amputace|popálení/i.test(cs.klasif);
-    const fitChance = cs.n === 3 ? (trauma ? 0.06 : 0.50) : cs.n === 2 ? (trauma ? 0.02 : 0.16) : 0;
     const forced = !!(cs.script && cs.script.vstricna);
-    const suitable = forced || this.rnd() < fitChance;
+    const suitable = forced || this._transferable(cs);
     const nearest = ZOS_DATA.stations.reduce((a, x) => !a || hav(x.lat, x.lon, hospital.lat, hospital.lon) < hav(a.lat, a.lon, hospital.lat, hospital.lon) ? x : a, null);
     const area = nearest && nearest.oblast;
     const receiver = this.s.crews.filter(k => k.type === 'RZP' && k.oblast === area && this.avail(k) && !k.res && k.caseId !== cs.id);
-    const canOffer = suitable && receiver.length > 0 && (forced || routeDuration > 12 * 60);
+    const canOffer = suitable && receiver.length > 0;
     // Vstřícnou řeší jen periferní posádky; „dojedeme sami / je schopen překladu“ se říká jen z periferie.
     // Vstřícná má smysl jen u dlouhých přejezdů po pomalejších silnicích (např. Dačice → JH, Vyšší Brod → ČK),
     // ne tam, kde se jede po dálnici či rychlé silnici (Veselí, Soběslav → Tábor): čas trasy po síti s rychlostmi jízdy s VRZ.
-    const homeSec = rzp.home ? this._eta(rzp.home.lat, rzp.home.lon, hospital.lat, hospital.lon) : distanceSec;
     const ack = ackOpts || [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }];
-    if (!forced && (homeSec < 17 * 60 || distanceSec < 20 * 60 || hospital.ext)) {
+    if (!forced && (distanceSec < 15 * 60 || hospital.ext)) {
       cs.vstricna = { state: 'not-needed', hospitalId: hospital.id, area, distanceSec };
       if (baseMsg) this._crewCall(rzp, cs, `${baseMsg}.`, ack, 'info');
       return;
