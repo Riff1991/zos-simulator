@@ -38,7 +38,7 @@ const ZOS_TUTORIAL = (() => {
       { t: 'Posádka na místě zjistí jisté známky smrti a zavolá. Na příjmu a potvrď, že ZOS zjistí koronera.', hl: '#radio-live', fast: 10, done: (s, T) => !!T.c.exitus },
       { t: 'RV ještě jede zbytečně. Odvolej ho tlačítkem Odvolat v detailu případu (do 3 min od hlášení +1 b.).', hl: '#detail', pause: true, done: (sim, T) => !hasType(sim, T.c, 'RV') },
       { t: 'ZOS zjišťuje koronera (2–5 min). Počkej, až začne blikat dlaždice KORONER.', fast: 30, done: (s, T) => !!T.c.coroner && T.c.coroner.state === 'available' },
-      { t: 'Koroner je k dispozici. Přetáhni dlaždici KORONER (vpravo, skupina Speciální) na případ. Do 10 min +1 b., do 15 min ho jinak vyšle kolega za −1.', hl: '.st-coroner', pause: true, done: (s, T) => !!T.c.coroner && T.c.coroner.state === 'sent' },
+      { t: 'Koroner je k dispozici. Přetáhni dlaždici KORONER (vpravo, skupina LZS a součinnost) na případ. Do 10 min +1 b., do 15 min ho jinak vyšle kolega za −1.', hl: '.st-coroner', pause: true, done: (s, T) => !!T.c.coroner && T.c.coroner.state === 'sent' },
       { t: 'Druhá situace: neúspěšná resuscitace a koroner NENÍ k dispozici. Dál.', next: true, pause: true, enter(sim, T) {
         T.b = sim.spawnScripted(P({ ind: 'nzo', n: 1, symptoms: ['Nedýchá', 'AVPU-U', 'Dospělý'], age: 66, sex: 'M', where: 'ulice', at: at('Vimperk', -0.006, 0.004, 'Pivovarská 5, Vimperk'), fate: 'cpr-fail' }, { coroner: 'unavailable' }));
       } },
@@ -87,7 +87,7 @@ const ZOS_TUTORIAL = (() => {
     }, steps: [
       { t: 'Dva případy: agresivní pacient v Písku a pád v bytě ve Strakonicích. Vyšli RZP k oběma.', fast: 5, done: (sim, T) => hasType(sim, T.c, 'RZP') && hasType(sim, T.b, 'RZP') },
       { t: 'Posádky na místě požádají o součinnost (rádio a červený pruh). Čekej.', fast: 10, done: (s, T) => !!(T.c.agencies && T.c.agencies.pcr) && !!(T.b.agencies && T.b.agencies.hzs) },
-      { t: 'V Písku žádají policii. Přetáhni dlaždici PČR (skupina Speciální) na ten případ. Do 6 min +1 b., pozdě −1.', hl: '.st-pcr', pause: true, done: (s, T) => !!T.c.agencies && ['sent', 'onscene'].includes(T.c.agencies.pcr.state) },
+      { t: 'V Písku žádají policii. Přetáhni dlaždici PČR (skupina LZS a součinnost) na ten případ. Do 6 min +1 b., pozdě −1.', hl: '.st-pcr', pause: true, done: (s, T) => !!T.c.agencies && ['sent', 'onscene'].includes(T.c.agencies.pcr.state) },
       { t: 'Ve Strakonicích žádají hasiče na transport. Přetáhni dlaždici HZS.', hl: '.st-hzs', pause: true, done: (s, T) => !!T.b.agencies && ['sent', 'onscene'].includes(T.b.agencies.hzs.state) },
     ] },
     { title: 'Pokrytí', setup(sim, T) {

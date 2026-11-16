@@ -127,7 +127,7 @@ function car(dir, fill, type) {
   const rv = type === 'RV' || type === 'LIB';
   return `<svg class="ic ${rv ? 'ic-rv' : 'ic-amb'}" viewBox="0 0 36 24" aria-hidden="true">${flip(dir, 36, rv ? rvBody(fill) : ambBody(fill))}</svg>`;
 }
-const HELI_BODY = '<path d="M8 6h48" stroke="#202a31" stroke-width="2.2" stroke-linecap="round"/><path d="M32 6v5" stroke="#202a31" stroke-width="2.2"/><path d="M15 17 4.5 13.5 3 9.5" fill="none" stroke="#202a31" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 17 4.5 13.5 3 9.5" fill="none" stroke="#f5c400" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 11h13c9 0 15 4.5 16.5 11 .5 2.6-1.3 5-4 5H22c-6 0-9.5-3.5-9.5-8s3.5-8 9.5-8z" fill="#f5c400" stroke="#202a31" stroke-width="1.8" stroke-linejoin="round"/><path d="M37 13.200c5.5.3 9.5 3 11.3 7.300H37z" fill="#cfe9f7" stroke="#202a31" stroke-width="1"/><path d="M13.5 21.500h20" stroke="#d9342b" stroke-width="2.2"/><path d="M24.8 13.200h2.400v2.200h2.200v2.400h-2.200V20h-2.400v-2.200h-2.200v-2.400h2.200z" fill="#d9342b"/><path d="M24 27v4m18-4v4M17 32h31" fill="none" stroke="#202a31" stroke-width="2" stroke-linecap="round"/><circle cx="3" cy="9.5" r="3.6" fill="none" stroke="#202a31" stroke-width="1.2"/>';
+const HELI_BODY = '<path d="M6 4h45" stroke="#202a31" stroke-width="2.200" stroke-linecap="round"/><path d="M29 4v5.500" stroke="#202a31" stroke-width="2.400"/><path d="M9.500 13.500 5 5.500h4l5 8z" fill="#f5c400" stroke="#202a31" stroke-width="1.500" stroke-linejoin="round"/><path d="M22 14.500 11 14v4.500l11 1.800z" fill="#f5c400" stroke="#202a31" stroke-width="1.600" stroke-linejoin="round"/><circle cx="7.500" cy="17" r="4.600" fill="#f5c400" stroke="#202a31" stroke-width="1.600"/><circle cx="7.500" cy="17" r="1.500" fill="#202a31"/><path d="M21 13.500c2.500-3.200 9-4.600 15-3.400 7 1.400 13 5.400 14.600 11 .6 2.800-1.400 5.400-4.800 5.400H27c-5.200 0-8.200-5.600-6-13z" fill="#f5c400" stroke="#202a31" stroke-width="1.800" stroke-linejoin="round"/><path d="M39 12.800c4.800.7 8.800 3.800 10.300 8H39z" fill="#cfe9f7" stroke="#202a31" stroke-width="1.100" stroke-linejoin="round"/><path d="M30.500 13.800h6.600v5.600h-6.600z" fill="#cfe9f7" stroke="#202a31" stroke-width="1.100" stroke-linejoin="round"/><path d="M25.400 17.700h2.200v2.200h2.200v2.200h-2.200v2.200h-2.200v-2.200h-2.200v-2.200h2.200z" fill="#d9342b"/><path d="M28 27.500V31m13-3.500V31M23 32h27" fill="none" stroke="#202a31" stroke-width="1.800" stroke-linecap="round"/><path d="M50 32q3 0 4-3" fill="none" stroke="#202a31" stroke-width="1.800" stroke-linecap="round"/>';
 function helicopter() {
   return `<svg class="ic heli-icon" viewBox="0 0 60 35" aria-hidden="true">${HELI_BODY}</svg>`;
 }
@@ -470,23 +470,23 @@ function extTile(k) {
   const nb = D.neighbors[k.region] || { short: '' }, t = sim.s.t, a = k.nbAsk;
   const st = k.state !== 'off' ? (k.state === 'base' && k.supportRequested ? 'ready' : 'busy') : a && a.state === 'asked' ? 'asked' : k.nbBusyUntil && t < k.nbBusyUntil ? 'declined' : 'free';
   const full = { free: 'volná k žádosti', asked: 'čeká na odpověď', ready: 'souhlasí', busy: sim.phase(k), declined: 'odmítla' }[st];
-  const lab = { free: 'volná', asked: 'čeká na odpověď…', ready: 'souhlasí – vyšli', busy: sim.phase(k).replace(/^Pomoc sousedovi: /, 'pomáhá: '), declined: 'odmítla' }[st];
+  const lab = { free: 'volná', asked: 'čeká…', ready: 'souhlasí – vyšli', busy: sim.phase(k).replace(/^Pomoc sousedovi: /, 'pomáhá: '), declined: 'odmítla' }[st];
   const name = k.name.replace(/ \(.*\)$/, '').replace(/ (RZP|RTW)$/, '');
-  return `<button class="tile ty-${k.type} nb nb-${st}${k.foreign ? ' foreign' : ''}${sel.k === k.id ? ' sel' : ''}" data-code="${esc(k.code)}" data-crew="${k.id}" title="${esc(k.name + ' · ' + nb.short + ' · ' + full + ' – přetáhni na případ = žádost o pomoc')}"><span class="tn">${esc(name)}</span><i>${esc(lab)}</i></button>`;
+  return `<button class="tile ty-${k.type} nb nb-${st} rg-${k.region}${k.type === 'LZS' ? ' nblzs' : ''}${k.foreign ? ' foreign' : ''}${sel.k === k.id ? ' sel' : ''}" data-code="${esc(k.code)}" data-crew="${k.id}" title="${esc(k.name + ' · ' + nb.short + ' · ' + full + ' – přetáhni na případ = žádost o pomoc')}"><span class="tn">${esc(name)}</span><i>${esc(lab)}</i>${k.type === 'LZS' ? helicopter() : ''}</button>`;
 }
 function renderCrews() {
   const s = sim.s;
   const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU') }));
-  groups.push({ title: 'Speciální (LZS Planá, HZS, PČR, koroner, FR)', crews: s.crews.filter(k => k.type === 'LZS' && !k.ext) });
-  groups.push({ title: 'Mimořádná událost (moduly MU)', crews: s.crews.filter(k => k.type === 'MU') });
-  groups.push({ title: 'Sousední kraje (pomoc na žádost)', crews: s.crews.filter(k => k.ext) });
+  groups.push({ title: 'LZS a součinnost', crews: s.crews.filter(k => k.type === 'LZS' && !k.ext) });
+  groups.push({ title: 'Moduly MU', crews: s.crews.filter(k => k.type === 'MU') });
+  groups.push({ title: 'Mezikrajská spolupráce', crews: s.crews.filter(k => k.ext) });
   const rank = k => (k.id === 'lzs' ? -3 : k.type === 'LZS' ? -2.5 : k.type === 'MU' ? 5 : k.type === 'RZP' && !k.res ? 0 : k.type === 'RV' ? 1 : k.type === 'LIB' ? 1.5 : k.type === 'RZP' ? 2 : 3);
   let h = '';
   for (const g of groups) {
     g.crews.sort((a, b) => rank(a) - rank(b));
     const free = g.crews.filter(k => sim.avail(k)).length, on = g.crews.filter(k => k.state !== 'off').length;
-    const spec = g.title.startsWith('Speciální');
-    h += `<div class="oblast">${esc(g.title)} <span>${g.title.startsWith('Sousední') ? `${g.crews.length} základen · přetáhni na případ = žádost o pomoc` : `volných ${free} / ve službě ${on}`}</span></div><div class="grid${g.title.startsWith('Sousední') ? ' nbgrid' : ''}">` +
+    const spec = g.title === 'LZS a součinnost';
+    h += `<div class="oblast">${esc(g.title)} <span>${g.title === 'Mezikrajská spolupráce' ? `${g.crews.length} základen · přetáhni na případ = žádost o pomoc` : `volných ${free} / ve službě ${on}`}</span></div><div class="grid${g.title === 'Mezikrajská spolupráce' ? ' nbgrid' : ''}">` +
       g.crews.map(k => {
         if (k.ext) return extTile(k);
         const pre = spec && k.type === 'MU' && !g._ag ? (g._ag = true, agencyTiles()) : '';
@@ -861,10 +861,14 @@ function glInit() {
         for (const ty of ['amb', 'rv']) for (const [st, fill] of Object.entries(VFILL)) for (const dr of ['r', 'l']) { left++; svgIcon(`zv-${ty}-${st}-${dr}`, `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 36 24">${flip(dr === 'l' ? -1 : 1, 36, ty === 'rv' ? rvBody(fill) : ambBody(fill))}</svg>`, 36, 24, done); }
       }
       GL.addLayer({ id: 'crews-mu', type: 'circle', source: 'crews', filter: ['==', ['get', 'type'], 'MU'], paint: { 'circle-radius': 7, 'circle-color': ST_COL, 'circle-stroke-color': '#111', 'circle-stroke-width': 1.4 } });
+      // vrtulník na mapě: větší obrysová ikona, při letu doleva zrcadlená
       const heliSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="35" viewBox="0 0 60 35">${HELI_BODY}</svg>`;
-      svgIcon('zos-heli', heliSvg, 60, 35, () => {
-        if (GL.getLayer('crews-heli')) return;
-        GL.addLayer({ id: 'crews-heli', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'LZS'], layout: { 'icon-image': 'zos-heli', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.38, 13, 0.68], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, GL.getLayer('cases') ? 'cases' : undefined);
+      const heliSvgL = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="35" viewBox="0 0 60 35"><g transform="translate(60 0) scale(-1 1)">${HELI_BODY}</g></svg>`;
+      svgIcon('zos-heli-l', heliSvgL, 60, 35, () => {
+        svgIcon('zos-heli', heliSvg, 60, 35, () => {
+          if (GL.getLayer('crews-heli')) return;
+          GL.addLayer({ id: 'crews-heli', type: 'symbol', source: 'crews', filter: ['==', ['get', 'type'], 'LZS'], layout: { 'icon-image': ['get', 'hico'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.62, 13, 1.05], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, GL.getLayer('cases') ? 'cases' : undefined);
+        });
       });
       GL.addLayer({ id: 'crews-base-l', type: 'symbol', source: 'crews', minzoom: 10.5, filter: ['all', ['in', ['get', 'state'], ['literal', ['base', 'second']]], ['!', ['get', 'sel']], ['!=', ['get', 'type'], 'LIB']], layout: { 'text-field': ['get', 'code'], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-offset': [0.7, -0.7], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#33475a', 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
       GL.addLayer({ id: 'crews-l', type: 'symbol', source: 'crews', minzoom: 7.5, filter: ['any', ['!', ['in', ['get', 'state'], ['literal', ['base', 'second']]]], ['get', 'sel']], layout: { 'text-field': ['concat', ['step', ['zoom'], ['get', 'code'], 12, ['concat', ['get', 'code'], ' ', ['get', 'name']]], ['get', 'spd']], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 13, 12], 'text-offset': [0.8, -0.8], 'text-anchor': 'bottom-left', 'text-optional': true }, paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.8 } });
@@ -930,7 +934,7 @@ function glUpdate(force) {
   for (const k of sim.s.crews) {
     if (k.state === 'off' || k.type === 'LIB') continue;
     const p = sim.pos(k);
-    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id, spd: sel.k === k.id ? ' · ' + crewSpeedText(k) : '', ico: `zv-${k.type === 'RV' ? 'rv' : 'amb'}-${VSTATE[k.state] || 'red'}-${k.mv ? (k.mv.b[1] >= p.lon ? 'r' : 'l') : 'r'}` } });
+    crews.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { id: k.id, name: k.name, code: k.code, state: k.state, type: k.type, sel: sel.k === k.id, spd: sel.k === k.id ? ' · ' + crewSpeedText(k) : '', hico: k.mv && k.mv.b[1] < p.lon ? 'zos-heli-l' : 'zos-heli', ico: `zv-${k.type === 'RV' ? 'rv' : 'amb'}-${VSTATE[k.state] || 'red'}-${k.mv ? (k.mv.b[1] >= p.lon ? 'r' : 'l') : 'r'}` } });
   }
   const c = sel.c && sim.caseOf(sel.c), k = sel.k && sim.crewOf(sel.k);
   const selectedCrews = new Set(c ? c.crews : []);

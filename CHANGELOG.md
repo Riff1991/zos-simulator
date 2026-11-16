@@ -8,6 +8,17 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.25.1 – 2026-11-16
+
+> Přehlednější panel posádek a nový vrtulník.
+
+- Sekce v panelu posádek se jmenují „LZS a součinnost“, „Moduly MU“ a „Mezikrajská spolupráce“.
+- Dlaždice mezikrajské spolupráce mají jemné odstíny podle kraje (Vysočina, Plzeňský, Středočeský, Bavorsko, Horní a Dolní Rakousko) a u LZS malý vrtulník vpravo; stavy (čeká, souhlasí, pomáhá, odmítla) zůstávají barevné.
+- Nová žlutá obrysová ikona vrtulníku (rotor, ocasní vrtule, okno, kříž, ližiny) u LZS Planá, v mezikrajské spolupráci i na mapě; na mapě je větší a při letu doleva zrcadlená.
+- Text v tutoriálu odpovídá novému názvu sekce.
+
+---
+
 ## v0.25.0 – 2026-11-16
 
 > Kalibrace rychlosti jízdy podle reálných výjezdů, Rádio synchronizované s hlasem a přehlednější dlaždice.
