@@ -885,6 +885,16 @@ console.log('vstřícná jízda radio highlight tone fires once true');
       if (k.nbAsk && k.nbAsk.state === 'accepted') { if (k.caseId !== cs.id) throw new Error('cizí LZS po souhlasu nevyletěla'); ok = true; }
     }
     if (!ok) throw new Error('žádost o LZS při neletovém počasí: žádný souhlas'); }
+  // žijící pacient N1 / dítě N1–N2 se nenechává na místě
+  { let n = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const sim = mk(seed), cs = sim._spawn({ ind: 'obeseni', n: 1, where: 'byt', intake: 0 });
+      if (cs.fate !== 'signs' && cs.fate !== 'cpr-fail' && !cs.trans) throw new Error('N1 oběšení bez převozu, fate=' + cs.fate);
+      const ch = sim._spawn({ ind: 'pedi', n: 1, where: 'rd', intake: 0 });
+      if (ch.fate !== 'signs' && ch.fate !== 'cpr-fail' && !ch.trans) throw new Error('dítě N1 bez převozu, fate=' + ch.fate);
+      n++;
+    }
+    if (n !== 60) throw new Error('test N1'); }
   console.log('mezikrajská spolupráce: žádosti, odpovědi, žádosti sousedů, Planá true');
 }
 

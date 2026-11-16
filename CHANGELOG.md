@@ -8,6 +8,13 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.30.1 – 2026-11-16
+
+> Opravy převozu.
+
+### Opravy
+- **Žijící pacient s N1 se vždy převáží.** Posádka ho už nenechá na místě, ani když se probudí po oběšení nebo TANR. Totéž platí pro dítě v N1–N2.
+
 ## v0.30.0 – 2026-11-16
 
 > Výzvy podle reálných dat (leden a červenec 2026) a mnohem úplnější databáze adres.

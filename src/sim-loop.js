@@ -421,7 +421,7 @@ class SimLoop {
             this.L('crew', `${c.name}: pacienta převzala LZS, posádka uvolněna`, cs.id, c.id);
             return this._release(c);
           }
-          if (cs.trans && !cs.transported) return this._startTransport(c, cs);
+          if ((cs.trans || this._mustTransport(cs)) && !cs.transported) { cs.trans = true; return this._startTransport(c, cs); }
           if (!cs.docArrived && !c.rlp && !c.consulted) {
             c.consulted = true; c.until = t + this.rr(120, 240);
             this.L('crew', `${c.name}: telefonická konzultace s lékařem`, cs.id, c.id);

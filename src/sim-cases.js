@@ -493,11 +493,18 @@ class SimCases {
       c.fate = over.fate; c.trans = over.fate === 'rosc' || over.fate === 'wakes';
       if (c.fate === 'wakes') c.wakeAt = c.readyAt + (over.wakeIn || 120);
     }
+    // žijící pacient s N1 (nebo vitálně ohrožené dítě) se na místě nenechává: převoz je povinný
+    if (this._mustTransport(c)) c.trans = true;
     c.lzsTechRequired = over.lzsTech != null ? over.lzsTech : whKey === 'priroda' && this.rnd() < 0.55;
     c.lzsTerrain = c.lzsTechRequired ? 'nepřístupný terén' : null;
     if (over.script) c.script = over.script;
     if (over.patch) Object.assign(c, over.patch);
     return c;
+  }
+  // N1 (i původně N1, např. probuzený po oběšení/TANR) a dítě v N1–N2 žijí → odvoz do nemocnice, ne ponechání na místě
+  _mustTransport(c) {
+    if (c.exitus || c.fate === 'signs' || c.fate === 'cpr-fail' || c.mu) return false;
+    return c.n === 1 || c.nOrig === 1 || (!!c.child && c.n <= 2);
   }
   // datové zprávy od HZS / PČR / eCall k případu; texty se v rámci směny neopakují
   // upřesnění z datové zprávy zvýší naléhavost (např. amputace prstů u N3 → N2 dynamická nebo plná), lékař se doplní a posádky se informují rádiem
