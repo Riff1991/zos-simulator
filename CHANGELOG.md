@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.29.2 – 2026-11-16
+
+> Týdenní plán směn (RV Dačice nejezdí v pondělí a úterý) a vnitřní úklid kódu bez změny chování hry.
+
+### Nové
+- **RV Dačice není v provozu v pondělí a v úterý**, ve dne ani v noci. Směnový den se počítá od 7:00 (pondělní směna trvá do úterý 7:00). Další pravidla podle dne v týdnu půjdou doplnit v `ZOS_DATA.weeklyOff`.
+
+### Interní
+- Zdrojový kód rozdělen na menší soubory (`sim-*.js`, `ui-*.js`), funkce hry se nemění.
+
 ## v0.29.1 – 2026-11-16
 
 - Mezikrajská LZS: když vlastní LZS stojí kvůli neletovému počasí, jde požádat o LZS z jiného kraje (dřív hra psala „Vlastní LZS je dostupná“). Cizí LZS se neřídí naším počasím, ale v horším počasí je šance na souhlas nižší.
