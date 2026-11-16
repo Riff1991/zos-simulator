@@ -298,7 +298,9 @@ const ZOS_EXTMSG = (function () {
       case 'psych': return mix([[['psych'], 0.42], [['domNasili'], ['byt', 'rd'].includes(where) ? 0.08 : 0]]);
       case 'obeseni': return out(['obeseni'], 0.75);
       case 'tonuti': return out(['tonuti'], 0.8);
-      case 'intox': return ['ulice', 'verejne', 'silnice'].includes(where) ? out(['intox'], 0.4) : null;
+      case 'intox': // otrava CO jen u Intoxikace se symptomem Oxid uhelnatý a v budově
+        if (has(/OXID UHELNATÝ/) && ['byt', 'rd', 'prov'].includes(where)) return out(['co'], 0.7);
+        return ['ulice', 'verejne', 'silnice'].includes(where) ? out(['intox'], 0.4) : null;
       case 'resus': case 'nzo': return street || where === 'prov' ? out(['kprSvedci'], 0.4) : out(['kprSvedci'], 0.08);
       case 'amput': return ['prov', 'rd'].includes(where) ? out(['pracUraz'], 0.85) : null;
       case 'trauma':
@@ -311,9 +313,9 @@ const ZOS_EXTMSG = (function () {
         return null;
       case 'porucha': case 'dusnost': case 'kreceU': case 'hrudnik':
         if (where === 'silnice') return out(['ecallMed'], 0.5);
-        if (['byt', 'prov'].includes(where)) return mix([[['vytah'], 0.02], [['co'], ind === 'dusnost' || ind === 'porucha' ? 0.025 : 0]]);
+        if (['byt', 'prov'].includes(where)) return mix([[['vytah'], 0.02]]);
         return null;
-      case 'neuro': case 'zvraceni': case 'bolest': case 'horecka': return ['byt', 'rd'].includes(where) ? out(['co'], 0.015) : null;
+      case 'neuro': case 'zvraceni': case 'bolest': case 'horecka': return null;   // CO se s těmito indikacemi nemíchá
       default: return null;
     }
   }

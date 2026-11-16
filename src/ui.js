@@ -227,6 +227,8 @@ function lzsSupportHtml(c) {
   return `<div class="sug"><h4>Mezikrajská výpomoc LZS <small>(vlastní vrtulník je nedostupný; středisko odpoví za 1–3 min)</small></h4>${rows}</div>`;
 }
 const dzOf = c => (c.radioReports || []).find(r => r.id === 'dz-in');
+// slovo pro více postižených: otrava CO = osoby, jinak zranění
+const victimWord = c => (/oxid uhelnat/i.test(c.up || '') ? [(c.patientCount || 0) < 5 ? 'osoby' : 'osob', 'postižených'] : ['zranění', 'zraněných']);
 // postupné plnění karty při nabírání na naší lince: adresa → indikace → příznaky po jednom → N, pacient, oznamovatel, poznámka
 function intakeView(c) {
   const t = sim.s.t, t0 = c.dzUntil != null ? c.dzUntil : c.createdAt;
@@ -281,7 +283,7 @@ function renderCases() {
         : intk ? `${c.op} nabírá výzvu`
           : rvPending ? `RZP žádá RV: ${c.rvReq.kind || 'posouzení stavu'}` : 'Řeší se';
     const crewLine = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(chipHTML).join('') + (c.frs || []).map(f => `<span class="chip fr">${esc(f.name)}</span>`).join('');
-    const patient = (c.patientCount || 1) > 1 ? `${c.patientCount} zranění` : c.age != null ? `${Number(c.age) < 18 ? 'Dítě' : c.sex === 'Ž' ? 'Žena' : 'Muž'}, ${c.age} let` : c.desc;
+    const patient = (c.patientCount || 1) > 1 ? `${c.patientCount} ${victimWord(c)[0]}` : c.age != null ? `${Number(c.age) < 18 ? 'Dítě' : c.sex === 'Ž' ? 'Žena' : 'Muž'}, ${c.age} let` : c.desc;
     const detail = c.typ === 'sekundární'
       ? `Převoz: ${(D.hospitals.find(h => h.id === c.originHospitalId) || {}).short || '?'} → ${(D.hospitals.find(h => h.id === c.targetHospitalId) || {}).short || '?'}`
       : [c.place && `Místo: ${c.place}`, c.poznamka && `Poznámka ZOS: ${c.poznamka}`].filter(Boolean).join(' · ');
@@ -380,7 +382,7 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 <dt>Oznamovatel</dt><dd>${esc(c.ozn)}${c.oznRel ? ` <span style="font-weight:400;color:#5a6a7a">(${esc(c.oznRel.replace(/^volá /, ''))})</span>` : ''} · ${esc(c.phone)}</dd>
 <dt>Adresa</dt><dd>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span><br><span style="font-weight:400;color:#5a6a7a">Jihočeský kraj, okres ${esc(okresOf(c))}, obec ${esc(c.town)}<br>${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</span></dd>
 <dt>Popis místa</dt><dd>${esc(c.place)}</dd>
-<dt>Pacienti</dt><dd>${c.mu ? c.mu.cas + ' zraněných (zbývá ošetřit ' + c.mu.left + ')' : (c.patientCount || 1) > 1 ? `${c.patientCount} zranění (zbývá ošetřit ${c.patientsRemaining})` : esc(c.desc)}</dd>
+<dt>Pacienti</dt><dd>${c.mu ? c.mu.cas + ' zraněných (zbývá ošetřit ' + c.mu.left + ')' : (c.patientCount || 1) > 1 ? `${c.patientCount} ${victimWord(c)[0]} (zbývá ošetřit ${c.patientsRemaining})` : esc(c.desc)}</dd>
 ${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>` : ''}
 <dt>Oznámil</dt><dd>${esc(c.src)} · nabíral ${esc(c.op)}</dd></dl>`;
   const reports = (c.radioReports || []).filter(r => r.received);
@@ -389,7 +391,7 @@ ${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>`
     const caps = c.mu.hospitalCapacities || [];
     h += `<div class="report-panel"><b>Nemocniční příjem (simulovaný)</b>${caps.map(cap => { const hp = D.hospitals.find(x => x.id === cap.hospitalId); return hp ? `<div class="row"><span>${esc(hp.short)}</span><span>${esc(cap.state)} · ${cap.remaining} míst v herním modelu</span><button class="btn" data-act="mu-hospital" data-case="${c.id}" data-hospital="${hp.id}" ${cap.state === 'dočasně nepřijímá' ? 'disabled' : ''}>Směrovat</button></div>` : ''; }).join('')}</div>`;
   }
-  if ((c.patientCount || 1) > 1 && c.status !== 'closed') h += `<p class="multi-patient">Více zraněných: ${c.patientsRemaining} pacientů čeká na ošetření. Podle situace vyšlete další RZP.</p>`;
+  if ((c.patientCount || 1) > 1 && c.status !== 'closed') h += `<p class="multi-patient">Více ${victimWord(c)[1]}: ${c.patientsRemaining} pacientů čeká na ošetření. Podle situace vyšlete další RZP.</p>`;
   if (c.vstricna && c.vstricna.state === 'offered') {
     const candidates = sim.s.crews.filter(k => k.type === 'RZP' && k.oblast === c.vstricna.area && sim.avail(k) && !k.res)
       .map(k => ({ k, eta: sim.etaFor(k, c.vstricna.meet ? c.vstricna.meet.lat : c.lat, c.vstricna.meet ? c.vstricna.meet.lon : c.lon) }))
@@ -1221,8 +1223,8 @@ function feedChain(crid) {
   return out;
 }
 const signOf = code => (/^K/i.test(String(code || '')) ? 'Kryštof ' + String(code).replace(/\D/g, '') : 'ZCB' + (code || ''));
-function transcriptHtml(chain, now) {
-  const shown = chain.filter(x => x.shownAt != null && x.shownAt <= now);
+function transcriptHtml(chain, now, max) {
+  const shown = chain.filter(x => x.shownAt != null && x.shownAt <= now).slice(-(max || 4));   // panel má pevnou výšku: jen poslední řádky
   if (!shown.length) return '';
   const code = (sim.crewOf(chain[0].crid) || {}).code;
   return `<div class="rc-chat">${shown.map((x, i) => `<div class="rc-bub ${x.who}${i === shown.length - 1 && now - x.due < 3500 ? ' now' : ''}"><span class="rc-who">${x.who === 'zos' ? 'ZCB101 · ZOS' : esc(code ? signOf(code) : (chain[0].txt.match(/^ZCB101, zde ([^,]+),/) || [0, 'soused'])[1]) + ' · ' + (code ? 'posádka' : 'operační středisko')}</span>${esc(x.text)}</div>`).join('')}</div>`;
@@ -1256,7 +1258,7 @@ function renderRadioLive() {
     if (!rcSeen.has(e.id)) { rcSeen.set(e.id, now); setTimeout(() => { if (sim) renderRadioLive(); }, RC_DELAY + 80); }
     const heard = now - rcSeen.get(e.id) >= RC_DELAY, red = e.kind === 'rv' ? ' rv' : '', flag = e.kind === 'rv' ? '<span class="rc-red">ŽÁDOST O LÉKAŘE</span>' : '';
     if (!heard) return `<div class="radio-call open${red}"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-hearing">${esc(e.name)} hlásí…</span>${tag}</div>`;
-    const tr = transcriptHtml(feedChain(e.crewId), now);
+    const tr = transcriptHtml(feedChain(e.crewId), now, 2);
     return `<div class="radio-call open${red}"><div class="rc-head"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b>${flag}${tr ? '' : `<span class="rc-msg">${esc(e.msg)}</span>`}${tag}</div>${tr}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
   }).join(''));
 }

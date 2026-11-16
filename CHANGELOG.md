@@ -8,6 +8,17 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.25.2 – 2026-11-16
+
+> Rádio s pevnou výškou a oprava otravy CO.
+
+- Panel Rádio má pevnou výšku: při hovoru se už nemění velikost mapy ani ostatních oken. Zprávy jsou kompaktnější (jen poslední řádky, popisek mluvčího v řádku s textem, menší tlačítka odpovědí).
+- Otrava CO vzniká jen u indikace Intoxikace (příznak Oxid uhelnatý místo jiné noxy), vždy v bytě nebo v domě. Nemíchá se s Horečkou ani jinými indikacemi. Dítě s CO je vždy N2 bez dynamiky, nikdy N3.
+- Hlášení posádky o více postižených u CO už není „dopravní nehoda“ (CO: počet osob, objekt, HZS, další RZP a lékař); panel případu říká „osoby“ a „postižených“ místo „zranění“.
+- METHANE se používá jen u potvrzené MU; hlas to čte „metan“. U běžných hromadných nehod hlášení bez METHANE.
+
+---
+
 ## v0.25.1 – 2026-11-16
 
 > Přehlednější panel posádek a nový vrtulník.

@@ -345,7 +345,11 @@ class Sim {
     if ((cs.patientCount || 1) > 1 && !cs.methane) {
       cs.methane = true;
       const heavy = Math.max(1, Math.min(cs.patientCount, this.ri(1, 2)));
-      this._crewCall(c, cs, `METHANE: dopravní nehoda, ${cs.patientCount} zranění, z toho ${heavy} vážně, ${this.pick(['nebezpečí provoz', 'únik provozních kapalin', 'bez dalšího nebezpečí'])}, přístup ${this.pick(['z obce', 'od křižovatky', 'po hlavní silnici'])}, ${this.pick(['HZS a PČR na místě', 'HZS na místě, PČR na cestě', 'PČR na místě'])}, požadujeme ${heavy > 1 ? 'další RZP a LZS' : 'další RZP'}.`, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info');
+      const co = /oxid uhelnat/i.test(cs.up || '');   // otrava CO: více postižených, ne dopravní nehoda
+      const txt = co
+        ? `${cs.patientCount} ${cs.patientCount < 5 ? 'osoby' : 'osob'} s podezřením na otravu CO, z toho ${heavy} vážně, objekt ${this.pick(['odvětráváme', 'je odvětrán', 'nelze odvětrat'])}, HZS ${this.pick(['na místě', 'na cestě'])}, požadujeme ${heavy > 1 ? 'další RZP a lékaře' : 'další RZP'}.`
+        : `dopravní nehoda, ${cs.patientCount} zranění, z toho ${heavy} vážně, ${this.pick(['nebezpečí provoz', 'únik provozních kapalin', 'bez dalšího nebezpečí'])}, přístup ${this.pick(['z obce', 'od křižovatky', 'po hlavní silnici'])}, ${this.pick(['HZS a PČR na místě', 'HZS na místě, PČR na cestě', 'PČR na místě'])}, požadujeme ${heavy > 1 ? 'další RZP a LZS' : 'další RZP'}.`;
+      this._crewCall(c, cs, txt, [{ k: 'ok', label: 'Rozumí', say: 'ZCB101 rozumí.', ok: true, act: 'ack', def: true }], 'info');
       return;
     }
     if (c.type === 'RZP' && ((cs.script && cs.script.notFound) || (!['silnice', 'priroda'].includes(cs.where) && this.rnd() < 0.03))) {
@@ -1633,12 +1637,24 @@ class Sim {
       else symptoms = symptoms.filter(x => !x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE'));
     }
     if (!over.symptoms) symptoms = this._cleanSymptoms(symptoms);
+    // otrava CO jen u Intoxikace: v části případů příznak Oxid uhelnatý místo jiné noxy (nikdy ne u jiných indikací)
+    if (!over.symptoms && ind.id === 'intox' && !/OXID UHELNAT/i.test(symptoms.join(',')) && this.rnd() < 0.1) {
+      symptoms = this._cleanSymptoms(symptoms.filter(x => !/^[^A-Za-zÁ-ž]*(Alkohol|Drogy|Léky|Noxa)/i.test(x)).concat(['^Oxid uhelnatý']));
+    }
+    const coCase = !over.symptoms && /OXID UHELNAT/i.test(symptoms.join(','));
     {
       const isDyn = x => x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE');
       const hasDyn = symptoms.some(isDyn);
       if (n === 2 && hasDyn) dyn = true;
       else if (n === 2 && dyn) symptoms = symptoms.concat(['DYNAMICKÁ INDIKACE']);
       else { dyn = false; symptoms = symptoms.filter(x => !isDyn(x)); }
+    }
+    // otrava CO u dítěte: vždy N2 bez dynamiky, nikdy N3 (příznaky z profilu N2, pokud existuje)
+    if (!over.symptoms && n > 1 && /OXID UHELNAT/i.test(symptoms.join(',')) && /DÍTĚ/i.test(symptoms.join(','))) {
+      n = 2; dyn = false;
+      let alt = null; try { alt = this._symptomSet(symptomKey, 2, terms => terms.some(x => /OXID UHELNAT/i.test(x)) && terms.some(x => /DÍTĚ/i.test(x))); } catch (e) { alt = null; }
+      symptoms = alt && alt.some(x => /OXID UHELNAT/i.test(x)) ? this._cleanSymptoms(alt) : symptoms.filter(x => !/DYNAMICKÁ INDIKACE/i.test(x));
+      symptoms = symptoms.filter(x => !/DYNAMICKÁ INDIKACE/i.test(x));   // dítě s CO: vždy N2 bez dynamiky
     }
     const rvNeed = n === 1 || (n === 2 && !dyn);
     const rvLater = !rvNeed && (over.rvLater != null ? over.rvLater : this.rnd() < (ind.rvP || 0));
@@ -1651,7 +1667,7 @@ class Sim {
     const ageMin = /ALKOHOL|DROGY/.test(symptomText) ? 12 : /AGRES/.test(symptomText) ? 5 : 0;
     const age0 = over.age != null ? over.age : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
     const age = over.age == null && age0 < ageMin ? this.ri(ageMin, Math.max(maxAge, ageMin)) : age0;
-    const whKey = over.where || this._pickWhere(ind, age);
+    const whKey = over.where || (coCase ? this.pick(['byt', 'rd']) : this._pickWhere(ind, age));   // otrava CO jen v budově
     // veřejná místa pod „ulicí“: nádraží, úřady, obchody, sport, ubytování (reálná místa z OSM)
     let poiKey = whKey;
     if (whKey === 'ulice' && typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi) {

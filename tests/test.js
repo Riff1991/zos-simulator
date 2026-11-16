@@ -795,7 +795,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   const EX = require('../src/messages.js');
   const mk = seed => { const s = new Sim({ seed, mode: 'shift', startHour: 9, radio: 'interactive' }); s.s.ev.nextSpawn = 1e9; return s; };
   // CO: případ dostane příznak Oxid uhelnatý a víc osob
-  const s1 = mk(21), co = s1._spawn({ ind: 'porucha', where: 'byt', extKinds: ['co'], intake: 0 });
+  const s1 = mk(21), co = s1._spawn({ ind: 'intox', where: 'byt', extKinds: ['co'], intake: 0 });
   if (!/oxid uhelnat/i.test(co.up) || co.patientCount < 2 || co.patientCount > 4) throw new Error('CO: příznak Oxid uhelnatý a 2–4 osoby: ' + co.up + ' / ' + co.patientCount);
   if (!/CO/.test(co.radioReports[0].text)) throw new Error('CO: datovka');
   // DN: chodec sražený vozidlem, + HZS → první datovka od HZS a text o chodci
@@ -895,4 +895,38 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   for (let i = 0; i < 300; i++) { sr += sim._turnout(c, 2); sv += sim._turnout(rv, 2); }
   if (!(sr / 300 > 100 && sr / 300 < 170 && sv / 300 > sr / 300)) throw new Error(`zpoždění výjezdu: RZP ${(sr / 300).toFixed(0)} s, RV ${(sv / 300).toFixed(0)} s`);
   console.log('model jízdy: pevná část u cíle, pořadí režimů, zpoždění výjezdu true');
+}
+
+// ---------- otrava CO: hlášení posádky o více postižených není dopravní nehoda ----------
+{
+  const sim = new Sim({ seed: 41, mode: 'shift', startHour: 9, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nbPlan = [];
+  const cs = sim._spawn({ ind: 'intox', where: 'rd', extKinds: ['co'], intake: 0 }); cs.status = 'waiting';
+  const k = sim.suggest(cs.id, 'RZP')[0]; sim.assign(cs.id, k.crewId);
+  const n0 = sim.s.log.length;
+  for (let i = 0; i < 200 && !cs.methane; i++) sim.step(10);
+  if (!cs.methane) throw new Error('CO: posádka má po příjezdu hlásit více postižených');
+  const lines = sim.s.log.slice(n0).map(x => x.txt).join(' | ');
+  if (/METHANE|dopravní nehoda/.test(lines.slice(lines.indexOf('otravu CO')))) throw new Error('hlášení CO nesmí být dopravní nehoda: ' + lines.slice(0, 200));
+  if (!/otravu CO/.test(lines)) throw new Error('hlášení má říkat otrava CO: ' + lines.slice(0, 200));
+  console.log('otrava CO: hlášení více postižených true');
+}
+
+// ---------- CO se nemíchá s jinými indikacemi, dítě s CO není N3, CO jen v budově, METHANE jen u MU ----------
+{
+  let withCo = 0, childCo = 0;
+  for (let seed = 1; seed <= 25; seed++) {
+    const sim = new Sim({ seed, mode: 'shift', startHour: 9, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nbPlan = [];
+    for (let i = 0; i < 80; i++) {
+      const c = sim._spawn({});
+      const hasCo = /oxid uhelnat/i.test(c.up) || (c.radioReports || []).some(r => /otravu CO/.test(r.text));
+      if (!hasCo) continue;
+      withCo++;
+      if (c.ind !== 'intox') throw new Error('CO se nesmí míchat s indikací ' + c.ind + ': ' + c.up);
+      if (!['byt', 'rd', 'prov', 'domov', 'skola'].includes(c.where)) throw new Error('CO jen v budově, ne ' + c.where);
+      if (/dítě/i.test(c.up)) { childCo++; if (c.n > 2 || c.dyn) throw new Error('dítě s CO nesmí být N3 ani dynamická: N' + c.n + ' ' + c.up); }
+      for (const r of c.radioReports || []) if (/METHANE/.test(r.text)) throw new Error('METHANE jen u MU: ' + r.text);
+    }
+  }
+  if (withCo < 3) throw new Error('v náhodných případech chybí CO (' + withCo + ')');
+  console.log('CO jen u Intoxikace, dítě s CO max N2, CO v budově, METHANE jen u MU true', withCo, 'případů CO,', childCo, 'dětí');
 }
