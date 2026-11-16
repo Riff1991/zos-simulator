@@ -5,6 +5,7 @@ global.ZOS_SYMPTOMS = require('../src/symptoms.json');
 global.ROUTER = require('../src/router.js');
 { const b = require('fs').readFileSync(__dirname + '/../site/graph.wasm'); ROUTER.init(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); }
 global.ZOS_POI = JSON.parse(require('fs').readFileSync(__dirname + '/../site/poi.json', 'utf8'));
+global.ZOS_RAIL = JSON.parse(require('fs').readFileSync(__dirname + '/../site/rail.json', 'utf8'));
 global.ZOS_ADDR = JSON.parse(require('fs').readFileSync(__dirname + '/../site/addr.json', 'utf8'));
 const { Sim } = require('../src/engine.js');
 const { ZOS_TUTORIAL } = require('../src/tutorial.js');

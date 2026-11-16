@@ -69,6 +69,17 @@ const MU_NB = [
 ];
 const MU_HOSP = ['h-cb', 'h-ta', 'h-jh', 'h-pi', 'h-st', 'h-pt', 'h-ck'];
 const MU_COL = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV' };
+// železnice (site/rail.json): úseky s kumulativní délkou pro rovnoměrný výběr bodu na trati
+let RAIL_IDX = null;
+function railIndex() {
+  if (RAIL_IDX) return RAIL_IDX;
+  const segs = []; let tot = 0;
+  for (const l of (typeof ZOS_RAIL !== 'undefined' && ZOS_RAIL && ZOS_RAIL.lines) || []) for (let i = 1; i < l.length; i++) {
+    const a = l[i - 1], b = l[i], len = hav(a[0] / 1e5, a[1] / 1e5, b[0] / 1e5, b[1] / 1e5);
+    if (len > 0) { tot += len; segs.push({ a, b, end: tot }); }
+  }
+  return (RAIL_IDX = { segs, tot });
+}
 const MU_BURN = ['h-fnkv', 'h-brno', 'h-ostrava'];
 const MU_DXK = {
   T: { 1: ['Polytrauma', 'Kraniotrauma, GCS pod 12', 'Poranění hrudníku, nestabilní hrudní stěna', 'Fraktura pánve', 'Perforující poranění břicha', 'Traumatická amputace končetiny'], 2: ['Fraktura dlouhé kosti', 'Kontuze hrudníku', 'Střední kraniotrauma', 'Poranění páteře bez neurologie', 'Rozsáhlá tržná rána'], 3: ['Lehká kontuze', 'Tržná rána', 'Distorze', 'Akutní stresová reakce', 'Drobné povrchové poranění'], 4: ['Exitus na místě'] },
@@ -1707,10 +1718,13 @@ class Sim {
     const ageMin = /ALKOHOL|DROGY/.test(symptomText) ? 12 : /AGRES/.test(symptomText) ? 5 : 0;
     const age0 = over.age != null ? over.age : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
     const age = over.age == null && age0 < ageMin ? this.ri(ageMin, Math.max(maxAge, ageMin)) : age0;
-    const whKey = over.where || (coCase ? this.pick(['byt', 'rd']) : this._pickWhere(ind, age));   // otrava CO jen v budově
+    // dopravní mechanismus (auto, cyklista, chodec, autobus, vlak) je vždy venku na silnici nebo ulici, nikdy v bytě, domově nebo u zámku
+    const outdoorVeh = /CYKLISTA|CHODEC|MOTOCYKLISTA|OSOBNÍ AUTOMOBIL|NÁKLADNÍ AUTOMOBIL|DOPRAVNÍ NEHODA|AUTOBUS|VLAK/.test(symptomText);
+    let whKey = over.where || (coCase ? this.pick(['byt', 'rd']) : this._pickWhere(ind, age));   // otrava CO jen v budově
+    if (outdoorVeh && !over.where && !['ulice', 'silnice', 'priroda'].includes(whKey)) whKey = 'ulice';
     // veřejná místa pod „ulicí“: nádraží, úřady, obchody, sport, ubytování (reálná místa z OSM)
     let poiKey = whKey;
-    if (whKey === 'ulice' && typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi) {
+    if (whKey === 'ulice' && !outdoorVeh && typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi) {
       const h = this.hour();
       const wk = { verejne: 1.4, sport: age >= 6 && age <= 60 ? (h >= 15 && h < 21 ? 0.6 : 0.2) : 0.05, ubytovani: age >= 15 ? (h >= 18 || h < 8 ? 0.3 : 0.12) : 0.03 };
       const tot = Object.values(wk).reduce((x, y) => x + y, 0), r = this.rnd() * (tot + 1.6);
@@ -1911,7 +1925,12 @@ class Sim {
   // reálné místo podle typu: objekt z OSM, bod na silnici dané třídy, železnice, letiště nebo adresa
   _muPlace(type, over) {
     const D = ZOS_DATA, pl = Array.isArray(type.place) ? this.pick(type.place) : (type.place || { k: 'addr' });
-    const nearTown = (la, lo) => { let b = null, bd = 1e9; for (const tw of D.towns) { const d = hav(la, lo, tw.lat, tw.lon) / Math.sqrt(tw.w); if (d < bd) { bd = d; b = tw; } } return b; };
+    // nejbližší skutečná obec podle databáze adres (pro popis silnic a tratí), jinak nejbližší větší město
+    const A0 = typeof ZOS_ADDR !== 'undefined' && ZOS_ADDR && ZOS_ADDR.a ? ZOS_ADDR : null;
+    const nearTown = (la, lo) => {
+      if (A0) { const a = A0.a; let bi = -1, bd = 1e9; for (let i = 0; i < a.length; i += 8) { const dy = a[i] / 1e5 - la, dx = (a[i + 1] / 1e5 - lo) * 0.65, d = dy * dy + dx * dx; if (d < bd) { bd = d; bi = i; } } if (bi >= 0) return { n: A0.s[a[bi + 3]], okres: A0.okresy[a[bi + 6]] }; }
+      let b = null, bd = 1e9; for (const tw of D.towns) { const d = hav(la, lo, tw.lat, tw.lon); if (d < bd) { bd = d; b = tw; } } return b;
+    };
     const poiOf = () => {
       const list = typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi ? ZOS_POI.poi[pl.cat] : null;
       if (!list || !list.length) return null;
@@ -1925,15 +1944,30 @@ class Sim {
     }
     if (pl.k === 'road' && typeof ROUTER !== 'undefined' && ROUTER.ready) {
       const p = ROUTER.randomRoadPoint(() => this.rnd(), pl.cls);
-      if (p) { const tw = nearTown(p.lat, p.lon); return { lat: p.lat, lon: p.lon, addr: `${{ 0: 'dálnice D3', 1: 'silnice I. třídy', 2: 'silnice I. třídy', 3: 'silnice II. třídy', 4: 'silnice III. třídy' }[p.cls] || pl.lab}, okolí obce ${tw.n}`, town: tw.n, okres: null }; }
+      if (p) { const tw = nearTown(p.lat, p.lon); return { lat: p.lat, lon: p.lon, addr: `${{ 0: 'dálnice D3', 1: 'silnice I. třídy', 2: 'silnice I. třídy', 3: 'silnice II. třídy', 4: 'silnice III. třídy' }[p.cls] || pl.lab}, okolí obce ${tw.n}`, town: tw.n, okres: tw.okres || null }; }
     }
     if (pl.k === 'rail') {
-      const tw = D.towns.find(x => x.n === this.pick(D.railTowns)) || D.towns[0];
-      return { lat: tw.lat + this.rr(-0.006, 0.006), lon: tw.lon + this.rr(-0.008, 0.008), addr: `${pl.lab}, okolí obce ${tw.n}`, town: tw.n, okres: null };
+      const RI = railIndex();
+      if (RI.segs.length) {
+        // přejezd: bod trati, kde je do 15 m silnice (kromě dálnice a polních cest); trať: libovolný bod trati
+        const want = pl.cross && typeof ROUTER !== 'undefined' && ROUTER.ready;
+        let best = null;
+        for (let g = 0; g < (want ? 600 : 1) && !best; g++) {
+          let r = this.rnd() * RI.tot, lo = 0, hi = RI.segs.length - 1;
+          while (lo < hi) { const mid = (lo + hi) >> 1; if (RI.segs[mid].end < r) lo = mid + 1; else hi = mid; }
+          const sg = RI.segs[lo], f = this.rnd(), la = (sg.a[0] + (sg.b[0] - sg.a[0]) * f) / 1e5, lo2 = (sg.a[1] + (sg.b[1] - sg.a[1]) * f) / 1e5;
+          if (!want) { best = { lat: la, lon: lo2 }; break; }
+          const sn = ROUTER.snap(la, lo2);
+          if (sn && sn.d < 0.015 && sn.cls >= 1 && sn.cls <= 5) best = { lat: sn.lat, lon: sn.lon, cross: true };
+        }
+        if (!best) { const sg = RI.segs[Math.floor(this.rnd() * RI.segs.length)]; best = { lat: sg.a[0] / 1e5, lon: sg.a[1] / 1e5, cross: false }; }
+        if (best) { const tw = nearTown(best.lat, best.lon); return { lat: best.lat, lon: best.lon, addr: `${pl.cross && !best.cross ? 'železniční trať' : pl.lab}, okolí obce ${tw.n}`, town: tw.n, okres: tw.okres || null }; }
+      }
     }
     if (pl.k === 'airport') {
-      const a = D.airport;
-      return { lat: a.lat + this.rr(-0.02, 0.02), lon: a.lon + this.rr(-0.025, 0.025), addr: `okolí ${a.name}`, town: 'České Budějovice', okres: 'České Budějovice' };
+      // havárie u dráhy letiště České Budějovice (Planá): podél osy dráhy 09/27, do ~3 km od prahu
+      const a = D.airport, side = this.rnd() < 0.5 ? -1 : 1;
+      return { lat: a.lat + this.rr(-0.0025, 0.0025), lon: a.lon + side * this.rr(0.004, 0.04), addr: `okolí ${a.name}`, town: 'České Budějovice', okres: 'České Budějovice' };
     }
     if (pl.k === 'poi') {
       const p = poiOf();
@@ -1958,7 +1992,8 @@ class Sim {
     if (over.minCas && over.cas == null && type.cas[1] >= over.minCas) cas = Math.max(cas, over.minCas);
     const groupsRequired = over.groupsRequired != null ? over.groupsRequired : Math.max(2, Math.ceil(cas / 3.5));
     const where = this._muPlace(type, over);
-    const symptoms = this._symptomSet('MU - MATRA 722', 1), up = symptoms.join(', ');
+    // příznaky podle typu MU (jen standardizované položky katalogu); databáze MU obsahuje jen střelbu a výbuch, ty se použijí jen u příslušných typů
+    const symptoms = (type.sy || []).concat([type.ch >= 0.5 ? 'Dítě' : 'Dospělý', 'SUSP. MIMOŘÁDNÁ UDÁLOST - VYHLAŠ / NEVYHLAŠ MU a podej hlášení z místa na ZOS']), up = symptoms.join(', ');
     const c = this._newCase({
       ind: 'mu', klasif: 'MU - MATRA 722', up, symptoms, charakter: type.house ? 'Tísňová výzva v budově' : 'Tísňová výzva v terénu',
       place: type.l, n: 1, dyn: false, rvNeed: true, rvLater: false, rvP: 1, zzumInd: false,
@@ -2299,7 +2334,7 @@ class Sim {
   _muHospScore(c, p, h, airOk) {
     const hs = c.mu.hosp[h.id], cat = this._muCat(p);
     const left = hs.rep ? hs.rep[cat] : hs.truth[cat] - 3; // neinformované KM: odhad opatrně
-    let sc = this._eta(c.lat, c.lon, h.lat, h.lon) / 60;
+    let sc = airOk ? hav(c.lat, c.lon, h.lat, h.lon) / 4 + 3 : this._eta(c.lat, c.lon, h.lat, h.lon) / 60;   // LZS letí vzdušnou čarou (~240 km/h)
     if (left <= 0) sc += 100;
     if (!hs.rep) sc += 6;
     if (h.burn) sc += p.burnExt && airOk ? -80 : 300;

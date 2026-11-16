@@ -56,7 +56,7 @@ const ROUTER = (function () {
         const a = grid.get(i * 100000 + j); if (!a) continue;
         for (let q = 0; q < a.length; q += 2) {
           const p = eptsOff[a[q]] + a[q + 1], d = km(lat, lon, P[p * 2], P[p * 2 + 1]);
-          if (d < bd) { bd = d; best = { e: a[q], i: a[q + 1], d }; }
+          if (d < bd) { bd = d; best = { e: a[q], i: a[q + 1], d, lat: P[p * 2], lon: P[p * 2 + 1] }; }
         }
       }
       if (best && bd < r * GC * KM_LON) break;

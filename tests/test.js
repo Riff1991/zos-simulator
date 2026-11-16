@@ -4,6 +4,7 @@ global.ZOS_SYMPTOMS = require('../src/symptoms.json');
 global.ROUTER = require('../src/router.js');
 { const b = require('fs').readFileSync(__dirname + '/../site/graph.wasm'); ROUTER.init(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); }
 global.ZOS_POI = JSON.parse(require('fs').readFileSync(__dirname + '/../site/poi.json', 'utf8'));
+global.ZOS_RAIL = JSON.parse(require('fs').readFileSync(__dirname + '/../site/rail.json', 'utf8'));
 global.ZOS_ADDR = JSON.parse(require('fs').readFileSync(__dirname + '/../site/addr.json', 'utf8'));
 const { Sim, hav } = require('../src/engine.js');
 
@@ -1090,4 +1091,53 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   const r = mkOnly(52, null); for (let i = 0; i < 400 && !r.s.muCaseId; i++) r.step(10);
   if (!r.s.muCaseId || !r.caseOf(r.s.muCaseId).mu) throw new Error('náhodný typ MU se nespustil');
   console.log('režim Jen MU: rozjetý kraj,', open.length, 'událostí, MU za pár minut, konec s vyhodnocením true');
+}
+
+// ---- 0.28.1: soulad místa a příznaků u MU ----
+{
+  const D = ZOS_DATA, cat = new Set(ZOS_SYMPTOMS.symptomCatalog);
+  const sim = new Sim({ seed: 61, mode: 'shift', startHour: 9, secondaryEnabled: false, muEnabled: false, diff: 0.6, radio: 'auto' });
+  sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null;
+  // mechanismus → typy, u kterých smí být (střelba jen u útoku, vlak jen u vlaku, výbuch jen u výbuchů a bomby ...)
+  const only = [
+    [/STŘELEC|Střelné|Napadení/, ['amok-skola', 'amok-obchod', 'amok-akce']],
+    [/Nehoda vlaku|^Vlak$/, ['vlak-prejezd', 'vlak-nehoda']],
+    [/Nehoda letadla/, ['letadlo-male', 'letadlo-dopravni']],
+    [/Výbuch/, ['vybuch-plyn', 'vybuch-zavod', 'bomba', 'pozar-skola']],
+    [/Požár/, ['pozar-hotel', 'pozar-domov', 'pozar-ubytovna', 'pozar-skola', 'vybuch-plyn', 'vybuch-zavod']],
+    [/Únik nebezpečných/, ['chlor-bazen', 'amoniak', 'skola-plyn', 'cisterna']],
+    [/Oxid uhelnatý/, ['co-chata']],
+    [/Nehoda autobusu|^Autobus$/, ['bus-zajezd', 'bus-skolni', 'bus-linka', 'minibus', 'vlak-prejezd']],
+    [/Dopravní nehoda/, ['d3-mlha', 'd3-led', 'd3-kamion', 'dn-retez', 'minibus', 'cisterna', 'bus-zajezd', 'bus-skolni', 'bus-linka']],
+    [/Opakované zvracení|Opakovaný průjem/, ['tabor-noro', 'otrava-svatba']],
+  ];
+  const rail = ZOS_RAIL.lines, km = (a, b, c, d) => hav(a, b, c, d);
+  const dRail = (la, lo) => { // přesná vzdálenost bodu od úsečky tratě (km, rovinná aproximace)
+    let m = 1e9; const kx = 111.32 * Math.cos(la * Math.PI / 180), ky = 111.32;
+    for (const l of rail) for (let i = 1; i < l.length; i++) {
+      const ax = (l[i - 1][1] / 1e5 - lo) * kx, ay = (l[i - 1][0] / 1e5 - la) * ky, bx = (l[i][1] / 1e5 - lo) * kx, by = (l[i][0] / 1e5 - la) * ky;
+      const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy, f = len2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+      m = Math.min(m, Math.hypot(ax + f * dx, ay + f * dy));
+    }
+    return m;
+  };
+  for (const t of D.muTypes) {
+    if (!Array.isArray(t.sy)) throw new Error(t.id + ': chybí příznaky typu');
+    for (const x of t.sy) if (!cat.has(x)) throw new Error(t.id + ': příznak není v katalogu: ' + x);
+    for (const [re, ids] of only) for (const x of t.sy) if (re.test(x) && !ids.includes(t.id)) throw new Error(t.id + ': příznak „' + x + '“ k tomuto typu nepatří');
+    for (let i = 0; i < 6; i++) {
+      const c = sim.spawnScriptedMU({ type: t.id, direct: false });
+      if (c.symptoms.some(x => /Střelné|STŘELEC/.test(x)) && !/^amok/.test(t.id)) throw new Error(t.id + ': střelba u jiného typu');
+      if (t.place.k === 'rail') {
+        const d = dRail(c.lat, c.lon);
+        if (d > 0.04) throw new Error(t.id + ': místo není na trati (' + Math.round(d * 1000) + ' m od nejbližšího bodu)');
+        if (t.place.cross) { const s = ROUTER.snap(c.lat, c.lon); if (!/železniční přejezd/.test(c.addr) || !s || s.d > 0.02) throw new Error(t.id + ': přejezd bez silnice: ' + c.addr); }
+      }
+      if (t.place.k === 'road') { const s = ROUTER.snap(c.lat, c.lon); if (!s || s.d > 0.03) throw new Error(t.id + ': místo není na silnici'); }
+      if (t.place.k === 'airport' && Math.abs(c.lat - D.airport.lat) > 0.003) throw new Error(t.id + ': mimo osu dráhy');
+      if (/^okolí obce /.test((c.addr.split(', ')[1] || '')) === false && (t.place.k === 'road' || t.place.k === 'rail') && !/okolí obce/.test(c.addr)) throw new Error(t.id + ': adresa bez obce');
+      c.status = 'closed';
+    }
+  }
+  console.log('MU 0.28.1: příznaky z katalogu a odpovídající mechanismu, trať, přejezd, silnice, dráha true');
 }

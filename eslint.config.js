@@ -1,6 +1,6 @@
 // Minimální kontrola: nedefinované proměnné/funkce (zachytila by např. chybějící syncSelectionToMain).
 const shared = {
-  ZOS_DATA: 'readonly', ZOS_PEOPLE: 'readonly', ZOS_SYMPTOMS: 'readonly', ZOS_ADDR: 'readonly', ZOS_POI: 'readonly', ZOS_EXTMSG: 'readonly', ZOS_WX: 'readonly', ZOS_VOICE: 'readonly', ZOS_TUTORIAL: 'readonly', Worker: 'readonly', WebAssembly: 'readonly', BigInt64Array: 'readonly', BigInt: 'readonly',
+  ZOS_DATA: 'readonly', ZOS_PEOPLE: 'readonly', ZOS_SYMPTOMS: 'readonly', ZOS_ADDR: 'readonly', ZOS_POI: 'readonly', ZOS_RAIL: 'readonly', ZOS_EXTMSG: 'readonly', ZOS_WX: 'readonly', ZOS_VOICE: 'readonly', ZOS_TUTORIAL: 'readonly', Worker: 'readonly', WebAssembly: 'readonly', BigInt64Array: 'readonly', BigInt: 'readonly',
   ROUTER: 'readonly', Sim: 'readonly', BASEMAP: 'readonly', GLMASK: 'readonly', maplibregl: 'readonly',
   hav: 'readonly', ZOS_VERSION: 'readonly', ZOS_CHANGELOG: 'readonly', ZOS_OUTLINE: 'readonly', travelSec: 'readonly', heliSec: 'readonly', FIRST: 'readonly', LAST: 'readonly',
 };

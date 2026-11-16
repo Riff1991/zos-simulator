@@ -1906,6 +1906,7 @@ Promise.all([
   fetch('tiles-index.json').then(r => r.json()).then(j => { TILEIDX = j; if (!satellitePanel || sim) glInit(); }).catch(e => console.warn('tiles', e)),
   fetch('graph.wasm').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(b => ROUTER.init(b)).catch(e => console.warn('graph', e)),
   fetch('poi.json').then(r => r.json()).then(j => { window.ZOS_POI = j; }).catch(e => console.warn('poi', e)),
+  fetch('rail.json').then(r => r.json()).then(j => { window.ZOS_RAIL = j; }).catch(e => console.warn('rail', e)),
   fetch('addr.json').then(r => r.json()).then(j => { window.ZOS_ADDR = j; }).catch(e => console.warn('addr', e)),
 ]).then(() => { assetsState = ROUTER.ready ? 'mapa a silniční síť načteny' : 'mapová data se nenačetla, běží zjednodušená mapa'; if (!sim && !satellitePanel) homeModal(); });
 if (!satellitePanel) { applyTheme(); homeModal(); }

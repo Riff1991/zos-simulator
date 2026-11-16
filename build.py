@@ -41,7 +41,7 @@ shutil.copyfile('src/tts-worker.js', 'site/tts/worker.js')
 # service worker + version.json (PWA: offline a aktualizace)
 import hashlib, json as _json
 pre = ['./index.html', './manifest.webmanifest', './lib/maplibre-gl-csp.js', './lib/maplibre-gl-csp-worker.js', './graph.wasm', './addr.json',
-       './poi.json', './tts/worker.js', './tiles-index.json', './t/low.wasm', './t/glyphs.wasm', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png']
+       './poi.json', './rail.json', './tts/worker.js', './tiles-index.json', './t/low.wasm', './t/glyphs.wasm', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png']
 pre = [p for p in pre if os.path.exists('site/' + p[2:])]
 h = hashlib.sha256()
 for p in pre: h.update(open('site/' + p[2:], 'rb').read())

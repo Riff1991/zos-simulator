@@ -8,6 +8,18 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.28.1 – 2026-11-16
+
+> Soulad místa a příznaků u MU a u dopravních nehod.
+
+### Opravy
+- **MU na železnici** se děje na skutečné trati, přejezd na skutečném přejezdu (tratě z mapových dat, nový soubor `rail.json`). Dřív šlo o náhodný bod u města.
+- **Příznaky u MU odpovídají typu:** vlak = Nehoda vlaku, Vlak, HZS a PČR; požár = Požár, HZS; chemie = Únik nebezpečných látek; střelba jen u útoku; výbuch jen u výbuchů a bomby a tak dále. Dřív se k MU přimíchávalo „střelné poranění“ i u vlaku.
+- **Havárie letadla** u dráhy letiště České Budějovice (podél její osy), ne na libovolném místě v okolí.
+- **Popis místa u silnic a tratí** uvádí nejbližší skutečnou obec z adres (dřív se u vzdálených míst psalo České Budějovice).
+- **Dopravní nehody a cyklisté** už nevznikají u zámku, v restauraci, v bytě ani v domově seniorů, jen na silnici nebo na ulici.
+- **Čas letu LZS** do popáleninového centra se počítá vzdušnou čarou.
+
 ## v0.28.0 – 2026-11-16
 
 > Režim „Jen MU“ s rozjetým krajem a kompaktní panel případu.

@@ -1,12 +1,12 @@
 // Service worker ZOS simulátoru: offline provoz + aktualizace při spuštění.
 // Generuje build.py (doplní VERZI, otisk sestavení a seznam souborů). Neupravovat site/sw.js ručně.
-const VERSION = '0.28.0';
-const BUILD = '79118b66f1';
+const VERSION = '0.28.1';
+const BUILD = 'eeacdb91f8';
 const PFX = VERSION.includes('-dev') ? 'zosdev-' : 'zos-';   // testovací verze (/dev/) má vlastní cache
 const CACHE = `${PFX}${VERSION}-${BUILD}`;
 const TILE_CACHE = PFX + 'tiles-529ccc46';
 const TTS_CACHE = PFX + 'tts-v1';                 // hlas pro rádio (~80 MB) se stahuje jen při zapnutém hlasu a mezi verzemi se nemaže                // dlaždice se mezi verzemi nemění (podle obsahu v tiles-index)
-const PRECACHE = ["./index.html", "./manifest.webmanifest", "./lib/maplibre-gl-csp.js", "./lib/maplibre-gl-csp-worker.js", "./graph.wasm", "./addr.json", "./poi.json", "./tts/worker.js", "./tiles-index.json", "./t/low.wasm", "./t/glyphs.wasm", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
+const PRECACHE = ["./index.html", "./manifest.webmanifest", "./lib/maplibre-gl-csp.js", "./lib/maplibre-gl-csp-worker.js", "./graph.wasm", "./addr.json", "./poi.json", "./rail.json", "./tts/worker.js", "./tiles-index.json", "./t/low.wasm", "./t/glyphs.wasm", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener('install', ev => {
   ev.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE.map(u => new Request(u, { cache: 'reload' })))));

@@ -7,6 +7,7 @@ global.ZOS_SYMPTOMS = require('../src/symptoms.json');
 global.ROUTER = require('../src/router.js');
 { const b = fs.readFileSync(__dirname + '/../site/graph.wasm'); ROUTER.init(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); }
 global.ZOS_POI = JSON.parse(require('fs').readFileSync(__dirname + '/../site/poi.json', 'utf8'));
+global.ZOS_RAIL = JSON.parse(require('fs').readFileSync(__dirname + '/../site/rail.json', 'utf8'));
 global.ZOS_ADDR = JSON.parse(fs.readFileSync(__dirname + '/../site/addr.json', 'utf8'));
 const { Sim } = require('../src/engine.js');
 
@@ -48,6 +49,8 @@ for (const k of crews) for (const m of k.members || []) checkName(m, 'posádka')
 for (const c of cases) { checkName(c.ozn, 'oznamovatel'); if (c.patientName) checkName(c.patientName, 'pacient'); }
 for (const c of P) {
   const up = c.up || '', a = c.age, place = `${c.place || ''} ${c.poznamka || ''}`;
+  if (/Cyklista|Chodec|Motocyklista|Osobní automobil|Nákladní automobil|Dopravní nehoda|Autobus|Vlak/i.test(up) && !['ulice', 'silnice', 'priroda'].includes(c.where)) add('dopravní mechanismus mimo silnici/ulici', `${c.klasif} | ${c.where} | ${c.addr}`);
+  if (/Cyklista|Chodec|Motocyklista|Osobní automobil|Nákladní automobil|Dopravní nehoda|Autobus|Vlak/i.test(up) && /\(.*\)$/.test(c.addr || '')) add('dopravní mechanismus u objektu', `${c.klasif} | ${c.addr}`);
   if (/DYNAMICKÁ INDIKACE/i.test(up) && c.n !== 2) add('DYNAMICKÁ INDIKACE mimo N2', `N${c.n} ${c.klasif}`);
   if (c.n === 2 && c.dyn && !/DYNAMICKÁ INDIKACE/i.test(up)) add('dyn. N2 bez štítku', `${c.klasif} | ${up.slice(0, 60)}`);
   if (a < 60 && c.where === 'domov') add('pod 60 let v domově pro seniory', `${a} let | ${place.slice(0, 50)}`);
