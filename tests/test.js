@@ -959,7 +959,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
       const m = c.mu;
       if (m.phase === 'suspected' || c.status === 'waiting') for (const ty of ['RZP', 'RV']) if (!c.crews.some(id => sim.crewOf(id).type === ty)) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); }
       if (m.phase === 'declared') {
-        sim.muAvizo(c.id); sim.muContactHospitals(c.id); sim.requestMuMethane(c.id); sim.requestMuModule(c.id); sim.muRequestNeighbor(c.id, 'vys');
+        sim.muAvizo(c.id); sim.muContactHospitals(c.id); sim.requestMuMethane(c.id); sim.requestMuModule(c.id); sim.muRequestNeighbor(c.id, 'VY');
         for (const [ty, n] of [['RZP', m.groupsRequired], ['RV', 2], ['MU', 1], ['LZS', 1]]) if (c.crews.filter(id => sim.crewOf(id).type === ty).length < n) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); }
         if (m.spis.req) sim.muCallSpis(c.id); if (m.coroner.known) sim.muCallCoroner(c.id); if (m.endReady) sim.confirmMuEnd(c.id);
       }
@@ -1049,7 +1049,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   {
     const s2 = mk(42), c = s2.spawnScriptedMU({ type: 'amok-skola', cas: 20, direct: true }), m = c.mu;
     for (let i = 0; i < 1500 && m.sceneAt == null; i++) s2.step(10);
-    if (m.accessAt == null || !(m.accessAt > m.sceneAt + 500)) throw new Error('zóna: chybí zpoždění přístupu');
+    if (m.accessAt == null || !(m.accessAt >= m.sceneAt + 470 && m.accessAt <= m.sceneAt + 910)) throw new Error('zóna: chybí zpoždění přístupu');
     while (s2.s.t < m.accessAt - 5) { s2.step(5); if (m.pts.some(p => p.st !== 'scene')) throw new Error('zóna: třídění před vyhlášením bezpečné zóny'); }
     for (let i = 0; i < 100; i++) s2.step(10);
     if (!m.pts.some(p => p.st !== 'scene')) throw new Error('zóna: třídění nezačalo po vyhlášení bezpečné zóny');
@@ -1140,4 +1140,53 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     }
   }
   console.log('MU 0.28.1: příznaky z katalogu a odpovídající mechanismu, trať, přejezd, silnice, dráha true');
+}
+
+// ---- 0.29.0: tichý kolega, první vlna, skutečné posádky sousedů, role v režimu Jen MU ----
+{
+  const D = ZOS_DATA;
+  const mkOnly = (seed, role, type) => new Sim({ seed, mode: 'mu', startHour: 14, diff: 1, muType: type, muRole: role, secondaryEnabled: false, radio: 'interactive' });
+  // role: výběr před startem
+  if (mkOnly(71, 'mu', 'dn-retez').s.muPlayerRole !== 'mu' || mkOnly(71, 'normal', 'dn-retez').s.muPlayerRole !== 'normal' || mkOnly(71, null, 'dn-retez').s.muPlayerRole !== null) throw new Error('role v režimu Jen MU se nepřenesla');
+  // hráč řeší běžný provoz: MU řídí kolega potichu (žádné rádio odsunu, jen vyhlášení a ukončení hlasitě), první vlna sil hned
+  {
+    const sim = mkOnly(72, 'normal', 'bus-zajezd'), s = sim.s;
+    let c = null, wave = null;
+    for (let i = 0; i < 6000 && !s.ended; i++) {
+      sim.step(10);
+      if (!c && s.muCaseId) c = sim.caseOf(s.muCaseId);
+      if (c && c.mu && c.mu.declaredAt != null && wave == null && s.t >= c.mu.declaredAt + 240) wave = { crews: c.crews.length, rv: c.crews.filter(id => sim.crewOf(id).type === 'RV').length, mu: c.crews.filter(id => sim.crewOf(id).type === 'MU').length };
+      for (const cs of s.cases) { if (cs.mu || cs.status !== 'waiting' || cs.typ === 'sekundární') continue; for (const ty of (cs.initialDispatchRequired.length ? cs.initialDispatchRequired : ['RZP'])) if (!cs.initialDispatchSent.includes(ty)) { const x = sim.suggest(cs.id, ty)[0]; if (x) sim.assign(cs.id, x.crewId); } }
+      for (const e of s.radioQ) { if (e.kind === 'muodsun') throw new Error('hráč běžného provozu dostal relaci vedoucího odsunu'); if (e.state === 'calling') sim.radioAnswer(e.id); else if (e.state === 'open') sim.radioReply(e.id, (e.opts.find(o => o.def) || e.opts[0]).k); }
+    }
+    if (!s.ended || !c.mu.ended) throw new Error('MU s tichým kolegou nedoběhla');
+    if (!wave || wave.crews < 6 || wave.rv < 2 || wave.mu < 1) throw new Error('první vlna sil kolegy nepřišla do 4 min po vyhlášení: ' + JSON.stringify(wave));
+    const loud = s.log.filter(x => x.kind === 'alert' && (x.txt.includes(c.num) || /odsun|METHANE|KM |SPIS|koroner/.test(x.txt)));
+    if (loud.length > 6) throw new Error('hráč běžného provozu slyší z MU příliš: ' + loud.length + ' hlášení (např. ' + loud[3].txt.slice(0, 80) + ')');
+    if (s.log.some(x => /Vedoucí odsunu/.test(x.txt))) throw new Error('v rádiu zní vedoucí odsunu, i když MU neřídím');
+  }
+  // sousedé jsou skutečné posádky (základny ve hře, dlaždice, poloha), LZS po jednom
+  {
+    const sim = mkOnly(73, 'mu', 'dn-retez'), s = sim.s;
+    let c = null; for (let i = 0; i < 1500 && !(c && c.mu && c.mu.phase === 'declared'); i++) { sim.step(10); if (!c && s.muCaseId) c = sim.caseOf(s.muCaseId); if (c && c.mu && c.mu.phase === 'suspected' && c.status === 'waiting') for (const ty of ['RZP', 'RV']) { const x = sim.suggest(c.id, ty)[0]; if (x && !c.crews.some(id => sim.crewOf(id).type === ty)) sim.assign(c.id, x.crewId); } }
+    if (!(c && c.mu && c.mu.phase === 'declared')) throw new Error('MU se nevyhlásila');
+    if (c.mu.ext) throw new Error('zůstaly virtuální cizí vozy');
+    if (!sim.muRequestNeighbor(c.id, 'VY').ok || sim.muRequestNeighbor(c.id, 'VY').ok) throw new Error('žádost o Vysočinu: první ano, druhá ne');
+    if (!sim.muRequestNeighbor(c.id, 'lzs-praha').ok) throw new Error('žádost o LZS Praha');
+    for (let i = 0; i < 40; i++) sim.step(10);
+    const ext = s.crews.filter(k => k.ext && k.supportRequestedFor === c.id);
+    if (ext.filter(k => k.type === 'RZP').length < 3 || ext.filter(k => k.type === 'LZS').length !== 1) throw new Error('cizí posádky nedorazily jako skutečné posádky: ' + ext.map(k => k.name + ':' + k.state));
+    if (!ext.every(k => ['call', 'enroute', 'onscene'].includes(k.state) && k.caseId === c.id)) throw new Error('cizí posádky nejsou vyslány k MU');
+    if (ext.some(k => k.type === 'RZP' && k.region !== 'VY')) throw new Error('přijela posádka z jiného kraje');
+  }
+  // hodnocení: pomalé odpovědi na odsun a pozdní reakce na SPIS snižují hodnocení, jen v tom, co dispečer ovlivní
+  {
+    const sim = mkOnly(74, 'mu', 'dn-retez'), c = sim.spawnScriptedMU({ type: 'dn-retez', direct: true }), m = c.mu;
+    m.ended = true; m.mt.n = 3; m.sceneAt = 0;
+    const fast = Object.assign({}, sim._muScore(c));
+    m.respN = 5; m.respSum = 5 * 600; m.spis.req = true; m.spis.reqAt = 0; m.spis.calledAt = 1500;
+    const slow = sim._muScore(c);
+    if (!(slow.eff < fast.eff - 3) || fast.eff > 25.01) throw new Error('hodnocení nereaguje na pomalou odpověď a reakci: ' + fast.eff + ' / ' + slow.eff);
+  }
+  console.log('MU 0.29: role před startem, tichý kolega, první vlna, skutečné posádky sousedů, hodnocení true');
 }

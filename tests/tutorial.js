@@ -22,7 +22,7 @@ function bot(sim) {
       sim.setMuDispatcher('mu'); const m = c.mu;
       if (c.status === 'waiting' || m.phase === 'suspected') for (const ty of ['RZP', 'RV']) { if (!c.crews.some(id => sim.crewOf(id).type === ty)) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); } }
       if (m.phase === 'declared') {
-        sim.muAvizo(c.id); sim.muContactHospitals(c.id); sim.requestMuMethane(c.id); sim.requestMuModule(c.id); sim.muRequestNeighbor(c.id, 'vys');
+        sim.muAvizo(c.id); sim.muContactHospitals(c.id); sim.requestMuMethane(c.id); sim.requestMuModule(c.id); sim.muRequestNeighbor(c.id, 'VY');
         for (const [ty, n] of [['RZP', m.groupsRequired], ['RV', 2], ['MU', 1]]) if (c.crews.filter(id => sim.crewOf(id).type === ty).length < n) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); }
         if (m.spis.req) sim.muCallSpis(c.id); if (m.coroner.known) sim.muCallCoroner(c.id); if (m.endReady) sim.confirmMuEnd(c.id);
       }

@@ -8,6 +8,23 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.29.0 – 2026-11-16
+
+> MU po zkušební hře: tichý kolega, rychlá první vlna, skutečné posádky sousedních krajů a vlastní layout pro dispečera MU.
+
+### Nové
+- **Vlastní rozložení panelů (stolní zobrazení):** velikost panelů měníš tažením lišt mezi nimi (sloupce i řádky). Tlačítko ⧉ v záhlaví panelu ho odepne do plovoucího okna (táhneš za záhlaví, velikost za pravý dolní roh), ⤓ ho připne zpět. Menu **⊞ Rozložení** v hlavičce nabízí předvolby Výchozí, Široká mapa a Velký seznam a detail a připnutí všech oken zpět. Rozložení se pamatuje zvlášť pro běžný provoz a pro režim MU.
+- **Layout dispečera MU:** po přepnutí na „Řešit MU (401)“ se obrazovka přeskládá (panel MU vlevo na celou výšku, mapa, rádio s odsunem, posádky; seznam případů a protokol menší). Po ukončení MU nebo přepnutí na běžný provoz se vrátí původní rozložení. Hlášení z MU už nezabírají červené lišty nahoře, jsou v panelu.
+- **Pomoc jiných krajů jsou skutečné posádky:** Vysočina (5), Plzeň (3), Střední Čechy (4) a 6 LZS (Jihlava, Praha, Plzeň, Linz, Krems, Straubing) z jejich základen. Mají dlaždici i polohu na mapě, dojezd po silnicích a přicházejí vždy, když o ně požádáš. Vypuštěno: Jihomoravský kraj, pozemní Rakousko a Bavorsko, DRNR (nemají ve hře základny).
+- **Režim Jen MU:** roli (MU, nebo běžný provoz) si zvolíš před startem.
+- **Doporučená nemocnice** u relace odsunu je první tlačítko (★).
+- **Hodnocení MU** zahrnuje rychlost odpovědi na relace odsunu a reakci na žádost o SPIS a koronera (jen to, co dispečer ovlivní).
+
+### Opravy
+- **Hráč běžného provozu už neslyší MU:** vedoucí odsunu nevolá v rádiu a hlášení z MU nepípají. Hlasitě zůstává jen vyhlášení a ukončení MU, zbytek jde do logu.
+- **Kolega posílá první vlnu najednou** (RZP, 2× RV, LZS i modul MU hned po avízu), dřív po jedné s prodlevou a modul až ve 20. minutě.
+- **Zóna** (útok, chemie, požár, výbuch, vlak, letadlo) zdržuje třídění jen 8–15 min místo 10–25.
+
 ## v0.28.1 – 2026-11-16
 
 > Soulad místa a příznaků u MU a u dopravních nehod.

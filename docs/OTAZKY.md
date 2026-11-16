@@ -278,3 +278,16 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 ### Režim „Jen MU“ a kompaktní panel případu – rozhodnutí z 16. 11. 2026 (verze 0.28.0)
 - Nový režim spuštění **Jen MU (cvičení)**: datum a hodina podle výběru (počasí reálné), kraj je před startem „zahřátý“ ~100 min simulovaného provozu s automatickým dispečerem, takže posádky jsou v různých fázích (na cestě, na místě, transport, předání, návrat) a běží skutečný počet rozpracovaných výjezdů pro danou denní dobu. MU začne 4–8 min po startu (typ náhodný podle času a počasí, nebo vybraný). Obyčejný provoz běží dál. Cvičení končí ukončením MU a vyhodnocením (hodnocení MU: časy, METHANE, odsun, chyby).
 - Panel vybraného případu: First respondeři a „LZS podle kalkulátoru“ jsou u N2/N3 sbalené do dvou řádkových tlačítek s krátkým shrnutím (u LZS nejlepší nemocnice a „Ano/Možná“). Rozbalí se kliknutím, nebo kliknutím na dlaždici LZS. U N1 zůstává vše rozbalené jako dosud.
+
+### Rozsáhlá anketa k MU po testovací hře – rozhodnutí z 16. 11. 2026 (verze 0.29.0)
+- Kolega při MU (hráč řeší běžný provoz, nebo roli nezvolil): skoro nic nehlásí. Hlas, pípání a toasty jen při vyhlášení a ukončení MU; zbytek jde tiše do logu. Odsun za kolegu probíhá bez rádiové relace (vedoucí odsunu v rádiu nezní).
+- První vlna sil kolega vysílá najednou (RZP podle odhadu skupin, 2× RV, LZS, modul MU), ne po jedné s prodlevou.
+- Režim Jen MU: roli (řídím MU / řídím běžný provoz) si hráč volí před startem.
+- N3 zůstávají během MU odložené do konce MU (beze změny).
+- Pomoc jiných krajů = skutečné posádky ze základen ve hře: Vysočina 5, Plzeň 3, Střední Čechy 4 a 6 LZS po jednom (Jihlava, Praha, Plzeň, Linz, Krems, Straubing). Při MU vždy souhlas a bez limitu vzdálenosti. Vypuštěno: Jihomoravský kraj, pozemní Rakousko a Bavorsko, DRNR (nemají ve hře základny).
+- Mapa: bez dalších prvků. Cizí posádky jsou vidět jako dlaždice a na mapě jako ostatní cizí posádky.
+- Odsun: rádiová relace jako dosud, doporučená nemocnice je první tlačítko (★).
+- Zóna (útok, chemie, požár, výbuch, vlak, letadlo): zpoždění třídění 8–15 min po příjezdu.
+- Hodnocení MU: jen složky, které dispečer ovlivní (chyby při odsunu, rychlost odpovědi na relace odsunu, reakce na žádost SPIS a koronera); dopad na běžný provoz a využití LZS se nehodnotí.
+- Layout: při přepnutí na „Řešit MU (401)“ se obrazovka přeskládá (panel MU vlevo na výšku, mapa, rádio, posádky; seznam případů a protokol menší), při přepnutí zpět nebo po ukončení MU se vrátí. Hlášení MU se nezobrazují jako červené banery nahoře (jsou v panelu).
+- Vlastní rozložení (16. 11. 2026): dělicí lišty mezi panely, plovoucí okna uvnitř stránky (odepnout/připnout), předvolby Výchozí, Široká mapa, Velký seznam a detail; ukládá se zvlášť pro běžný provoz a MU (`zos_layout_v2`). Jen stolní zobrazení, mobil beze změny. Okna na druhý monitor zůstávají jen pro mapu a přehled transportů.
