@@ -12,10 +12,10 @@ jobs:
         with: { node-version: 22 }
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - name: ESLint (nedefinované funkce)
-        run: npx --yes eslint@9 'src/*.js' work/ui.bundle.js --ignore-pattern src/sw.js --ignore-pattern 'src/ui-*.js'
       - name: Sestavení
         run: python3 build.py && git diff --exit-code -- site/index.html || (echo "site/index.html neodpovídá src/ – spusť python3 build.py a commitni" && exit 1)
+      - name: ESLint (nedefinované funkce)
+        run: npx --yes eslint@9 'src/*.js' work/ui.bundle.js --ignore-pattern src/sw.js --ignore-pattern 'src/ui-*.js'
       - name: Testy enginu
         run: node tests/test.js
       - name: Test výcviku
