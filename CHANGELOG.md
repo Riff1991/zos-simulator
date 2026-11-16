@@ -8,6 +8,13 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.30.4 – 2026-11-16
+
+> Stav posádky na místě.
+
+### Opravy
+- **Po dojezdu zůstává posádce stav „Na místě“**, pak „Transport“. „Zahájení ošetření“ se nehlásí, stejně jako ve skutečnosti.
+
 ## v0.30.3 – 2026-11-16
 
 > Popis místa sedí na adresu.

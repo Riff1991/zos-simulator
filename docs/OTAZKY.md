@@ -338,3 +338,6 @@ Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repoz
 - **Zařízení** (stadion, hospoda, restaurace, lázně, vrátnice, recepce, azylový dům, stanice HS/služebna, věznice, ústav, tábor, nádraží, škola, ordinace, DPS/DD, hotel/penzion/ubytovna…) se u obyčejné adresy **nikdy** nepoužijí. U reálného místa z OSM (`poi.json`) jen když sedí jméno nebo druh místa (např. „DPS“ jen u „Dům s pečovatelskou službou“, „DD“ jen u domova pro seniory; u místa bez jména nic).
 - **Typ budovy a patra z OSM:** `addr_full.py` přiřadí každé adrese budovu (polygon) a její `building` a `building:levels`; `addr.json` má nové pole `b` (kód budovy, podlaží), stejné pořadí jako `a`. Kódy: 1 dům, 2 obytná budova, 3 bytový dům, 4 jiná, 0 neznámá. Místo „rd“ se losuje jen u domu (nebo obytné budovy do 2 podlaží), „byt“ jen u bytového domu (nebo obytné budovy s ≥ 2 podlažími). Patro v popisu nepřesáhne počet podlaží − 1; „panelák“ jen od 5 podlaží. Adresa bez vhodné budovy se použije až když žádná jiná není.
 - **Pokrytí dat:** 89 % adres má budovu, 62 % počet podlaží.
+
+### Stavy posádky na místě (16. 11. 2026, zadání uživatele)
+- Skutečná posádka po dojezdu hlásí jen „na místě“, potom „transport“. Stav „Zahájení ošetření“ (dřív po 2 min na místě) se v panelu posádky už nezobrazuje; ošetření se nehlásí.

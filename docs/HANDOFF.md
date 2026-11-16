@@ -43,7 +43,7 @@ RZP, RV (rendez-vous, lékař), LZS (Planá u ČB, RLP vrtulník), **MU** (modul
 - bílá = **ukončeno / na základně**
 - fialová = **nepřihlášená** (typicky zálohy)
 - ostatní barvy uživatel doplní (sekundár je zatím šedá – náš odhad).
-Fáze v panelu posádky: Výzva → Výjezd → Na místě → Zahájení ošetření → Transport → Příjezd k ZZ → Předání pacienta → Volný → Příjezd na základnu → Konec.
+Fáze v panelu posádky: Výzva → Výjezd → Na místě → Transport → Příjezd k ZZ → Předání pacienta → Volný → Příjezd na základnu → Konec.
 
 ### Klasifikace (přesné názvy v systému)
 Alergické reakce, Amputace, Arytmie, Asistence, Bolest, Bolesti na hrudi, CMP, CZS, Diabetické stavy, Dopravní nehoda, Dušnost, Gynekologické stavy, Horečka, Hypertenze, Intoxikace, Křečové stavy, MU - MATRA 722, Neúrazové krvácení, Neurologické stavy, NZO – spatřená, Oběšení, Pediatrické stavy, Popálení, poleptání, Porucha vědomí, Posouzení stavu, Převoz, Psychiatrické stavy, Resuscitace, Technická jízda, Tonutí, Trauma, Vstřícná jízda, Zvracení/průjem.

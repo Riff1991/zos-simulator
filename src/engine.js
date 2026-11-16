@@ -433,7 +433,7 @@ class Sim {
     switch (c.state) {
       case 'call': return 'Výzva';
       case 'enroute': return 'Výjezd';
-      case 'onscene': return t < c.arrivedAt + 120 ? 'Na místě' : 'Zahájení ošetření';
+      case 'onscene': return 'Na místě';   // skutečná posádka hlásí jen „na místě“ a pak „transport“, zahájení ošetření se nehlásí
       case 'transport': return 'Transport';
       case 'handover': return t < c.until - 600 + 120 || (c.until - c.hoStart) < 130 ? 'Příjezd k ZZ' : 'Předání pacienta';
       case 'free': return 'Volný';
