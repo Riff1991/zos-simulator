@@ -121,7 +121,7 @@ class Sim {
       v: 1, seed, rs: seed, t: 0, radioMode: opts.radio === 'interactive' ? 'interactive' : 'auto', radioQ: [], rqSeq: 0, secondaryEnabled: opts.secondaryEnabled !== false, muEnabled: opts.muEnabled !== false, muProbability: Math.max(0, Math.min(100, Number(opts.muProbability == null ? 10 : opts.muProbability))),
       startHour: opts.startHour != null ? opts.startHour : 7,
       date: opts.date || (typeof window !== 'undefined' ? new Date().toISOString().slice(0, 10) : '2026-06-21'),
-      mode: opts.mode || 'shift', diff: opts.diff || 1, rateMul: opts.rateMul || 1,
+      mode: opts.mode === 'mu' ? 'shift' : (opts.mode || 'shift'), muOnly: opts.mode === 'mu', muOnlyType: opts.muType || null, muCaseId: null, diff: opts.diff || 1, rateMul: opts.rateMul || 1,
       shiftLen: 12 * 3600, ended: false, logId: 1, caseSeq: 0,
       cases: [], crews: [], log: [],
       ev: { nextSpawn: 0, nextSecond: 0, nextMU: null, daySecondariesCreated: false, addressHistory: [] },
@@ -146,8 +146,53 @@ class Sim {
     this._roster(false);
     this.L('sys', 'Začátek směny. Posádky přihlášeny.');
     if (s.mode === 'shift' && opts.startState === 'running') this._prepareBusyStart();
+    if (s.muOnly) this._prepareMuOnly();
   }
 
+  // režim Jen MU: kraj se „zahřeje“ ~100 min běžného provozu s automatickým dispečerem, pak za 4–8 min přijde MU
+  _prepareMuOnly() {
+    const s = this.s, warm = 6000, h0 = s.startHour, radio = s.radioMode, sec = s.secondaryEnabled;
+    s.radioMode = 'auto'; s.secondaryEnabled = false; s.ev.nextMU = null;
+    s.startHour = (h0 - warm / 3600 + 24) % 24;
+    for (let i = 0; i < warm / 5; i++) { this._tick(5); this._warmDispatch(); }
+    s.cases = s.cases.filter(c => c.status !== 'closed');
+    s.log = []; s.radioQ = []; s.autoRadio = []; s.radioMode = radio; s.secondaryEnabled = sec;
+    s.agg = { sw: 0, sv: 0, closed: 0, unserved: 0, arrSum1: 0, arrN1: 0, legalOk: 0, legalN: 0, pen: 0, diversions: 0, secondaryCount: 0, secondarySum: 0, secondaryOnTime: 0, opsPoints: 0, opsLog: [] };
+    s.cov = { n: 0, sum: 0, next: s.t + 60 };
+    s.shiftLen = s.t + 12 * 3600;
+    s.ev.nextMU = s.t + this.rr(240, 480);
+    s.ev.nextSecond = this._isDay() && sec ? s.t + this.rr(1800, 5400) : s.ev.nextSecond;
+    this.L('sys', `Cvičení MU: kraj je rozjetý (${s.cases.length} rozpracovaných událostí), MU začne za pár minut.`);
+  }
+  // automatický dispečer při zahřátí kraje: vyšle všechny potřebné posádky a vyřídí složky
+  _warmDispatch() {
+    for (const cs of this.s.cases) {
+      if (cs.mu || cs.typ === 'sekundární' || cs.status === 'intake' || cs.status === 'closed') continue;
+      if (['waiting', 'active'].includes(cs.status)) {
+        const need = cs.initialDispatchRequired && cs.initialDispatchRequired.length ? cs.initialDispatchRequired : cs.firstAssign == null ? ['RZP'] : [];
+        for (const type of need) {
+          if (cs.initialDispatchSent.includes(type) || cs.crews.some(id => { const k = this.crewOf(id); return k && k.type === type && k.caseRole !== 'heli-transfer' && BUSY.includes(k.state); })) continue;
+          const x = this.suggest(cs.id, type)[0];
+          if (x) this.assign(cs.id, x.crewId);
+        }
+      }
+      for (const kind of ['pcr', 'hzs']) if (cs.agencies && cs.agencies[kind] && cs.agencies[kind].state === 'requested') this.sendAgency(cs.id, kind);
+      if (cs.coroner && cs.coroner.state === 'available') this.sendAgency(cs.id, 'cor');
+      if (cs.status === 'active' && cs.rvReq && !cs.rvReq.cancelled && !cs.rvReq.satT && !cs.docAssigned) { const v = this.suggest(cs.id, 'RV')[0]; if (v) this.assign(cs.id, v.crewId); }
+    }
+  }
+  // vyhodnocení cvičení MU
+  muSummary() {
+    const s = this.s, c = this.caseOf(s.muCaseId);
+    if (!c) return null;
+    const m = c.mu;
+    if (!m) return { downgraded: true, addr: c.addr, label: c.place };
+    const by = { 1: 0, 2: 0, 3: 0, 4: 0 }; let delivered = 0, dead = 0;
+    for (const p of m.pts) { by[p.color]++; if (p.st === 'delivered') delivered++; if (p.st === 'dead') dead++; }
+    return { downgraded: false, label: m.label, addr: c.addr, cas: m.cas, by, delivered, dead, declaredAt: m.declaredAt, endedAt: m.endedAt != null ? m.endedAt : s.t, readyAt: c.readyAt,
+      firstArrive: c.firstArrive != null ? c.firstArrive - c.readyAt : null, avizo: m.avizoAt != null && m.declaredAt != null ? m.avizoAt - m.declaredAt : null, updates: m.mt.n, mistakes: m.mistakes, score: c.score,
+      ops: s.agg.opsLog.filter(x => x.caseId === c.id), neighbours: Object.keys(m.nb).length };
+  }
   _prepareBusyStart() {
     const s = this.s, cases = [];
     for (let i = 0; i < 3; i++) {
@@ -1909,7 +1954,8 @@ class Sim {
     }
     if (!type) type = this._muPickType(this._muCtx());
     const aircraft = !!type.air;
-    const cas = over.cas != null ? over.cas : this.ri(type.cas[0], type.cas[1]);
+    let cas = over.cas != null ? over.cas : this.ri(type.cas[0], type.cas[1]);
+    if (over.minCas && over.cas == null && type.cas[1] >= over.minCas) cas = Math.max(cas, over.minCas);
     const groupsRequired = over.groupsRequired != null ? over.groupsRequired : Math.max(2, Math.ceil(cas / 3.5));
     const where = this._muPlace(type, over);
     const symptoms = this._symptomSet('MU - MATRA 722', 1), up = symptoms.join(', ');
@@ -2515,13 +2561,14 @@ class Sim {
       if (s.mode === 'free') {
         s.ev.nextMU = s.muEnabled && s.muProbability > 0 ? t + 12 * 3600 : null;
         if (s.muEnabled && this.rnd() * 100 < s.muProbability) this._spawnMU();
-      } else { s.ev.nextMU = null; this._spawnMU(); }
+      } else { s.ev.nextMU = null; const mc = this._spawnMU(s.muOnly ? { type: s.muOnlyType || undefined, minCas: 16 } : undefined); if (s.muOnly) s.muCaseId = mc.id; }
     }
 
     for (const c of s.cases) if (c.status !== 'closed') this._caseStep(c);
     this._lzsRadio();
     this._radioStep();
     this._nbStep();
+    if (s.muOnly && s.muCaseId && !s.ended) { const mc = this.caseOf(s.muCaseId); if (mc && mc.status === 'closed') { s.ended = true; this.L('sys', 'Konec cvičení MU.'); } }
     this._runMuAssistant();
     for (const cs of s.cases) if (cs.vstricna && cs.vstricna.state === 'offered' && t >= cs.vstricna.expiresAt) {
       this.declineVstricna(cs.id, true);

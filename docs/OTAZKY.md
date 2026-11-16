@@ -274,3 +274,7 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 - Typ poranění podle formuláře: P = popálenina, T = trauma, P+T, I = inhalační trauma; navíc N = neúrazové (intoxikace, onemocnění). Polytrauma je diagnóza (kritéria pro traumacentrum), ne typ poranění.
 - Popáleniny: rozsáhlé popáleniny I. priority patří do popáleninového centra (FNKV Praha, FN Brno, FN Ostrava), letecky; centra jsou v nabídce odsunu jen pro LZS.
 - Útok a nebezpečné látky mají zónu: do vyhlášení bezpečné zóny (PČR/HZS, 10–25 min) se na místě netřídí ani neodsouvá.
+
+### Režim „Jen MU“ a kompaktní panel případu – rozhodnutí z 16. 11. 2026 (verze 0.28.0)
+- Nový režim spuštění **Jen MU (cvičení)**: datum a hodina podle výběru (počasí reálné), kraj je před startem „zahřátý“ ~100 min simulovaného provozu s automatickým dispečerem, takže posádky jsou v různých fázích (na cestě, na místě, transport, předání, návrat) a běží skutečný počet rozpracovaných výjezdů pro danou denní dobu. MU začne 4–8 min po startu (typ náhodný podle času a počasí, nebo vybraný). Obyčejný provoz běží dál. Cvičení končí ukončením MU a vyhodnocením (hodnocení MU: časy, METHANE, odsun, chyby).
+- Panel vybraného případu: First respondeři a „LZS podle kalkulátoru“ jsou u N2/N3 sbalené do dvou řádkových tlačítek s krátkým shrnutím (u LZS nejlepší nemocnice a „Ano/Možná“). Rozbalí se kliknutím, nebo kliknutím na dlaždici LZS. U N1 zůstává vše rozbalené jako dosud.

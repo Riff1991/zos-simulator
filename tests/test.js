@@ -1065,3 +1065,29 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   }
   console.log('katalog MU 0.27:', T.length, 'typů, reálná místa, počasí/sezóna, skladba, zóna, popáleninová centra true');
 }
+
+// ---- 0.28.0: režim Jen MU ----
+{
+  const mkOnly = (seed, type) => new Sim({ seed, mode: 'mu', startHour: 14, diff: 1, muType: type, secondaryEnabled: false, radio: 'auto' });
+  const sim = mkOnly(51, 'bus-zajezd'), s = sim.s;
+  if (!s.muOnly || s.mode !== 'shift') throw new Error('režim Jen MU se nenastavil');
+  const open = s.cases.filter(c => c.status !== 'closed');
+  if (open.length < 4) throw new Error('kraj není rozjetý: jen ' + open.length + ' rozpracovaných událostí');
+  const states = new Set(s.crews.filter(k => !k.ext && !k.res && k.state !== 'off').map(k => k.state));
+  const busy = ['call', 'enroute', 'onscene', 'transport', 'handover', 'free'].filter(x => states.has(x));
+  if (!states.has('base') || busy.length < 3) throw new Error('posádky nejsou v různých fázích: ' + [...states]);
+  if (s.agg.closed !== 0 || s.agg.opsPoints !== 0 || s.cases.some(c => c.status === 'closed')) throw new Error('zahřátí kraje zapsalo skóre nebo uzavřené případy');
+  if (!(s.ev.nextMU > s.t + 200 && s.ev.nextMU < s.t + 500)) throw new Error('MU nezačne za 4–8 min: ' + (s.ev.nextMU - s.t));
+  if (s.log.length > 5) throw new Error('log ze zahřátí zůstal');
+  // cvičení doběhne s kolegou až k ukončení a vyhodnocení
+  for (let i = 0; i < 5000 && !s.ended; i++) sim.step(10);
+  if (!s.ended) throw new Error('cvičení MU nekončí');
+  const ms = sim.muSummary();
+  if (!ms || ms.downgraded || ms.label !== 'Nehoda zájezdového autobusu' || ms.delivered + ms.dead !== ms.cas || !ms.score || !(ms.score.total > 0)) throw new Error('vyhodnocení MU je neúplné: ' + JSON.stringify(ms && { ...ms, ops: 0 }));
+  // determinismus a výběr typu
+  const a = mkOnly(51, 'bus-zajezd'), b = mkOnly(51, 'bus-zajezd');
+  if (JSON.stringify(a.s.cases.map(c => c.num + c.state)) !== JSON.stringify(b.s.cases.map(c => c.num + c.state)) || a.s.t !== b.s.t) throw new Error('zahřátí kraje není deterministické');
+  const r = mkOnly(52, null); for (let i = 0; i < 400 && !r.s.muCaseId; i++) r.step(10);
+  if (!r.s.muCaseId || !r.caseOf(r.s.muCaseId).mu) throw new Error('náhodný typ MU se nespustil');
+  console.log('režim Jen MU: rozjetý kraj,', open.length, 'událostí, MU za pár minut, konec s vyhodnocením true');
+}

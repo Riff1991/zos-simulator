@@ -81,6 +81,7 @@ function applyMapTheme() {
 const COL = { base: '#9aa5b1', free: '#3cb54a', call: '#2f7de1', enroute: '#d9372c', onscene: '#d9372c', transport: '#d9372c', handover: '#d9372c', off: '#8e5bd6', activating: '#b79af0', second: '#7b8794', attached: '#169c8f' };
 const X = lon => (lon - 13.55) / 1.95 * 1000, Y = lat => (49.78 - lat) / 1.28 * 1000;
 
+const toolState = {};
 let sim = null, speed = 0, savedSpeed = 5, sel = { c: null, k: null };
 const requestedPanel = new URLSearchParams(location.search).get('zosPanel');
 const satellitePanel = ['map', 'radio'].includes(requestedPanel) ? requestedPanel : null;
@@ -382,14 +383,25 @@ function renderDetail() {
   let h = `<div class="panel dgrid"><div class="dc1"><h3>${esc(c.num)} · <span class="pill" style="background:${c.n === 1 ? '#f7c9c5' : c.n === 2 ? '#fbdcb5' : c.n === 4 ? '#d8e4ec' : '#f7ecb8'}">N${c.n}${c.dyn ? ' dyn.' : ''}</span> <span class="pill" style="background:#e1e8ee">${st}</span></h3>`;
   if (c.n === 2 && !c.dyn && c.status !== 'closed' && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) h += `<button class="btn" data-act="n2-dynamic" data-case="${c.id}">Změnit výzvu na dynamickou</button>`;
   if (c.n >= 2 && c.status !== 'closed' && c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RZP' && k.zzum && k.caseId === c.id; })) h += `<button class="btn${c.zzumFlag ? ' pri' : ''}" data-act="zzum-flag" data-case="${c.id}" title="ZZUM – výjezd bez lékaře">${c.zzumFlag ? '✓ ZZUM – bez lékaře (zrušit)' : 'Příznak ZZUM – výjezd bez lékaře'}</button>`;
-  if (c.typ !== 'sekundární' && c.status !== 'closed' && !c.exitus) {
+  let frBlock = '', lzsBlock = '', lzsHint = '';
+  const frApplies = c.typ !== 'sekundární' && c.status !== 'closed' && !c.exitus;
+  if (frApplies) {
     const sent = (c.frs || []).map(a => `<li>${esc(a.name)} – ${a.state === 'onscene' ? 'na místě' : 'na cestě, dojezd ' + Math.max(1, Math.round((a.arriveAt - sim.s.t) / 60)) + ' min'}</li>`).join('');
     const sug = sim.frSuggest(c.id, 3).map(x => `<button class="btn" data-act="send-fr" data-case="${c.id}" data-fr="${x.frId}" title="${esc(x.label)}">${esc(x.name)} · ${Math.max(1, Math.round(x.eta / 60))} min</button>`).join('');
-    h += `<div class="multi-patient"><b>First respondeři</b>${sent ? `<ul style="margin:2px 0 4px 16px;padding:0">${sent}</ul>` : ' <span style="color:#5a6a7a">nikdo nevyslán</span>'}<div class="opts">${sug || ''}</div></div>`;
+    frBlock = `<div class="multi-patient"><b>First respondeři</b>${sent ? `<ul style="margin:2px 0 4px 16px;padding:0">${sent}</ul>` : ' <span style="color:#5a6a7a">nikdo nevyslán</span>'}<div class="opts">${sug || ''}</div></div>`;
   }
   const wx = sim._lzsWeatherStatus(), wxLabel = wx === 'clear' ? 'bez omezení' : wx === 'consult' ? 'na konzultaci' : 'neletovo';
-  h += `<div class="multi-patient"><b>LZS · ${wxLabel}</b>${wx === 'consult' ? `<br>${c.lzsConsult?.status === 'pending' ? 'Čeká se na rozhodnutí pilota.' : c.lzsConsult?.status === 'approved' ? 'Pilot let povolil.' : c.lzsConsult?.status === 'declined' ? 'Pilot let nedoporučil.' : `<button class="btn" data-act="lzs-consult" data-case="${c.id}">Konzultovat s pilotem</button>`}` : ''}</div>`;
-  h += lzsAdviceHtml(c);
+  lzsBlock = `<div class="multi-patient"><b>LZS · ${wxLabel}</b>${wx === 'consult' ? `<br>${c.lzsConsult?.status === 'pending' ? 'Čeká se na rozhodnutí pilota.' : c.lzsConsult?.status === 'approved' ? 'Pilot let povolil.' : c.lzsConsult?.status === 'declined' ? 'Pilot let nedoporučil.' : `<button class="btn" data-act="lzs-consult" data-case="${c.id}">Konzultovat s pilotem</button>`}` : ''}</div>`;
+  lzsBlock += lzsAdviceHtml(c);
+  if (c.typ !== 'sekundární' && !c.mu && c.status !== 'closed') { const adv = sim.lzsAdvice(c.id), top = adv && adv.rows.find(r => r.level === 'ano') || adv && adv.rows.find(r => r.level === 'mozna'); if (top) lzsHint = ` · ${top.name.replace(/^NEM /, '')} ${top.saving > 0 ? '+' : ''}${top.saving} min ${top.level === 'ano' ? 'Ano' : 'Možná'}`; }
+  if (c.n === 1) h += frBlock + lzsBlock;
+  else {
+    const fo = !!toolState[c.id + ':fr'], lo = !!toolState[c.id + ':lzs'], hot = wx === 'consult' && !c.lzsConsult;
+    const nFr = (c.frs || []).length, tgl = (k, open, label, extra) => `<button class="btn" data-act="tool-toggle" data-case="${c.id}" data-tool="${k}" style="padding:2px 8px;font-size:12px;${extra || ''}">${open ? '▾' : '▸'} ${label}</button>`;
+    h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${frApplies ? tgl('fr', fo, nFr ? `FR · ${nFr} vysláno` : 'First respondeři') : ''}${tgl('lzs', lo, `LZS · ${wxLabel}${lzsHint}`, hot ? 'border-color:#d98c00;color:#a35f00' : lzsHint && /Ano/.test(lzsHint) ? 'border-color:#2f9e44;color:#1f7a34' : '')}</div>`;
+    if (fo && frBlock) h += frBlock;
+    if (lo) h += lzsBlock;
+  }
   if (c.lzsActive && c.lzsTechRequired) h += `<div class="multi-patient"><b>Technická součinnost LZS · nepřístupný terén</b><br>${c.lzsTechDone ? 'Přístup k pacientovi je zajištěn.' : c.lzsTechRequested ? 'HZS zajišťuje přístup.' : `<button class="btn" data-act="lzs-tech" data-case="${c.id}">Vyžádat technickou součinnost HZS</button>`}</div>`;
   if (c.mu) h += muPanelHtml(c);
   h += `<dl><dt>Typ výjezdu</dt><dd>${esc(c.typ || 'primární')}</dd>
@@ -1426,15 +1438,15 @@ function shiftModal() {
   const b = (grp, val, label) => `<button data-opt="${grp}" data-val="${val}" class="${String(o[grp]) === String(val) ? 'on' : ''}">${label}</button>`;
   modal(`<div class="card"><h1>Dispečerský simulátor ZOS JčK</h1>
 <p>Jsi primární dispečer zdravotnického operačního střediska. Calltaker nabírá výzvy, ty vysíláš posádky. Základny a skladba posádek odpovídají veřejným údajům, případy, jména a adresy jsou vymyšlené.</p>
-<b>Režim</b><div class="opts">${b('mode', 'shift', 'Směna 12 h (se skórem)')}${b('mode', 'free', 'Volný režim')}</div>
+<b>Režim</b><div class="opts">${b('mode', 'shift', 'Směna 12 h (se skórem)')}${b('mode', 'free', 'Volný režim')}${b('mode', 'mu', 'Jen MU (cvičení)')}</div>
 <b>Směna</b><div class="opts">${b('hour', 7, 'Denní 7–19')}${b('hour', 19, 'Noční 19–7')}</div>
 <b>Datum a hodina začátku</b><div class="opts"><input type="date" id="opt-date" value="${esc(o.date || new Date().toISOString().slice(0, 10))}" max="${new Date().toISOString().slice(0, 10)}"> <select id="opt-hour">${Array.from({ length: 24 }, (_, h) => `<option value="${h}"${Number(o.hour) === h ? ' selected' : ''}>${h}:00</option>`).join('')}</select></div>
 <p style="font-size:12px;margin:2px 0;color:#5a6a7a">Počasí se stáhne podle data (historická data; u dnešního a budoucího data nebo bez sítě se simuluje).</p>
-${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('startState', 'clean', 'Načisto · 0 výjezdů')}${b('startState', 'running', 'Rozjetý kraj · rozpracované události')}</div>` : ''}
+${o.mode === 'mu' ? `<p style="font-size:12px;margin:4px 0;color:#5a6a7a">Kraj je rozjetý podle zvoleného času (posádky na výjezdech, v transportu, při předání i na návratu). MU začne za pár minut a cvičení končí jejím ukončením s vyhodnocením.</p><b>Typ MU</b><div class="opts"><select id="opt-mutype"><option value="">Náhodný podle času a počasí</option>${ZOS_DATA.muTypes.map(t => `<option value="${t.id}"${o.muType === t.id ? ' selected' : ''}>${esc(t.l)}</option>`).join('')}</select></div>` : ''}${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('startState', 'clean', 'Načisto · 0 výjezdů')}${b('startState', 'running', 'Rozjetý kraj · rozpracované události')}</div>` : ''}
 <b>Vytížení</b><div class="opts">${b('diff', 0.8, 'Klidné')}${b('diff', 1, 'Běžné')}${b('diff', 1.4, 'Nálož')}</div>
 <b>Sekundární převozy</b><div class="opts">${b('secondaryEnabled', 'true', 'Zapnuté')}${b('secondaryEnabled', 'false', 'Vypnuté')}</div>
-<b>Mimořádná událost (MU)</b><div class="opts">${b('muEnabled', 'true', 'Povoleno')}${b('muEnabled', 'false', 'Vypnuto')}</div>
-<label style="display:block;margin:8px 0 2px">Pravděpodobnost MU během směny: <b id="mu-prob-value">${Number(o.muProbability)} %</b></label><input id="mu-probability" type="range" min="0" max="100" step="5" value="${Number(o.muProbability)}" style="width:min(380px,90%)" ${o.muEnabled === 'false' ? 'disabled' : ''}>
+${o.mode === 'mu' ? '' : `<b>Mimořádná událost (MU)</b><div class="opts">${b('muEnabled', 'true', 'Povoleno')}${b('muEnabled', 'false', 'Vypnuto')}</div>
+<label style="display:block;margin:8px 0 2px">Pravděpodobnost MU během směny: <b id="mu-prob-value">${Number(o.muProbability)} %</b></label><input id="mu-probability" type="range" min="0" max="100" step="5" value="${Number(o.muProbability)}" style="width:min(380px,90%)" ${o.muEnabled === 'false' ? 'disabled' : ''}>`}
 ${liberoHtml}
 <p style="font-size:12px">Tip: čekající případy jsou v seznamu vlevo. Klikni na případ, otevři „Navrhnout posádku“ a vyšli nejbližší. N1 vždy s lékařem (RV). N3 jede RZP, lékař jen na vyžádání posádky. Doporučené rychlosti 5× až 30×.</p>
 <p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button> <button class="btn" data-act="rules" data-back="shift">Pravidla a hodnocení</button> <button class="btn" data-act="home">‹ Zpět</button></div>`);
@@ -1443,10 +1455,19 @@ function endModal() {
   const sm = sim.summary(), s = sim.s;
   const worst = s.cases.filter(c => c.status === 'closed' && c.score).sort((a, b) => a.score.total - b.score.total).slice(0, 5);
   const why = c => { const sc = c.score, L = [['pozdní vyslání', 20 - sc.delay], ['volba vzdálenější posádky', 50 - sc.arrive], ['lékař', 15 - sc.rv], ['volba posádky', 15 - sc.eff], ['přesměrování', sc.pen]].sort((a, b) => b[1] - a[1]); return c.unserved ? 'neobslouženo' : L[0][0]; };
-  const rank = sm.total >= 92 ? 'Dispečer na jedničku' : sm.total >= 80 ? 'Spolehlivý dispečer' : sm.total >= 65 ? 'Slušný praktikant' : sm.total >= 45 ? 'Ještě potrénuj' : 'Katastrofa na lince';
+  const ms0 = sim.s.muOnly ? sim.muSummary() : null, ht = ms0 && !ms0.downgraded && ms0.score ? ms0.score.total : sm.total;   // v cvičení MU je hlavní číslo hodnocení MU
+  const rank = ht >= 92 ? 'Dispečer na jedničku' : ht >= 80 ? 'Spolehlivý dispečer' : ht >= 65 ? 'Slušný praktikant' : ht >= 45 ? 'Ještě potrénuj' : 'Katastrofa na lince';
   const m = (l, v) => `<tr><td style="padding:2px 14px 2px 0;color:#5a6a7a">${l}</td><td><b>${v}</b></td></tr>`;
-  modal(`<div class="card"><h1>Vyhodnocení</h1><div class="big">${sm.total.toFixed(1)} <span style="font-size:15px;font-family:var(--sans)">/ 100 · ${rank}</span></div>
-<div class="bar"><i style="width:${Math.min(100, sm.total)}%"></i></div>
+  const mus = sim.s.muOnly ? sim.muSummary() : null;
+  const muHtml = !mus ? '' : mus.downgraded ? `<p><b>MU se nevyhlásila:</b> ${esc(mus.label)}, ${esc(mus.addr)}. Událost pokračovala jako běžná.</p>` : (() => {
+    const mn = s => s == null ? '–' : Math.round(s / 60) + ' min', sc = mus.score || {};
+    return `<div style="margin:8px 0;padding:8px;border:1px solid #c8d4de;border-radius:6px"><b>MU: ${esc(mus.label)}</b><br><small>${esc(mus.addr)}</small>
+<table style="margin:6px 0;width:auto">${m('Hodnocení MU', sc.total == null ? '–' : sc.total.toFixed(0) + ' / 100')}${m('Postižených', mus.cas + ' (I: ' + mus.by[1] + ', II: ' + mus.by[2] + ', III: ' + mus.by[3] + ', IV: ' + mus.by[4] + ')')}${m('Odvezeno / zemřelo', mus.delivered + ' / ' + mus.dead)}${m('Od hovoru do ukončení', mn(mus.endedAt - mus.readyAt))}${m('První posádka na místě', mn(mus.firstArrive))}${m('Avízo MU po vyhlášení', mus.avizo == null ? 'neodesláno' : mn(mus.avizo))}${m('Situační zprávy METHANE', mus.updates)}${m('Žádosti o sousední ZZS', mus.neighbours)}${m('Chyby při odsunu', mus.mistakes)}</table>
+<small>Složky hodnocení: avízo ${(sc.delay || 0).toFixed(0)}/20 · příjezd ${(sc.arrive || 0).toFixed(0)}/40 · METHANE ${(sc.rv || 0).toFixed(0)}/15 · odsun ${(sc.eff || 0).toFixed(0)}/25</small>
+${mus.ops.length ? `<details><summary>Body a chyby u MU (${mus.ops.length})</summary><ul>${mus.ops.map(x => `<li>${sim.clockAt(x.t)} · ${x.delta > 0 ? '+' : ''}${x.delta} b. · ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}</div>`;
+  })();
+  modal(`<div class="card"><h1>${mus ? 'Vyhodnocení cvičení MU' : 'Vyhodnocení'}</h1><div class="big">${ht.toFixed(1)} <span style="font-size:15px;font-family:var(--sans)">/ 100 · ${rank}</span></div>
+<div class="bar"><i style="width:${Math.min(100, ht)}%"></i></div>${ms0 && !ms0.downgraded ? '<p style="margin:4px 0;color:#5a6a7a;font-size:12px">Níže: detail MU a běžný provoz během cvičení.</p>' : ''}${muHtml}
 <table style="margin:10px 0;width:auto">${m('Průměrné hodnocení případů', sm.caseAvg.toFixed(1))}${m('Pokrytí území', sm.coverage.toFixed(0) + ' %')}${m('Případů celkem', sm.cases)}${m('Neobslouženo', sm.unserved)}${m('N1 průměrně k pacientovi', sm.avgN1 == null ? '–' : (sm.avgN1 / 60).toFixed(1) + ' min')}${m('Příjezd do 20 min od vyslání', sm.legalPct == null ? '–' : sm.legalPct.toFixed(0) + ' %')}${m('Přesměrování posádek', sm.diversions)}${m('Dokončené sekundární převozy', sm.secondaryCompleted)}${m('Sekundární převozy v toleranci ±15 min', sm.secondaryOnTime)}${m('Průměr bodů za sekundární převoz', sm.secondaryAvg == null ? '–' : sm.secondaryAvg.toFixed(0) + ' / 100')}</table>
 ${sm.opsPoints || sm.opsLog.length ? `<p>Provozní body: <b>${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints}</b> · základní skóre ${sm.baseTotal.toFixed(1)}</p>${sm.opsLog.length ? `<details open><summary>Za co byly provozní body (${sm.opsLog.length})</summary><ul style="max-height:180px;overflow:auto">${sm.opsLog.slice().reverse().map(x => `<li>${sim.clockAt(x.t)} · ${x.delta > 0 ? '+' : ''}${x.delta} b. · ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}` : ''}
 ${lzsEndHtml(sm)}
@@ -1480,10 +1501,10 @@ async function newGame(noWx) {
   const seed = (Math.random() * 1e9) | 0, date = o.date || new Date().toISOString().slice(0, 10);
   let weather = null;
   if (!noWx) { toast('Stahuji počasí pro ' + date + '…', ''); try { weather = await ZOS_WX.load(date, seed); } catch (e) { weather = null; } }
-  sim = new Sim({ date, weather, mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.muEnabled !== 'false', muProbability: Number(o.muProbability), startState: o.startState, libero: o.libero, radio: settings.radioInteractive ? 'interactive' : 'auto', seed });
+  sim = new Sim({ date, weather, mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.mode === 'mu' ? true : o.muEnabled !== 'false', muProbability: Number(o.muProbability), muType: o.mode === 'mu' ? (o.muType || null) : null, startState: o.startState, libero: o.libero, radio: settings.radioInteractive ? 'interactive' : 'auto', seed });
   applyVoice();
   afterLoad(); speed = settings.speed; savedSpeed = settings.speed;
-  closeModal(); toast(o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
+  closeModal(); toast(o.mode === 'mu' ? 'Cvičení MU: kraj je rozjetý, MU začne za pár minut.' : o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
 function afterLoad() { radioFeed.length = 0; sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
 function doSave() { if (sim.s.scripted) return; try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
@@ -1630,6 +1651,7 @@ function act(a, el) {
     case 'n2-dynamic': { const r = sim.convertN2Dynamic(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Výzva změněna na dynamickou.', ''); break; }
     case 'lzs-consult': { const r = sim.consultLzsPilot(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Čeká se na textové rozhodnutí pilota LZS.', 'alert'); break; }
     case 'lzs-tech': { const r = sim.requestLzsTechnicalAssist(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Technická součinnost HZS vyžádána.', 'alert'); break; }
+    case 'tool-toggle': { const k = d.case + ':' + d.tool; toolState[k] = !toolState[k]; render(); break; }
     case 'mu-role': { const r = sim.setMuDispatcher(d.role); if (!r.ok) toast(r.msg, 'warn'); else toast(d.role === 'mu' ? 'Přebíráš MU (401); kolega řeší běžný provoz.' : 'Přebíráš běžný provoz; kolega řeší MU.', ''); break; }
     case 'mu-avizo': { const r = sim.muAvizo(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Avízo MU odesláno (SMS, kanál).', 'alert'); break; }
     case 'mu-request': { const r = sim.requestMuModule(d.case); if (!r.ok) toast(r.msg, 'warn'); else { sugOpen = true; toast('Vůz MU požádán; vyber ho v nabídce posádek (sekce MU).', 'alert'); } break; }
@@ -1738,6 +1760,7 @@ document.addEventListener('pointercancel', ev => dragEnd(ev, true));
 document.addEventListener('input', ev => {
   if (ev.target && ev.target.id === 'case-search') { caseSearch = ev.target.value; renderCases(); }
   if (ev.target && ev.target.id === 'lib-probability') { window._opt.libero.presence = Number(ev.target.value); saveOpts(); const out = $('lib-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
+  if (ev.target && ev.target.id === 'opt-mutype') { window._opt.muType = ev.target.value; saveOpts(); return; }
   if (ev.target && ev.target.id === 'opt-hour') { window._opt.hour = Number(ev.target.value); saveOpts(); return; }
   if (ev.target && ev.target.id === 'opt-date') { window._opt.date = ev.target.value; saveOpts(); return; }
   if (ev.target && ev.target.id === 'mu-probability') { window._opt.muProbability = Number(ev.target.value); saveOpts(); const out = $('mu-prob-value'); if (out) out.textContent = `${ev.target.value} %`; }
@@ -1780,6 +1803,7 @@ document.addEventListener('click', ev => {
     ev.preventDefault();
     if (/^x-/.test(ck.dataset.crew)) { toast('Přetáhni dlaždici na případ – ZOS vyrozumí ' + ({ 'x-cor': 'koronera', 'x-pcr': 'PČR', 'x-hzs': 'HZS', 'x-fr': 'nejbližšího first respondera' }[ck.dataset.crew]) + '.', ''); return; }
     sel.k = ck.dataset.crew;
+    { const kk = sim.crewOf(sel.k); if (kk && kk.type === 'LZS' && sel.c) toolState[sel.c + ':lzs'] = true; }   // klik na dlaždici LZS rozbalí kalkulátor LZS
     if (t.closest('.tile')) { followK = followK === sel.k ? null : sel.k; followLast = 0; if (followK) { const fk = sim.crewOf(followK); toast(`Sleduji ${fk.name} na mapě (posunutím mapy nebo dalším klikem zrušíš).`, ''); } }
     syncSelectionToMain();
     if (ck.dataset.ptt) { const k = sim.crewOf(sel.k); toast(`${k.name}: spojení v pořádku, ${STLAB[k.state].toLowerCase()}.`, ''); }

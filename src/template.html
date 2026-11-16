@@ -71,7 +71,7 @@ main{display:grid;gap:6px;padding:6px;min-height:0;grid-template-columns:1.4fr 1
 .win>h2{margin:0;padding:4px 9px;background:linear-gradient(#2c4256,#203241);color:#e6eef5;font:600 12px var(--sans);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .win>h2 small{font-weight:400;color:#9fb4c7}
 .win .body{overflow:auto;min-height:0;flex:1}
-#w-cases{grid-area:cases}#w-map{grid-area:map}#w-crews{grid-area:crews}#w-detail{grid-area:detail}#w-radio{grid-area:radio}#w-rcom{grid-area:rcom;height:var(--rcom-h);min-height:0;overflow:hidden;display:flex;flex-direction:column}
+#w-cases{grid-area:cases}#w-map{grid-area:map}#w-crews{grid-area:crews}#w-detail{grid-area:detail}#w-radio{grid-area:radio}#w-rcom{grid-area:rcom;height:var(--rcom-h);min-height:0;overflow:hidden}
 main[data-hide-map="1"][data-hide-radio="1"]{grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);grid-template-rows:minmax(0,1.45fr) minmax(0,1fr) var(--rcom-h);grid-template-areas:"cases crews" "detail crews" "rcom crews"}
 main[data-hide-map="1"][data-hide-radio="0"]{grid-template-columns:minmax(0,1.35fr) minmax(260px,1fr) minmax(280px,1fr);grid-template-rows:minmax(0,1.2fr) minmax(0,1fr) var(--rcom-h);grid-template-areas:"cases radio crews" "detail radio crews" "rcom radio crews"}
 main[data-hide-map="0"][data-hide-radio="1"]{grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);grid-template-rows:minmax(0,1.15fr) minmax(0,1fr) var(--rcom-h);grid-template-areas:"cases map" "detail crews" "rcom crews"}
@@ -92,7 +92,7 @@ nav .badge{background:var(--n1);color:#fff;border-radius:9px;padding:0 6px;margi
   .win{display:none;grid-area:x}.win.active{display:flex}
   #w-cases,#w-map,#w-crews,#w-detail,#w-radio{grid-area:x}
   #w-rcom{grid-area:x;max-height:none}
-  #w-rcom.live{display:flex;position:fixed;left:6px;right:6px;bottom:58px;height:200px;max-height:46vh;z-index:70;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+  #w-rcom.live{display:flex;position:fixed;left:6px;right:6px;bottom:58px;height:auto;max-height:46vh;z-index:70;box-shadow:0 6px 24px rgba(0,0,0,.5)}
   #multiwin{display:none!important}
   #w-map.active{min-height:0}
   #mapwrap{width:100%;height:100%;min-height:0;flex:1 1 auto}

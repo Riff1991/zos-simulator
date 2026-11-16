@@ -8,6 +8,17 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.28.0 – 2026-11-16
+
+> Režim „Jen MU“ s rozjetým krajem a kompaktní panel případu.
+
+### Nové
+- **Jen MU (cvičení):** v nové směně zvol režim „Jen MU“. Kraj je při startu rozjetý podle zvolené hodiny (posádky na výjezdech, v transportu, při předání i na návratu, odpovídající počet rozpracovaných událostí). MU začne za 4–8 min, typ je náhodný podle času a počasí, nebo ho vybereš. Obyčejný provoz běží dál. Cvičení končí ukončením MU a vyhodnocením (hodnocení MU, časy, METHANE, odsun, chyby).
+- **Kompaktní panel případu:** u N2 a N3 jsou First respondeři a „LZS podle kalkulátoru“ sbalené do dvou řádkových tlačítek. LZS ukazuje nejlepší nemocnici a „Ano / Možná“. Rozbalíš je kliknutím, nebo kliknutím na dlaždici LZS. U N1 zůstává vše rozbalené. Detaily výjezdu už nesjíždějí dolů.
+
+### Opravy
+- **Rádio na mobilu překrývalo seznam případů** (chyba z 0.25.2, kvůli ní se nenasadily verze 0.25.2 a 0.27.0). Panel Rádio je na mobilu viditelný jen při živém hovoru a má výšku podle obsahu.
+
 ## v0.27.0 – 2026-11-16
 
 > Katalog 36 typů MU na reálných místech: doprava, požáry, hromadné akce (blesk, tábor), nebezpečné látky, útok a letecká nehoda.

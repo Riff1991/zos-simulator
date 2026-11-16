@@ -1,7 +1,7 @@
 // Service worker ZOS simulátoru: offline provoz + aktualizace při spuštění.
 // Generuje build.py (doplní VERZI, otisk sestavení a seznam souborů). Neupravovat site/sw.js ručně.
-const VERSION = '0.27.0';
-const BUILD = '3594c4cc40';
+const VERSION = '0.28.0';
+const BUILD = '79118b66f1';
 const PFX = VERSION.includes('-dev') ? 'zosdev-' : 'zos-';   // testovací verze (/dev/) má vlastní cache
 const CACHE = `${PFX}${VERSION}-${BUILD}`;
 const TILE_CACHE = PFX + 'tiles-529ccc46';
