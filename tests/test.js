@@ -1201,3 +1201,11 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   }
   console.log('MU 0.29: role před startem, tichý kolega, první vlna, skutečné posádky sousedů, hodnocení true');
 }
+
+// Týdenní plán směn: RV Dačice není v po a út (ani ve dne, ani v noci), jinak ano. 2026-11-16 je pondělí.
+{
+  const on = (date, hour) => { const sim = new Sim({ seed: 5, mode: 'shift', startHour: hour, date }); sim._roster(false); const c = sim.crewOf('dacice-v0'); return c.state !== 'off'; };
+  const exp = [['2026-11-16', 7, false], ['2026-11-17', 19, false], ['2026-11-18', 3, false], ['2026-11-18', 7, true], ['2026-11-19', 19, true], ['2026-11-15', 19, true]];
+  for (const [d, h, want] of exp) if (on(d, h) !== want) throw new Error(`RV Dačice ${d} ${h}:00 má být ${want ? 'v provozu' : 'mimo provoz'}`);
+  console.log('týdenní plán: RV Dačice mimo provoz po–út (směnový den od 7:00) true');
+}

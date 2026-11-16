@@ -201,6 +201,8 @@ const ZOS_DATA = {
     { id: 'lib-pi', name: 'PI LIBERO', oblast: 'PI', stationId: 'pi', no: 755 },
     { id: 'lib-ta', name: 'TA LIBERO', oblast: 'TA', stationId: 'ta' },
   ],
+  // Plán směn podle dne v týdnu: posádky (stanice + typ) mimo provoz celý směnový den (7:00–7:00)
+  weeklyOff: [{ st: 'dacice', type: 'RV', days: ['po', 'út'] }],
   liberoPresence: 0.75,   // výchozí pravděpodobnost, že je LIBERO daný den obsazené (nastavitelné na úvodní obrazovce)
   reserves: [
     { id: 'z-cb1', name: 'CB_Z 1', oblast: 'ČB', stationId: 'cb' },

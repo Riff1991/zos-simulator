@@ -291,3 +291,10 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 - Hodnocení MU: jen složky, které dispečer ovlivní (chyby při odsunu, rychlost odpovědi na relace odsunu, reakce na žádost SPIS a koronera); dopad na běžný provoz a využití LZS se nehodnotí.
 - Layout: při přepnutí na „Řešit MU (401)“ se obrazovka přeskládá (panel MU vlevo na výšku, mapa, rádio, posádky; seznam případů a protokol menší), při přepnutí zpět nebo po ukončení MU se vrátí. Hlášení MU se nezobrazují jako červené banery nahoře (jsou v panelu).
 - Vlastní rozložení (16. 11. 2026): dělicí lišty mezi panely, plovoucí okna uvnitř stránky (odepnout/připnout), předvolby Výchozí, Široká mapa, Velký seznam a detail; ukládá se zvlášť pro běžný provoz a MU (`zos_layout_v2`). Jen stolní zobrazení, mobil beze změny. Okna na druhý monitor zůstávají jen pro mapu a přehled transportů.
+
+### Várka po v0.29.1 – rozhodnutí z 16. 11. 2026
+- **Plán směn podle dne v týdnu (zatím jen jedno pravidlo):** RV Dačice není v pondělí a v úterý ani ve dne, ani v noci. Směnový den začíná v 7:00 (pondělní směna = po 7:00 až út 7:00, úterní = út 7:00 až st 7:00). Data v `ZOS_DATA.weeklyOff`, aby šla pravidla přidávat dalšími řádky.
+- **Žádosti sousedních krajů o naše posádky** (krok 2 ze zadání „Mezikrajská spolupráce“): implementovat dle zadání výše (Vyhovět / Odmítnout / Zjistím, bodování podle zbylého pokrytí, Planá po souhlasu pryč).
+- **Zjednodušení kódu:** ano, vše zjednodušit. Mobilní rozložení není priorita (nelze dobře ovládat).
+- Nyní ne: hodnocení s reálnou referencí, chybné doporučení calltakera, klávesové zkratky, sdílení / směna dne.
+- Uživatel nabídl poslat seznam směrnic a reálná statistická data (tisíce výjezdů, ne desítky tisíc), formát si určí Claude.

@@ -780,6 +780,13 @@ class Sim {
     this._roster(true);
     return { ok: true };
   }
+  // je posádka podle týdenního plánu mimo provoz? Směnový den začíná v 7:00.
+  _weeklyOff(c) {
+    const rules = ZOS_DATA.weeklyOff; if (!rules || !rules.length) return false;
+    const s = this.s, [Y, M, D] = String(s.date).split('-').map(Number), off = Math.floor((s.startHour * 3600 + s.t - 7 * 3600) / 86400);
+    const wd = ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'][new Date(Date.UTC(Y, M - 1, D + off)).getUTCDay()];
+    return rules.some(r => r.st === c.st && r.type === c.type && r.days.includes(wd));
+  }
   _roster(announce) {
     const s = this.s, day = s.dayFlag;
     for (const c of s.crews) {
@@ -788,7 +795,7 @@ class Sim {
         const dayKey = Math.floor((s.startHour * 3600 + s.t - 7 * 3600) / 86400);
         if (c.liberoDay !== dayKey) { c.liberoDay = dayKey; c.liberoPresent = this._liberoRoll(c); }
       }
-      const want = c.libero ? day && c.liberoPresent : c.ext ? !!c.supportRequested && !(c.externalDayOnly && !day) : c.fixed ? true : (day ? c.dayOn : c.nightOn);
+      const want = c.libero ? day && c.liberoPresent : c.ext ? !!c.supportRequested && !(c.externalDayOnly && !day) : c.fixed ? true : (!this._weeklyOff(c) && (day ? c.dayOn : c.nightOn));
       if (want) {
         c.pendingOff = false;
         if (c.state === 'off') { c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; c.mv = null; if (announce) this.L('crew', `${c.name}: přihlášena`, null, c.id); }
