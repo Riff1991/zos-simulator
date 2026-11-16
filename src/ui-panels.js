@@ -235,7 +235,7 @@ function renderDetail() {
   const st = missingTypes.length ? `čeká na ${missingTypes.join(' + ')}` : { waiting: 'čeká na vyslání', active: 'řeší se', closed: 'uzavřen', intake: 'nabírá se' }[c.status];
   const secDelta = c.scheduleDelta == null ? 'zatím nepřistaveno' : `${Math.round(Math.abs(c.scheduleDelta) / 60)} min ${c.scheduleDelta < 0 ? 'před termínem' : 'po termínu'}`;
   let h = `<div class="panel dgrid"><div class="dc1"><h3>${esc(c.num)} · <span class="pill" style="background:${c.n === 1 ? '#f7c9c5' : c.n === 2 ? '#fbdcb5' : c.n === 4 ? '#d8e4ec' : '#f7ecb8'}">N${c.n}${c.dyn ? ' dyn.' : ''}</span> <span class="pill" style="background:#e1e8ee">${st}</span></h3>`;
-  if (c.n === 2 && !c.dyn && c.status !== 'closed' && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) h += `<button class="btn" data-act="n2-dynamic" data-case="${c.id}">Změnit výzvu na dynamickou</button>`;
+  if (c.n === 2 && !c.dyn && c.rvNeed && c.status !== 'closed' && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) h += `<button class="btn" data-act="n2-dynamic" data-case="${c.id}">Změnit výzvu na dynamickou</button>`;
   if (c.n >= 2 && c.status !== 'closed' && c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RZP' && k.zzum && k.caseId === c.id; })) h += `<button class="btn${c.zzumFlag ? ' pri' : ''}" data-act="zzum-flag" data-case="${c.id}" title="ZZUM – výjezd bez lékaře">${c.zzumFlag ? '✓ ZZUM – bez lékaře (zrušit)' : 'Příznak ZZUM – výjezd bez lékaře'}</button>`;
   let frBlock = '', lzsBlock = '', lzsHint = '';
   const frApplies = c.typ !== 'sekundární' && c.status !== 'closed' && !c.exitus;

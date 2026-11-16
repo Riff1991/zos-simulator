@@ -956,6 +956,11 @@ ZOS_DATA.tailMix = {
   ulice: [['bod', 1]], silnice: [['bod', 1]], priroda: [['bod', 1]], sport: [['bod', 1]], ordinace: [['zz', 1]], zz: [['zz', 1]],
   prov: [['jine', 1]], skola: [['jine', 1]], verejne: [['jine', 1]],
 };
+// Hustota událostí podle obce: násobek váhy adresy (reálný podíl událostí / podíl adresních bodů; ČB ×2,8, Písek ×1,9, Strakonice ×2,2, menší obce ~×0,7).
+// Násobky jsou omezeny na 6 (u obcí s málo adresami v mapových datech, např. Milevsko, je skutečná hustota vyšší). Ostatní obce: obecMulOther.
+ZOS_DATA.obecMul = {"České Budějovice": 2.8, "Tábor": 1.4, "Písek": 1.9, "Strakonice": 2.21, "Jindřichův Hradec": 1.72, "Český Krumlov": 1.4, "Třeboň": 1.62, "Vimperk": 3, "Soběslav": 1.23, "Milevsko": 6, "Prachatice": 1.39, "Veselí nad Lužnicí": 1.41, "Dačice": 1.06, "Týn nad Vltavou": 0.98, "Vodňany": 0.92, "Kaplice": 1.1, "Sezimovo Ústí": 0.6, "Dobrá Voda u Českých Budějovic": 2.24, "Bechyně": 0.94, "Blatná": 0.93, "Větřní": 2.76, "Lipno nad Vltavou": 1.85, "Trhové Sviny": 0.75, "Hluboká nad Vltavou": 0.89, "Protivín": 0.85, "Volary": 1.68, "Suchdol nad Lužnicí": 0.85, "Planá nad Lužnicí": 0.76, "Nová Bystřice": 0.75, "České Velenice": 1.76, "Lišov": 6, "Borovany": 0.67, "Horní Planá": 0.86, "Velešín": 1.29, "Chlum u Třeboně": 1.16, "Netolice": 0.99, "Stachy": 6, "Chelčice": 6, "Vyšší Brod": 1.22, "Volyně": 1.35, "Frymburk": 0.72, "Vacov": 6, "Kunžak": 0.68, "Rudolfov": 0.84, "Dolní Dvořiště": 1.61, "Nové Hrady": 0.83, "Opařany": 0.95, "Zliv": 0.67, "Horní Stropnice": 0.8, "Kamenný Újezd": 0.55, "Mladá Vožice": 0.5, "Nová Včelnice": 0.99, "Křemže": 0.42, "Zdíkov": 1.79, "Ledenice": 0.62, "Slavonice": 0.64, "Zlatá Koruna": 1.75, "Boršov nad Vltavou": 0.64, "Loučovice": 1.45, "Studená": 3.46, "Jistebnice": 0.55, "Benešov nad Černou": 0.6, "Chýnov": 0.57, "Kardašova Řečice": 0.49, "Litvínovice": 0.55, "Kovářov": 6, "Včelná": 0.71, "Čimelice": 5.1, "Drhovle": 2.31, "Malonty": 0.93, "Černá v Pošumaví": 0.54, "Dříteň": 0.63, "Lhenice": 0.5, "Kájov": 0.65, "Srubec": 1.55, "Jílovice": 0.62, "Rožmberk nad Vltavou": 1.55, "Libníč": 2.53, "Mirovice": 0.62, "Strážný": 2.45, "Bavorov": 0.41, "Čkyně": 0.85, "Olešnice": 0.72, "Lomnice nad Lužnicí": 0.47, "Chvalšiny": 0.82, "Borek": 0.83, "Homole": 0.67, "Chotoviny": 0.37, "Strmilov": 0.34, "Husinec": 0.6, "Stráž nad Nežárkou": 0.56, "Hrdějovice": 0.54, "Dubné": 0.56, "Všemyslice": 0.53, "Bělčice": 0.46, "Ratibořské Hory": 0.69, "Brloh": 0.53, "Římov": 0.37, "Dolní Třebonín": 0.57, "Malšice": 0.29, "Dolní Bukovsko": 0.4, "Vlachovo Březí": 0.35, "Novosedly nad Nežárkou": 0.57, "Košice": 0.59, "Staré Hodějovice": 0.63, "Podolí I": 1.56, "Roudná": 0.67, "Mirotice": 0.51, "Holubov": 0.4, "Temelín": 0.63, "Rapšach": 0.87, "Borotín": 0.57, "Sepekov": 6, "Předotice": 1.05, "Albrechtice nad Vltavou": 0.3, "Sedlice": 0.38, "Borová Lada": 6, "Ševětín": 0.47, "Stádlec": 0.55, "Roudné": 0.58, "Želeč": 0.69, "Besednice": 0.57, "Nová Ves": 0.36, "Vrábče": 0.65, "Osek": 0.87, "Katovice": 0.44, "Hosín": 0.67, "Volenice": 0.7, "Stříbřec": 0.6, "Ktiš": 1.05, "Český Rudolec": 0.4, "Budislav": 0.99, "Záblatí": 0.77, "Čížkrajice": 1.57, "Staňkov": 0.76, "Radomyšl": 0.37, "Blažejov": 0.41, "Klenovice": 0.53, "Jarošov nad Nežárkou": 0.42, "Lnáře": 0.6, "Pištín": 6, "Člunek": 0.72, "Chrášťany": 0.69, "Sudoměřice u Bechyně": 0.41, "Nová Pec": 0.7, "Dolní Hořice": 0.38, "Písečné": 0.57, "Rodvínov": 0.75, "Nadějkov": 0.48, "Střelské Hoštice": 0.46, "Strunkovice nad Blanicí": 0.34, "Záhoří": 0.41, "Záboří": 0.54, "Staré Město pod Landštejnem": 0.64, "Plav": 0.87, "Dobev": 0.42, "Ostrovec": 1.31, "Hlavatce": 0.55, "Hořice na Šumavě": 0.58, "Střítež": 1.57, "Rakovice": 1.52, "Rožmitál na Šumavě": 6, "Dubičné": 1.14, "Mirkovice": 1.16, "Střížovice": 0.51, "Dražice": 0.33, "Tučapy": 0.4, "Dešná": 0.56, "Přídolí": 6, "Ločenice": 0.48, "Stožec": 0.9, "Nová Ves u Mladé Vožice": 1.15, "Sedlec": 0.67, "Dub": 0.78, "Adamov": 0.67, "Lásenice": 0.48, "Kluky": 0.55, "Hůry": 0.71, "Štěpánovice": 0.52, "Bujanov": 1.44, "Chroboly": 0.56, "Dívčice": 0.46, "Čížová": 0.21, "Oslov": 0.49, "Jivno": 0.47, "Číměř": 0.35, "Hamr": 0.66, "Majdalena": 0.76, "Čejetice": 0.35, "Lenora": 0.57, "Horní Dvořiště": 1.1, "Chyšky": 6, "Volfířov": 0.35, "Ražice": 0.68, "Žimutice": 0.37, "Nová Ves nad Lužnicí": 0.73, "Malenice": 0.39, "Smilovy Hory": 0.44, "Přední Výtoň": 6, "Přešťovice": 0.5, "Radošovice": 0.45, "Staré Hobzí": 0.46, "Bohdalovice": 1.05, "Žár": 0.6, "Olešník": 0.42, "Budíškovice": 0.48, "Dráchov": 0.88, "Cizkrajov": 0.51, "Popelín": 0.46, "Deštná": 0.37, "Doubravice": 0.63, "Řepice": 0.77, "Štěkeň": 0.34, "Zvíkovské Podhradí": 1.27, "Lipí": 0.54, "Malovice": 0.43, "Frahelž": 1.31, "Bezdědovice": 0.69, "Zbytiny": 0.77, "Nová Ves u Chýnova": 0.96, "Svatý Jan nad Malší": 0.41, "Řípec": 0.66, "Planá": 1.25, "Králova Lhota": 0.83, "Soběnov": 0.58, "Šebířov": 0.39, "Smetanova Lhota": 0.54, "Choustník": 0.45, "Pohorská Ves": 1.03, "Zvíkov": 1.21, "Úsilné": 0.82, "Třebohostice": 0.81, "Horní Vltavice": 1.6, "Kestřany": 0.24, "Plavsko": 0.43, "Putim": 0.34, "Vráto": 0.96, "Jetětice": 6, "Jankov": 0.69, "Rovná": 1.06, "Strážkovice": 0.27, "Nebahovy": 0.46, "Jinín": 1.29};
+ZOS_DATA.obecMulOther = 0.454;
+ZOS_DATA.obecMulMax = 6;
 for (const x of ZOS_DATA.indications) {
   const c = ZOS_DATA.indCal[x.id];
   if (!c) continue;
@@ -1844,9 +1849,10 @@ function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Hodinový profil upraven podle výzev v říjnovém vzorku; součet denní/noční
 // části zůstává zachovaný, takže se nemění celková obtížnost ani počet případů.
 const TOD = [0.551,0.479,0.455,0.335,0.431,0.503,0.623,1.078,1.509,1.533,1.653,1.341,1.269,1.269,1.317,1.293,1.246,1.365,1.198,1.15,1.078,0.838,0.79,0.695]; // hodinový profil z říjnového vzorku (průměr = 1)   // dřívější profil (index, průměr 1), hra používá EV_HOUR
-// Události (první posádka u události, primární výjezdy) za hodinu v průměrný den: reálná data ZZS JčK, leden 2026 (zima) a červenec 2026 (léto).
-// Mezi nimi se prolíná podle ročního období (viz _gap). Součet za den: zima 197, léto 223 událostí.
-const EV_HOUR = { winter: [5.58, 4.1, 3.65, 2.9, 3.48, 4.65, 4.68, 8.39, 12.13, 13.39, 13.03, 12.03, 11.65, 9.81, 10.74, 10.26, 10.42, 10.45, 9.19, 9.32, 7.84, 7.23, 6.52, 5.74], summer: [5.9, 4.48, 4.1, 2.68, 3.74, 3.94, 6.26, 8.9, 11.77, 12.68, 12.94, 13.35, 12.16, 11.61, 11.42, 12.13, 11.55, 11.77, 12.61, 11.9, 11.61, 9.94, 9.23, 6.29] };
+// Události (první posádka u události, primární výjezdy) za hodinu v průměrný den daného typu: reálná data ZZS JčK, leden 2026 (zima) a červenec 2026 (léto),
+// zvlášť pracovní den (wd) a víkend (we): ranní špička 7–10 h je v pracovní den výrazně vyšší (23 procent proti 19 procentům denního objemu). Mezi zimou a létem se prolíná (viz _gap).
+// Podle oblasti se tvar profilu neliší (České Budějovice jako ostatní), proto jeden profil pro celý kraj. Součet za den: zima ~197, léto ~223 událostí.
+const EV_HOUR = { winter: { wd: [5.7, 4.19, 3.05, 2.37, 3.37, 4.88, 5.15, 8.94, 13.54, 13.68, 13.54, 12.17, 11.58, 9.94, 10.53, 10.58, 9.39, 10.67, 9.39, 9.12, 7.57, 7.34, 6.02, 5.74], we: [5.26, 3.84, 5.04, 4.17, 3.73, 4.06, 3.51, 7.02, 8.66, 12.61, 11.73, 11.62, 11.73, 9.43, 11.19, 9.43, 12.83, 9.87, 8.66, 9.76, 8.44, 6.91, 7.68, 5.7] }, summer: { wd: [5.06, 4.27, 3.36, 2.36, 3.53, 4.06, 6.02, 9.9, 12.34, 12.95, 13.26, 13.7, 12.52, 11.25, 11.12, 11.43, 10.77, 11.78, 13.04, 11.91, 11.38, 9.29, 8.9, 6.11], we: [8.29, 5.08, 6.19, 3.59, 4.33, 3.59, 6.93, 6.07, 10.15, 11.89, 12.01, 12.38, 11.14, 12.63, 12.26, 14.11, 13.74, 11.76, 11.39, 11.89, 12.26, 11.76, 10.15, 6.81] } };
 const EXTMSG = typeof ZOS_EXTMSG !== 'undefined' ? ZOS_EXTMSG : require('./messages.js');
 const WX = typeof ZOS_WX !== 'undefined' ? ZOS_WX : require('./weather.js');
 const BUSY = ['call', 'enroute', 'onscene', 'transport', 'handover'];
@@ -2538,7 +2544,8 @@ class SimCases {
     // Intenzita = události za hodinu podle reálných dat (zima/léto, hodina dne); diff: Klidné 0,85 / Běžné 1 / Nálož 1,25.
     const doy = (s.dayOfYear || 172) + Math.floor((s.startHour * 3600 + s.t) / 86400);
     const winter = 0.5 * (1 + Math.cos(2 * Math.PI * (doy - 15) / 365)), h = Math.floor(this.hour()) % 24;
-    const lam = (winter * EV_HOUR.winter[h] + (1 - winter) * EV_HOUR.summer[h]) * s.diff * s.rateMul;
+    const [Y, M, D] = String(s.date || '2026-06-21').split('-').map(Number), wk = new Date(Date.UTC(Y, M - 1, D + Math.floor((s.startHour * 3600 + s.t) / 86400))).getUTCDay(), dt = wk === 0 || wk === 6 ? 'we' : 'wd';
+    const lam = (winter * EV_HOUR.winter[dt][h] + (1 - winter) * EV_HOUR.summer[dt][h]) * s.diff * s.rateMul;
     return -Math.log(1 - this.rnd()) / lam * 3600;
   }
   _P() { return typeof ZOS_PEOPLE !== 'undefined' ? ZOS_PEOPLE : null; }
@@ -2722,11 +2729,14 @@ class SimCases {
     }
     return null;
   }
+  _obecMul(city) { const m = ZOS_DATA.obecMul[city]; return m != null ? m : ZOS_DATA.obecMulOther; }
   _randomAddress1(A, count) {
     const a = A.a, S = A.s;
     const history = this.s.ev.addressHistory || (this.s.ev.addressHistory = []);
     const used = new Set(history);
-    const start = Math.floor(this.rnd() * count);
+    // adresy se losují rovnoměrně, ale události jsou ve městech hustší (České Budějovice 17 % událostí při 6 % adres): přijetí podle násobku obce
+    let start = Math.floor(this.rnd() * count);
+    for (let k = 0; k < 40; k++) { const c = Math.floor(this.rnd() * count); if (this.rnd() * ZOS_DATA.obecMulMax < this._obecMul(S[a[c * 8 + 3]])) { start = c; break; } }
     let i = -1, address = '';
     for (let offset = 0; offset < count; offset++) {
       const candidate = ((start + offset) % count) * 8;
@@ -2939,7 +2949,7 @@ class SimCases {
       // reálné místo z OSM (domov pro seniory, škola, ordinace, provozovna, veřejné místo, sport, ubytování)
       const list = ZOS_POI.poi[poiKey];
       let p = this.pick(list);
-      for (let tries = 0; tries < 14 && this._tooClose(p[0] / 1e5, p[1] / 1e5, p[2]); tries++) p = this.pick(list);
+      for (let tries = 0; tries < 14 && (this._tooClose(p[0] / 1e5, p[1] / 1e5, p[2]) || this.rnd() * ZOS_DATA.obecMulMax >= this._obecMul(p[4])); tries++) p = this.pick(list);
       lat = p[0] / 1e5 + this.rr(-0.00015, 0.00015); lon = p[1] / 1e5 + this.rr(-0.00015, 0.00015);
       townN = p[4]; okres = ZOS_POI.okresy[p[5]] || null; cast = '';
       addr = p[2] ? `${p[3]} (${p[2].replace(/\u00a0/g, ' ')})` : p[3];
@@ -6262,7 +6272,7 @@ function renderDetail() {
   const st = missingTypes.length ? `čeká na ${missingTypes.join(' + ')}` : { waiting: 'čeká na vyslání', active: 'řeší se', closed: 'uzavřen', intake: 'nabírá se' }[c.status];
   const secDelta = c.scheduleDelta == null ? 'zatím nepřistaveno' : `${Math.round(Math.abs(c.scheduleDelta) / 60)} min ${c.scheduleDelta < 0 ? 'před termínem' : 'po termínu'}`;
   let h = `<div class="panel dgrid"><div class="dc1"><h3>${esc(c.num)} · <span class="pill" style="background:${c.n === 1 ? '#f7c9c5' : c.n === 2 ? '#fbdcb5' : c.n === 4 ? '#d8e4ec' : '#f7ecb8'}">N${c.n}${c.dyn ? ' dyn.' : ''}</span> <span class="pill" style="background:#e1e8ee">${st}</span></h3>`;
-  if (c.n === 2 && !c.dyn && c.status !== 'closed' && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) h += `<button class="btn" data-act="n2-dynamic" data-case="${c.id}">Změnit výzvu na dynamickou</button>`;
+  if (c.n === 2 && !c.dyn && c.rvNeed && c.status !== 'closed' && !c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RV'; })) h += `<button class="btn" data-act="n2-dynamic" data-case="${c.id}">Změnit výzvu na dynamickou</button>`;
   if (c.n >= 2 && c.status !== 'closed' && c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'RZP' && k.zzum && k.caseId === c.id; })) h += `<button class="btn${c.zzumFlag ? ' pri' : ''}" data-act="zzum-flag" data-case="${c.id}" title="ZZUM – výjezd bez lékaře">${c.zzumFlag ? '✓ ZZUM – bez lékaře (zrušit)' : 'Příznak ZZUM – výjezd bez lékaře'}</button>`;
   let frBlock = '', lzsBlock = '', lzsHint = '';
   const frApplies = c.typ !== 'sekundární' && c.status !== 'closed' && !c.exitus;

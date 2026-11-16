@@ -126,7 +126,7 @@ for (let i = 0; i < 600 && !assessmentCase.rvReq; i++) assessmentSim.step(30);
 if (!assessmentCase.rvReq || assessmentCase.rvReq.kind !== 'posouzení stavu' || !assessmentSim.suggest(assessmentCase.id, 'RV').length) throw new Error('RZP did not request RV assessment after arrival');
 console.log('assessment is only an RZP field request true');
 // Morning demand peaks above the midday trough under the same seeded Poisson draw.
-const rhythm = new Sim({ seed: 103, mode: 'free', startHour: 8 });
+const rhythm = new Sim({ seed: 103, mode: 'free', startHour: 8, date: '2026-06-17' });   // pracovní den (o víkendu je ranní špička nižší)
 rhythm.rnd = () => 0.5;
 const morningGap = rhythm._gap(); rhythm.s.startHour = 13;
 const middayGap = rhythm._gap();
@@ -204,14 +204,14 @@ console.log('cancelled field RV request no longer blocks RZP transport true');
 // When one patient is transported by RZP, an assigned RV returns from scene or en route.
 const rvTransportSim = new Sim({ seed: 111, mode: 'free' });
 rvTransportSim.s.ev.nextSpawn = rvTransportSim.s.ev.nextSecond = 999999; rvTransportSim.s.ev.nextMU = null;
-const rvTransportCase = rvTransportSim._spawn({ ind: 'dusnost', n: 2, dyn: false }); rvTransportCase.status = 'active'; rvTransportCase.patientCount = 1; rvTransportCase.pocet = 1; rvTransportCase.trans = true;
+const rvTransportCase = rvTransportSim._spawn({ ind: 'dusnost', n: 2, dyn: false, script: { escort: false } }); rvTransportCase.status = 'active'; rvTransportCase.patientCount = 1; rvTransportCase.pocet = 1; rvTransportCase.trans = true;
 const transportRzp = rvTransportSim.suggest(rvTransportCase.id, 'RZP')[0], transportRv = rvTransportSim.suggest(rvTransportCase.id, 'RV')[0];
 if (!transportRzp || !transportRv || !rvTransportSim.assign(rvTransportCase.id, transportRzp.crewId).ok || !rvTransportSim.assign(rvTransportCase.id, transportRv.crewId).ok) throw new Error('single-patient RV transport setup failed');
 const transportRzpCrew = rvTransportSim.crewOf(transportRzp.crewId), transportRvCrew = rvTransportSim.crewOf(transportRv.crewId);
 transportRzpCrew.state = transportRvCrew.state = 'onscene'; transportRzpCrew.until = transportRvCrew.until = rvTransportSim.s.t; transportRzpCrew.arrivedAt = transportRvCrew.arrivedAt = rvTransportSim.s.t;
 rvTransportSim._startTransport(transportRzpCrew, rvTransportCase);
 if (transportRvCrew.caseId || transportRvCrew.state !== 'free') throw new Error('RV remained attached at scene after single-patient RZP transport');
-const multiCase = rvTransportSim._spawn({ ind: 'dusnost', n: 2, dyn: false }); multiCase.status = 'active'; multiCase.patientCount = 2; multiCase.pocet = 2; multiCase.trans = true;
+const multiCase = rvTransportSim._spawn({ ind: 'dusnost', n: 2, dyn: false, script: { escort: false } }); multiCase.status = 'active'; multiCase.patientCount = 2; multiCase.pocet = 2; multiCase.trans = true;
 const multiRzp = rvTransportSim.suggest(multiCase.id, 'RZP')[0], multiRv = rvTransportSim.suggest(multiCase.id, 'RV')[0];
 if (!multiRzp || !multiRv || !rvTransportSim.assign(multiCase.id, multiRzp.crewId).ok || !rvTransportSim.assign(multiCase.id, multiRv.crewId).ok) throw new Error('multi-patient RV setup failed');
 const multiRzpCrew = rvTransportSim.crewOf(multiRzp.crewId), multiRvCrew = rvTransportSim.crewOf(multiRv.crewId); multiRzpCrew.state = 'onscene'; multiRzpCrew.until = rvTransportSim.s.t;
@@ -1219,7 +1219,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
 {
   const mk = seed => { const s = new Sim({ seed, mode: 'free' }); s.s.ev.nextSpawn = s.s.ev.nextSecond = 999999; s.s.ev.nextMU = null; return s; };
   // objem: Běžné ~132 událostí ve dne a ~66 v noci v zimě (leden), léto ~144 / ~82
-  const vol = (hour, doy) => { let tot = 0; for (const seed of [31, 32, 33]) { const sim = new Sim({ seed, mode: 'shift', startHour: hour }); sim.s.dayOfYear = doy; for (let i = 0; i < 4320; i++) sim.step(10); tot += sim.s.cases.filter(c => !c.mu && c.typ === 'primární').length; } return tot / 3; };
+  const vol = (hour, doy) => { let tot = 0; for (const seed of [31, 32, 33]) { const sim = new Sim({ seed, mode: 'shift', startHour: hour, date: doy === 15 ? '2026-01-14' : '2026-07-15' }); sim.s.dayOfYear = doy; for (let i = 0; i < 4320; i++) sim.step(10); tot += sim.s.cases.filter(c => !c.mu && c.typ === 'primární').length; } return tot / 3; };
   const wd = vol(7, 15), wn = vol(19, 15), sd = vol(7, 196);
   if (!(wd > 105 && wd < 160 && wn > 45 && wn < 90 && sd > wd * 0.95)) throw new Error(`objem: zima den ${wd.toFixed(0)}, noc ${wn.toFixed(0)}, léto den ${sd.toFixed(0)}`);
   // dynamická indikace jen u N2, ~40 % z N2; CMP nikdy dynamická a lékař jen výjimečně

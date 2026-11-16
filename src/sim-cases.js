@@ -7,7 +7,8 @@ class SimCases {
     // Intenzita = události za hodinu podle reálných dat (zima/léto, hodina dne); diff: Klidné 0,85 / Běžné 1 / Nálož 1,25.
     const doy = (s.dayOfYear || 172) + Math.floor((s.startHour * 3600 + s.t) / 86400);
     const winter = 0.5 * (1 + Math.cos(2 * Math.PI * (doy - 15) / 365)), h = Math.floor(this.hour()) % 24;
-    const lam = (winter * EV_HOUR.winter[h] + (1 - winter) * EV_HOUR.summer[h]) * s.diff * s.rateMul;
+    const [Y, M, D] = String(s.date || '2026-06-21').split('-').map(Number), wk = new Date(Date.UTC(Y, M - 1, D + Math.floor((s.startHour * 3600 + s.t) / 86400))).getUTCDay(), dt = wk === 0 || wk === 6 ? 'we' : 'wd';
+    const lam = (winter * EV_HOUR.winter[dt][h] + (1 - winter) * EV_HOUR.summer[dt][h]) * s.diff * s.rateMul;
     return -Math.log(1 - this.rnd()) / lam * 3600;
   }
   _P() { return typeof ZOS_PEOPLE !== 'undefined' ? ZOS_PEOPLE : null; }
@@ -191,11 +192,14 @@ class SimCases {
     }
     return null;
   }
+  _obecMul(city) { const m = ZOS_DATA.obecMul[city]; return m != null ? m : ZOS_DATA.obecMulOther; }
   _randomAddress1(A, count) {
     const a = A.a, S = A.s;
     const history = this.s.ev.addressHistory || (this.s.ev.addressHistory = []);
     const used = new Set(history);
-    const start = Math.floor(this.rnd() * count);
+    // adresy se losují rovnoměrně, ale události jsou ve městech hustší (České Budějovice 17 % událostí při 6 % adres): přijetí podle násobku obce
+    let start = Math.floor(this.rnd() * count);
+    for (let k = 0; k < 40; k++) { const c = Math.floor(this.rnd() * count); if (this.rnd() * ZOS_DATA.obecMulMax < this._obecMul(S[a[c * 8 + 3]])) { start = c; break; } }
     let i = -1, address = '';
     for (let offset = 0; offset < count; offset++) {
       const candidate = ((start + offset) % count) * 8;
@@ -408,7 +412,7 @@ class SimCases {
       // reálné místo z OSM (domov pro seniory, škola, ordinace, provozovna, veřejné místo, sport, ubytování)
       const list = ZOS_POI.poi[poiKey];
       let p = this.pick(list);
-      for (let tries = 0; tries < 14 && this._tooClose(p[0] / 1e5, p[1] / 1e5, p[2]); tries++) p = this.pick(list);
+      for (let tries = 0; tries < 14 && (this._tooClose(p[0] / 1e5, p[1] / 1e5, p[2]) || this.rnd() * ZOS_DATA.obecMulMax >= this._obecMul(p[4])); tries++) p = this.pick(list);
       lat = p[0] / 1e5 + this.rr(-0.00015, 0.00015); lon = p[1] / 1e5 + this.rr(-0.00015, 0.00015);
       townN = p[4]; okres = ZOS_POI.okresy[p[5]] || null; cast = '';
       addr = p[2] ? `${p[3]} (${p[2].replace(/\u00a0/g, ' ')})` : p[3];

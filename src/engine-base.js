@@ -44,9 +44,10 @@ function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Hodinový profil upraven podle výzev v říjnovém vzorku; součet denní/noční
 // části zůstává zachovaný, takže se nemění celková obtížnost ani počet případů.
 const TOD = [0.551,0.479,0.455,0.335,0.431,0.503,0.623,1.078,1.509,1.533,1.653,1.341,1.269,1.269,1.317,1.293,1.246,1.365,1.198,1.15,1.078,0.838,0.79,0.695]; // hodinový profil z říjnového vzorku (průměr = 1)   // dřívější profil (index, průměr 1), hra používá EV_HOUR
-// Události (první posádka u události, primární výjezdy) za hodinu v průměrný den: reálná data ZZS JčK, leden 2026 (zima) a červenec 2026 (léto).
-// Mezi nimi se prolíná podle ročního období (viz _gap). Součet za den: zima 197, léto 223 událostí.
-const EV_HOUR = { winter: [5.58, 4.1, 3.65, 2.9, 3.48, 4.65, 4.68, 8.39, 12.13, 13.39, 13.03, 12.03, 11.65, 9.81, 10.74, 10.26, 10.42, 10.45, 9.19, 9.32, 7.84, 7.23, 6.52, 5.74], summer: [5.9, 4.48, 4.1, 2.68, 3.74, 3.94, 6.26, 8.9, 11.77, 12.68, 12.94, 13.35, 12.16, 11.61, 11.42, 12.13, 11.55, 11.77, 12.61, 11.9, 11.61, 9.94, 9.23, 6.29] };
+// Události (první posádka u události, primární výjezdy) za hodinu v průměrný den daného typu: reálná data ZZS JčK, leden 2026 (zima) a červenec 2026 (léto),
+// zvlášť pracovní den (wd) a víkend (we): ranní špička 7–10 h je v pracovní den výrazně vyšší (23 procent proti 19 procentům denního objemu). Mezi zimou a létem se prolíná (viz _gap).
+// Podle oblasti se tvar profilu neliší (České Budějovice jako ostatní), proto jeden profil pro celý kraj. Součet za den: zima ~197, léto ~223 událostí.
+const EV_HOUR = { winter: { wd: [5.7, 4.19, 3.05, 2.37, 3.37, 4.88, 5.15, 8.94, 13.54, 13.68, 13.54, 12.17, 11.58, 9.94, 10.53, 10.58, 9.39, 10.67, 9.39, 9.12, 7.57, 7.34, 6.02, 5.74], we: [5.26, 3.84, 5.04, 4.17, 3.73, 4.06, 3.51, 7.02, 8.66, 12.61, 11.73, 11.62, 11.73, 9.43, 11.19, 9.43, 12.83, 9.87, 8.66, 9.76, 8.44, 6.91, 7.68, 5.7] }, summer: { wd: [5.06, 4.27, 3.36, 2.36, 3.53, 4.06, 6.02, 9.9, 12.34, 12.95, 13.26, 13.7, 12.52, 11.25, 11.12, 11.43, 10.77, 11.78, 13.04, 11.91, 11.38, 9.29, 8.9, 6.11], we: [8.29, 5.08, 6.19, 3.59, 4.33, 3.59, 6.93, 6.07, 10.15, 11.89, 12.01, 12.38, 11.14, 12.63, 12.26, 14.11, 13.74, 11.76, 11.39, 11.89, 12.26, 11.76, 10.15, 6.81] } };
 const EXTMSG = typeof ZOS_EXTMSG !== 'undefined' ? ZOS_EXTMSG : require('./messages.js');
 const WX = typeof ZOS_WX !== 'undefined' ? ZOS_WX : require('./weather.js');
 const BUSY = ['call', 'enroute', 'onscene', 'transport', 'handover'];
