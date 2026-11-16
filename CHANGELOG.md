@@ -8,6 +8,11 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.29.1 – 2026-11-16
+
+- Mezikrajská LZS: když vlastní LZS stojí kvůli neletovému počasí, jde požádat o LZS z jiného kraje (dřív hra psala „Vlastní LZS je dostupná“). Cizí LZS se neřídí naším počasím, ale v horším počasí je šance na souhlas nižší.
+- Nové tlačítko ⟳ v horní liště: ruční kontrola a stažení nové verze.
+
 ## v0.29.0 – 2026-11-16
 
 > MU po zkušební hře: tichý kolega, rychlá první vlna, skutečné posádky sousedních krajů a vlastní layout pro dispečera MU.

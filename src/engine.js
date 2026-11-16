@@ -1137,7 +1137,7 @@ class Sim {
     if (c.nbBusyUntil && t < c.nbBusyUntil) return { ok: false, msg: `${c.name} před chvílí odmítla; zkus jiného souseda nebo později.` };
     if (c.state !== 'off' || c.supportRequested) return { ok: false, msg: `${c.name} už není k dispozici.` };
     if (c.externalLzs) {
-      if (this.avail(this.crewOf('lzs'))) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
+      if (this._ownLzsFlyable()) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
       if (c.externalDayOnly && !this._isLzsDay()) return { ok: false, msg: `${c.name} je v simulaci dostupná jen v denní době.` };
     } else {
       const own = this.s.crews.filter(k => k.type === 'RZP' && !k.ext && this.avail(k)).map(k => this.etaFor(k, cs.lat, cs.lon, cs.n));
@@ -1151,6 +1151,8 @@ class Sim {
     this.L('alert', `Požádáno o pomoc: ${c.name} (${nb.short}) k ${cs.num}. Čeká se na odpověď operačního střediska.`, cs.id, c.id);
     return { ok: true, msg: `Požádáno: ${c.name}. Odpověď přijde za 1–3 min.` };
   }
+  // vlastní LZS je použitelná jen když je volná a zároveň se dá letět (v neletovém počasí o cizí LZS žádat lze)
+  _ownLzsFlyable() { const lz = this.crewOf('lzs'); return !!lz && this.avail(lz) && this._lzsWeatherStatus() !== 'neletovo'; }
   _nbRelease(c) {
     c.supportRequested = false; c.supportRequestedFor = null; c.nbAsk = null;
     if (c.state === 'base') { c.state = 'off'; c.lat = c.home.lat; c.lon = c.home.lon; c.mv = null; }
@@ -1159,6 +1161,7 @@ class Sim {
     const t = this.s.t, a = c.nbAsk, nb = ZOS_DATA.neighbors[c.region] || { sign: 'ZOS soused', short: '' };
     if (!cs || cs.status === 'closed') { c.nbAsk = null; return; }
     let p = c.externalLzs ? 0.75 : 0.7; if (c.foreign) p *= 0.85;
+    if (c.externalLzs && this._lzsWeatherStatus() !== 'clear') p *= 0.6; // špatné počasí: soused může odmítnout
     if (this.rnd() < p) {
       a.state = 'accepted'; c.supportRequested = true; c.supportRequestedFor = cs.id; c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; c.mv = null;
       this.L('alert', `${nb.sign}: souhlasí – ${c.name} k ${cs.num}.`, cs.id, c.id);
@@ -1280,9 +1283,9 @@ class Sim {
     if (c.caseId === cs.id) return { ok: false, msg: 'Posádka už u případu je.' };
     if (cs.exitus && !(cs.exam && cs.exam.needed && !cs.exam.done && c.type === 'RV')) return { ok: false, msg: cs.exam && cs.exam.needed && !cs.exam.done ? 'Na prohlídku zemřelého vyšli RV.' : 'Na místě exitus, další posádka není potřeba.' };
     if (c.ext && (!c.supportRequested || c.supportRequestedFor !== cs.id)) return { ok: false, msg: 'Nejprve požádej o mezikrajskou spolupráci pro tento případ.' };
-    if (c.externalLzs && !cs.mu && this.avail(this.crewOf('lzs'))) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
+    if (c.externalLzs && !cs.mu && this._ownLzsFlyable()) return { ok: false, msg: 'Vlastní LZS je dostupná.' };
     if (c.type === 'LZS' && cs.lzsActive && !cs.mu) return { ok: false, msg: 'K případu už byla vyslána LZS.' };
-    if (c.type === 'LZS') {
+    if (c.type === 'LZS' && !c.externalLzs) {
       const weather = this._lzsWeatherStatus();
       if (weather === 'neletovo') return { ok: false, msg: 'LZS nelze vyslat: neletové počasí.' };
       if (weather === 'consult' && !(cs.lzsPilotApproved && cs.lzsConsult && cs.lzsConsult.status === 'approved' && cs.lzsConsult.weatherStatus === weather)) return { ok: false, msg: 'LZS je na konzultaci. Vyžádej rozhodnutí pilota.' };

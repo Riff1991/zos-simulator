@@ -869,6 +869,17 @@ console.log('vstřícná jízda radio highlight tone fires once true');
       if (k.nbAsk && k.nbAsk.state === 'accepted') { if (k.caseId !== cs.id) throw new Error('souhlas LZS = rovnou vysláno'); ok = true; }
     }
     if (!ok) throw new Error('žádost o LZS: žádný souhlas'); }
+  // vlastní LZS stojí, ale je neletové počasí -> o cizí LZS jde žádat a po souhlasu poletí
+  { let ok = false;
+    for (let seed = 1; seed <= 40 && !ok; seed++) {
+      const sim = mk(seed), cs = sim._spawn({ ind: 'trauma', n: 1, where: 'ulice', intake: 0 }); cs.status = 'waiting';
+      sim.s.weather.condition = 'grounded'; sim.s.weather.nextChange = 1e12; sim.crewOf('lzs').state = 'base';
+      if (sim._lzsWeatherStatus() !== 'neletovo') continue;
+      const r = sim.requestNeighbor(cs.id, 'lzs-plzen'); if (!r.ok) throw new Error('žádost o LZS v neletovém počasí: ' + r.msg);
+      sim.step(200); const k = sim.crewOf('lzs-plzen');
+      if (k.nbAsk && k.nbAsk.state === 'accepted') { if (k.caseId !== cs.id) throw new Error('cizí LZS po souhlasu nevyletěla'); ok = true; }
+    }
+    if (!ok) throw new Error('žádost o LZS při neletovém počasí: žádný souhlas'); }
   console.log('mezikrajská spolupráce: žádosti, odpovědi, žádosti sousedů, Planá true');
 }
 

@@ -213,8 +213,7 @@ function chipHTML(k) {
   return `${k.dest ? `<span class="chip dest" data-crew="${k.id}" title="Cílové zařízení">${esc(k.dest.name)}</span>` : ''}<span class="chip" data-crew="${k.id}" style="background:${col};color:${dark ? '#fff' : '#111'}">${k.type === 'LZS' ? helicopter() : ''}${esc(k.name)} · ${esc(ph)}</span>`;
 }
 function lzsSupportHtml(c) {
-  const own = sim.crewOf('lzs');
-  if (sim.avail(own)) return '';
+  if (sim._ownLzsFlyable()) return '';
   const t = sim.s.t;
   const rows = D.lzsSupport.map(item => {
     const k = sim.crewOf(item.id), nightBlocked = item.dayOnly && !sim._isLzsDay();
@@ -225,7 +224,7 @@ function lzsSupportHtml(c) {
     const button = `<button class="btn${asked || busy || declined || nightBlocked ? '' : ' pri'}" data-act="lzs-support" data-case="${c.id}" data-crew="${item.id}" ${nightBlocked || asked || busy || declined ? 'disabled' : ''}>Požádat a vyslat</button>`;
     return `<div class="row"><span class="chip">${esc(item.name)}</span><span>${status}</span><span class="eta">ETA ${Math.round(eta / 60)} min · v kraji asi ${stay} min</span>${button}</div>`;
   }).join('');
-  return `<div class="sug"><h4>Mezikrajská výpomoc LZS <small>(vlastní vrtulník je nedostupný; středisko odpoví za 1–3 min)</small></h4>${rows}</div>`;
+  return `<div class="sug"><h4>Mezikrajská výpomoc LZS <small>(vlastní vrtulník je nedostupný nebo neletí; středisko odpoví za 1–3 min)</small></h4>${rows}</div>`;
 }
 // ---------- panel MU (SM01.06): check-list 401 jen s klíčovými kroky ----------
 function muPanelHtml(c) {
@@ -1387,8 +1386,8 @@ function changelogModal() {
   modal(`<div class="card home" style="max-width:560px;max-height:80vh;overflow:auto"><h2 style="margin:0 0 8px">Co je nového</h2>${L.map(x => `<h3 style="margin:10px 0 3px;font-size:14px">${esc(x.h)}</h3><p style="margin:0 0 6px;font-size:12.5px;line-height:1.45">${esc(x.p)}</p>`).join('')}
     <div class="foot" style="margin-top:12px"><button class="btn pri" data-act="home">‹ Zpět</button></div></div>`);
 }
-async function checkUpdate(btn) {
-  const set = t => { if (btn) btn.textContent = t; };
+async function checkUpdate(btn, cb) {
+  const set = t => { if (btn) btn.textContent = t; if (cb) cb(t); };
   set('Kontroluji…');
   try {
     const r = await fetch('version.json?_=' + Date.now(), { cache: 'no-store' }); const j = await r.json();
@@ -1809,6 +1808,7 @@ function act(a, el) {
     case 'settings': settingsModal(!!sim); break;
     case 'changelog': changelogModal(); break;
     case 'check-update': checkUpdate(el); break;
+    case 'check-update-hdr': { el.disabled = true; el.title = 'Kontroluji…'; checkUpdate(null, m => { el.title = m; toast(m); }).finally(() => setTimeout(() => { el.disabled = false; el.title = 'Zkontrolovat aktualizaci'; }, 3000)); break; }
     case 'test-sound': beep(660); beep(880, 0.15); break;
     case 'reset-settings': settings = Object.assign({}, SET_DEF); saveSettings(); applyTheme(); settingsModal(window._setFromGame); break;
     case 'del-save': if (confirm('Opravdu smazat uloženou směnu?')) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} homeModal(); } break;
