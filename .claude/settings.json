@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch origin claude/dacice-weekly-schedule:refs/remotes/origin/claude/dacice-weekly-schedule)"
+    ]
+  }
+}
