@@ -8,6 +8,18 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.30.0 – 2026-11-16
+
+> Výzvy podle reálných dat (leden a červenec 2026) a mnohem úplnější databáze adres.
+
+### Nové
+- **Realističtější výzvy:** objem událostí podle hodiny, ročního období a typu dne (pracovní den / víkend); indikace, naléhavost, věk, pohlaví, lékař, čas na místě a převoz podle skutečných poměrů. Dynamická indikace jen u N2, u CMP ne. Popis místa a poznámka ZOS ve stylu skutečných zápisů.
+- **Adresy:** 227 081 adres v 636 obcích (dřív 174 935 v 615). Obce bez značky `addr:city` se doplňují z hranic obcí, např. Milevsko 25 → 1 913 adres. `addr.json` má 8,3 MB.
+- **Hustota výzev podle obcí** přepočítána z reálných výjezdů (ČB ×2,9, Písek ×2,2, Milevsko ×1,6).
+
+### Interní
+- `pipeline/addr_full.py` (adresy přímo z pbf), `tools/kalibrace/` (analytické skripty bez dat).
+
 ## v0.29.2 – 2026-11-16
 
 > Týdenní plán směn (RV Dačice nejezdí v pondělí a úterý) a vnitřní úklid kódu bez změny chování hry.
