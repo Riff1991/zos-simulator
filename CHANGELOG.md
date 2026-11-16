@@ -8,6 +8,25 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.25.0 – 2026-11-16
+
+> Kalibrace rychlosti jízdy podle reálných výjezdů, Rádio synchronizované s hlasem a přehlednější dlaždice.
+
+**Jízda a dojezdy**
+- Pevná část doby jízdy (hledání adresy, průjezd obcí) se už nepřičítá k jízdě: vozidlo jede po trase plnou rychlostí a pevnou část „stojí“ u cíle. Rychlosti jsou realističtější a pořadí režimů sedí (N1 rychlejší než N2 a N3). Celkové dojezdy N1 a N2 zůstávají.
+- N3: pevná část zkrácena ze 175 na 60 s (reálné N3 krátké trasy byly dřív o 3–4 min pomalejší).
+- Náhodný rozptyl rychlosti zúžen z ±10 % na ±4 % a jen na jízdní část.
+- Zpoždění výjezdu podle reálných dat: RZP 1–2 min (N1), 1–3 min (N2, N3), lékař (RV) 1–5 min; upozornění „nevyjela do 2 minut“ platí pro RV až od 5 minut.
+
+**Rádio**
+- Přepis hovoru se ukazuje ve chvíli, kdy ho hlas začne říkat (dřív se objevil s prodlevou nebo předčasně). Bez hlasu se řádky ukazují postupně hned po vzniku. Provozní zprávy se řídí stejně.
+
+**Dlaždice**
+- Dlaždice sousedních krajů jsou kompaktní a čitelné (plný název, stav na druhém řádku).
+- Sekce Speciální: LZS Planá, HZS, PČR, koroner, FR. Nová sekce Mimořádná událost s moduly MU.
+
+---
+
 ## v0.24.1 – 2026-11-16
 
 > Základny sousedních krajů podle veřejné mapy a upřesněný rozsah zahraničí.

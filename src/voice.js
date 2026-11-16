@@ -7,7 +7,7 @@ const ZOS_VOICE = (function () {
   function setCloud(url) { const u = String(url || '').trim().replace(/\/+$/, ''); if (u !== cloudUrl) { cloudUrl = u; cloudDown = false; cloudErrors = 0; cache.clear(); } }
   let reqSeq = 0; const pending = new Map(), cache = new Map(), queue = [];
   let playing = false, listeners = [], speakListeners = [];
-  const emitSpeak = (key, on) => { for (const f of speakListeners) { try { f(key, on); } catch (e) { /* ignore */ } } };
+  const emitSpeak = (key, on, id) => { for (const f of speakListeners) { try { f(key, on, id); } catch (e) { /* ignore */ } } };
   function onSpeak(f) { speakListeners.push(f); }
   const emit = () => { for (const f of listeners) { try { f(status()); } catch (e) { /* ignore */ } } };
   function status() { return { state, progress, err, cloud: cloudUrl ? (cloudDown ? 'down' : 'on') : 'off' }; }
@@ -181,10 +181,10 @@ const ZOS_VOICE = (function () {
     return new Promise(r => setTimeout(r, 260));
   }
   // fronta relací – poloduplex, jedna relace za druhou
-  function say(text, key) {
+  function say(text, key, id) {
     if (!text) return;
-    if (queue.length > 6) queue.splice(0, queue.length - 4);
-    queue.push({ text, key, p: null, at: performance.now() });
+    if (queue.length > 6) { for (const d of queue.splice(0, queue.length - 4)) emitSpeak(d.key, 'drop', d.id); }
+    queue.push({ text, key, id, p: null, at: performance.now() });
     pump();
   }
   async function pump() {
@@ -192,19 +192,19 @@ const ZOS_VOICE = (function () {
     try {
       while (queue.length) {
         const it = queue.shift();
-        if (performance.now() - it.at > 45000) continue;
+        if (performance.now() - it.at > 45000) { emitSpeak(it.key, 'drop', it.id); continue; }
         const c = audioCtx(); if (!c) break;
         const v = voiceOf(it.key);
         if (state === 'ready' && !it.p) it.p = synth(it.text, it.key);
         const nx = queue[0]; if (nx && state === 'ready' && !nx.p) nx.p = synth(nx.text, nx.key);
         const res = it.p ? await Promise.race([it.p, new Promise(r => setTimeout(() => r(null), 22000))]) : null;
         if (it.p && !res && ++stalls >= 3) restartWorker(); else if (res) stalls = 0;
-        if (!res || !res.pcm || !res.pcm.length) { emitSpeak(it.key, true); await chirpOnly(v.zos); emitSpeak(it.key, false); continue; }
+        if (!res || !res.pcm || !res.pcm.length) { emitSpeak(it.key, true, it.id); await chirpOnly(v.zos); emitSpeak(it.key, false, it.id); continue; }
         let ab;
-        try { ab = await Promise.race([render(res.pcm, res.sr, vfor(res, v)), new Promise((_, rej) => setTimeout(() => rej(new Error('render timeout')), 12000))]); } catch (e) { await chirpOnly(v.zos); continue; }
-        emitSpeak(it.key, true);
+        try { ab = await Promise.race([render(res.pcm, res.sr, vfor(res, v)), new Promise((_, rej) => setTimeout(() => rej(new Error('render timeout')), 12000))]); } catch (e) { emitSpeak(it.key, 'drop', it.id); await chirpOnly(v.zos); continue; }
+        emitSpeak(it.key, true, it.id);
         await new Promise(resolve => { const s = c.createBufferSource(); s.buffer = ab; s.connect(master); s.onended = resolve; s.start(); setTimeout(resolve, ab.duration * 1000 + 800); });
-        emitSpeak(it.key, false);
+        emitSpeak(it.key, false, it.id);
         await new Promise(r => setTimeout(r, 250));
       }
     } finally { playing = false; }

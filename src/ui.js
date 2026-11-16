@@ -457,7 +457,7 @@ function agencyTiles() {
   const req = k => open.some(c => c.agencies && c.agencies[k] && c.agencies[k].state === 'requested' && !c.agencies[k].fromCall);
   const tile = (id, cls, name, list, icon, ask) => `<button class="tile ${cls}${ask ? ' agency-ask' : ''}" data-crew="${id}" title="${esc(name)} – přetáhni na případ"><span class="tn">${name}</span><i>${list.length ? esc(list.join(', ')) : 'volné'}</i>${icon}</button>`;
   const frBy = open.filter(c => (c.frs || []).length).map(c => c.num);
-  return tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), corAsk) + tile('x-fr', 'st-fr', 'FR', frBy, ico('base', 'FR'), false) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs'));
+  return tile('x-hzs', 'st-hzs', 'HZS', by('hzs'), ico('base', 'HZS'), req('hzs')) + tile('x-pcr', 'st-pcr', 'PČR', by('pcr'), ico('base', 'PCR'), req('pcr')) + tile('x-cor', 'st-coroner', 'KORONER', cor, ico('base', 'COR'), corAsk) + tile('x-fr', 'st-fr', 'FR', frBy, ico('base', 'FR'), false);
 }
 function deathInfo(c) {
   if (!c.exitus) return '';
@@ -469,13 +469,16 @@ function deathInfo(c) {
 function extTile(k) {
   const nb = D.neighbors[k.region] || { short: '' }, t = sim.s.t, a = k.nbAsk;
   const st = k.state !== 'off' ? (k.state === 'base' && k.supportRequested ? 'ready' : 'busy') : a && a.state === 'asked' ? 'asked' : k.nbBusyUntil && t < k.nbBusyUntil ? 'declined' : 'free';
-  const lab = { free: 'volná k žádosti', asked: 'čeká na odpověď', ready: 'souhlasí', busy: sim.phase(k), declined: 'odmítla' }[st];
-  return `<button class="tile ty-${k.type} nb nb-${st}${k.foreign ? ' foreign' : ''}${sel.k === k.id ? ' sel' : ''}" data-code="${esc(k.code)}" data-crew="${k.id}" title="${esc(k.name + ' · ' + nb.short + ' · ' + lab + ' – přetáhni na případ = žádost o pomoc')}"><span class="tn">${esc(k.name)}</span><i>${esc(nb.short)} · ${esc(lab)}</i>${ico(k.state === 'off' ? 'base' : k.state, k.type)}</button>`;
+  const full = { free: 'volná k žádosti', asked: 'čeká na odpověď', ready: 'souhlasí', busy: sim.phase(k), declined: 'odmítla' }[st];
+  const lab = { free: 'volná', asked: 'čeká na odpověď…', ready: 'souhlasí – vyšli', busy: sim.phase(k).replace(/^Pomoc sousedovi: /, 'pomáhá: '), declined: 'odmítla' }[st];
+  const name = k.name.replace(/ \(.*\)$/, '').replace(/ (RZP|RTW)$/, '');
+  return `<button class="tile ty-${k.type} nb nb-${st}${k.foreign ? ' foreign' : ''}${sel.k === k.id ? ' sel' : ''}" data-code="${esc(k.code)}" data-crew="${k.id}" title="${esc(k.name + ' · ' + nb.short + ' · ' + full + ' – přetáhni na případ = žádost o pomoc')}"><span class="tn">${esc(name)}</span><i>${esc(lab)}</i></button>`;
 }
 function renderCrews() {
   const s = sim.s;
   const groups = D.oblasti.map(o => ({ title: o.name, crews: s.crews.filter(k => k.oblast === o.id && k.type !== 'LZS' && k.type !== 'MU') }));
-  groups.push({ title: 'Speciální (LZS, součinnost, MU)', crews: s.crews.filter(k => (k.type === 'LZS' || k.type === 'MU') && !k.ext) });
+  groups.push({ title: 'Speciální (LZS Planá, HZS, PČR, koroner, FR)', crews: s.crews.filter(k => k.type === 'LZS' && !k.ext) });
+  groups.push({ title: 'Mimořádná událost (moduly MU)', crews: s.crews.filter(k => k.type === 'MU') });
   groups.push({ title: 'Sousední kraje (pomoc na žádost)', crews: s.crews.filter(k => k.ext) });
   const rank = k => (k.id === 'lzs' ? -3 : k.type === 'LZS' ? -2.5 : k.type === 'MU' ? 5 : k.type === 'RZP' && !k.res ? 0 : k.type === 'RV' ? 1 : k.type === 'LIB' ? 1.5 : k.type === 'RZP' ? 2 : 3);
   let h = '';
@@ -483,7 +486,7 @@ function renderCrews() {
     g.crews.sort((a, b) => rank(a) - rank(b));
     const free = g.crews.filter(k => sim.avail(k)).length, on = g.crews.filter(k => k.state !== 'off').length;
     const spec = g.title.startsWith('Speciální');
-    h += `<div class="oblast">${esc(g.title)} <span>${g.title.startsWith('Sousední') ? `${g.crews.length} základen · přetáhni na případ = žádost o pomoc` : `volných ${free} / ve službě ${on}`}</span></div><div class="grid">` +
+    h += `<div class="oblast">${esc(g.title)} <span>${g.title.startsWith('Sousední') ? `${g.crews.length} základen · přetáhni na případ = žádost o pomoc` : `volných ${free} / ve službě ${on}`}</span></div><div class="grid${g.title.startsWith('Sousední') ? ' nbgrid' : ''}">` +
       g.crews.map(k => {
         if (k.ext) return extTile(k);
         const pre = spec && k.type === 'MU' && !g._ag ? (g._ag = true, agencyTiles()) : '';
@@ -898,7 +901,7 @@ function glApplyLayers() {
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
-  const p = sim.pos(kk), f = Math.max(0, Math.min(1, (sim.s.t - m.t0) / Math.max(1, m.t1 - m.t0)));
+  const p = sim.pos(kk), f = Math.max(0, Math.min(1, (sim.s.t - m.t0) / Math.max(1, m.t1 - (m.dw || 0) - m.t0)));
   const co = [[p.lon, p.lat]];
   if (m.path) { for (let i = 0; i < m.frac.length; i++) if (m.frac[i] > f) co.push([m.path[i * 2 + 1], m.path[i * 2]]); }
   else co.push([m.b[1], m.b[0]]);
@@ -973,7 +976,7 @@ function renderMapSvg() {
   const routeOf = (kk, col, w) => {
     const m = kk.mv, cs0 = kk.caseId && sim.caseOf(kk.caseId), p = sim.pos(kk);
     if (m && m.path && m.path.length > 3) {
-      const f = clampF((sim.s.t - m.t0) / Math.max(1, m.t1 - m.t0)); let pts = `${X(p.lon).toFixed(1)},${Y(p.lat).toFixed(1)} `;
+      const f = clampF((sim.s.t - m.t0) / Math.max(1, m.t1 - (m.dw || 0) - m.t0)); let pts = `${X(p.lon).toFixed(1)},${Y(p.lat).toFixed(1)} `;
       for (let i = 0; i < m.frac.length; i++) if (m.frac[i] > f) pts += `${X(m.path[i * 2 + 1]).toFixed(1)},${Y(m.path[i * 2]).toFixed(1)} `;
       return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity=".9"/>`;
     }
@@ -1081,8 +1084,8 @@ function renderRadio() {
     const availability = remaining <= 0 ? 'Volná nyní' : run.phase === 'transport' ? `Volná přibližně za ${Math.ceil(remaining / 60)} min` : `Volná za ${Math.ceil(remaining / 60)} min`;
     return `<div class="transport-row ${run.phase}"><b>${esc(k.name)}</b><span>${esc(run.hospitalName)}</span><span>${phase} · ${detail}</span><span class="transport-time">${availability}</span></div>`;
   }).join('') : '<div class="transport-empty">Žádná posádka právě nejede do nemocnice ani se nevrací po předání.</div>');
-  const L = sim.s.log, out = [], nowMs = performance.now();
-  for (let i = L.length - 1; i >= 0 && out.length < 90; i--) { const e = L[i]; if (e.kind === 'crew' && (logDueAt.get(e.id) || 0) > nowMs) continue; const kind = e.kind === 'deadline' ? 'alert' : e.kind, vj = isVstricnaRadioMessage(e.txt); out.push(`<div class="k-${kind}${vj ? ' k-vstricna' : ''} ${e.cid ? 'click' : ''}" ${e.cid ? `data-case="${e.cid}"` : ''}><time>${e.clock}</time><span>${esc(e.txt)}</span></div>`); }
+  const L = sim.s.log, out = [], nowMs = performance.now(), feedById = new Map(radioFeed.map(x => [x.id, x]));
+  for (let i = L.length - 1; i >= 0 && out.length < 90; i--) { const e = L[i]; if (e.kind === 'crew' && (feedById.has(e.id) ? !(feedById.get(e.id).shownAt != null && feedById.get(e.id).shownAt <= nowMs) : (logDueAt.get(e.id) || 0) > nowMs)) continue; const kind = e.kind === 'deadline' ? 'alert' : e.kind, vj = isVstricnaRadioMessage(e.txt); out.push(`<div class="k-${kind}${vj ? ' k-vstricna' : ''} ${e.cid ? 'click' : ''}" ${e.cid ? `data-case="${e.cid}"` : ''}><time>${e.clock}</time><span>${esc(e.txt)}</span></div>`); }
   setHTML($('log'), out.join(''));
 }
 
@@ -1157,10 +1160,10 @@ function applyVoice() {
   ZOS_VOICE.enable(!!settings.voice && !!settings.sound);
 }
 if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onChange(() => { const el = $('voice-status'); if (el) el.textContent = voiceStatusText(); if (sim) renderRadioLive(); });
-function voiceSay0(text, key, isCall) {
+function voiceSay0(text, key, isCall, id) {
   if (!settings.sound || typeof ZOS_VOICE === 'undefined') return;
   const st = ZOS_VOICE.status().state;
-  if (settings.voice && (st === 'ready' || st === 'loading')) ZOS_VOICE.say(text, key);
+  if (settings.voice && (st === 'ready' || st === 'loading')) ZOS_VOICE.say(text, key, id);
   else if (isCall) ZOS_VOICE.chirp(false);
 }
 // posádka, která právě vysílá, bliká v přehledu posádek
@@ -1169,11 +1172,14 @@ function setTalking(key, on) {
   const k = String(key); if (on) talkCodes.add(k); else talkCodes.delete(k);
   document.querySelectorAll(`#crews .tile[data-code="${k}"]`).forEach(el => el.classList.toggle('talking', on));
 }
-if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onSpeak((key, on) => { if (key !== 'zos') setTalking(key, on); });
-function voiceSay(text, key, isCall) {
+if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onSpeak((key, on, id) => {
+  if (on !== 'drop' && key !== 'zos') setTalking(key, on);
+  if ((on === true || on === 'drop') && id != null) { const it = radioFeed.find(x => x.id === id); if (it && it.shownAt == null) it.shownAt = performance.now(); }   // řádek se ukáže, když ho hlas začne říkat
+});
+function voiceSay(text, key, isCall, id) {
   const st = typeof ZOS_VOICE !== 'undefined' ? ZOS_VOICE.status().state : 'off', real = settings.sound && settings.voice && (st === 'ready' || st === 'loading');
   if (!real && key !== 'zos' && settings.sound !== undefined) { setTalking(key, true); setTimeout(() => setTalking(key, false), Math.min(9000, 1200 + String(text).length * 65)); }
-  voiceSay0(text, key, isCall);
+  voiceSay0(text, key, isCall, id);
 }
 // rozpoznání rádiové hlášky podle textu: kdo mluví (ZOS / posádka), hlas a mluvený text; null = není to rádiový hovor
 function radioParse(txt) {
@@ -1188,9 +1194,14 @@ function radioParse(txt) {
   if ((m = /^ZCB(\d+) (?:rozumí|na příjmu)/.exec(txt))) return { who: 'crew', key: m[1], text: txt };
   return null;
 }
-function radioSpeak(txt) {
+function radioSpeak(txt, id) {
   const r = radioParse(txt);
-  if (r) return voiceSay(r.text, r.key, !!r.call);
+  if (r) return voiceSay(r.text, r.key, !!r.call, id);
+}
+// zda se hlášky skutečně přehrají hlasem (pak se v panelu ukážou ve chvíli, kdy je hlas začne říkat)
+function voiceWillSpeak() {
+  if (satellitePanel || !settings.sound || !settings.voice || typeof ZOS_VOICE === 'undefined') return false;
+  const st = ZOS_VOICE.status().state; return st === 'ready' || st === 'loading';
 }
 const radioOpen = () => (sim && sim.s.radioQ || []).filter(e => e.state === 'calling' || e.state === 'open' || e.state === 'zos');
 const radioPending = () => sim && sim.s.radioMode === 'interactive' && radioOpen().some(e => e.state !== 'zos');
@@ -1200,29 +1211,30 @@ const RC_DELAY = 3500, rcSeen = new Map();
 // živý přepis hovoru: řádky se objevují ve chvíli, kdy je hlas řekne (skutečný čas, nezávisle na rychlosti hry); po konci zůstane RC_HOLD ms
 const RC_HOLD = 6000, RC_CHAIN = 12000;
 function feedChain(crid) {
-  const L = radioFeed.filter(x => x.crid === crid && x.due != null); if (!L.length) return [];
+  const L = radioFeed.filter(x => x.crid === crid); if (!L.length) return [];
   const out = [L[L.length - 1]];
-  for (let i = L.length - 2; i >= 0; i--) { if (out[0].due - L[i].due <= RC_CHAIN) out.unshift(L[i]); else break; }
+  for (let i = L.length - 2; i >= 0; i--) { if (out[0].t0 - L[i].t0 <= RC_CHAIN) out.unshift(L[i]); else break; }
   return out;
 }
 const signOf = code => (/^K/i.test(String(code || '')) ? 'Kryštof ' + String(code).replace(/\D/g, '') : 'ZCB' + (code || ''));
 function transcriptHtml(chain, now) {
-  const shown = chain.filter(x => x.due <= now);
+  const shown = chain.filter(x => x.shownAt != null && x.shownAt <= now);
   if (!shown.length) return '';
   const code = (sim.crewOf(chain[0].crid) || {}).code;
   return `<div class="rc-chat">${shown.map((x, i) => `<div class="rc-bub ${x.who}${i === shown.length - 1 && now - x.due < 3500 ? ' now' : ''}"><span class="rc-who">${x.who === 'zos' ? 'ZCB101 · ZOS' : esc(code ? signOf(code) : (chain[0].txt.match(/^ZCB101, zde ([^,]+),/) || [0, 'soused'])[1]) + ' · ' + (code ? 'posádka' : 'operační středisko')}</span>${esc(x.text)}</div>`).join('')}</div>`;
 }
 // nejnovější hovor, který se ještě vysílá nebo před chvílí skončil (pro automatický režim a po odpovědi dispečera)
 function liveSession(now) {
-  const heard = radioFeed.filter(x => x.due != null && x.due <= now); if (!heard.length) return null;
-  const last = heard[heard.length - 1], chain = feedChain(last.crid), pending = chain.some(x => x.due > now);
-  if (!pending && now - last.due > RC_HOLD) return null;
+  const heard = radioFeed.filter(x => x.shownAt != null && x.shownAt <= now); if (!heard.length) return null;
+  const last = heard.reduce((b, x) => (x.shownAt >= b.shownAt ? x : b), heard[0]), chain = feedChain(last.crid), pending = chain.some(x => x.shownAt == null || x.shownAt > now);
+  if (!pending && now - last.shownAt > RC_HOLD) return null;
   const lab = (/^ZCB101, zde ([^,]+),/.exec((chain.find(x => x.who === 'crew') || {}).txt || '') || [])[1] || '';
   return { crid: last.crid, cid: last.cid, chain, label: lab };
 }
 function renderRadioLive() {
   const box = $('radio-live'); if (!box || !sim) return;
   const list = radioOpen().slice(-4), now = performance.now();
+  for (const x of radioFeed) if (x.shownAt == null && now - x.t0 > 15000) x.shownAt = now;   // pojistka, kdyby hlas zamrzl
   const auto = !list.length ? liveSession(now) : null;
   const win = $('w-rcom'); if (win) win.classList.toggle('live', list.length > 0 || !!auto);
   for (const e of list) if (!rqPrefetched.has(e.id) && typeof ZOS_VOICE !== 'undefined' && settings.voice) { rqPrefetched.add(e.id); ZOS_VOICE.prefetch(e.msg, e.code); for (const o of e.opts || []) if (o.say) ZOS_VOICE.prefetch(o.say, 'zos'); }
@@ -1257,16 +1269,24 @@ function beep(f, delay = 0, length = 0.12) {
 function newCallTone() { beep(620, 0, 0.16); beep(790, 0.2, 0.16); beep(1040, 0.4, 0.24); }
 function alarmBeep() { beep(1040); setTimeout(() => beep(780), 170); setTimeout(() => beep(1040), 340); }
 function vstricnaTone() { beep(740, 0, 0.12); beep(988, 0.15, 0.12); beep(1318, 0.3, 0.2); }
-const logDueAt = new Map(); let logLastDue = 0;
+const logDueAt = new Map(); let radioLastAt = 0;
 const radioFeed = [];   // rádiové hlášky s časem vyslovení (skutečný čas); zdroj živého přepisu v panelu Rádio
 function pollLog() {
   let vstricnaIncoming = false;
   for (const e of sim.s.log) {
     if (e.id <= seenLog) continue;
     seenLog = e.id;
-    if (e.kind === 'crew') { const now = performance.now(), due = Math.max(now + 4000, logLastDue + 2300); logLastDue = due; logDueAt.set(e.id, due); if (logDueAt.size > 400) logDueAt.delete(logDueAt.keys().next().value); setTimeout(() => { if (sim) renderRadio(); }, due - now + 60); }
-    if (e.kind === 'crew') { const rp = radioParse(e.txt); if (rp) { radioFeed.push({ id: e.id, due: logDueAt.get(e.id), who: rp.who, key: rp.key, txt: e.txt, text: rp.who === 'zos' ? e.txt.replace(/^ZCB101: /, '').replace(/^ZCB\d+, ZCB101: /, '') : rp.text, crid: e.crid, cid: e.cid }); if (radioFeed.length > 80) radioFeed.shift(); } }
-    if (e.kind === 'crew' && !satellitePanel) radioSpeak(e.txt);
+    if (e.kind === 'crew') {
+      const now = performance.now(), rp = radioParse(e.txt);
+      if (rp) {
+        // hlas: řádek se ukáže, až ho hlas začne říkat; bez hlasu se řádky ukazují postupně podle délky věty
+        const item = { id: e.id, who: rp.who, key: rp.key, txt: e.txt, text: rp.who === 'zos' ? e.txt.replace(/^ZCB101: /, '').replace(/^ZCB\d+, ZCB101: /, '') : rp.text, crid: e.crid, cid: e.cid, t0: now, shownAt: null };
+        if (!voiceWillSpeak()) { const at = Math.max(now + 150, radioLastAt + 600 + Math.min(2600, item.text.length * 30)); radioLastAt = at; item.shownAt = at; }
+        radioFeed.push(item); if (radioFeed.length > 80) radioFeed.shift();
+        if (!satellitePanel) radioSpeak(e.txt, e.id);
+      } else logDueAt.set(e.id, now + 200);
+      if (logDueAt.size > 400) logDueAt.delete(logDueAt.keys().next().value);
+    }
     if (isVstricnaRadioMessage(e.txt)) {
       vstricnaIncoming = true;
       if (e.kind === 'alert' || e.kind === 'req' || e.kind === 'deadline' || e.kind === 'warn') toast(e.txt, 'alert');

@@ -33,8 +33,10 @@ function civilTwilight(dateISO, lat, lon) {
 // Režimy jsou [pevná část v s (rozjezd, průjezd obcí, hledání adresy), násobek času trasy]. N1 bez limitu je o pár % rychlejší;
 // N4 a návrat bez VRZ v běžných limitech jsou pomalejší. N1–N3 kalibrováno na říjnovém vzorku výjezdů
 // (čas výjezd → příjezd proti trase ze základny): N1 113 s + 0,94×, N2 138 s + 0,97×, N3 193 s + 0,89× (bez nejdelších tras ~1,0×).
+// Pevná část (hledání adresy, průjezd obcí) se nepřičítá k jízdě: vozidlo jede po trase rychlostí routeru × násobek a pevnou část „stojí“ u cíle (mv.dw).
+// N3 pevná část 60 s: kalibrováno na reálných případech (N3 krátké trasy byly dřív o 3–4 min pomalejší).
 // jízdní režimy: k případu (N1–N3) a transport (P2/P3) vždy na majáky (VRZ), rychlost podle naléhavosti; RET = návrat bez majáků, RETL = návrat v „režimu N3“ na majáky na pokyn dispečera
-const DRIVE = { N1: [100, 0.92], N2: [125, 0.97], N3: [175, 1.05], N4: [60, 1.3], P2: [90, 1.05], P3: [90, 1.15], RET: [30, 1.35], RETL: [30, 1.02] };
+const DRIVE = { N1: [100, 0.92], N2: [125, 0.97], N3: [60, 1.05], N4: [60, 1.3], P2: [90, 1.05], P3: [90, 1.15], RET: [30, 1.35], RETL: [30, 1.02] };
 const LIGHT_MODES = ['N1', 'N2', 'N3', 'P2', 'P3', 'RETL'];
 function driveSec(base, mode) { const m = DRIVE[mode] || DRIVE.N3; return m[0] * Math.min(1, base / 150) + base * m[1]; }
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
@@ -750,7 +752,7 @@ class Sim {
     if (c.libero && c.withCrew) { const k = this.crewOf(c.withCrew); if (k) return this.pos(k, tt); }
     const m = c.mv;
     if (!m) return { lat: c.lat, lon: c.lon };
-    const f = clamp01(((tt != null ? tt : this.s.t) - m.t0) / Math.max(1, m.t1 - m.t0));
+    const f = clamp01(((tt != null ? tt : this.s.t) - m.t0) / Math.max(1, m.t1 - (m.dw || 0) - m.t0));
     if (m.path && m.frac) {
       const F = m.frac; let lo = 0, hi = F.length - 1;
       while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (F[mid] <= f) lo = mid; else hi = mid; }
@@ -797,10 +799,13 @@ class Sim {
       return this.rr(range[0], range[1]);
     }
     if (urgency === 4) return c.state === 'base' ? this.rr(55, 115) : this.rr(15, 35);
-    // Standardní výjezd se vejde do dvou minut; občasné prodlevy jsou herní událost.
-    const lateChance = urgency === 1 ? 0.005 : urgency === 2 ? 0.04 : 0.12;
-    if (this.rnd() < lateChance) return this.rr(121, 190);
-    return c.state === 'base' ? this.rr(55, 115) : this.rr(15, 35);
+    // z reálných výjezdů: RZP N1 1–2 min, N2 a N3 1–3 min, lékař (RV) 1–5 min; občasné zpoždění je herní událost
+    const atBase = c.state === 'base';
+    const lateChance = urgency === 1 ? 0.02 : urgency === 2 ? 0.06 : 0.1;
+    if (c.type === 'RV') return atBase ? this.rr(60, 300) : this.rr(20, 60);
+    if (this.rnd() < lateChance) return this.rr(201, 260);
+    if (!atBase) return this.rr(15, 35);
+    return urgency === 1 ? this.rr(55, 120) : urgency === 2 ? this.rr(65, 180) : this.rr(70, 200);
   }
   _lzActivationExpected(c) {
     const range = this._isLzsDay() ? ((c && c.activationDay) || ZOS_DATA.lzs.activationDay) : ((c && c.activationNight) || ZOS_DATA.lzs.activationNight);
@@ -854,16 +859,19 @@ class Sim {
   }
   // pohyb posádky po silnicích (nebo vzdušnou čarou, když router není)
   _go(c, lat, lon, mult) {
-    const t = this.s.t, jit = this.rr(0.9, 1.12), mode = typeof mult === 'string' ? mult : null;
+    const t = this.s.t, jit = this.rr(0.96, 1.04), mode = typeof mult === 'string' ? mult : null;
     if (mode) mult = 1;
-    let dur, path = null, frac = null;
+    let sec = null, path = null, frac = null, routed = false;
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) {
       const r = ROUTER.route(c.lat, c.lon, lat, lon);
-      if (r) { dur = (mode ? driveSec(r.sec, mode) : r.sec * mult) * jit; path = r.pts; frac = r.frac; }
+      if (r) { sec = r.sec; path = r.pts; frac = r.frac; routed = true; }
     }
-    if (dur == null) dur = (mode ? driveSec(travelSec(c.lat, c.lon, lat, lon), mode) : travelSec(c.lat, c.lon, lat, lon, mult)) * jit;
-    if (mode) dur *= this._wxMul(mode);
-    c.mv = { a: [c.lat, c.lon], b: [lat, lon], t0: t, t1: t + dur, path, frac, mode };
+    if (sec == null) sec = travelSec(c.lat, c.lon, lat, lon, mode ? 1 : mult);
+    let moving, dwell = 0;
+    if (mode) { const m = DRIVE[mode] || DRIVE.N3; dwell = m[0] * Math.min(1, sec / 150); moving = sec * m[1] * jit * this._wxMul(mode); }
+    else moving = (routed ? sec * mult : sec) * jit;
+    const dur = moving + dwell;
+    c.mv = { a: [c.lat, c.lon], b: [lat, lon], t0: t, t1: t + dur, dw: dwell, path, frac, mode };
     return dur;
   }
   // návrat na základnu: standardně bez majáků; v režimu N3 (na pokyn dispečera) na majáky; RV mimo pravidelně zajištěnou oblast (>10 min od základny) vždy na majáky
@@ -1454,7 +1462,7 @@ class Sim {
     const p = this.pos(Object.assign({}, c, { mv: m })); c.lat = p.lat; c.lon = p.lon;
     if (!m || !m.path || !m.frac || typeof ROUTER === 'undefined' || !ROUTER.ready || !ROUTER.snap) return null;
     const here = ROUTER.snap(c.lat, c.lon); if (!here || here.cls !== 0) return null;
-    const P = m.path, F = m.frac, span = Math.max(1, m.t1 - m.t0), fr = clamp01((t - m.t0) / span);
+    const P = m.path, F = m.frac, span = Math.max(1, m.t1 - (m.dw || 0) - m.t0), fr = clamp01((t - m.t0) / span);
     let i = F.findIndex(f => f >= fr); if (i < 0) return null;
     const pts = [c.lat, c.lon], times = [0];
     const onMw = (la, lo) => { const sn = ROUTER.snap(la, lo); return !!(sn && sn.cls === 0 && sn.d < 0.01); };
@@ -2297,14 +2305,14 @@ class Sim {
         const pending = this.caseOf(c.caseId);
         if (c.relayHold) { if (!pending || pending.status === 'closed') c.relayHold = false; else break; } // čeká na relaci ZCB101
         if (pending && pending.n === 1 && c.type !== 'LZS' && c.type !== 'MU' &&
-            !c.turnoutAlerted && t - c.dispatchAt > 120) {
+            !c.turnoutAlerted && t - c.dispatchAt > (c.type === 'RV' ? 300 : 120)) {
           c.turnoutAlerted = true;
           this.L('deadline', `ALARM: ${c.name} nevyjela k N1 ${pending.num} do 2 minut!`, pending.id, c.id);
           this._opsScore(-5, `opožděný výjezd N1 (${c.name})`, pending.id);
         }
         if (t < c.until) break;
         const cs = pending;
-        if (cs && cs.n > 1 && c.type !== 'LZS' && c.type !== 'MU' && c.turn > 120) {
+        if (cs && cs.n > 1 && c.type !== 'LZS' && c.type !== 'MU' && c.turn > (c.type === 'RV' ? 300 : 210)) {
           this.L('warn', `${c.name}: opožděný výjezd k N${cs.n} – ${Math.round(c.turn / 60)} min`, cs.id, c.id);
         }
         let dur;
@@ -2314,9 +2322,9 @@ class Sim {
           const pre = c.mv ? this._continueToExit(c, target) : null; // na dálnici se neotáčí – dojede k nejbližšímu sjezdu
           dur = this._go(c, target.lat, target.lon, c.caseRole === 'vstricna-support' ? 'N3' : 'N' + Math.min(4, Math.max(1, c.driveN || cs.n || 3)));
           if (pre && c.mv && c.mv.path) {
-            const tot = pre.sec + dur, m = c.mv;
-            m.path = pre.pts.concat(m.path.slice(2)); m.frac = pre.fr.map(f => f * pre.sec / tot).concat(m.frac.slice(1).map(f => (pre.sec + f * dur) / tot));
-            m.a = [pre.pts[0], pre.pts[1]]; m.t1 = t + tot; dur = tot;
+            const m = c.mv, dw = m.dw || 0, mvDur = dur - dw, tot = pre.sec + mvDur;
+            m.path = pre.pts.concat(m.path.slice(2)); m.frac = pre.fr.map(f => f * pre.sec / tot).concat(m.frac.slice(1).map(f => (pre.sec + f * mvDur) / tot));
+            m.a = [pre.pts[0], pre.pts[1]]; m.t1 = t + tot + dw; dur = tot + dw;
           }
           if (!c.caseRole) this._park(c, cs);
         }
@@ -2690,7 +2698,7 @@ class Sim {
       // hlásí se jen ten, kdo kruháčem (Okružní × silnice č. 3) skutečně projíždí
       const P = c.mv.path, K = KRUHAC; let bi = -1, bd = 1e9;
       for (let i = 0; i < P.length / 2; i++) { const d = hav(P[i * 2], P[i * 2 + 1], K.lat, K.lon); if (d < bd) { bd = d; bi = i; } }
-      if (bd < 0.3 && bi > 0) c.kruhacAt = c.mv.t0 + (c.mv.t1 - c.mv.t0) * c.mv.frac[bi];
+      if (bd < 0.3 && bi > 0) c.kruhacAt = c.mv.t0 + (c.mv.t1 - (c.mv.dw || 0) - c.mv.t0) * c.mv.frac[bi];
     }
     if (primaryRun && (cs.patientCount || 1) === 1 && !escorts.length) this._announceVstricna(c, cs, best, dur, leaving.length ? null : `${loaded} a jedeme ${dsay.text}${centreTail}`, ackOpts);
     else if (primaryRun && !escorts.length && !leaving.length) this._crewCall(c, cs, `${loaded} a jedeme ${dsay.text}${centreTail}.`, ackOpts, 'info');
@@ -2789,7 +2797,7 @@ class Sim {
   _balancedMeet(primary, helper) {
     const mv = primary.mv, t = this.s.t;
     if (!mv) return null;
-    const total = Math.max(1, mv.t1 - mv.t0), now = clamp01((t - mv.t0) / total);
+    const total = Math.max(1, mv.t1 - (mv.dw || 0) - mv.t0), now = clamp01((t - mv.t0) / total);
     const hp = this.pos(helper), turn = helper.state === 'base' ? 90 : 30;
     const pts = [];
     if (mv.path && mv.frac && mv.frac.length) { for (let i = 0; i < mv.frac.length; i++) if (mv.frac[i] > now + 0.02 && mv.frac[i] < 0.97) pts.push({ f: mv.frac[i], lat: mv.path[i * 2], lon: mv.path[i * 2 + 1] }); }

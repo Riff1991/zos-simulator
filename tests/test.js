@@ -427,7 +427,7 @@ console.log('case click moves map camera true');
       { id: 2, kind: 'crew', txt: 'Vstřícná jízda přijata.' },
     ] } }, seenLog: 0,
     isVstricnaRadioMessage: text => /vstřícn|vstricn/i.test(String(text || '')),
-    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {}, radioParse: () => null, radioFeed: [],
+    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {}, radioParse: () => null, radioFeed: [], voiceWillSpeak: () => false, radioLastAt: 0,
     performance: { now: () => Date.now() }, setTimeout() {}, renderRadio() {}, logDueAt: new Map(), logLastDue: 0,
   };
   vm.runInNewContext(fn[0] + '\npollLog(); pollLog();', ctx);
@@ -872,4 +872,27 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     }
     if (!ok) throw new Error('žádost o LZS: žádný souhlas'); }
   console.log('mezikrajská spolupráce: žádosti, odpovědi, žádosti sousedů, Planá true');
+}
+
+// ---------- model jízdy: pevná část stojí u cíle, pořadí režimů, zpoždění výjezdu ----------
+{
+  const sim = new Sim({ seed: 31, mode: 'shift', startHour: 9, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nbPlan = [];
+  const c = sim.s.crews.find(x => x.type === 'RZP' && x.id.startsWith('jh'));
+  const dest = { lat: c.lat + 0.12, lon: c.lon + 0.1 };
+  const avg = mode => { let m = 0, n = 0; for (let i = 0; i < 40; i++) { sim._go(c, dest.lat, dest.lon, mode); m += c.mv.t1 - c.mv.dw - c.mv.t0; n++; } return m / n; };
+  const m1 = avg('N1'), m2 = avg('N2'), m3 = avg('N3');
+  if (!(m1 < m2 && m2 < m3)) throw new Error(`jízdní doba N1 < N2 < N3 (${m1.toFixed(0)}, ${m2.toFixed(0)}, ${m3.toFixed(0)})`);
+  sim._go(c, dest.lat, dest.lon, 'N2');
+  const mv = c.mv, t0 = sim.s.t;
+  if (!(mv.dw > 60)) throw new Error('N2 má mít pevnou část u cíle');
+  const pe = sim.pos(c, mv.t1 - mv.dw + 2), d = require('../src/engine.js').hav(pe.lat, pe.lon, dest.lat, dest.lon);
+  if (d > 0.05) throw new Error('po jízdní části je vozidlo u cíle: ' + d.toFixed(2) + ' km');
+  sim.s.t = mv.t1 - mv.dw / 2; if (sim.speedKmh(c) !== 0) throw new Error('při hledání adresy vozidlo stojí (0 km/h)');
+  sim.s.t = t0 + (mv.t1 - mv.dw - t0) / 2; if (sim.speedKmh(c) < 40) throw new Error('za jízdy je rychlost nad 40 km/h: ' + sim.speedKmh(c));
+  sim.s.t = t0;
+  // zpoždění výjezdu: RZP 55–260 s, lékař (RV) delší
+  let sr = 0, sv = 0, rv = sim.s.crews.find(x => x.type === 'RV' && x.state !== 'off') || sim.s.crews.find(x => x.type === 'RV'); rv.state = 'base'; c.state = 'base';
+  for (let i = 0; i < 300; i++) { sr += sim._turnout(c, 2); sv += sim._turnout(rv, 2); }
+  if (!(sr / 300 > 100 && sr / 300 < 170 && sv / 300 > sr / 300)) throw new Error(`zpoždění výjezdu: RZP ${(sr / 300).toFixed(0)} s, RV ${(sv / 300).toFixed(0)} s`);
+  console.log('model jízdy: pevná část u cíle, pořadí režimů, zpoždění výjezdu true');
 }
