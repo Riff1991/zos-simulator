@@ -204,14 +204,14 @@ console.log('cancelled field RV request no longer blocks RZP transport true');
 // When one patient is transported by RZP, an assigned RV returns from scene or en route.
 const rvTransportSim = new Sim({ seed: 111, mode: 'free' });
 rvTransportSim.s.ev.nextSpawn = rvTransportSim.s.ev.nextSecond = 999999; rvTransportSim.s.ev.nextMU = null;
-const rvTransportCase = rvTransportSim._spawn(); rvTransportCase.status = 'active'; rvTransportCase.patientCount = 1; rvTransportCase.pocet = 1; rvTransportCase.trans = true;
+const rvTransportCase = rvTransportSim._spawn({ ind: 'dusnost', n: 2, dyn: false }); rvTransportCase.status = 'active'; rvTransportCase.patientCount = 1; rvTransportCase.pocet = 1; rvTransportCase.trans = true;
 const transportRzp = rvTransportSim.suggest(rvTransportCase.id, 'RZP')[0], transportRv = rvTransportSim.suggest(rvTransportCase.id, 'RV')[0];
 if (!transportRzp || !transportRv || !rvTransportSim.assign(rvTransportCase.id, transportRzp.crewId).ok || !rvTransportSim.assign(rvTransportCase.id, transportRv.crewId).ok) throw new Error('single-patient RV transport setup failed');
 const transportRzpCrew = rvTransportSim.crewOf(transportRzp.crewId), transportRvCrew = rvTransportSim.crewOf(transportRv.crewId);
 transportRzpCrew.state = transportRvCrew.state = 'onscene'; transportRzpCrew.until = transportRvCrew.until = rvTransportSim.s.t; transportRzpCrew.arrivedAt = transportRvCrew.arrivedAt = rvTransportSim.s.t;
 rvTransportSim._startTransport(transportRzpCrew, rvTransportCase);
 if (transportRvCrew.caseId || transportRvCrew.state !== 'free') throw new Error('RV remained attached at scene after single-patient RZP transport');
-const multiCase = rvTransportSim._spawn(); multiCase.status = 'active'; multiCase.patientCount = 2; multiCase.pocet = 2; multiCase.trans = true;
+const multiCase = rvTransportSim._spawn({ ind: 'dusnost', n: 2, dyn: false }); multiCase.status = 'active'; multiCase.patientCount = 2; multiCase.pocet = 2; multiCase.trans = true;
 const multiRzp = rvTransportSim.suggest(multiCase.id, 'RZP')[0], multiRv = rvTransportSim.suggest(multiCase.id, 'RV')[0];
 if (!multiRzp || !multiRv || !rvTransportSim.assign(multiCase.id, multiRzp.crewId).ok || !rvTransportSim.assign(multiCase.id, multiRv.crewId).ok) throw new Error('multi-patient RV setup failed');
 const multiRzpCrew = rvTransportSim.crewOf(multiRzp.crewId), multiRvCrew = rvTransportSim.crewOf(multiRv.crewId); multiRzpCrew.state = 'onscene'; multiRzpCrew.until = rvTransportSim.s.t;
@@ -1011,7 +1011,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     sim.s.muPlayerRole = 'mu'; sim.step(60);
     sim.s.ev.nextSpawn = sim.s.t;
     let adj = null;
-    for (let i = 0; i < 600 && !adj; i++) { sim.step(10); adj = sim.s.cases.find(x => x.muAdj); }
+    for (let i = 0; i < 3000 && !adj; i++) { sim.step(10); adj = sim.s.cases.find(x => x.muAdj); }   // N2 s RV je při reálném objemu řidší
     if (!adj || adj.rvNeed !== false || (adj.initialDispatchRequired || []).includes('RV')) throw new Error('N2 se při MU nezměnila na dynamickou');
     const n3 = sim.s.cases.find(x => !x.mu && x.n === 3 && x.status === 'waiting');
     if (n3) { const k = sim.suggest(n3.id, 'RZP')[0]; if (k && sim.assign(n3.id, k.crewId).ok) throw new Error('N3 se při MU nemá vysílat'); }
@@ -1213,4 +1213,25 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   const exp = [['2026-11-16', 7, false], ['2026-11-17', 19, false], ['2026-11-18', 3, false], ['2026-11-18', 7, true], ['2026-11-19', 19, true], ['2026-11-15', 19, true]];
   for (const [d, h, want] of exp) if (on(d, h) !== want) throw new Error(`RV Dačice ${d} ${h}:00 má být ${want ? 'v provozu' : 'mimo provoz'}`);
   console.log('týdenní plán: RV Dačice mimo provoz po–út (směnový den od 7:00) true');
+}
+
+// Kalibrace podle reálných výjezdů (leden + červenec 2026): objem, dynamická indikace, CMP, popis místa a poznámka ZOS
+{
+  const mk = seed => { const s = new Sim({ seed, mode: 'free' }); s.s.ev.nextSpawn = s.s.ev.nextSecond = 999999; s.s.ev.nextMU = null; return s; };
+  // objem: Běžné ~132 událostí ve dne a ~66 v noci v zimě (leden), léto ~144 / ~82
+  const vol = (hour, doy) => { let tot = 0; for (const seed of [31, 32, 33]) { const sim = new Sim({ seed, mode: 'shift', startHour: hour }); sim.s.dayOfYear = doy; for (let i = 0; i < 4320; i++) sim.step(10); tot += sim.s.cases.filter(c => !c.mu && c.typ === 'primární').length; } return tot / 3; };
+  const wd = vol(7, 15), wn = vol(19, 15), sd = vol(7, 196);
+  if (!(wd > 105 && wd < 160 && wn > 45 && wn < 90 && sd > wd * 0.95)) throw new Error(`objem: zima den ${wd.toFixed(0)}, noc ${wn.toFixed(0)}, léto den ${sd.toFixed(0)}`);
+  // dynamická indikace jen u N2, ~40 % z N2; CMP nikdy dynamická a lékař jen výjimečně
+  const sim = mk(77); let n2 = 0, dy = 0, bad = 0;
+  for (let i = 0; i < 2500; i++) { const c = sim._spawn(); if (c.n === 2) { n2++; if (c.dyn) dy++; } else if (c.dyn || /DYNAMICKÁ INDIKACE/.test(c.up)) bad++; }
+  if (bad || !(dy / n2 > 0.3 && dy / n2 < 0.5)) throw new Error(`dynamická indikace: mimo N2 ${bad}, podíl z N2 ${(dy / n2).toFixed(2)}`);
+  let cmpDyn = 0, cmpRv = 0, cmpN = 0;
+  for (let i = 0; i < 600; i++) { const c = sim._spawn({ ind: 'cmp' }); cmpN++; if (c.dyn || /DYNAMICKÁ INDIKACE/.test(c.up)) cmpDyn++; if (c.rvNeed) cmpRv++; }
+  if (cmpDyn / cmpN > 0.03 || cmpRv / cmpN > 0.2) throw new Error(`CMP: dynamická ${cmpDyn}/${cmpN}, lékař hned ${cmpRv}/${cmpN}`);
+  // popis místa a poznámka: u domu RD/BOD/patro, bez vymyšlených vět, bez tvrdého malého písmene a bez umělé ztráty diakritiky
+  let rd = 0, byt = 0, nRd = 0, nByt = 0, lower = 0, upper = 0;
+  for (let i = 0; i < 1500; i++) { const c = sim._spawn(); if (c.where === 'rd') { nRd++; if (/^(RD|rd|chalupa|Chalupa|řadovka|statek)/.test(c.place)) rd++; } if (c.where === 'byt') { nByt++; if (/\d|přízemí|příz|BOD|bytovka/i.test(c.place)) byt++; } if (c.place) { if (c.place === c.place.toLocaleLowerCase('cs-CZ')) lower++; else upper++; } if (/volá |opakované volání/.test(c.poznamka || '')) throw new Error('poznámka ZOS obsahuje vymyšlenou větu: ' + c.poznamka); }
+  if (!(rd / nRd > 0.5 && byt / nByt > 0.55 && upper > lower * 0.3)) throw new Error(`popis místa: RD ${rd}/${nRd}, byt ${byt}/${nByt}, malá ${lower}, ostatní ${upper}`);
+  console.log(`kalibrace podle reálných dat: objem zima ${wd.toFixed(0)}/${wn.toFixed(0)}, léto ${sd.toFixed(0)}; dynamická ${(dy / n2 * 100).toFixed(0)} % z N2, CMP bez ní; popis místa ve stylu zápisů true`);
 }

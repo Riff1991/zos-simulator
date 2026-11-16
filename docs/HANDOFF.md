@@ -101,7 +101,7 @@ CSP blokuje vzdálené obrázky/fetch → nelze použít živé OSM dlaždice, p
 Hotovo: kompletní herní smyčka, 2 režimy, rychlost 0–60×, pauza mezerníkem, autosave/obnova, vyhodnocení směny se seznamem nejhorších případů, návrhy posádek s ETA po silnicích, přesměrování, zálohy, LZS včetně letu na heliport a předání přes RZP, MU událost, žádosti o lékaře, sekundáry, střídání směn, rádio log + dlaždice oblastí, tisk výzvy k výjezdu, mobilní rozložení (spodní navigace), drag&drop (myš i dotyk s podržením), plná OSM mapa s trasami. Příznaky hovoru se ukládají jako samostatné syntetické volby a v detailu se zobrazují jako odškrtnuté položky.
 
 Známá omezení / TODO:
-- Indikace jsou ukázkové (čeká se na uživatele).
+- Indikace jsou od 0.30.0 kalibrované na reálné výjezdy (leden + červenec 2026, viz `docs/OTAZKY.md` → Výsledek kalibrace; `ZOS_DATA.indCal`, `whereCal`, `placeModel`, `tailMix`, `EV_HOUR`). Pravidla o lékaři a klasifikacích od uživatele zůstávají nadřazená.
 - Doplňková naléhavost se zobrazuje jen tehdy, když je u případu zaznamenána změna; automatické změny naléhavosti během hovoru zatím nejsou implementované. Kód klasifikace `1/1/n/` se v UI nezobrazuje.
 - Ukázková primární výzva obsahuje typ výjezdu, popis místa se generuje malými písmeny s občasnou ztrátou diakritiky; výchozí četnost cílí přibližně na 130 událostí za směnu.
 - Běžná doba od vyslání k rozjezdu pozemní posádky nepřesahuje 2 minuty. Herní prodlevy nad limit se generují častěji u N3, méně u N2 a výjimečně u N1; překročení 2 minut u N1 vyvolá červené upozornění a zvukový alarm.

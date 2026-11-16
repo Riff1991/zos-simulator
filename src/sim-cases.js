@@ -1,11 +1,13 @@
 // Generování případů – část simulačního jádra (metody třídy Sim, přimíchané v engine.js).
-if (typeof module !== 'undefined') var { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK } = require('./engine-base.js'); // jen Node; v prohlížeči jsou to globály z engine-base.js
+if (typeof module !== 'undefined') var { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EV_HOUR, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK } = require('./engine-base.js'); // jen Node; v prohlížeči jsou to globály z engine-base.js
 class SimCases {
   // ---------- generování případů ----------
   _gap() {
     const s = this.s;
-    // Pro běžnou dvanáctihodinovou směnu cílí profil přibližně na 130 událostí.
-    const lam = 11.4 * TOD[Math.floor(this.hour()) % 24] * s.diff * s.rateMul;
+    // Intenzita = události za hodinu podle reálných dat (zima/léto, hodina dne); diff: Klidné 0,85 / Běžné 1 / Nálož 1,25.
+    const doy = (s.dayOfYear || 172) + Math.floor((s.startHour * 3600 + s.t) / 86400);
+    const winter = 0.5 * (1 + Math.cos(2 * Math.PI * (doy - 15) / 365)), h = Math.floor(this.hour()) % 24;
+    const lam = (winter * EV_HOUR.winter[h] + (1 - winter) * EV_HOUR.summer[h]) * s.diff * s.rateMul;
     return -Math.log(1 - this.rnd()) / lam * 3600;
   }
   _P() { return typeof ZOS_PEOPLE !== 'undefined' ? ZOS_PEOPLE : null; }
@@ -20,6 +22,24 @@ class SimCases {
   // věk tak, jak ho zapisuje calltaker: většinou ročník, někdy „NN let“
   _ageText(age) { const y = (this._P() ? this._P().YEAR : 2026) - age; return this.rnd() < 0.8 ? String(y) : `${age} let`; }
   // výběr místa podle věku, indikace a denní doby
+  // věk z reálného rozdělení (kvantily p5/p25/p50/p75/p95, lineární interpolace); null, pokud kvantily nejsou
+  _ageFor(ind, child, lo, hi) {
+    const q = child ? ZOS_DATA.ageChildQ : ind.ageQ;
+    if (!q) return null;
+    const pts = [[0, child ? 0 : 18], [0.05, q[0]], [0.25, q[1]], [0.5, q[2]], [0.75, q[3]], [0.95, q[4]], [1, child ? 17 : Math.min(98, q[4] + 3)]];
+    for (let tries = 0; tries < 30; tries++) {
+      const u = this.rnd(); let i = 1; while (i < pts.length - 1 && u > pts[i][0]) i++;
+      const a = pts[i - 1], b = pts[i], age = Math.round(a[1] + (b[1] - a[1]) * (u - a[0]) / (b[0] - a[0]));
+      if (age >= lo && age <= hi) return age;
+    }
+    return null;
+  }
+  // doba z logaritmicko-normálního rozdělení podle kvantilů [p10, p50, p90] (minuty → sekundy), oříznuto na rozumný rozsah
+  _logn(q, minMin) {
+    const mu = Math.log(Math.max(0.5, q[1])), sg = Math.max(0.05, (Math.log(Math.max(1, q[2])) - Math.log(Math.max(0.5, q[0]))) / 2.563);
+    const z = Math.sqrt(-2 * Math.log(1 - this.rnd())) * Math.cos(2 * Math.PI * this.rnd());
+    return Math.min(q[2] * 2.4, Math.max(minMin || 3, Math.exp(mu + sg * z))) * 60;
+  }
   _pickWhere(ind, age) {
     const h = this.hour(), work = h >= 6 && h < 18, school = h >= 7.5 && h < 15.5;
     const w = k => {
@@ -36,8 +56,11 @@ class SimCases {
         default: return 1;
       }
     };
-    const opts = ind.where.filter(k => w(k) > 0);
-    return opts.length ? this.wpick(opts, w) : this.pick(ind.where);
+    // výjezdy do zdravotnických zařízení (ordinace, poliklinika) nejsou v seznamech indikací; ke všem „běžným“ se přidávají
+    const base = /^(dn_|resus|nzo|tonuti|obeseni|popal|amput|asist)/.test(ind.id) || ind.where.includes('ordinace') ? ind.where : ind.where.concat(['ordinace']);
+    const cal = ZOS_DATA.whereCal || {}, wc = k => w(k) * (cal[k] != null ? cal[k] : 1);
+    const opts = base.filter(k => wc(k) > 0);
+    return opts.length ? this.wpick(opts, wc) : this.pick(ind.where);
   }
   // úklid příznaků: bez duplicit, z protichůdných ponechat závažnější
   _cleanSymptoms(list) {
@@ -206,6 +229,68 @@ class SimCases {
     if (out) { hist.push(out); if (hist.length > 14) hist.shift(); }
     return out;
   }
+  // Popis místa a poznámka ZOS z modelu skutečných zápisů (ZOS_DATA.placeModel): vybere se třída zápisu podle typu místa, vzor segmentů
+  // a z nich se složí text; polohové segmenty (typ objektu, patro, „před domem“) patří do popisu místa, zbytek do poznámky ZOS.
+  _tail(ind, key, up, age, sex) {
+    const PM = ZOS_DATA.placeModel, mix = ZOS_DATA.tailMix[key];
+    if (!PM || !mix) return { place: '', note: '' };
+    const cls = this.wpick(mix, x => x[1])[0], m = PM.model[cls], upL = up.toLocaleLowerCase('cs-CZ'), police = /PČR|MĚP|POLICIE/i.test(up);
+    const pat = this.wpick(m.pat, x => x[1])[0].split(' ');
+    const FEM = ['zvracela', 'zmatená', 'rozrušená', 'ředěná', 'spavá', 'zahleněná'], MASC = ['zvracel', 'zmatený', 'ředěný', 'bledý', 'opocený', 'zahleněný'];
+    const ELD = /senevida|demence|imobiln|ležící|nechodící|vozíčk|nejí|nepije|alzheimer|samota|peč\.? ?dům|senior/i;
+    const ADULT = /alkohol|ebrieta|schizofren|onkol|diabet|chřipka|cizinec|PMK|anurie|hematurie|kardiak|CA plic|dialyz/i;
+    const maxFloor = cls === 'rd' ? 3 : cls === 'byt' ? 9 : 4;
+    const num = s => s.replace(/#/g, (_, i, str) => {
+      const rest = str.slice(i + 1);
+      if (/^\.?\s?porod/.test(rest)) return this.ri(1, 3);
+      if (/^\s?x?\s?OA/i.test(rest) || /DN $/.test(str.slice(0, i))) return this.ri(1, 3);
+      if (/^\s?(osoby|zraněn)/.test(rest)) return this.ri(2, 5);
+      if (/^\s?osoba/.test(rest)) return 1;
+      if (/TK $/.test(str.slice(0, i))) return this.ri(70, 100);
+      if (/(byt|pokoj|dveří)\D*$/.test(str.slice(0, i))) return this.ri(1, 48);
+      return this.ri(1, 12);
+    });
+    const floor = f => {
+      const n = this.wpick(Object.keys(PM.floors).map(Number).filter(k => k <= maxFloor), k => PM.floors[k]);
+      return f.replace(/#/g, n);
+    };
+    const used = new Set(), segs = [];
+    const pool = (list, pred) => list.filter(pred);
+    const xs = m.X.length >= 12 ? m.X : m.X.concat(PM.model._glob.X);
+    for (const kd of pat) {
+      if (kd === 'O' || kd === 'OF') {
+        const o = this.wpick(m.O.length ? m.O : [['RD', 1]], x => x[1])[0];
+        if (kd === 'O') segs.push({ t: o, loc: true });
+        else { const fl = this.wpick(m.F.length ? m.F : PM.model.byt.F, x => x[1])[0]; segs.push({ t: o + ' ' + floor(fl), loc: true }); }
+      } else if (kd === 'F') {
+        const fl = this.wpick(m.F.length ? m.F : PM.model.byt.F, x => x[1])[0]; segs.push({ t: floor(fl), loc: true });
+      } else if (kd === 'I') segs.push({ t: ind.klasif, loc: false });
+      else if (kd === 'S') {
+        const list = pool(m.S, x => x[2] === 'G' || police);
+        if (list.length) segs.push({ t: this.wpick(list, x => x[1])[0], loc: false });
+      } else if (kd === 'X') {
+        const list = pool(xs, x => !used.has(x[0]));
+        const wt = x => {
+          let w = x[1] + 6 * (x[2][ind.klasif] || 0);
+          // fráze vázaná na jednu indikaci (např. „DN # OA“ k dopravní nehodě) se jinde téměř nepoužije
+          const by = Object.values(x[2]), bs = by.reduce((p, q) => p + q, 0);
+          if (bs >= 0.5 * x[1] && Math.max(...by) >= 0.6 * bs && (x[2][ind.klasif] || 0) < 0.1 * bs) w = x[1] * 0.01;
+          const ph = x[0].replace(/^\+\s*/, '');
+          if (upL.includes(ph.toLocaleLowerCase('cs-CZ').slice(0, 5))) w *= 4;
+          if (ELD.test(x[0]) && age < 60) w *= 0.05;
+          if (ADULT.test(x[0]) && age < 16) w *= 0.02;
+          if (FEM.includes(x[0].toLowerCase()) && sex === 'M') w = 0;
+          if (MASC.includes(x[0].toLowerCase()) && sex === 'Ž') w = 0;
+          return w;
+        };
+        const ok = list.filter(x => wt(x) > 0);
+        if (ok.length) { const x = this.wpick(ok, wt); used.add(x[0]); segs.push({ t: num(x[0]), loc: x[3] === 'L' }); }
+      }
+    }
+    const sep = this.wpick(PM.sep, x => x[1])[0];
+    const join = a => a.map(x => x.t).join(sep);
+    return { place: join(segs.filter(x => x.loc)), note: join(segs.filter(x => !x.loc)) };
+  }
   _zosNote(ind, up, whKey) {
     const text = up.toLocaleUpperCase('cs-CZ');
     if (ind.id === 'dn_poly') {
@@ -249,10 +334,12 @@ class SimCases {
     const nKeys = Object.keys(ind.n).map(Number);
     let n = over.n || Number(this.wpick(nKeys, k => ind.n[k]));
     let dyn = over.dyn != null ? over.dyn : n === 2 && !!ind.dyn && this.rnd() < ind.dyn;
-    const sex = over.sex || ind.sex || (this.rnd() < 0.5 ? 'M' : 'Ž');
+    const sex = over.sex || ind.sex || (this.rnd() < (ind.pF != null ? ind.pF : 0.5) ? 'Ž' : 'M');
     const hospType = Array.isArray(ind.hosp) ? this.wpick(ind.hosp, x => x[1])[0] : ind.hosp;
     const symptomKey = ind.symptomKey || ind.klasif;
-    let symptoms = over.symptoms ? over.symptoms.slice() : this._symptomSet(symptomKey, n);
+    // dynamická indikace se losuje podle skutečného podílu (ind.dyn); sada příznaků se vybírá ze sad s tím příznakem, nebo bez něj
+    const isDynSym = x => x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE');
+    let symptoms = over.symptoms ? over.symptoms.slice() : this._symptomSet(symptomKey, n, n === 2 && ind.dyn != null && over.dyn == null ? terms => terms.some(isDynSym) === dyn : undefined);
     if (!over.symptoms && this._isApneicUnresponsive(symptoms)) {
       n = 1;
       dyn = false;
@@ -281,8 +368,8 @@ class SimCases {
       symptoms = alt && alt.some(x => /OXID UHELNAT/i.test(x)) ? this._cleanSymptoms(alt) : symptoms.filter(x => !/DYNAMICKÁ INDIKACE/i.test(x));
       symptoms = symptoms.filter(x => !/DYNAMICKÁ INDIKACE/i.test(x));   // dítě s CO: vždy N2 bez dynamiky
     }
-    const rvNeed = n === 1 || (n === 2 && !dyn);
-    const rvLater = !rvNeed && (over.rvLater != null ? over.rvLater : this.rnd() < (ind.rvP || 0));
+    const rvNeed = n === 1 || (n === 2 && !dyn && (ind.rvInit == null || this.rnd() < ind.rvInit));
+    const rvLater = !rvNeed && (over.rvLater != null ? over.rvLater : this.rnd() < ((dyn && ind.rvPd != null ? ind.rvPd : ind.rvP) || 0));
     const rvReqKind = rvLater ? (over.rvReqKind || (this.rnd() < 0.5 ? 'zhoršení stavu' : 'posouzení stavu')) : null;
     let up = symptoms.join(', '), symptomText = up.toLocaleUpperCase('cs-CZ');
     const isChild = symptomText.includes('DÍTĚ');
@@ -290,7 +377,8 @@ class SimCases {
     const maxAge = isChild ? 17 : ind.age[1];
     // věkový filtr: žádný opilý, zadrogovaný nebo agresivní kojenec (alkohol/drogy až od 12 let, agrese od 5 let)
     const ageMin = /ALKOHOL|DROGY/.test(symptomText) ? 12 : /AGRES/.test(symptomText) ? 5 : 0;
-    const age0 = over.age != null ? over.age : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
+    const ageQ = over.age == null ? this._ageFor(ind, isChild, isChild ? 0 : 18, isChild ? 17 : 99) : null;
+    const age0 = over.age != null ? over.age : ageQ != null ? ageQ : minAge <= maxAge ? this.ri(minAge, maxAge) : this.ri(ind.age[0], ind.age[1]);
     const age = over.age == null && age0 < ageMin ? this.ri(ageMin, Math.max(maxAge, ageMin)) : age0;
     // dopravní mechanismus (auto, cyklista, chodec, autobus, vlak) je vždy venku na silnici nebo ulici, nikdy v bytě, domově nebo u zámku
     const outdoorVeh = /CYKLISTA|CHODEC|MOTOCYKLISTA|OSOBNÍ AUTOMOBIL|NÁKLADNÍ AUTOMOBIL|DOPRAVNÍ NEHODA|AUTOBUS|VLAK/.test(symptomText);
@@ -347,12 +435,12 @@ class SimCases {
     const ownIntake = n === 1 ? this.ri(70, 150) : this.ri(90, 200);
     const dzDur = dzFirst ? (over.intake != null ? Math.round(over.intake * 0.6) : this.ri(180, 300)) : 0;
     const intake = over.intake != null ? over.intake : dzFirst ? dzDur + (n === 1 ? this.ri(70, 150) : this.ri(70, 150)) : ownIntake;
-    const poznamka = this._zosNote(ind, up, whKey);
+    const tail = this._tail(ind, D.tailMix[poiKey] ? poiKey : whKey, up, age, sex);   // popis místa + poznámka ZOS (model skutečných zápisů)
+    const poznamka = tail.note;
     const eo = { t, intake, patientCount, n, up, addr, town: townN, okres, where: whKey, sex, lat, lon };
     const radioReports = extKinds ? this._extReports(extKinds, eo) : [];
     if (dzFirst) radioReports.unshift({ id: 'dz-in', at: t + this.ri(8, 35), received: false, acknowledged: false, source: EXTMSG.intakeSource(extKinds[0], () => this.rnd()), text: EXTMSG.intakeText(extKinds[0], addr, ind.klasif), red: false });
-    const placeDescription = this._placeText(D.place && D.place[poiKey] ? poiKey : whKey);
-    const placeText = this.rnd() < 0.2 ? placeDescription.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : placeDescription;
+    const placeText = tail.place;
     const op = 'OP-' + this.pick(['A', 'B', 'C', 'D']);
     const P = this._P();
     let patientName = '', oznName, oznRel = '', phone, noteFull = poznamka;
@@ -363,14 +451,14 @@ class SimCases {
       const unconscious = /AVPU-[UPV]\b|bezvědomí|nedýchá|reaguje na (bolest|oslovení)|křeč|křeče|křečov|nereaguje|zmatený/i.test(up) || (ind.id === 'kreceU' && !/AVPU-A\b/i.test(up));
       const cl = P.caller(this._rndFn(), { patient: pat, age, sex, whKey, unconscious, roadAccident: isRoadAccident, child: age < 15 });
       oznName = cl.person.full; oznRel = cl.label; phone = cl.phone;
-      noteFull = [cl.label, poznamka].filter(Boolean).join(', ');
+      noteFull = poznamka;   // vztah volajícího je u oznamovatele (oznRel), do poznámky ZOS nepatří
     } else { oznName = this._name(); phone = this._phone(); }
     const c = this._newCase({
-      ind: ind.id, klasif: ind.klasif, typ: 'primární', up, symptoms, charakter: D.charaktery[wd.ch], where: whKey, place: placeText.toLocaleLowerCase('cs-CZ'), n, dyn, rvNeed, rvLater, rvReqKind,
-      initialDispatchRequired: n === 1 || (n === 2 && !dyn) ? ['RZP', 'RV'] : ['RZP'], initialDispatchSent: [],
+      ind: ind.id, klasif: ind.klasif, typ: 'primární', up, symptoms, charakter: D.charaktery[wd.ch], where: whKey, place: placeText, n, dyn, rvNeed, rvLater, rvReqKind,
+      initialDispatchRequired: rvNeed ? ['RZP', 'RV'] : ['RZP'], initialDispatchSent: [],
       rvP: ind.rvP || 0, zzumInd: !!ind.zzum, addr, town: town.n, okres, cast, lat, lon, age, sex, child: age < 18, burnCenterCandidate: ind.id === 'popal' && symptomText.includes('ROZSÁHLÉ'),
       desc: patientCount > 1 ? `${patientCount} ${hasCo ? 'osob s podezřením na otravu CO' : 'zranění při dopravní nehodě'}; hlavní pacient: ${this._person(age, sex)}, ${age} let.` : `${this._person(age, sex)}, ${age} let. ${ind.klasif}.`,
-      hospType, trans: this.rnd() < ind.trans, scene: ind.scene, pocet: patientCount, patientCount, patientsRemaining: patientCount, patientsHandled: 0, radioReports,
+      hospType, trans: this.rnd() < ind.trans, scene: ind.scene, sceneQ: ind.sceneQ || null, pocet: patientCount, patientCount, patientsRemaining: patientCount, patientsHandled: 0, radioReports,
       poznamka: noteFull, ozn: oznName, oznRel, patientName, ageText: this._ageText(age),
       phone,
       src: extKinds && (dzFirst || this.rnd() < 0.6) ? EXTMSG.SRC_CALL[extKinds[0]] : this.pick(['Linka 155', 'Linka 155', 'Linka 155', 'Linka 112', '112 – přeposláno']), op,

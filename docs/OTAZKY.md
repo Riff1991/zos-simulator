@@ -299,3 +299,19 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 - Nyní ne: hodnocení s reálnou referencí, chybné doporučení calltakera, klávesové zkratky, sdílení / směna dne.
 - Uživatel nabídl poslat seznam směrnic a reálná statistická data (tisíce výjezdů, ne desítky tisíc), formát si určí Claude.
 - **Zjednodušení kódu (hotovo, bez změny funkcí):** `engine.js` (3 586 ř.) rozdělen na `engine-base.js`, `engine.js` a `sim-*.js` (mixin); `ui.js` (2 100 ř.) na `ui-*.js`. Lint běží nad všemi `src/*.js` a nad sestaveným UI, testy čtou všechny části UI. Mobilní rozložení zůstává beze změn (není priorita, nemazáno).
+
+### Kalibrace podle reálných výjezdů (16. 11. 2026, export Seznam výjezdů: leden a červenec 2026, primární výjezdy)
+Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repozitáře, jen souhrnné tabulky). Řádek = výjezd jedné posádky; události = řádky „první posádka u události“ (leden 197/den, červenec 223/den).
+- **Objem:** střed (Běžné) = reálný počet událostí: ve dne (7–19) ~132 (zima) až ~143 (léto), v noci ~66 až ~80, hodinový profil a roční doba podle dat. Klidné a Nálož = procentní odchylky od středu podle rozptylu skutečných dnů (rozhodl Claude). Tím se přepisuje dřívější „~130 případů za směnu“.
+- **Poznámka ZOS a popis místa:** co nejvěrněji podle reality: formát „příznaky, věková skupina, složky - #nazev: stručný kód“, s (ne)diakritikou a velikostí písmen jako ve skutečnosti, bez vymýšlení nových variant mimo ty, které se v datech vyskytují. Příznak DYNAMICKÁ INDIKACE se chová podle dat.
+- **Časy, rychlosti, naléhavost, podíl lékaře podle indikace, typ místa a věk:** upravit podle dat (rozhodnutí: ano). Úpravy pravidel v `data.js` jsou tímto schváleny.
+- Změny zůstávají na větvi `claude/realisticke-vyzvy`; do `main` až po schválení.
+
+### Výsledek kalibrace (16. 11. 2026, větev `claude/realisticke-vyzvy`)
+- **Podklad a oprava:** podíly N jsou na úrovni **událostí** (řádky „první posádka u události“): N1 2,0 %, N2 22,6 %, N3 75,1 %. Dřívější odhad „3,6 / 29 / 67“ byl po výjezdech a pro hru neplatí. Hra po úpravě: N1 ~2,3 %, N2 ~24 %, N3 ~74 %.
+- **Objem (Běžné):** `EV_HOUR` (události za hodinu, zima a léto, prolíná se podle dne v roce). Za 12 h ~132 / 66 (zima, den / noc) a ~144 / 82 (léto). Klidné ×0,85, Nálož ×1,25 (skutečná denní směrodatná odchylka ~11 %, 90. percentil denní směny +8 až +12 %, noční +26 až +32 %).
+- **Indikace** (`ZOS_DATA.indCal`): váhy, N, `dyn`, `rvInit`, `rvPd`, `rvP`, kvantily věku, podíl žen, čas na místě `sceneQ`, podíl převozu. **DYNAMICKÁ INDIKACE:** jen u N2 (39,5 % z N2), u CMP nikdy (CMP N2 mají lékaře jen ~10 %). Sada příznaků se vybírá podle toho, zda se dynamická vylosovala. Dynamická N2: lékař hned jen výjimečně, později 5 až 30 % podle indikace.
+- **Typ místa** (`whereCal`): RD ~33 %, byt ~31 %, terén ~16 %, domov ~4 %, zdravotnické zařízení ~2 % (dřív domov 12 %, zdravotnická zařízení žádná).
+- **Popis místa a poznámka ZOS** (`placeModel`, `tailMix`, `_tail`): skládá se ze segmentů převzatých ze skutečných zápisů (RD, BOD, patra, příznaky jako „vertigo“, „zvrací“…), s původní velikostí písmen a diakritikou (diakritika se nestrhává, ve skutečnosti je zachována). Popis místa = polohové segmenty, poznámka ZOS = zbytek. Vztah volajícího zůstává jen u oznamovatele. Fráze s četností pod 4 a vlastní jména jsou vyřazeny.
+- **Časy:** prodleva výjezdu (RZP N1 / N2 / N3 medián 79 / 100 / 106 s), čas na místě (lognormálně podle indikace a N), transport (`P2`/`P3` pevná část 50 s), lékař na místě podle N. Změřeno ve hře proti skutečnosti: prodleva medián 2,0 (1,8), jízda 6,5 (6,8), na místě N2 / N3 18,3 / 14,7 (19,6 / 14,9), transport 12,7 (12,0), v zařízení 10,5 (9,9) minut.
+- **Zbývá:** podíl dětí (hra 6 %, skutečnost 8 %), sekundární převozy (nebyly v exportu), odpovědi sousedních krajů (pořadí podle plánu: žádosti sousedů).

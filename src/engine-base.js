@@ -36,14 +36,17 @@ function civilTwilight(dateISO, lat, lon) {
 // Pevná část (hledání adresy, průjezd obcí) se nepřičítá k jízdě: vozidlo jede po trase rychlostí routeru × násobek a pevnou část „stojí“ u cíle (mv.dw).
 // N3 pevná část 60 s: kalibrováno na reálných případech (N3 krátké trasy byly dřív o 3–4 min pomalejší).
 // jízdní režimy: k případu (N1–N3) a transport (P2/P3) vždy na majáky (VRZ), rychlost podle naléhavosti; RET = návrat bez majáků, RETL = návrat v „režimu N3“ na majáky na pokyn dispečera
-const DRIVE = { N1: [100, 0.92], N2: [125, 0.97], N3: [60, 1.05], N4: [60, 1.3], P2: [90, 1.05], P3: [90, 1.15], RET: [30, 1.35], RETL: [30, 1.02] };
+const DRIVE = { N1: [100, 0.92], N2: [125, 0.97], N3: [60, 1.05], N4: [60, 1.3], P2: [50, 0.97], P3: [50, 1.05], RET: [30, 1.35], RETL: [30, 1.02] };
 const LIGHT_MODES = ['N1', 'N2', 'N3', 'P2', 'P3', 'RETL'];
 function driveSec(base, mode) { const m = DRIVE[mode] || DRIVE.N3; return m[0] * Math.min(1, base / 150) + base * m[1]; }
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 // Pracovní denní rytmus: ranní špička, klidnější poledne, menší odpolední vlna.
 // Hodinový profil upraven podle výzev v říjnovém vzorku; součet denní/noční
 // části zůstává zachovaný, takže se nemění celková obtížnost ani počet případů.
-const TOD = [0.551,0.479,0.455,0.335,0.431,0.503,0.623,1.078,1.509,1.533,1.653,1.341,1.269,1.269,1.317,1.293,1.246,1.365,1.198,1.15,1.078,0.838,0.79,0.695]; // hodinový profil z říjnového vzorku (průměr = 1)
+const TOD = [0.551,0.479,0.455,0.335,0.431,0.503,0.623,1.078,1.509,1.533,1.653,1.341,1.269,1.269,1.317,1.293,1.246,1.365,1.198,1.15,1.078,0.838,0.79,0.695]; // hodinový profil z říjnového vzorku (průměr = 1)   // dřívější profil (index, průměr 1), hra používá EV_HOUR
+// Události (první posádka u události, primární výjezdy) za hodinu v průměrný den: reálná data ZZS JčK, leden 2026 (zima) a červenec 2026 (léto).
+// Mezi nimi se prolíná podle ročního období (viz _gap). Součet za den: zima 197, léto 223 událostí.
+const EV_HOUR = { winter: [5.58, 4.1, 3.65, 2.9, 3.48, 4.65, 4.68, 8.39, 12.13, 13.39, 13.03, 12.03, 11.65, 9.81, 10.74, 10.26, 10.42, 10.45, 9.19, 9.32, 7.84, 7.23, 6.52, 5.74], summer: [5.9, 4.48, 4.1, 2.68, 3.74, 3.94, 6.26, 8.9, 11.77, 12.68, 12.94, 13.35, 12.16, 11.61, 11.42, 12.13, 11.55, 11.77, 12.61, 11.9, 11.61, 9.94, 9.23, 6.29] };
 const EXTMSG = typeof ZOS_EXTMSG !== 'undefined' ? ZOS_EXTMSG : require('./messages.js');
 const WX = typeof ZOS_WX !== 'undefined' ? ZOS_WX : require('./weather.js');
 const BUSY = ['call', 'enroute', 'onscene', 'transport', 'handover'];
@@ -90,4 +93,4 @@ const MU_DXK = {
   N: { 1: ['Těžká intoxikace, porucha vědomí', 'Kolaps, zástava oběhu'], 2: ['Intoxikace', 'Dehydratace, kolaps'], 3: ['Zvracení a průjem', 'Nevolnost, bolest hlavy', 'Úpal, slabost'], 4: ['Exitus na místě'] },
 };
 
-if (typeof module !== 'undefined') module.exports = { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK };
+if (typeof module !== 'undefined') module.exports = { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EV_HOUR, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK };

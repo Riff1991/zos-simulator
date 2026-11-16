@@ -64,16 +64,24 @@ for (const c of P) {
   if (/při vědomí/.test(up) && /bezvědomí/.test(up)) add('při vědomí + bezvědomí', up.slice(0, 80));
   if (c.patientName && c.oznRel === 'volá pacient sám' && c.patientName.split(' ').reverse().join(' ') !== c.ozn) add('„volá pacient sám“, ale jiné jméno', `${c.ozn} vs ${c.patientName}`);
   if (c.oznRel === 'volá pacient sám' && /AVPU-U|bezvědomí|nedýchá/.test(up)) add('v bezvědomí volá sám', up.slice(0, 60));
+  // dynamická indikace: jen u N2 (podle reálných dat), u CMP ne; dynamická N2 nemá lékaře hned
+  if (/DYNAMICKÁ INDIKACE/i.test(up) && c.n !== 2) add('dynamická indikace mimo N2', `N${c.n} ${c.klasif}`);
+  if (/DYNAMICKÁ INDIKACE/i.test(up) && c.klasif === 'CMP') add('dynamická indikace u CMP', up.slice(0, 60));
+  if (c.dyn && c.rvNeed && !c.nDopl) add('dynamická N2 s lékařem hned', c.klasif);   // výjimka: zvýšení naléhavosti z datové zprávy (nDopl) lékaře vyžaduje
 }
 // četnosti
 const nCount = { 1: 0, 2: 0, 3: 0, 4: 0 }; for (const c of P) nCount[c.nOrig]++;
 const share = k => nCount[k] / P.length;
 const perShift = cases.length / 6;
 const dps = P.filter(c => c.where === 'domov').length / P.length;
+const n2 = P.filter(c => c.nOrig === 2), dynShare = n2.length ? n2.filter(c => /DYNAMICKÁ INDIKACE/i.test(c.up || '')).length / n2.length : 0;
+const emptyTail = P.filter(c => !c.place && !c.poznamka).length / P.length;
 const names = new Set(cases.map(c => c.ozn)).size / cases.length;
 const ranges = [
-  ['podíl N1', share(1), 0.015, 0.08], ['podíl N2', share(2), 0.2, 0.42], ['podíl N3', share(3), 0.5, 0.75],
-  ['výzev za směnu', perShift, 95, 150], ['podíl domov pro seniory', dps, 0.03, 0.15], ['unikátnost oznamovatelů', names, 0.85, 1.01],
+  // cíle podle reálných událostí (leden + červenec 2026): N1 2 %, N2 23 %, N3 75 %, DYNAMICKÁ INDIKACE ~40 % z N2, domov ~4 %, ~100 událostí / 12 h
+  ['podíl N1', share(1), 0.012, 0.05], ['podíl N2', share(2), 0.17, 0.30], ['podíl N3', share(3), 0.66, 0.82],
+  ['výzev za směnu', perShift, 85, 130], ['podíl domov pro seniory', dps, 0.02, 0.08], ['unikátnost oznamovatelů', names, 0.85, 1.01],
+  ['podíl dynamické indikace z N2', dynShare, 0.28, 0.5], ['podíl bez popisu místa i poznámky', emptyTail, 0, 0.04],
 ];
 let fail = false;
 console.log(`Výzev: ${cases.length} (${perShift.toFixed(0)} za směnu), primárních ${P.length}`);

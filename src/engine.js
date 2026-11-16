@@ -2,7 +2,7 @@
 // Vyžaduje globální ZOS_DATA (data.js).
 // Třída Sim je rozdělena do souborů sim-*.js (přimíchány níže); sdílené pomocné funkce a konstanty jsou v engine-base.js.
 
-if (typeof module !== 'undefined') var { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK } = require('./engine-base.js'); // jen Node; v prohlížeči jsou to globály z engine-base.js
+if (typeof module !== 'undefined') var { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EV_HOUR, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK } = require('./engine-base.js'); // jen Node; v prohlížeči jsou to globály z engine-base.js
 if (typeof module !== 'undefined') var SimRadio = require('./sim-radio.js');
 if (typeof module !== 'undefined') var SimNeighbors = require('./sim-neighbors.js');
 if (typeof module !== 'undefined') var SimCases = require('./sim-cases.js');
@@ -456,11 +456,12 @@ class Sim {
     if (urgency === 4) return c.state === 'base' ? this.rr(55, 115) : this.rr(15, 35);
     // z reálných výjezdů: RZP N1 1–2 min, N2 a N3 1–3 min, lékař (RV) 1–5 min; občasné zpoždění je herní událost
     const atBase = c.state === 'base';
-    const lateChance = urgency === 1 ? 0.02 : urgency === 2 ? 0.06 : 0.1;
-    if (c.type === 'RV') return atBase ? this.rr(60, 300) : this.rr(20, 60);
+    // kalibrace na reálné prodlevy výzva → výjezd (leden + červenec 2026): RZP medián N1 79 s, N2 100 s, N3 106 s (p90 136 / 161 / 168 s), RV medián 107–132 s (p90 168–254 s)
+    const lateChance = urgency === 1 ? 0.01 : urgency === 2 ? 0.03 : 0.04;
+    if (c.type === 'RV') return atBase ? (urgency === 1 ? this.rr(50, 200) : this.rr(60, 230)) : this.rr(20, 60);
     if (this.rnd() < lateChance) return this.rr(201, 260);
     if (!atBase) return this.rr(15, 35);
-    return urgency === 1 ? this.rr(55, 120) : urgency === 2 ? this.rr(65, 180) : this.rr(70, 200);
+    return urgency === 1 ? this.rr(50, 110) : urgency === 2 ? this.rr(55, 165) : this.rr(55, 175);
   }
   _lzActivationExpected(c) {
     const range = this._isLzsDay() ? ((c && c.activationDay) || ZOS_DATA.lzs.activationDay) : ((c && c.activationNight) || ZOS_DATA.lzs.activationNight);

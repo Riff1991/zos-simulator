@@ -1,5 +1,5 @@
 // Herní smyčka (tick) – část simulačního jádra (metody třídy Sim, přimíchané v engine.js).
-if (typeof module !== 'undefined') var { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK } = require('./engine-base.js'); // jen Node; v prohlížeči jsou to globály z engine-base.js
+if (typeof module !== 'undefined') var { R_EARTH, hav, roadKm, speedFor, travelSec, heliSec, civilTwilight, DRIVE, LIGHT_MODES, driveSec, clamp01, TOD, EV_HOUR, EXTMSG, WX, BUSY, DEPT, DEPTN, DEPT_ACC, KRUHAC, HO_Q, FIRST, LAST, MU_NB, MU_HOSP, MU_COL, RAIL_IDX, railIndex, MU_BURN, MU_DXK } = require('./engine-base.js'); // jen Node; v prohlížeči jsou to globály z engine-base.js
 class SimLoop {
   // ---------- smyčka ----------
   step(dt) {
@@ -145,7 +145,7 @@ class SimLoop {
         c.n = 2; c.nDopl = 2; c.dyn = false; c.rvNeed = true;
         c.symptoms = (c.symptoms || []).filter(x => !/NEDÝCHÁ|BEZVĚDOMÍ|AVPU-U/i.test(x)).concat(['probírá se', 'dýchá']);
         c.up = c.symptoms.join(', ');
-        c.poznamka = [c.poznamka, 'opakované volání – pacient se probírá, dýchá'].filter(Boolean).join(', ');
+        c.poznamka = [c.poznamka, 'probírá se, dýchá'].filter(Boolean).join(', ');
         this.L('warn', `${c.num}: opakované volání – pacient se probírá a dýchá, doplňková naléhavost N1→N2`, c.id);
         for (const k of c.crews.map(id => this.crewOf(id)).filter(k => k && (k.state === 'call' || k.state === 'enroute') && k.type !== 'LZS')) this._zosCall(k, c, 'pacient se probírá, měníme naléhavost na N2.');
       }
@@ -159,7 +159,7 @@ class SimLoop {
           c.symptoms = (c.symptoms || []).filter(x => !x.toLocaleUpperCase('cs-CZ').includes('DYNAMICKÁ INDIKACE'));
           c.up = c.symptoms.join(', ');
         }
-        if (!/opakované volání/.test(c.poznamka || '')) c.poznamka = [c.poznamka, 'opakované volání – zhoršení stavu'].filter(Boolean).join(', ');
+        if (!/zhoršení stavu/.test(c.poznamka || '')) c.poznamka = [c.poznamka, 'zhoršení stavu'].filter(Boolean).join(', ');
         this.L('warn', `${c.num}: opakované volání – zhoršení stavu, nově N${c.n}`, c.id);
       }
       if (t - c.waitSince > 2700 && !c.arrived) { this._close(c, true); return; }
@@ -357,9 +357,9 @@ class SimLoop {
         if (c.type === 'RZP' && cs.rvLater && cs.rvReqAt == null && !cs.rvReq) cs.rvReqAt = t + this.rr(240, 480);
         let dur;
         if (c.type === 'MU') dur = this.rr(1800, 2700);
-        else if (doc) dur = this.rr(600, 1200);
+        else if (doc) dur = ZOS_DATA.rvSceneQ && !cs.mu ? this._logn(ZOS_DATA.rvSceneQ['N' + Math.min(3, cs.n || 2)] || ZOS_DATA.rvSceneQ.N2, 4) : this.rr(600, 1200);
         else if (cs.mu) dur = this.rr(720, 1200);
-        else dur = this.rr(cs.scene[0], cs.scene[1]) * 60;
+        else dur = cs.sceneQ ? this._logn(cs.sceneQ, 3) * ({ 1: 1.12, 2: 1.03, 3: 0.92 }[cs.n] || 1) : this.rr(cs.scene[0], cs.scene[1]) * 60;   // násobek podle naléhavosti: reálný medián RZP N1 25,5 / N2 19,6 / N3 14,9 min
         if (cs.exitus) dur = 30;
         else if (cs.fate === 'signs' && !cs.mu) dur = this.rr(60, 150);
         c.until = t + dur;
