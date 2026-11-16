@@ -99,15 +99,17 @@ const ZOS_TUTORIAL = (() => {
       { t: (sim, T) => `Volných RZP v oblasti ČK: ${sim._freeRzp('ČK')} (před tím ${T.free}). Pokrytí kraje: ${sim.s.cov.last == null ? '–' : (sim.s.cov.last * 100).toFixed(1)} %. Posádka se po výjezdu vrátí a pokrytí se obnoví. Dobrý dispečer hlídá, aby žádná oblast nezůstala prázdná.`, next: true, pause: true },
     ] },
     { title: 'Mimořádná událost', setup(sim, T) {
-      T.c = sim.spawnScriptedMU({ town: 'Písek', cas: 20, groupsRequired: 6, aircraft: false });
+      T.c = sim.spawnScriptedMU({ town: 'Písek', cas: 20, groupsRequired: 6, aircraft: false, direct: false });
     }, steps: [
-      { t: 'Hromadná nehoda u Písku: podezření na MU (mimořádnou událost). Počkej na výzvu, pak v detailu zvol roli „Řešit MU“; kolega (simulace) převezme běžný provoz.', fast: 5, done: (s, T) => ready(T.c) },
-      { t: 'V detailu klikni „Řešit MU“ a pak „Požádat o modul MU“.', hl: '#detail', pause: true, done: (sim, T) => sim.s.muPlayerRole === 'mu' && T.c.mu.requestSent },
-      { t: 'Vyšli první posádky: RZP a RV (N1). Od vyhlášení MU se N3 odkládají.', pause: true, done: (sim, T) => hasType(sim, T.c, 'RZP') && T.c.docAssigned },
-      { t: 'Klikni „Vyžádat nemocniční součinnost“. První posádka brzy potvrdí rozsah.', hl: '#detail', pause: true, done: (s, T) => !!T.c.mu.hospitalInfoRequested },
-      { t: 'Čekej, až první posádka potvrdí rozsah (METHANE).', fast: 10, done: (s, T) => T.c.mu.phase === 'declared' },
-      { t: 'MU je potvrzena. Požádej o 2 další skupiny a posílej další RZP. Od 30. minuty pomáhají kraje Vysočina, Plzeňský, Středočeský, Jihomoravský a Dolní Rakousko, do ~2 h je MU hotová.', hl: '#detail', pause: true, done: (s, T) => T.c.mu.reinforcementRequests > 0 },
-      { t: 'Posílej RZP, dokud je „zbývá ošetřit“ větší než 0. Hra běží zrychleně; kdykoli můžeš pokračovat tlačítkem Dál.', fast: 30, next: true, done: (s, T) => T.c.status === 'closed' },
+      { t: 'Hromadná nehoda u Písku: podezření na MU (SUSP MU). Počkej na výzvu a v detailu zvol „Řešit MU (401)“; simulovaný kolega převezme běžný provoz.', fast: 5, done: (s, T) => ready(T.c) },
+      { t: 'V detailu klikni „Řešit MU (401)“. Podle směrnice SM01.06 řídíš MU ty, běžný provoz obsluhuje kolega.', hl: '#detail', pause: true, done: (sim) => sim.s.muPlayerRole === 'mu' },
+      { t: 'Vyšli první posádky: RZP a RV (N1). O vyhlášení MU rozhodne vedoucí první posádky na místě.', pause: true, done: (sim, T) => hasType(sim, T.c, 'RZP') && T.c.docAssigned },
+      { t: 'Čekej, až vedoucí první posádky vyhlásí MU. Od vyhlášení se N3 odkládají a N2 jede jen jako dynamická.', fast: 10, done: (s, T) => T.c.mu && T.c.mu.phase === 'declared' },
+      { t: 'MU je vyhlášena. V panelu klikni „Odeslat avízo MU“ a „Informovat KM a zjistit kapacity“. Na základnách zůstává RZP pro běžný provoz.', hl: '#detail', pause: true, done: (s, T) => T.c.mu.avizoAt != null && T.c.mu.hospContacted },
+      { t: 'Po příjezdu první posádky vyžádej situační zprávu METHANE (po ~30 min žádej aktualizaci).', hl: '#detail', fast: 10, done: (s, T) => T.c.mu.mt.n >= 1 },
+      { t: 'Pošli další RZP, vůz MU a požádej sousední ZZS (Vysočina, Plzeň). Cizí posádky přijedou za 30–60 min.', hl: '#detail', pause: true, done: (s, T) => T.c.mu.requestSent && Object.keys(T.c.mu.nb).length > 0 },
+      { t: 'Odsun: vedoucí odsunu volá v panelu Rádio (TIK, priorita, UPV). Vyber nemocnici podle kapacit z KM; polytrauma patří do ČB. Zrychli čas, kdykoli můžeš pokračovat tlačítkem Dál.', hl: '#radio-live', fast: 30, next: true, done: (s, T) => T.c.mu.endReady || T.c.status === 'closed' },
+      { t: 'Vedoucí zdravotnické složky hlásí ukončení zásahu. Klikni „Potvrdit ukončení MU“.', hl: '#detail', pause: true, done: (s, T) => T.c.status === 'closed' },
     ] },
     { title: 'Bizarní finále', setup(sim, T) {
       T.x = sim.spawnScripted(P({ ind: 'nzo', n: 1, symptoms: ['Nedýchá', 'AVPU-U', 'Dospělý'], age: 52, sex: 'M', where: 'priroda', at: at('Třeboň', -0.008, 0.012, 'u rybníka Svět, okolí obce Třeboň'), fate: 'wakes', wakeIn: 140, lzsTech: false }, { escort: false }));

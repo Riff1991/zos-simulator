@@ -256,3 +256,21 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 - Upřesnění (15. 11. 2026): u Rakouska jen LZS, pozemní pomoc se prakticky nepoužívá (žádné rakouské pozemní základny). Bavorsko zatím beze změny (příhraniční pás pozemní i LZS), čeká na potvrzení.
 
 - Základny sousedů (16. 11. 2026): upraveno podle veřejné mapy obcí se základnou ZZS (zachrannasluzba.cz, souřadnice a názvy obcí): Vysočina Telč, Jemnice, Počátky, Pacov, Kamenice nad Lipou; Plzeňský Sušice, Horažďovice, Nepomuk; Středočeský Březnice, Votice, Krásná Hora nad Vltavou, Sedlčany. Bavorsko jen LZS. Limit vzdálenosti cizí pozemní posádky 50 km. Seznam FR se nemění.
+
+### MU podle SM01.06 rev. 8 (8. 1. 2026) – rozhodnutí z 16. 11. 2026 (verze 0.26.0)
+- Podklad: směrnice SM01.06 rev. 8 + příloha 2 (check-listy ZOS 401/403/405, odsunový formulář, METHANE, kontaktní místa). Nahrazuje starší rev. 4 a dřívější aproximaci.
+- Hráč si role volí jako dřív (MU = 401 / běžný provoz = 402). Simulovaný kolega řídí tu druhou část **průběžně** s lidskou prodlevou (dřív po prvním kroku přestal). Dokud hráč roli nezvolí, MU řídí kolega.
+- Hráč klikne jen klíčové kroky z check-listu 401: avízo MU, vyslání sil (ponechání RZP pro běžný provoz: 1× na základně s více RZP, v ČB 2×), modul MU, METHANE a aktualizace po ~30 min, kontaktní místa nemocnic a kapacity (403), sousední ZZS / LZS / DRNR, SPIS na žádost VZS, koroner při úmrtí, odsun pacientů, potvrzení konce.
+- Pacienti jsou jednotliví (TIK, barva I–IV, typ P/P+T/T/I, dítě, UPV, pracovní diagnóza). Skutečný stav je skrytý; ZOS zná METHANE počty a ohlášené odsuny. Počet skupin se odvozuje z počtu zraněných (ne náhodně).
+- Odsun: vedoucí odsunu volá rádiem (TIK, barva, UPV, dospělý/dítě, vůz), hráč vybírá nemocnici podle kapacit z kontaktních míst. RV nevozí (jsou vedoucí lékař/třídění). RZP 1 pacient (I/II) nebo 2 (III), vůz MU až 4 (III), LZS 1 (I). Transportní posádka se po předání vrací na místo, dokud tam jsou pacienti.
+- Konec MU je dán hlášením vedoucího zdravotnické složky (všichni odvezeni nebo mrtví, koroner přijel) a potvrzením ZOS, ne časem. Sousední kraje přijíždějí na žádost (obojí: hráč může žádat dřív, jinak se po 30 min nabídnou Vysočina a Plzeňsko).
+- Během MU: N1 jako dosud, N2 jen RZP (dynamická indikace), N3 se odkládá, sekundární převozy se odkládají.
+- Nesimulováno (jen log/automaticky): telefonáty vedení a tiskové mluvčí, SMS skupinám, personální posily lékařů/NLZP (zjednodušeno na aktivaci záloh), papírové TIK a odsunový formulář, popáleninové centrum, kanály rádia jen jako text.
+
+### Katalog MU – rozhodnutí z 16. 11. 2026 (verze 0.27.0)
+- MU se losuje z katalogu ~35 scénářů (`ZOS_DATA.muTypes`) v 5 skupinách: doprava, budovy a požáry, hromadné akce (včetně blesku na táboře či akci při bouřce a hromadných onemocnění na táboře), nebezpečné látky, útok (AMOK, bomba). Letecká nehoda u letiště ČB 4–60 osob (malé dopravní letadlo i sportovní).
+- Místo je vždy reálné: objekt z OSM (hotel, tábor/kemp, škola, kino/kulturní dům, supermarket, pivovar, pila, stadion, koupaliště, aquapark, domov seniorů), bod na silnici podle třídy (D3 / I. / II. tř.), železniční stanice či přejezd, letiště ČB. Typ určuje rozsah a skladbu zraněných (děti, popáleniny, inhalace, intoxikace).
+- Počasí a sezóna: blesk jen při bouřce, tábory v létě, školní autobus ve školní době, mlha/náledí na dálnici, zřícení střechy při sněhu, kolaps davu při vedru.
+- Typ poranění podle formuláře: P = popálenina, T = trauma, P+T, I = inhalační trauma; navíc N = neúrazové (intoxikace, onemocnění). Polytrauma je diagnóza (kritéria pro traumacentrum), ne typ poranění.
+- Popáleniny: rozsáhlé popáleniny I. priority patří do popáleninového centra (FNKV Praha, FN Brno, FN Ostrava), letecky; centra jsou v nabídce odsunu jen pro LZS.
+- Útok a nebezpečné látky mají zónu: do vyhlášení bezpečné zóny (PČR/HZS, 10–25 min) se na místě netřídí ani neodsouvá.

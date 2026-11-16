@@ -5,7 +5,7 @@ global.ROUTER = require('../src/router.js');
 { const b = require('fs').readFileSync(__dirname + '/../site/graph.wasm'); ROUTER.init(b.buffer.slice(b.byteOffset, b.byteOffset + b.length)); }
 global.ZOS_POI = JSON.parse(require('fs').readFileSync(__dirname + '/../site/poi.json', 'utf8'));
 global.ZOS_ADDR = JSON.parse(require('fs').readFileSync(__dirname + '/../site/addr.json', 'utf8'));
-const { Sim } = require('../src/engine.js');
+const { Sim, hav } = require('../src/engine.js');
 
 function bot(sim) {
   const s = sim.s;
@@ -22,9 +22,6 @@ function bot(sim) {
       const r = sim.suggest(c.id, 'RZP')[0];
       if (r) sim.assign(c.id, r.crewId);
       if (c.rvNeed) { const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId); }
-    }
-    if ((c.status === 'active') && c.mu && c.mu.left > 0) {
-      const r = sim.suggest(c.id, 'RZP')[0]; if (r && c.crews.length < 8) sim.assign(c.id, r.crewId);
     }
     if (c.coroner && c.coroner.state === 'available') sim.sendAgency(c.id, 'cor');
     if (c.status === 'active' && c.rvReq && !c.rvReq.cancelled && !c.rvReq.satT && !c.docAssigned) {
@@ -929,4 +926,142 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   }
   if (withCo < 3) throw new Error('v náhodných případech chybí CO (' + withCo + ')');
   console.log('CO jen u Intoxikace, dítě s CO max N2, CO v budově, METHANE jen u MU true', withCo, 'případů CO,', childCo, 'dětí');
+}
+
+// ---- 0.26.0: MU podle SM01.06 rev. 8 ----
+{
+  const mkMu = seed => { const sim = new Sim({ seed, mode: 'shift', startHour: 9, secondaryEnabled: false, muEnabled: false, diff: 0.6, radio: 'interactive' }); sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null; return sim; };
+  const run = (sim, c, n, fn) => { for (let i = 0; i < n && c.status !== 'closed'; i++) { if (fn) fn(i); sim.step(10); } };
+  // 1) hráč roli nezvolil: kolega řídí MU průběžně až do konce (vyhlášená při hovoru i suspektní)
+  const dirsOf = [];
+  for (const direct of [true, false]) {
+    const sim = mkMu(31 + (direct ? 0 : 1)), c = sim.spawnScriptedMU({ town: 'Písek', cas: 18, direct });
+    run(sim, c, 3500);
+    const m = c.mu;
+    if (c.status !== 'closed' || !m.ended || m.avizoAt == null || m.mt.n < 2) throw new Error('MU s kolegou se nedokončila: ' + c.status + ' ended=' + m.ended + ' mt=' + m.mt.n);
+    if (m.pts.some(p => !['delivered', 'dead'].includes(p.st))) throw new Error('MU skončila, ale zůstal pacient na místě');
+    if (m.dirs.length !== m.pts.filter(p => p.st === 'delivered').length) throw new Error('odsunový formulář nesedí s předanými pacienty');
+    if (m.dirs[0].color !== 1) throw new Error('první odsunutý nemá I. prioritu');
+    if (!c.score || !(c.score.total > 50)) throw new Error('MU s kolegou má nízké hodnocení: ' + JSON.stringify(c.score));
+    dirsOf.push(JSON.stringify(m.dirs));
+  }
+  // determinismus
+  { const sim = mkMu(31), c = sim.spawnScriptedMU({ town: 'Písek', cas: 18, direct: true }); run(sim, c, 3500); if (JSON.stringify(c.mu.dirs) !== dirsOf[0]) throw new Error('MU není deterministická'); }
+  // 2) hráč řeší MU: kolega MU nerozhoduje (žádné avízo, žádné posily, relace odsunu čekají na hráče)
+  {
+    const sim = mkMu(35), c = sim.spawnScriptedMU({ town: 'Písek', cas: 18, direct: true });
+    sim.s.muPlayerRole = 'mu';
+    run(sim, c, 40);
+    if (c.mu.avizoAt != null || c.crews.length) throw new Error('kolega zasahuje do MU, ačkoli ji řeší hráč');
+    // hráč-bot dokončí MU celou cestou přes API
+    run(sim, c, 3500, () => {
+      const m = c.mu;
+      if (m.phase === 'suspected' || c.status === 'waiting') for (const ty of ['RZP', 'RV']) if (!c.crews.some(id => sim.crewOf(id).type === ty)) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); }
+      if (m.phase === 'declared') {
+        sim.muAvizo(c.id); sim.muContactHospitals(c.id); sim.requestMuMethane(c.id); sim.requestMuModule(c.id); sim.muRequestNeighbor(c.id, 'vys');
+        for (const [ty, n] of [['RZP', m.groupsRequired], ['RV', 2], ['MU', 1], ['LZS', 1]]) if (c.crews.filter(id => sim.crewOf(id).type === ty).length < n) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); }
+        if (m.spis.req) sim.muCallSpis(c.id); if (m.coroner.known) sim.muCallCoroner(c.id); if (m.endReady) sim.confirmMuEnd(c.id);
+      }
+      for (const e of sim.s.radioQ) { if (e.state === 'calling') sim.radioAnswer(e.id); else if (e.state === 'open' && e.kind === 'muodsun') sim.radioReply(e.id, e.best); }
+    });
+    if (c.status !== 'closed' || !c.mu.ended) throw new Error('hráč-bot nedokončil MU');
+  }
+  // 3) ponechání sil pro běžný provoz: na základně s víc RZP zůstává jedna, v ČB dvě
+  {
+    const sim = mkMu(33), c = sim.spawnScriptedMU({ town: 'České Budějovice', cas: 20, direct: true });
+    sim.step(60);
+    for (let i = 0; i < 80; i++) { const x = sim.suggest(c.id, 'RZP')[0]; if (!x || !sim.assign(c.id, x.crewId).ok) break; }
+    const CB = ['cb', 'cbpr', 'cbpl', 'cbvl'];
+    const live = sim.s.crews.filter(k => k.type === 'RZP' && !k.ext && !k.res && k.state !== 'off');
+    const cbGroup = live.filter(k => CB.includes(k.st)), keepCb = cbGroup.filter(k => k.caseId !== c.id).length;
+    if (keepCb < Math.min(2, cbGroup.length)) throw new Error('v ČB nezůstaly 2 RZP pro běžný provoz (' + keepCb + ')');
+    for (const st of new Set(live.map(k => k.st))) { if (CB.includes(st)) continue; const g = live.filter(k => k.st === st); if (g.length > 1 && g.filter(k => k.caseId !== c.id).length < 1) throw new Error('základna ' + st + ' přišla o poslední RZP'); }
+  }
+  // 4) volba nemocnice: plná nemocnice a polytrauma mimo ČB jsou horší volba
+  {
+    const sim = mkMu(34), c = sim.spawnScriptedMU({ town: 'Písek', cas: 18, direct: true }), m = c.mu;
+    const p = m.pts.find(q => q.color === 1 && q.kind === 'P+T') || Object.assign(m.pts.find(q => q.color === 1), { kind: 'P+T', upv: false });
+    const H = id => ZOS_DATA.hospitals.find(h => h.id === id);
+    m.hosp['h-pi'].rep = { upv: 3, jip: 3, std: 3 }; m.hosp['h-cb'].rep = { upv: 5, jip: 5, std: 5 }; m.hosp['h-st'].rep = { upv: 0, jip: 0, std: 0 };
+    const cb = sim._muHospScore(c, p, H('h-cb')), pi = sim._muHospScore(c, p, H('h-pi')), st = sim._muHospScore(c, p, H('h-st'));
+    if (!(cb < pi && pi < st + 1000 && st > 90)) throw new Error('hodnocení cíle odsunu: ČB ' + cb + ', Písek ' + pi + ', Strakonice ' + st);
+    const q3 = m.pts.find(x => x.color === 3); m.hosp['h-pi'].rep.std = 0; m.hosp['h-ta'].rep = { upv: 1, jip: 1, std: 4 };
+    if (!(sim._muHospScore(c, q3, H('h-pi')) > 90)) throw new Error('plná nemocnice není penalizovaná');
+  }
+  // 5) při vyhlášené MU: N2 s RV se mění na dynamickou, sekundární převoz a N3 se odkládají
+  {
+    const sim = mkMu(36), c = sim.spawnScriptedMU({ town: 'Písek', cas: 18, direct: true });
+    sim.s.muPlayerRole = 'mu'; sim.step(60);
+    sim.s.ev.nextSpawn = sim.s.t;
+    let adj = null;
+    for (let i = 0; i < 600 && !adj; i++) { sim.step(10); adj = sim.s.cases.find(x => x.muAdj); }
+    if (!adj || adj.rvNeed !== false || (adj.initialDispatchRequired || []).includes('RV')) throw new Error('N2 se při MU nezměnila na dynamickou');
+    const n3 = sim.s.cases.find(x => !x.mu && x.n === 3 && x.status === 'waiting');
+    if (n3) { const k = sim.suggest(n3.id, 'RZP')[0]; if (k && sim.assign(n3.id, k.crewId).ok) throw new Error('N3 se při MU nemá vysílat'); }
+  }
+  // 6) uložená směna ze staré verze (MU jen s čítačem) se obnoví a běží
+  {
+    const sim = mkMu(37), c = sim.spawnScriptedMU({ town: 'Tábor', cas: 12, direct: true });
+    sim.step(120);
+    const raw = JSON.parse(JSON.stringify(sim.s)), oc = raw.cases.find(x => x.id === c.id);
+    oc.mu = { cas: 12, left: 5, phase: 'declared', aircraft: false, groupsRequired: 4, requestSent: false, sceneReportSent: true, firstMU: 100 };
+    const re = new Sim({}, raw), rc = re.caseOf(c.id);
+    if (!rc.mu.pts || rc.mu.pts.length !== 12) throw new Error('migrace staré MU selhala');
+    for (let i = 0; i < 900; i++) re.step(10);
+  }
+  console.log('MU 0.26: kolega i hráč dotáhnou MU, rezervy, volba nemocnice, N2/N3, migrace true');
+}
+
+// ---- 0.27.0: katalog MU ----
+{
+  const D = ZOS_DATA, T = D.muTypes;
+  const mk = seed => { const sim = new Sim({ seed, mode: 'shift', startHour: 9, secondaryEnabled: false, muEnabled: false, diff: 0.6, radio: 'interactive' }); sim.s.ev.nextSpawn = sim.s.ev.nextSecond = 999999; sim.s.ev.nextMU = null; return sim; };
+  if (T.length < 30 || new Set(T.map(t => t.g)).size < 5) throw new Error('katalog MU je malý: ' + T.length + ' typů');
+  if (new Set(T.map(t => t.id)).size !== T.length) throw new Error('duplicitní id typu MU');
+  // 1) každý typ: reálné místo v kraji, rozsah, počet pacientů, shoda s místem
+  const sim = mk(41);
+  for (const t of T) for (let i = 0; i < 12; i++) {
+    const c = sim.spawnScriptedMU({ type: t.id, direct: false }), m = c.mu;
+    if (!(c.lat > 48.5 && c.lat < 49.75 && c.lon > 13.3 && c.lon < 15.7)) throw new Error(t.id + ': místo mimo kraj ' + c.lat + ',' + c.lon);
+    if (!c.addr || c.addr.length < 5) throw new Error(t.id + ': prázdná adresa');
+    if (m.cas < t.cas[0] || m.cas > t.cas[1] || m.pts.length !== m.cas) throw new Error(t.id + ': počet pacientů ' + m.cas);
+    if (m.type !== t.id || m.label !== t.l) throw new Error(t.id + ': typ se nepropsal');
+    const pls = Array.isArray(t.place) ? t.place : [t.place];
+    if (pls.every(p => p.k === 'poi' && p.re) && !pls.some(p => new RegExp(p.re, 'i').test(c.addr))) throw new Error(t.id + ': adresa neodpovídá typu místa: ' + c.addr);
+    if (t.place.k === 'airport' && hav(c.lat, c.lon, D.airport.lat, D.airport.lon) > 6) throw new Error(t.id + ': mimo letiště');
+    for (const p of m.pts) if (!['T', 'P', 'P+T', 'I', 'N'].includes(p.kind) || !p.dx) throw new Error(t.id + ': vadný pacient');
+    c.status = 'closed';
+  }
+  // 2) počasí a sezóna: v zimě bez bouřky žádný blesk ani tábor; v létě při bouřce blesk; v červenci žádná škola
+  const base = { live: true, thunder: false, fog: false, ice: false, snow: false, hot: false, school: true, mo: 1, h: 14, temp: 0 };
+  for (let i = 0; i < 400; i++) { const t = sim._muPickType(base); if ((t.need && t.need !== 'school') || (t.m && !t.m.includes(1))) throw new Error('v zimě bez počasí vybráno ' + t.id); }
+  const storm = Object.assign({}, base, { mo: 7, h: 15, thunder: true, school: false }); let lightning = 0;
+  for (let i = 0; i < 400; i++) { const t = sim._muPickType(storm); if (/^blesk|^bourka/.test(t.id)) lightning++; if (t.need === 'school') throw new Error('v červenci škola: ' + t.id); }
+  if (lightning < 20) throw new Error('při bouřce chybí blesk (' + lightning + ')');
+  const seen = new Set(); for (let i = 0; i < 600; i++) seen.add(sim._muPickType(sim._muCtx()).id);
+  if (seen.size < 18) throw new Error('málo různých MU z náhodného výběru: ' + seen.size);
+  // 3) skladba: dětský tábor s nemocí = děti, neúrazové, převaha III; blesk má popáleniny; požár inhalaci
+  { const m = sim.spawnScriptedMU({ type: 'tabor-noro', cas: 40 }).mu; if (!m.pts.every(p => p.kind === 'N') || m.pts.filter(p => p.color === 3).length < 28 || m.pts.filter(p => p.child).length < 30) throw new Error('tábor s nemocí má špatnou skladbu'); }
+  { const m = sim.spawnScriptedMU({ type: 'blesk-tabor', cas: 60 }).mu; if (!m.pts.some(p => p.burn) || m.pts.filter(p => p.child).length < 40) throw new Error('blesk na táboře: chybí popáleniny nebo děti'); }
+  { const m = sim.spawnScriptedMU({ type: 'pozar-hotel', cas: 60 }).mu; if (m.pts.filter(p => p.kind === 'I').length < 20) throw new Error('požár hotelu: chybí inhalace'); }
+  // 4) zóna: u útoku se do vyhlášení bezpečné zóny netřídí a neodsouvá, potom ano
+  {
+    const s2 = mk(42), c = s2.spawnScriptedMU({ type: 'amok-skola', cas: 20, direct: true }), m = c.mu;
+    for (let i = 0; i < 1500 && m.sceneAt == null; i++) s2.step(10);
+    if (m.accessAt == null || !(m.accessAt > m.sceneAt + 500)) throw new Error('zóna: chybí zpoždění přístupu');
+    while (s2.s.t < m.accessAt - 5) { s2.step(5); if (m.pts.some(p => p.st !== 'scene')) throw new Error('zóna: třídění před vyhlášením bezpečné zóny'); }
+    for (let i = 0; i < 100; i++) s2.step(10);
+    if (!m.pts.some(p => p.st !== 'scene')) throw new Error('zóna: třídění nezačalo po vyhlášení bezpečné zóny');
+  }
+  // 5) popáleninová centra: nabídka jen pro LZS a jen u rozsáhlých popálenin; centrum vyhrává
+  {
+    const s3 = mk(43), c = s3.spawnScriptedMU({ type: 'vybuch-zavod', cas: 20, direct: true }), m = c.mu, p = m.pts[0];
+    Object.assign(p, { color: 1, kind: 'P', burn: true, burnExt: true, tc: false, st: 'asked', upv: false });
+    const crew = s3.s.crews.find(k => k.type === 'RZP');
+    const eLzs = s3._muOdsunRq(c, crew, { vid: 'lzs', code: 'KR13', type: 'LZS', cap: 1 }, [p]);
+    const eRzp = s3._muOdsunRq(c, crew, { vid: crew.id, code: crew.code, type: 'RZP', cap: 2 }, [p]);
+    if (!eLzs.opts.some(o => o.hid === 'h-fnkv') || !/^h-(fnkv|brno|ostrava)$/.test(eLzs.best)) throw new Error('LZS s popáleninou nemá popáleninové centrum jako volbu: ' + eLzs.best);
+    if (eRzp.opts.some(o => ['h-fnkv', 'h-brno', 'h-ostrava'].includes(o.hid))) throw new Error('RZP nemá vozit do vzdáleného popáleninového centra');
+  }
+  console.log('katalog MU 0.27:', T.length, 'typů, reálná místa, počasí/sezóna, skladba, zóna, popáleninová centra true');
 }

@@ -8,6 +8,40 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.27.0 – 2026-11-16
+
+> Katalog 36 typů MU na reálných místech: doprava, požáry, hromadné akce (blesk, tábor), nebezpečné látky, útok a letecká nehoda.
+
+### Nové
+- **36 typů MU místo dvou.** Doprava (D3 v mlze, kamion do kolony, zájezdový a školní autobus, vlak na přejezdu, nehoda vlaků), budovy (požár hotelu, domova seniorů, školy, výbuch plynu, výbuch v závodě, zřícení střechy při sněhu), hromadné akce (blesk na dětském táboře či akci při bouřce, zřícení stanu, dětský tábor se zvracením a průjmem, tlačenice, kolaps při vedru, otrava jídlem), nebezpečné látky (chlor v bazénu, cisterna, čpavek, plyn ve škole, CO v ubytování), útok (střelba ve škole, obchodě, na akci, bomba) a letecká nehoda u letiště ČB (malé i dopravní letadlo, 4–60 osob).
+- **Reálná místa:** hotel, penzion, kemp nebo tábor, škola, kino a kulturní dům, supermarket, pivovar, bazén, stadion a domov seniorů z OSM, bod na dálnici D3 nebo silnici podle třídy, železniční trať a přejezd, letiště České Budějovice.
+- **Počasí a sezóna:** blesk jen při bouřce, tábory v létě, školní autobus a škola ve školním roce, mlha a náledí na D3, zřícení střechy při sněhu, kolaps davu při vedru.
+- **Skladba zraněných podle typu:** děti (tábor, škola), inhalace při požáru, popáleniny, neúrazová onemocnění. Typ poranění podle formuláře: P popálenina, T trauma, P+T, I inhalační trauma, N neúrazové. Polytrauma je diagnóza pro traumacentrum.
+- **Popáleninová centra FNKV Praha, FN Brno a FN Ostrava** v nabídce odsunu jen pro LZS a jen u rozsáhlých popálenin; kapacity se zjišťují s ostatními kontaktními místy.
+- **Nebezpečná zóna:** u útoku, výbuchu, chemie a požáru se do vyhlášení bezpečné zóny (10–25 min po příjezdu první posádky) netřídí ani neodsouvá.
+
+### Opravy
+- Nevyhlášená MU se přepisovala vždy na „Dopravní nehoda“; nově podle typu (intoxikace, popáleniny, trauma).
+- Hledání bodu na dálnici a jiných řídkých třídách silnic občas selhalo.
+
+## v0.26.0 – 2026-11-16
+
+> MU podle nové směrnice SM01.06 (rev. 8): jednotliví pacienti, check-list 401, odsun rádiem a kolega, který MU opravdu řídí.
+
+### Nové
+- **MU podle SM01.06 rev. 8 (8. 1. 2026).** Vyhlásí ji calltaker při hovoru, nebo (SUSP MU) vedoucí první posádky na místě. Počet skupin se odvozuje z počtu zraněných, ne náhodně.
+- **Panel MU v detailu případu** s klíčovými kroky check-listu 401: avízo MU, síly (vůz MU, zálohy), METHANE a aktualizace po ~30 min, kontaktní místa nemocnic (volné lůžka UPV / JIP / standard), sousední ZZS a LZS, SPIS na žádost vedoucího zdravotnické složky, koroner, potvrzení ukončení.
+- **Jednotliví pacienti s TIK:** priorita I–IV, typ P/P+T/T, děti, UPV a pracovní diagnóza. Skutečný stav je skrytý, ZOS zná METHANE a ohlášené odsuny.
+- **Odsun rádiem:** vedoucí odsunu volá (TIK, priorita, UPV, dospělý/dítě, vůz), ty vybíráš nemocnici podle kapacit. Penalizace za plnou nemocnici, polytrauma mimo traumacentrum a dlouhé čekání I. priority. RZP veze 1 pacienta (III. priorita 2), vůz MU až 4, LZS 1. Po předání se posádka vrací na místo, dokud tam jsou pacienti.
+- **Sousední ZZS a LZS** přijíždějí na žádost (Vysočina, Plzeň, Střední Čechy, Jihomoravský, Notruf NÖ, Passau, LZS okolních ZZS, DRNR). Když nežádáš, nabídnou se po 30 min Vysočina a Plzeň.
+- **Ponechání sil pro běžný provoz:** na základně s více RZP zůstává jedna, v ČB dvě. Během MU se N2 vysílá jen s RZP (lékař na vyžádání), N3 a sekundární převozy se odkládají.
+- **Konec MU** určuje hlášení vedoucího zdravotnické složky a tvoje potvrzení (ne čas). Hodnocení MU: avízo, příjezd první posádky, METHANE a aktualizace, kvalita odsunu.
+- Výcvik, lekce 9 (MU), je přepsaná podle nového postupu.
+
+### Opravy
+- **Kolega u MU přestal jednat po prvním kroku** (a vůbec, dokud sis nezvolil roli). Nově řídí MU průběžně s lidskou prodlevou (avízo, vyslání, METHANE, KM, sousedé, odsun, ukončení).
+- Texty o rolích v MU byly opačné než skutečné chování.
+
 ## v0.25.2 – 2026-11-16
 
 > Rádio s pevnou výškou a oprava otravy CO.

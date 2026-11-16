@@ -226,6 +226,37 @@ function lzsSupportHtml(c) {
   }).join('');
   return `<div class="sug"><h4>Mezikrajská výpomoc LZS <small>(vlastní vrtulník je nedostupný; středisko odpoví za 1–3 min)</small></h4>${rows}</div>`;
 }
+// ---------- panel MU (SM01.06): check-list 401 jen s klíčovými kroky ----------
+function muPanelHtml(c) {
+  const m = c.mu, role = sim.s.muPlayerRole, mine = role === 'mu', t = sim.s.t, decl = m.phase === 'declared';
+  const NB = Sim.MU_NB, HOSP = D.hospitals.filter(x => (m.hosp || {})[x.id]);
+  const ago = at => at == null ? '' : `před ${Math.max(0, Math.round((t - at) / 60))} min`;
+  const act = (a, label, cls, extra) => mine ? `<button class="btn ${cls || ''}" data-act="${a}" data-case="${c.id}"${extra || ''}>${label}</button>` : '';
+  const row = (ok, name, body) => `<div style="margin:5px 0"><span style="display:inline-block;width:1.3em">${ok ? '✔' : '○'}</span><b>${name}</b> ${body}</div>`;
+  const col = { 1: '#d9342b', 2: '#e0b400', 3: '#2f9e44', 4: '#222' }, COL = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV' };
+  let h = `<div class="multi-patient mu-panel"><b>${decl ? 'MU S HPO VYHLÁŠENA' : 'Podezření na MU (SUSP MU)'}${m.aircraft ? ' · letecká nehoda' : ''}</b><br>`;
+  h += role ? (mine ? 'Řešíš MU (401); běžný provoz řeší simulovaný kolega.' : 'Řešíš běžný provoz; MU (401) řídí simulovaný kolega.') : 'Dokud nevybereš roli, MU řídí simulovaný kolega.';
+  h += `<div style="margin:6px 0"><button class="btn ${mine ? 'pri' : ''}" data-act="mu-role" data-role="mu">Řešit MU (401)</button><button class="btn ${role === 'normal' ? 'pri' : ''}" data-act="mu-role" data-role="normal">Řešit běžný provoz</button></div>`;
+  if (!decl) return h + `<small>O vyhlášení rozhodne vedoucí první posádky na místě. Do té doby vyšli RZP a RV; po vyhlášení se aktivuje check-list.</small></div>`;
+  const cnt = ty => c.crews.filter(id => { const k = sim.crewOf(id); return k && k.type === ty && k.caseId === c.id; }).length;
+  h += row(m.avizoAt != null, 'Avízo MU', m.avizoAt != null ? `odesláno ${sim.clockAt(m.avizoAt)}` : act('mu-avizo', 'Odeslat avízo MU', 'pri'));
+  h += row(cnt('RZP') >= 2 && cnt('RV') >= 1, 'Síly', `RZP ${cnt('RZP')}, RV ${cnt('RV')}, LZS ${cnt('LZS')}, vůz MU ${cnt('MU')}${(m.ext || []).length ? `, cizí ${m.ext.length}` : ''}<br><small>Na základnách s víc RZP zůstává jedna pro běžný provoz (v ČB dvě).</small><br>${m.requestSent ? '' : act('mu-request', 'Vyslat vůz MU')}${m.reserveCalled ? '' : act('mu-reserves', 'Svolat zálohy')}`);
+  const r = m.reported, mt = m.mt || {};
+  const late = mt.n > 0 && t - mt.lastAt > 1800;
+  h += row(!!r && !late, 'METHANE', (r ? `<span${late ? ' style="color:#d9342b"' : ''}>${sim.clockAt(r.at)} (${ago(r.at)}): I ${r.I} · II ${r.II} · III ${r.III} · IV ${r.IV} · UPV ${r.upv} · děti ${r.deti} · odvezeno ${r.transported} · zemřelo ${r.dead}<br>typ: ${['P', 'P+T', 'T', 'I', 'N'].map(k => k + ' ' + ((r.types || {})[k] || 0)).join(' · ')}${r.burn ? ' · popálení: ano' : ''}</span>` : (m.sceneAt == null ? 'zatím není nikdo na místě' : 'zatím nepodáno (do 5–10 min po příjezdu vyžádej)')) + (mt.pendingAt != null ? ' <small>– připravuje se</small>' : '') + '<br>' + act('mu-methane', r ? 'Vyžádat aktualizaci' : 'Vyžádat METHANE'));
+  const hs = HOSP.map(x => { const st = m.hosp[x.id]; return st.state === 'known' ? `<div class="row"><span>${esc(x.short)}</span><span>UPV ${st.rep.upv} · JIP ${st.rep.jip} · std ${st.rep.std} <small>${ago(st.repAt)}</small></span></div>` : st.state === 'asked' ? `<div class="row"><span>${esc(x.short)}</span><span><small>čeká na odpověď KM</small></span></div>` : ''; }).join('');
+  h += row(m.hospContacted, 'Nemocnice (KM)', `${hs || 'KM zatím neinformována'}${act('mu-hospitals', m.hospContacted ? 'Aktualizovat kapacity' : 'Informovat KM a zjistit kapacity')}`);
+  h += row(Object.keys(m.nb || {}).length > 0, 'Sousedé a LZS', NB.map(nb => { const q = m.nb[nb.id]; return q ? `<small>${esc(nb.name)}: ${q.state === 'asked' ? 'čeká na odpověď' : 'vysílá ' + q.n}</small>` : act('mu-nb', esc(nb.name), '', ` data-nb="${nb.id}"`); }).filter(Boolean).join(mine ? '' : '<br>'));
+  if (m.spis && m.spis.req) h += row(m.spis.called, 'SPIS', m.spis.called ? 'voláno' : act('mu-spis', 'Volat vedení SPIS'));
+  if (m.coroner && m.coroner.known) h += row(!!m.coroner.state, 'Koroner', m.coroner.state ? (m.coroner.state === 'arrived' ? 'na místě' : 'aktivován') : act('mu-coroner', 'Aktivovat koronera'));
+  if (m.aircraft && !m.landingCheckRequested) h += row(false, 'Plocha LZS', act('mu-landing', 'Ověřit plochu pro LZS'));
+  const known = (m.pts || []).filter(p => ['asked', 'transport', 'delivered', 'dead'].includes(p.st) && (p.st !== 'dead' || (m.reported && m.reported.dead > 0)));
+  const ST = { asked: 'čeká na směrování', transport: 'transport', delivered: 'předán', dead: 'zemřel' };
+  h += row(false, 'Odsun', `ohlášeno ${known.length}, odvezeno ${(m.pts || []).filter(p => ['transport', 'delivered'].includes(p.st)).length}. <small>Vedoucí odsunu volá v panelu Rádio, vyber nemocnici podle kapacit. Typ: P popálenina, T trauma, I inhalační trauma, N neúrazové.</small>`);
+  if (known.length) h += `<table style="font-size:12px;width:100%;margin:2px 0 6px"><tr><th align=left>TIK</th><th align=left>Priorita</th><th align=left>Typ</th><th align=left>UPV</th><th align=left>Děti</th><th align=left>Stav</th><th align=left>Cíl</th></tr>${known.slice(-30).map(p => `<tr><td>${p.n}</td><td><span style="display:inline-block;min-width:1.8em;text-align:center;border-radius:3px;background:${col[p.color]};color:${p.color === 2 ? '#000' : '#fff'}">${COL[p.color]}</span></td><td>${p.kind}</td><td>${p.upv ? 'ano' : 'ne'}</td><td>${p.child ? 'ano' : ''}</td><td>${ST[p.st]}</td><td>${p.hid ? esc((D.hospitals.find(x => x.id === p.hid) || {}).short) : ''}</td></tr>`).join('')}</table>`;
+  h += row(!!m.ended, 'Ukončení', m.ended ? 'MU ukončena' : m.endReady ? act('mu-end', 'Potvrdit ukončení MU', 'pri') : '<small>čeká na hlášení vedoucího zdravotnické složky (všichni odvezeni, koroner přijel)</small>');
+  return h + '</div>';
+}
 const dzOf = c => (c.radioReports || []).find(r => r.id === 'dz-in');
 // slovo pro více postižených: otrava CO = osoby, jinak zranění
 const victimWord = c => (/oxid uhelnat/i.test(c.up || '') ? [(c.patientCount || 0) < 5 ? 'osoby' : 'osob', 'postižených'] : ['zranění', 'zraněných']);
@@ -360,16 +391,7 @@ function renderDetail() {
   h += `<div class="multi-patient"><b>LZS · ${wxLabel}</b>${wx === 'consult' ? `<br>${c.lzsConsult?.status === 'pending' ? 'Čeká se na rozhodnutí pilota.' : c.lzsConsult?.status === 'approved' ? 'Pilot let povolil.' : c.lzsConsult?.status === 'declined' ? 'Pilot let nedoporučil.' : `<button class="btn" data-act="lzs-consult" data-case="${c.id}">Konzultovat s pilotem</button>`}` : ''}</div>`;
   h += lzsAdviceHtml(c);
   if (c.lzsActive && c.lzsTechRequired) h += `<div class="multi-patient"><b>Technická součinnost LZS · nepřístupný terén</b><br>${c.lzsTechDone ? 'Přístup k pacientovi je zajištěn.' : c.lzsTechRequested ? 'HZS zajišťuje přístup.' : `<button class="btn" data-act="lzs-tech" data-case="${c.id}">Vyžádat technickou součinnost HZS</button>`}</div>`;
-  if (c.mu) {
-    const role = sim.s.muPlayerRole;
-    h += `<div class="multi-patient"><b>${c.mu.phase === 'declared' ? 'MU POTVRZENA' : 'Podezření na MU'} · ${c.mu.cas} osob · odhad ${c.mu.groupsRequired} skupin${c.mu.aircraft ? ' · letecká nehoda' : ''}</b><br>${role ? (role === 'mu' ? 'Ty řešíš MU, simulovaný kolega běžný provoz.' : 'Ty řešíš běžný provoz, simulovaný kolega MU.') : 'Zvol, kterou část dispečinku převezmeš.'}<div style="margin-top:6px"><button class="btn ${role === 'mu' ? 'pri' : ''}" data-act="mu-role" data-role="mu">Řešit MU</button><button class="btn ${role === 'normal' ? 'pri' : ''}" data-act="mu-role" data-role="normal">Řešit běžný provoz</button></div><small>Počty i dostupnost nemocnic jsou herní odhady; stupně traumatologického plánu nejsou modelovány.</small></div>`;
-    if (role !== 'normal') {
-      if (!c.mu.requestSent) h += `<button class="btn" data-act="mu-request" data-case="${c.id}">Požádat o modul MU</button>`;
-      if (c.mu.phase === 'declared') h += `<button class="btn" data-act="mu-reinforce" data-case="${c.id}" data-count="2">Požádat o 2 další skupiny</button>`;
-      if (!c.mu.hospitalInfoRequested) h += `<button class="btn" data-act="mu-hospitals" data-case="${c.id}">Vyžádat nemocniční součinnost</button>`;
-      if (c.mu.aircraft && !c.mu.landingCheckRequested) h += `<button class="btn" data-act="mu-landing" data-case="${c.id}">Ověřit plochu pro LZS</button>`;
-    }
-  }
+  if (c.mu) h += muPanelHtml(c);
   h += `<dl><dt>Typ výjezdu</dt><dd>${esc(c.typ || 'primární')}</dd>
 <dt>Naléhavost</dt><dd>N${c.n}${c.dyn ? ' (dynamická)' : ''}</dd>
 ${c.doplnkova ? `<dt>Doplňková naléhavost</dt><dd>${esc(c.doplnkova)}</dd>` : ''}
@@ -382,15 +404,11 @@ ${c.typ === 'sekundární' ? `<dt>Plánované přistavení</dt><dd>${Number.isFi
 <dt>Oznamovatel</dt><dd>${esc(c.ozn)}${c.oznRel ? ` <span style="font-weight:400;color:#5a6a7a">(${esc(c.oznRel.replace(/^volá /, ''))})</span>` : ''} · ${esc(c.phone)}</dd>
 <dt>Adresa</dt><dd>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span><br><span style="font-weight:400;color:#5a6a7a">Jihočeský kraj, okres ${esc(okresOf(c))}, obec ${esc(c.town)}<br>${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}</span></dd>
 <dt>Popis místa</dt><dd>${esc(c.place)}</dd>
-<dt>Pacienti</dt><dd>${c.mu ? c.mu.cas + ' zraněných (zbývá ošetřit ' + c.mu.left + ')' : (c.patientCount || 1) > 1 ? `${c.patientCount} ${victimWord(c)[0]} (zbývá ošetřit ${c.patientsRemaining})` : esc(c.desc)}</dd>
+<dt>Pacienti</dt><dd>${c.mu ? (c.mu.reported ? c.mu.reported.total + ' postižených (hlášeno vedoucím zdravotnické složky)' : 'rozsah se ověřuje') : (c.patientCount || 1) > 1 ? `${c.patientCount} ${victimWord(c)[0]} (zbývá ošetřit ${c.patientsRemaining})` : esc(c.desc)}</dd>
 ${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>` : ''}
 <dt>Oznámil</dt><dd>${esc(c.src)} · nabíral ${esc(c.op)}</dd></dl>`;
   const reports = (c.radioReports || []).filter(r => r.received);
   if (reports.length) h += `<div class="report-panel"><b>${c.mu ? 'Situační hlášení' : 'Průběžná hlášení'}</b><ul>${reports.map(r => `<li${r.red ? ' class="red"' : ''}><time>${esc(sim.clockAt(r.receivedAt))}</time> <b>${esc(r.source || (c.mu ? 'Situační hlášení' : 'Linka 112'))}:</b> ${esc(r.text)}${r.fields ? `<ul>${Object.entries(r.fields).filter(([,v]) => v).map(([k,v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>${c.status === 'waiting' || c.status === 'active' ? '<button class="btn pri" data-act="sug">Reagovat – otevřít nabídku posádek</button>' : ''}</div>`;
-  if (c.mu && c.mu.hospitalInfoReceived) {
-    const caps = c.mu.hospitalCapacities || [];
-    h += `<div class="report-panel"><b>Nemocniční příjem (simulovaný)</b>${caps.map(cap => { const hp = D.hospitals.find(x => x.id === cap.hospitalId); return hp ? `<div class="row"><span>${esc(hp.short)}</span><span>${esc(cap.state)} · ${cap.remaining} míst v herním modelu</span><button class="btn" data-act="mu-hospital" data-case="${c.id}" data-hospital="${hp.id}" ${cap.state === 'dočasně nepřijímá' ? 'disabled' : ''}>Směrovat</button></div>` : ''; }).join('')}</div>`;
-  }
   if ((c.patientCount || 1) > 1 && c.status !== 'closed') h += `<p class="multi-patient">Více ${victimWord(c)[1]}: ${c.patientsRemaining} pacientů čeká na ošetření. Podle situace vyšlete další RZP.</p>`;
   if (c.vstricna && c.vstricna.state === 'offered') {
     const candidates = sim.s.crews.filter(k => k.type === 'RZP' && k.oblast === c.vstricna.area && sim.avail(k) && !k.res)
@@ -1259,7 +1277,7 @@ function renderRadioLive() {
     const heard = now - rcSeen.get(e.id) >= RC_DELAY, red = e.kind === 'rv' ? ' rv' : '', flag = e.kind === 'rv' ? '<span class="rc-red">ŽÁDOST O LÉKAŘE</span>' : '';
     if (!heard) return `<div class="radio-call open${red}"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b><span class="rc-hearing">${esc(e.name)} hlásí…</span>${tag}</div>`;
     const tr = transcriptHtml(feedChain(e.crewId), now, 2);
-    return `<div class="radio-call open${red}"><div class="rc-head"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b>${flag}${tr ? '' : `<span class="rc-msg">${esc(e.msg)}</span>`}${tag}</div>${tr}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
+    return `<div class="radio-call open${red}"><div class="rc-head"><span class="rc-ico" aria-hidden="true">📻</span><b>${esc(sign)}</b>${flag}${tr ? '' : `<span class="rc-msg">${esc(e.msg)}</span>`}${tag}</div>${tr}<span class="rc-opts">${(e.opts || []).map((o, i) => [o, i]).sort((x, y) => e.kind === 'muodsun' ? x[1] - y[1] : ((x[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5) - ((y[1] * 7 + e.id.length * 3 + Number(e.id.slice(2))) % 5)).map(([o]) => `<button class="btn" data-act="rq-reply" data-rq="${e.id}" data-k="${esc(o.k)}">${esc(o.label)}</button>`).join('')}</span></div>`;
   }).join(''));
 }
 // ---------- upozornění ----------
@@ -1612,11 +1630,16 @@ function act(a, el) {
     case 'n2-dynamic': { const r = sim.convertN2Dynamic(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Výzva změněna na dynamickou.', ''); break; }
     case 'lzs-consult': { const r = sim.consultLzsPilot(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Čeká se na textové rozhodnutí pilota LZS.', 'alert'); break; }
     case 'lzs-tech': { const r = sim.requestLzsTechnicalAssist(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Technická součinnost HZS vyžádána.', 'alert'); break; }
-    case 'mu-role': { const r = sim.setMuDispatcher(d.role); if (!r.ok) toast(r.msg, 'warn'); else toast(d.role === 'mu' ? 'Přebíráš běžný provoz; kolega řeší MU.' : 'Přebíráš MU; kolega řeší běžný provoz.', ''); break; }
-    case 'mu-request': { const r = sim.requestMuModule(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Požadavek na modul MU předán do dispečinku.', 'alert'); break; }
-    case 'mu-hospitals': { const r = sim.requestMuHospitalInfo(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Vyžádána informace o kapacitách nemocnic.', ''); break; }
-    case 'mu-reinforce': { const r = sim.requestMuReinforcement(d.case, d.count); if (!r.ok) toast(r.msg, 'warn'); else { sugOpen = true; toast('Požadavek na posily předán; můžeš vybrat volné posádky RZP.', 'alert'); } break; }
-    case 'mu-hospital': { const r = sim.chooseMuHospital(d.case, d.hospital); if (!r.ok) toast(r.msg, 'warn'); else toast('Další transporty budou směrovány podle zvolené nemocnice.', ''); break; }
+    case 'mu-role': { const r = sim.setMuDispatcher(d.role); if (!r.ok) toast(r.msg, 'warn'); else toast(d.role === 'mu' ? 'Přebíráš MU (401); kolega řeší běžný provoz.' : 'Přebíráš běžný provoz; kolega řeší MU.', ''); break; }
+    case 'mu-avizo': { const r = sim.muAvizo(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Avízo MU odesláno (SMS, kanál).', 'alert'); break; }
+    case 'mu-request': { const r = sim.requestMuModule(d.case); if (!r.ok) toast(r.msg, 'warn'); else { sugOpen = true; toast('Vůz MU požádán; vyber ho v nabídce posádek (sekce MU).', 'alert'); } break; }
+    case 'mu-reserves': { const r = sim.muCallReserves(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Zálohy svolány.', ''); break; }
+    case 'mu-methane': { const r = sim.requestMuMethane(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Situační zpráva vyžádána.', ''); break; }
+    case 'mu-hospitals': { const r = sim.muContactHospitals(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Kontaktní místa nemocnic informována.', ''); break; }
+    case 'mu-nb': { const r = sim.muRequestNeighbor(d.case, d.nb); if (!r.ok) toast(r.msg, 'warn'); else toast('Žádost o pomoc odeslána.', ''); break; }
+    case 'mu-spis': { const r = sim.muCallSpis(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Vedení SPIS voláno.', ''); break; }
+    case 'mu-coroner': { const r = sim.muCallCoroner(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Koroner aktivován.', ''); break; }
+    case 'mu-end': { const r = sim.confirmMuEnd(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('MU ukončena.', 'alert'); break; }
     case 'mu-landing': { const r = sim.requestMuLandingInfo(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Ověření plochy předáno, čeká se na odpověď z místa.', ''); break; }
     case 'lzs-support': { const r = sim.requestLzsSupport(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else { toast(r.msg, ''); beep(660); } break; }
     case 'libero': { const r = sim.attachLibero(d.crew, d.lib || undefined); if (!r.ok) toast(r.msg, 'warn'); else toast(`${sim.crewOf(d.crew).name}: lékař LIBERO ve voze`, ''); break; }

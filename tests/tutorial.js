@@ -18,10 +18,13 @@ function bot(sim) {
   for (const c of s.cases) {
     if (c.status === 'closed' || c.status === 'intake') continue;
     if (c.mu) {
-      sim.setMuDispatcher('mu'); sim.requestMuModule(c.id); sim.requestMuHospitalInfo(c.id);
-      if (c.mu.phase === 'declared') sim.requestMuReinforcement(c.id, 2);
-      if (c.status === 'waiting' || c.mu.left > 0) for (const x of sim.suggest(c.id, 'RZP').slice(0, 2)) if (c.crews.length < 8) sim.assign(c.id, x.crewId);
-      if (!c.docAssigned) { const v = sim.suggest(c.id, 'RV')[0]; if (v) sim.assign(c.id, v.crewId); }
+      sim.setMuDispatcher('mu'); const m = c.mu;
+      if (c.status === 'waiting' || m.phase === 'suspected') for (const ty of ['RZP', 'RV']) { if (!c.crews.some(id => sim.crewOf(id).type === ty)) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); } }
+      if (m.phase === 'declared') {
+        sim.muAvizo(c.id); sim.muContactHospitals(c.id); sim.requestMuMethane(c.id); sim.requestMuModule(c.id); sim.muRequestNeighbor(c.id, 'vys');
+        for (const [ty, n] of [['RZP', m.groupsRequired], ['RV', 2], ['MU', 1]]) if (c.crews.filter(id => sim.crewOf(id).type === ty).length < n) { const x = sim.suggest(c.id, ty)[0]; if (x) sim.assign(c.id, x.crewId); }
+        if (m.spis.req) sim.muCallSpis(c.id); if (m.coroner.known) sim.muCallCoroner(c.id); if (m.endReady) sim.confirmMuEnd(c.id);
+      }
       continue;
     }
     if (c.typ === 'sekundární') { const g = sim.suggest(c.id, 'RZP')[0]; if (g && !c.crews.length && s.t >= c.scheduledAt - g.eta) sim.assign(c.id, g.crewId); continue; }

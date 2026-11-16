@@ -175,6 +175,13 @@ const ROUTER = (function () {
       const st = eptsOff[e], n = eptsOff[e + 1] - st, i = Math.floor(rnd() * n);
       return { lat: P[(st + i) * 2], lon: P[(st + i) * 2 + 1], cls: ecls[e] };
     }
+    // řídké třídy (dálnice): systematické hledání od náhodného místa
+    const from = Math.floor(rnd() * M);
+    for (let k = 0; k < M; k++) {
+      const e = (from + k) % M; if (!classes.includes(ecls[e])) continue;
+      const st = eptsOff[e], n = eptsOff[e + 1] - st, i = Math.floor(rnd() * n);
+      return { lat: P[(st + i) * 2], lon: P[(st + i) * 2 + 1], cls: ecls[e] };
+    }
     return null;
   }
   return { init, eta, route, coverage, snap, randomRoadPoint, get ready() { return ready; } };
