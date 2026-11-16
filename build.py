@@ -2,12 +2,17 @@
 import re, os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 rd = lambda p: open(p, encoding='utf8').read()
-strip = lambda s: re.sub(r'\nif \(typeof module.*?\n', '\n', s)
+strip = lambda s: re.sub(r'(?m)^if \(typeof module.*\n?', '', s)  # řádky určené jen pro Node (require/exports)
 d = strip(rd('src/data.js')) + strip(rd('src/people.js'))
 symptoms = 'const ZOS_SYMPTOMS = ' + rd('src/symptoms.json').strip() + ';\n'
-e = strip(rd('src/messages.js')) + strip(rd('src/weather.js')) + strip(rd('src/engine.js'))
+ENGINE_PARTS = ['engine-base', 'sim-radio', 'sim-neighbors', 'sim-cases', 'sim-mu', 'sim-loop', 'sim-score', 'engine']  # engine.js poslední (přimíchá části do Sim)
+e = strip(rd('src/messages.js')) + strip(rd('src/weather.js')) + ''.join(strip(rd('src/%s.js' % n)) for n in ENGINE_PARTS)
 m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src/mask.geojson') + ';\n')
-u = strip(rd('src/voice.js')) + strip(rd('src/tutorial.js')) + rd('src/ui.js')
+UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-events']  # jedna IIFE, části v tomto pořadí
+ui = "(function () {\n'use strict';\n" + ''.join(rd('src/%s.js' % n) for n in UI_PARTS) + '})();\n'
+os.makedirs('work', exist_ok=True)
+open('work/ui.bundle.js', 'w', encoding='utf8').write(ui)  # jen pro lint (npm run lint)
+u = strip(rd('src/voice.js')) + strip(rd('src/tutorial.js')) + ui
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
 t = t.replace('ZOS JčK · DISPEČER', 'ZOS JčK · DISPEČER · v' + ver, 1)

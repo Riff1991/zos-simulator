@@ -66,9 +66,9 @@ Vanilla JS, žádný framework, žádný bundler. Vše kromě dat je inline v `s
 | Soubor | Obsah |
 |---|---|
 | `src/data.js` | `ZOS_DATA`: oblasti, základny, LZS, MU, zálohy, nemocnice, města (pro pokrytí), **indications** (ukázková pravidla), místa, charaktery, klasifikace |
-| `src/engine.js` | `class Sim` – celý stav v `this.s` (čistý JSON), seed RNG (mulberry32), `step(dt)` po ≤5 s, stavové automaty posádek a případů, generování případů, sekundáry, MU, pokrytí, skóre, `serialize()/restore()` |
+| `src/engine.js`, `engine-base.js`, `sim-*.js` | `class Sim` – celý stav v `this.s` (čistý JSON), seed RNG (mulberry32), `step(dt)` po ≤5 s, stavové automaty posádek a případů, generování případů, sekundáry, MU, pokrytí, skóre, `serialize()/restore()` | (od 0.29.2 rozdělen: viz AGENTS.md → Struktura)
 | `src/router.js` | `ROUTER` – načte `graph.wasm` (binární silniční graf), snap na síť (mřížka), Dijkstra se stromem k cíli (LRU cache 40), `eta`, `route` (polyline + časové zlomky), `coverage` (vícezdrojová Dijkstra), `randomRoadPoint` |
-| `src/ui.js` | celé UI (IIFE): render oken, karta případu, návrhy posádek, dlaždice, rádio, toasty/zvuk, modaly (start, vyhodnocení, tisk výzvy), drag&drop, **MapLibre mapa** (`glInit/glUpdate`, protokol `zos://` pro dlaždice a glyfy), SVG fallback mapa, načítání dat, autosave do localStorage |
+| `src/ui-*.js` | celé UI (IIFE): render oken, karta případu, návrhy posádek, dlaždice, rádio, toasty/zvuk, modaly (start, vyhodnocení, tisk výzvy), drag&drop, **MapLibre mapa** (`glInit/glUpdate`, protokol `zos://` pro dlaždice a glyfy), SVG fallback mapa, načítání dat, autosave do localStorage | (od 0.29.2 sedm souborů, `build.py` je skládá do jedné IIFE)
 | `src/template.html` | layout, CSS (CSS proměnné pro stavové barvy), inline MapLibre CSS, `<script src="lib/maplibre-gl-csp.js">` |
 | `src/basemap.js` | zjednodušená SVG mapa (fallback, když MapLibre/WebGL selže) |
 | `src/mask.geojson` | šedá maska okolí kraje |

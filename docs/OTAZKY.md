@@ -298,3 +298,4 @@ Podklad: smlouvy JčK o spolupráci s Krajem Vysočina (28. 5. 2013), Středoče
 - **Zjednodušení kódu:** ano, vše zjednodušit. Mobilní rozložení není priorita (nelze dobře ovládat).
 - Nyní ne: hodnocení s reálnou referencí, chybné doporučení calltakera, klávesové zkratky, sdílení / směna dne.
 - Uživatel nabídl poslat seznam směrnic a reálná statistická data (tisíce výjezdů, ne desítky tisíc), formát si určí Claude.
+- **Zjednodušení kódu (hotovo, bez změny funkcí):** `engine.js` (3 586 ř.) rozdělen na `engine-base.js`, `engine.js` a `sim-*.js` (mixin); `ui.js` (2 100 ř.) na `ui-*.js`. Lint běží nad všemi `src/*.js` a nad sestaveným UI, testy čtou všechny části UI. Mobilní rozložení zůstává beze změn (není priorita, nemazáno).

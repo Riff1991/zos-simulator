@@ -46,6 +46,9 @@ Projekt: **webový simulátor primárního dispečera ZOS ZZS Jihočeského kraj
 ## Struktura
 
 - `src/` – zdrojáky (data, engine, router, UI, šablona, SVG fallback mapa, maska kraje)
+  - Engine: `engine-base.js` (pomocné funkce a konstanty), `engine.js` (třída `Sim`: konstruktor, RNG, čas, posádky, LIBERO, akce dispečera) a části `sim-radio.js`, `sim-neighbors.js`, `sim-cases.js`, `sim-mu.js`, `sim-loop.js`, `sim-score.js`. Části jsou třídy, jejichž metody `engine.js` přimíchá do `Sim`. Nová metoda patří do části podle tématu; sdílená konstanta do `engine-base.js` (a do jeho `module.exports`, ať ji vidí Node).
+  - UI: `ui-core.js` (nastavení, ikony), `ui-panels.js`, `ui-map.js`, `ui-radio.js`, `ui-modal.js`, `ui-layout.js`, `ui-events.js`. `build.py` je ve jmenovaném pořadí složí do jedné IIFE (`work/ui.bundle.js` se používá k lintu). Při přidání souboru ho přidej do `UI_PARTS` / `ENGINE_PARTS` v `build.py`.
+  - Řádky `if (typeof module …)` jsou jen pro Node a `build.py` je z prohlížečové verze odstraní (vždy celý jednořádkový příkaz).
 - `site/` – nasaditelný výstup (statický web): index.html, lib/ (MapLibre), t/*.wasm (vektorové dlaždice), graph.wasm (silniční graf), addr.json (adresy), tiles-index.json
 - `pipeline/` – Python skripty pro zpracování OSM
 - `tests/` – Node test enginu

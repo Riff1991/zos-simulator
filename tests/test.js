@@ -7,6 +7,11 @@ global.ZOS_POI = JSON.parse(require('fs').readFileSync(__dirname + '/../site/poi
 global.ZOS_RAIL = JSON.parse(require('fs').readFileSync(__dirname + '/../site/rail.json', 'utf8'));
 global.ZOS_ADDR = JSON.parse(require('fs').readFileSync(__dirname + '/../site/addr.json', 'utf8'));
 const { Sim, hav } = require('../src/engine.js');
+// zdroj UI je rozdělen do src/ui-*.js (v build.py se skládá do jedné IIFE); testy čtou text všech částí
+const SRC_LIST = require('fs').readdirSync(__dirname + '/../src');
+const UI_FILES = SRC_LIST.filter(f => /^ui-.*\.js$/.test(f)).sort();
+const readUi = () => UI_FILES.map(f => require('fs').readFileSync(__dirname + '/../src/' + f, 'utf8')).join('\n');
+const SRC_FILES = SRC_LIST.filter(f => /^(ui-|sim-|engine).*\.js$/.test(f)).map(f => 'src/' + f).concat(['src/voice.js', 'src/messages.js', 'src/weather.js']);
 
 function bot(sim) {
   const s = sim.s;
@@ -382,7 +387,7 @@ console.log('idle score', idle.summary().total.toFixed(1), 'unserved', idle.summ
 // Selecting a case from the list must reveal the map first and pass its coordinates to focusOn.
 {
   const fs = require('fs'), vm = require('vm');
-  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const ui = readUi();
   const fn = ui.match(/function selectCaseFromElement\(caseElement, clickedElement\) \{[\s\S]*?\n\}/);
   if (!fn) throw new Error('case selection handler not found');
   const selected = { id: 'case-test', lat: 49.2, lon: 14.4 };
@@ -399,7 +404,7 @@ console.log('case selection focuses map true');
 // Case focus must issue a real MapLibre camera update, not only select the case.
 {
   const fs = require('fs'), vm = require('vm');
-  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const ui = readUi();
   const fn = ui.match(/function applyMapFocus\(target, attempt = 0\) \{[\s\S]*?\n\}/);
   if (!fn) throw new Error('map focus handler not found');
   let camera = null;
@@ -415,7 +420,7 @@ console.log('case selection focuses map true');
 console.log('case click moves map camera true');
 {
   const fs = require('fs'), vm = require('vm');
-  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const ui = readUi();
   const fn = ui.match(/function pollLog\(\) \{[\s\S]*?\n\}/);
   if (!fn) throw new Error('radio polling function not found');
   let toneCount = 0;
@@ -775,11 +780,11 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (!/Prachaťic\b/.test(sp('do Prachatic'))) throw new Error('výslovnost: Prachatic → Prachaťic');
   if (!/úrgentní/i.test(sp('Urgentní příjem'))) throw new Error('výslovnost: urgentní');
   if (!/ááro/.test(sp('jedeme na ARO'))) throw new Error('výslovnost: ARO → ááro');
-  for (const f of ['src/ui.js', 'src/voice.js', 'src/messages.js', 'src/engine.js', 'src/weather.js']) {
+  for (const f of SRC_FILES) {
     const s = fs.readFileSync(__dirname + '/../' + f, 'utf8');
     if (/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(s)) throw new Error('řídicí znak ve zdroji (rozbitý regulární výraz): ' + f);
   }
-  const ui = fs.readFileSync(__dirname + '/../src/ui.js', 'utf8');
+  const ui = readUi();
   const parse = new Function(ui.match(/function radioParse\(txt\) \{[\s\S]*?\n\}/)[0] + ';return radioParse;')();
   const exp = [['ZCB101, zde ZCB713, příjem.', 'crew'], ['ZCB713 na příjmu.', 'crew'], ['ZCB713, zde ZCB101, příjem.', 'zos'], ['ZCB713, ZCB101: poprosím ukončete se.', 'zos'],
     ['ZCB713: jsme ukončení, můžete posílat.', 'crew'], ['ZCB101 díky, konec.', 'zos'], ['ZCB101: rozumím.', 'zos'], ['ZCB101, zde ZOS Vysočina, příjem.', 'crew'], ['ZOS Vysočina: žádáme o RZP.', 'crew']];
