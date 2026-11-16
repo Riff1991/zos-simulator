@@ -939,10 +939,29 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   console.log('otrava CO: hlášení více postižených true');
 }
 
+// ---------- popis místa musí sedět na adresu: zařízení jen u skutečného místa z OSM, typ budovy a patro podle OSM ----------
+{
+  const FAC = /stadion|hospoda|restaurac|hostinec|lázn|vrátnic|recepc|azylov|výchovn|věznic|stanic[ei] HS|služebn|tábor|kemp|nádraží|zastávk|hřiště|poliklinik|LDN|DPS|DD|domov|chráněné|hotel|penzion|ubytovn|chata|škol|ZŠ|vodáci/i;
+  let nByt = 0, nRd = 0;
+  for (let seed = 1; seed <= 30; seed++) {
+    const sim = new Sim({ seed, mode: 'shift', startHour: 9, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nbPlan = [];
+    for (let i = 0; i < 80; i++) {
+      const c = sim._spawn({}), txt = (c.place || '') + ' | ' + (c.poznamka || '');
+      if (!/\(/.test(c.addr) && ['rd', 'byt', 'ulice', 'jine', 'bod'].includes(c.where) && FAC.test(txt)) throw new Error('zařízení v popisu u obyčejné adresy: ' + c.addr + ' => ' + txt);
+      if (c.bld && c.where === 'rd') { nRd++; if (!(c.bld.code === 1 || (c.bld.code === 2 && c.bld.levels <= 2) || c.bld.code === 0)) throw new Error('RD na adrese s jinou budovou: ' + c.addr + ' ' + JSON.stringify(c.bld)); }
+      if (c.bld && c.where === 'byt') { nByt++; if (c.bld.code !== 0 && !(c.bld.code === 3 || (c.bld.code === 2 && c.bld.levels >= 2))) throw new Error('byt v budově, která není bytová: ' + c.addr + ' ' + JSON.stringify(c.bld)); }
+      const m = /(\d+)\. ?p/.exec(c.place || '');
+      if (m && c.bld && c.bld.levels > 0 && +m[1] > c.bld.levels - 1) throw new Error('patro ' + m[1] + ' ve ' + c.bld.levels + 'podlažní budově: ' + c.addr + ' => ' + c.place);
+    }
+  }
+  if (nByt < 50 || nRd < 50) throw new Error('málo případů s budovou: byt ' + nByt + ', rd ' + nRd);
+  console.log('popis místa sedí na adresu (zařízení, typ budovy, patro) true', nByt, 'byt,', nRd, 'rd');
+}
+
 // ---------- CO se nemíchá s jinými indikacemi, dítě s CO není N3, CO jen v budově, METHANE jen u MU ----------
 {
   let withCo = 0, childCo = 0;
-  for (let seed = 1; seed <= 25; seed++) {
+  for (let seed = 1; seed <= 60; seed++) {
     const sim = new Sim({ seed, mode: 'shift', startHour: 9, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nbPlan = [];
     for (let i = 0; i < 80; i++) {
       const c = sim._spawn({});

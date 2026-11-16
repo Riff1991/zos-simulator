@@ -182,35 +182,44 @@ class SimCases {
     const mem = this.s.ev.recentSpots || (this.s.ev.recentSpots = []);
     mem.push([lat, lon, name || '']); if (mem.length > 25) mem.shift();
   }
-  _randomAddress(A) {
+  // Hodí se budova u adresy k typu místa? Dům: dům nebo nízká obytná budova; byt: bytový dům nebo obytná budova s ≥ 2 podlažími (údaje z OSM, A.b = [kód, podlaží] ke každé adrese).
+  _bFit(code, lv, want) {
+    if (want === 'rd') return code === 1 || (code === 2 && lv <= 2);
+    if (want === 'byt') return code === 3 || (code === 2 && lv >= 2);
+    return true;
+  }
+  _randomAddress(A, want) {
     const a = A.a, S = A.s, count = Math.floor(a.length / 8);
     if (!count) return null;
     for (let tries = 0; tries < 12; tries++) {
-      const r = this._randomAddress1(A, count);
+      const r = this._randomAddress1(A, count, want);
       if (r && !this._tooClose(r.lat, r.lon)) return r;
       if (tries === 11) return r;
     }
     return null;
   }
   _obecMul(city) { const m = ZOS_DATA.obecMul[city]; return m != null ? m : ZOS_DATA.obecMulOther; }
-  _randomAddress1(A, count) {
-    const a = A.a, S = A.s;
+  _randomAddress1(A, count, want) {
+    const a = A.a, S = A.s, B = A.b;
     const history = this.s.ev.addressHistory || (this.s.ev.addressHistory = []);
     const used = new Set(history);
     // adresy se losují rovnoměrně, ale události jsou ve městech hustší (České Budějovice 17 % událostí při 6 % adres): přijetí podle násobku obce
     let start = Math.floor(this.rnd() * count);
     for (let k = 0; k < 40; k++) { const c = Math.floor(this.rnd() * count); if (this.rnd() * ZOS_DATA.obecMulMax < this._obecMul(S[a[c * 8 + 3]])) { start = c; break; } }
     let i = -1, address = '';
-    for (let offset = 0; offset < count; offset++) {
+    for (let pass = 0; pass < 2 && i < 0; pass++) {
+     for (let offset = 0; offset < count; offset++) {
       const candidate = ((start + offset) % count) * 8;
+      if (pass === 0 && want && B && !this._bFit(B[candidate / 4], B[candidate / 4 + 1], want)) continue;
       const street = S[a[candidate + 2]], city = S[a[candidate + 3]], num = S[a[candidate + 4]];
       const label = street && street !== city ? `${street} ${num}, ${city}` : `${city} čp. ${num}`;
       if (!used.has(label)) { i = candidate; address = label; break; }
+     }
     }
-    if (i < 0) { history.length = 0; return this._randomAddress(A); }
+    if (i < 0) { history.length = 0; return this._randomAddress(A, want); }
     history.push(address);
     if (history.length > 1000) history.splice(0, history.length - 1000);
-    return { lat: a[i] / 1e5, lon: a[i + 1] / 1e5, city: S[a[i + 3]], cast: S[a[i + 5]] || '', okres: A.okresy[a[i + 6]], address };
+    return { lat: a[i] / 1e5, lon: a[i + 1] / 1e5, city: S[a[i + 3]], cast: S[a[i + 5]] || '', okres: A.okresy[a[i + 6]], address, bld: B ? { code: B[i / 4], levels: B[i / 4 + 1] } : null };
   }
   // krátký dispečerský popis místa; často prázdný, skládá se z více částí, poslední se neopakují
   _placeText(key) {
@@ -235,7 +244,21 @@ class SimCases {
   }
   // Popis místa a poznámka ZOS z modelu skutečných zápisů (ZOS_DATA.placeModel): vybere se třída zápisu podle typu místa, vzor segmentů
   // a z nich se složí text; polohové segmenty (typ objektu, patro, „před domem“) patří do popisu místa, zbytek do poznámky ZOS.
-  _tail(ind, key, up, age, sex) {
+  // Zařízení (stadion, hospoda, vrátnice, DPS, stanice HS…) se v popisu místa smí objevit jen u skutečného místa z OSM odpovídajícího typu (podle jména / druhu místa); u obyčejné adresy nikdy.
+  _facOk(txt, ctx) {
+    const FAC = /stadion|hospoda|restaurac|hostinec|lázn|vrátnic|recepc|azylov|výchovn|věznic|stanic[ei] HS|služebn|tábor|kemp|nádraží|vlakov|autobusov|zastávk|MHD|hřiště|poliklinik|LDN|\bDD\b|\bDPS\b|\bDS\b|\bdd\b|domov|chráněné|peč\.? ?dům|senior dům|hotel|penzion|ubytovn|chata|škol|ZŠ|ordinac|AIM|PZS|vodáci|lyžař|bazén|koupališt/i;
+    if (!FAC.test(txt)) return true;
+    if (!ctx || !ctx.poi) return false;
+    const nm = ctx.poiName || '', k = ctx.key;
+    const R = [[/stadion/i, /stadion|hal[ao]|zimní|sport/i], [/hospoda|restaurac|hostinec/i, /restaur|hospod|hostinec|pivnic|kavár|penzion|hotel|\bbar\b/i], [/lázn/i, /lázn|\bspa\b|wellness/i],
+      [/vrátnic|recepc/i, /areál|závod|továrn|hotel|penzion|ubytovn|domov|ústav|nemocnic|škol/i], [/azylov|výchovn|věznic|stanic[ei] HS|služebn/i, /azyl|ústav|věznic|hasič|policie|PČR|služebn/i],
+      [/tábor|kemp/i, /tábor|kemp/i], [/nádraží|vlakov|autobusov|zastávk|MHD/i, /nádraží|zastávk|autobus|vlak/i], [/hřiště/i, /hřiště|sport|stadion|fotbal/i],
+      [/poliklinik|LDN|AIM|PZS|ordinac/i, null, ['ordinace', 'zz']], [/^DPS$/i, /pečovatel|DPS/i], [/^(DD|dd)$/, /domov|senior|důchod/i], [/^DS$/i, /senior|sociáln|domov/i], [/domov|chráněné|peč\.\? ?dům|senior dům/i, /pečovatel|senior|domov|důchod|sociáln/i],
+      [/ubytovn/i, /ubytovn/i], [/chata/i, /chat|chalup/i], [/penzion/i, /penzion/i], [/hotel/i, /hotel/i], [/škol|ZŠ/i, /škol|ZŠ|gymn/i, ['skola']], [/bazén|koupališt|lyžař/i, /bazén|koupališt|lyž|sport/i]];
+    for (const [re, nre, keys] of R) if (re.test(txt)) return !!((nre && nre.test(nm)) || (keys && keys.includes(k)));
+    return false;
+  }
+  _tail(ind, key, up, age, sex, ctx) {
     const PM = ZOS_DATA.placeModel, mix = ZOS_DATA.tailMix[key];
     if (!PM || !mix) return { place: '', note: '' };
     const cls = this.wpick(mix, x => x[1])[0], m = PM.model[cls], upL = up.toLocaleLowerCase('cs-CZ'), police = /PČR|MĚP|POLICIE/i.test(up);
@@ -243,7 +266,8 @@ class SimCases {
     const FEM = ['zvracela', 'zmatená', 'rozrušená', 'ředěná', 'spavá', 'zahleněná'], MASC = ['zvracel', 'zmatený', 'ředěný', 'bledý', 'opocený', 'zahleněný'];
     const ELD = /senevida|demence|imobiln|ležící|nechodící|vozíčk|nejí|nepije|alzheimer|samota|peč\.? ?dům|senior/i;
     const ADULT = /alkohol|ebrieta|schizofren|onkol|diabet|chřipka|cizinec|PMK|anurie|hematurie|kardiak|CA plic|dialyz/i;
-    const maxFloor = cls === 'rd' ? 3 : cls === 'byt' ? 9 : 4;
+    const lv = ctx && ctx.bld ? ctx.bld.levels : 0;
+    const maxFloor = lv > 0 ? Math.max(0, lv - 1) : cls === 'rd' ? 2 : cls === 'byt' ? 4 : 3;   // nejvyšší patro podle počtu podlaží budovy z OSM (podlaží − 1)
     const num = s => s.replace(/#/g, (_, i, str) => {
       const rest = str.slice(i + 1);
       if (/^\.?\s?porod/.test(rest)) return this.ri(1, 3);
@@ -255,22 +279,33 @@ class SimCases {
       return this.ri(1, 12);
     });
     const floor = f => {
-      const n = this.wpick(Object.keys(PM.floors).map(Number).filter(k => k <= maxFloor), k => PM.floors[k]);
+      const ks = Object.keys(PM.floors).map(Number).filter(k => k <= maxFloor);
+      if (!ks.length) return 'přízemí';
+      const n = this.wpick(ks, k => PM.floors[k]);
       return f.replace(/#/g, n);
     };
     const used = new Set(), segs = [];
     const pool = (list, pred) => list.filter(pred);
-    const xs = m.X.length >= 12 ? m.X : m.X.concat(PM.model._glob.X);
+    const xs = (m.X.length >= 12 ? m.X : m.X.concat(PM.model._glob.X)).filter(x => this._facOk(x[0], ctx));
+    // typ objektu (O) musí sedět na budovu u adresy (dům / bytový dům) a na zařízení jen u skutečného místa
+    let oList = (m.O.length ? m.O : [['RD', 1]]).filter(x => this._facOk(x[0], ctx));
+    if (ctx && ctx.bld && !ctx.poi) {
+      if (cls === 'rd') oList = oList.filter(x => /^rd$/i.test(x[0]));
+      else if (cls === 'byt') oList = oList.filter(x => lv >= 5 || !/^(panelák|panel)$/i.test(x[0]));
+      else oList = oList.filter(x => !/^(bod|rd)$/i.test(x[0]) || ((ctx.bld.code === 3 || (ctx.bld.code === 2 && lv >= 2)) && /^bod$/i.test(x[0])) || ((ctx.bld.code === 1 || (ctx.bld.code === 2 && lv <= 2)) && /^rd$/i.test(x[0])));
+    }
+    if (!oList.length) oList = cls === 'byt' ? [['bytovka', 1]] : cls === 'rd' ? [['RD', 1]] : [];
     for (const kd of pat) {
       if (kd === 'O' || kd === 'OF') {
-        const o = this.wpick(m.O.length ? m.O : [['RD', 1]], x => x[1])[0];
+        if (!oList.length) continue;
+        const o = this.wpick(oList, x => x[1])[0];
         if (kd === 'O') segs.push({ t: o, loc: true });
         else { const fl = this.wpick(m.F.length ? m.F : PM.model.byt.F, x => x[1])[0]; segs.push({ t: o + ' ' + floor(fl), loc: true }); }
       } else if (kd === 'F') {
         const fl = this.wpick(m.F.length ? m.F : PM.model.byt.F, x => x[1])[0]; segs.push({ t: floor(fl), loc: true });
       } else if (kd === 'I') segs.push({ t: ind.klasif, loc: false });
       else if (kd === 'S') {
-        const list = pool(m.S, x => x[2] === 'G' || police);
+        const list = pool(m.S, x => (x[2] === 'G' || police) && this._facOk(x[0], ctx));
         if (list.length) segs.push({ t: this.wpick(list, x => x[1])[0], loc: false });
       } else if (kd === 'X') {
         const list = pool(xs, x => !used.has(x[0]));
@@ -397,7 +432,7 @@ class SimCases {
       let acc = 0; for (const [k, v] of Object.entries(wk)) { acc += v; if (r < acc && ZOS_POI.poi[k] && ZOS_POI.poi[k].length) { poiKey = k; break; } }
     }
     const wd = D.where[poiKey] || D.where[whKey];
-    let lat, lon, addr, townN, okres = null, cast = '';
+    let lat, lon, addr, townN, okres = null, cast = '', bld = null, poiName = '', fromPoi = false;
     const A = typeof ZOS_ADDR !== 'undefined' && ZOS_ADDR && ZOS_ADDR.a ? ZOS_ADDR : null;
     const nearTown = (la, lo) => { let b = null, bd = 1e9; for (const tw of D.towns) { const d = hav(la, lo, tw.lat, tw.lon) / Math.sqrt(tw.w); if (d < bd) { bd = d; b = tw; } } return b; };
     if (over.at) {
@@ -414,11 +449,11 @@ class SimCases {
       let p = this.pick(list);
       for (let tries = 0; tries < 14 && (this._tooClose(p[0] / 1e5, p[1] / 1e5, p[2]) || this.rnd() * ZOS_DATA.obecMulMax >= this._obecMul(p[4])); tries++) p = this.pick(list);
       lat = p[0] / 1e5 + this.rr(-0.00015, 0.00015); lon = p[1] / 1e5 + this.rr(-0.00015, 0.00015);
-      townN = p[4]; okres = ZOS_POI.okresy[p[5]] || null; cast = '';
+      townN = p[4]; okres = ZOS_POI.okresy[p[5]] || null; cast = ''; fromPoi = true; poiName = p[2] || '';
       addr = p[2] ? `${p[3]} (${p[2].replace(/\u00a0/g, ' ')})` : p[3];
     } else if (A) {
-      const picked = this._randomAddress(A);
-      lat = picked.lat; lon = picked.lon; townN = picked.city; okres = picked.okres; cast = picked.cast; addr = picked.address;
+      const picked = this._randomAddress(A, whKey);
+      lat = picked.lat; lon = picked.lon; townN = picked.city; okres = picked.okres; cast = picked.cast; addr = picked.address; bld = picked.bld;
     } else {
       const town = this.wpick(D.towns, x => x.w);
       const km = (town.w > 20 ? this.rr(0, 3.5) : this.rr(0, 1.8)) * Math.sqrt(this.rnd()), ang = this.rnd() * Math.PI * 2;
@@ -439,7 +474,7 @@ class SimCases {
     const ownIntake = n === 1 ? this.ri(70, 150) : this.ri(90, 200);
     const dzDur = dzFirst ? (over.intake != null ? Math.round(over.intake * 0.6) : this.ri(180, 300)) : 0;
     const intake = over.intake != null ? over.intake : dzFirst ? dzDur + (n === 1 ? this.ri(70, 150) : this.ri(70, 150)) : ownIntake;
-    const tail = this._tail(ind, D.tailMix[poiKey] ? poiKey : whKey, up, age, sex);   // popis místa + poznámka ZOS (model skutečných zápisů)
+    const tail = this._tail(ind, D.tailMix[poiKey] ? poiKey : whKey, up, age, sex, { bld, poi: fromPoi, poiName, key: poiKey });   // popis místa + poznámka ZOS (model skutečných zápisů)
     const poznamka = tail.note;
     const eo = { t, intake, patientCount, n, up, addr, town: townN, okres, where: whKey, sex, lat, lon };
     const radioReports = extKinds ? this._extReports(extKinds, eo) : [];
@@ -460,7 +495,7 @@ class SimCases {
     const c = this._newCase({
       ind: ind.id, klasif: ind.klasif, typ: 'primární', up, symptoms, charakter: D.charaktery[wd.ch], where: whKey, place: placeText, n, dyn, rvNeed, rvLater, rvReqKind,
       initialDispatchRequired: rvNeed ? ['RZP', 'RV'] : ['RZP'], initialDispatchSent: [],
-      rvP: ind.rvP || 0, zzumInd: !!ind.zzum, addr, town: town.n, okres, cast, lat, lon, age, sex, child: age < 18, burnCenterCandidate: ind.id === 'popal' && symptomText.includes('ROZSÁHLÉ'),
+      rvP: ind.rvP || 0, zzumInd: !!ind.zzum, addr, bld, town: town.n, okres, cast, lat, lon, age, sex, child: age < 18, burnCenterCandidate: ind.id === 'popal' && symptomText.includes('ROZSÁHLÉ'),
       desc: patientCount > 1 ? `${patientCount} ${hasCo ? 'osob s podezřením na otravu CO' : 'zranění při dopravní nehodě'}; hlavní pacient: ${this._person(age, sex)}, ${age} let.` : `${this._person(age, sex)}, ${age} let. ${ind.klasif}.`,
       hospType, trans: this.rnd() < ind.trans, scene: ind.scene, sceneQ: ind.sceneQ || null, pocet: patientCount, patientCount, patientsRemaining: patientCount, patientsHandled: 0, radioReports,
       poznamka: noteFull, ozn: oznName, oznRel, patientName, ageText: this._ageText(age),

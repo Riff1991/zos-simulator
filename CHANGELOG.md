@@ -8,6 +8,15 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.30.3 – 2026-11-16
+
+> Popis místa sedí na adresu.
+
+### Opravy
+- **Popis místa už neodporuje adrese.** Zařízení (zimní stadion, hospoda, vrátnice, stanice HS, DPS…) se u obyčejné adresy nepoužijí; u reálných míst z OSM jen když sedí jméno nebo druh místa.
+- **Dům a bytový dům podle skutečné budovy z OSM.** „RD“ se objeví jen u domu, „byt“ jen u bytového domu a patro nepřesáhne počet podlaží budovy.
+- `addr.json` má navíc typ budovy a počet podlaží (9,2 MB).
+
 ## v0.30.2 – 2026-11-16
 
 > Vstřícná jízda se nabízí častěji a o překladu rozhoduje typ pacienta.
