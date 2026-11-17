@@ -377,6 +377,8 @@ function ctVoiceChain(facts) {
   return [aged, base];
 }
 const ctFemale = v => /á$/.test(String(v.volajici.jmeno).trim().split(/\s+/).pop());
+// druh linky podle hovoru: pevná linka, mobil, u těžké úrovně (a občas i jinak) slabý signál
+const ctLineOf = f => (f && f.aml && f.aml.typ === 'pevná' ? 'pevna' : Math.random() < (sim.s.liveCalls.level === 'tezke' ? 0.4 : 0.08) ? 'slaby' : 'mobil');
 async function ctVoiceStart(facts, opts) {
   opts = opts || {};
   const P = window.CT_PROMPTS, v = facts.view, tr = $('ct-textrow');
@@ -390,7 +392,7 @@ async function ctVoiceStart(facts, opts) {
     instr += `\n\nKONTROLNÍ HOVOR (TANR)\n- Od posledních pokynů uplynulo ${opts.tanr.min} minut a calltaker ti volá zpět zkontrolovat stav. Aktuální stav: ${st}. Stručně to řekneš a ptáš se, kdy už dojedou.\n- Dosavadní hovor:\n${ctTrSummary()}`;
   }
   const call = ct.call, h = await ZOS_LIVE.connect({
-    key: cts.key, model: cts.vModel, voices: ctVoiceChain(facts), instructions: instr, filter: cts.filt, record: cts.rec,
+    key: cts.key, model: cts.vModel, voices: ctVoiceChain(facts), instructions: instr, filter: cts.filt, line: ctLineOf(facts), record: cts.rec,
     onStatus: (t, bad) => { if (ct.call === call) { ct.vstatus = t; ct.vbad = !!bad; } },
     onReady: () => { if (ct.call === call) { ct.vstatus = '● spojeno'; ct.vbad = false; } },
     onTranscript: (role, d) => { if (ct.call === call) ctTrDelta(role, d); },

@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.36.0 – rozpracováno
+Nové:
+- **Realističtější telefonní linka u volajícího.** Filtr už není jen ekvalizér: hlas prochází strmým pásmem 300–3400 Hz, převzorkováním na 8 kHz (typická telefonní zrnitost), kvantizací G.711 µ-law, měkkým ořezáním špiček a jemnou kompresí. Šum je růžový a sleduje hlasitost řeči. Linka má tři profily podle hovoru: **pevná linka** (jen pásmo a kodek, slabý brum), **mobil** (občasné vypadnutí 20ms rámců s náhradou předchozím, jako při ztrátě paketu) a **slabý signál** (hrubší kvantizace, víc ztrát a šumu; u těžké úrovně častěji).
+Interní:
+- `calltaker/phonecodec.js` (AudioWorklet kodek a profily), test `tests/phone_codec_test.js`.
+
 ## v0.35.1 – 2026-11-17
 Opravy:
 - **Adresa ve vesnici bez ulic** (například „čp. 83, Myslkovice“) se teď najde jako konkrétní dům. Dřív hra „čp.“ četla jako název ulice a ukázala jen střed obce.
