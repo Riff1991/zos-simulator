@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.34.1 – 2026-11-17
+Opravy:
+- **Náběr případu:** označené cihly se nepropisují dvakrát. Cihly klasifikace, šedé cihly a DÍTĚ, DOSPĚLÝ, TANR, DYNAMICKÁ_INDIK jdou do Upřesnění, ostatní univerzální cihly (+PČR, +HZS, DR_NA_ŽÁDOST, TRANSPORT_PAC …) jen do Poznámky jako štítky `#…`.
+
 ## v0.34.0 – 2026-11-17
 Nové:
 - **Náběr případu jako ve skutečném systému.** Nová obrazovka nabírání věrně kopíruje reálnou: Volající, Adresa případu (tabulka prvků, obec / ulice / číslo s našeptávačem), Klasifikace případu s **cihličkami** (jednotlivá kritéria v barvách naléhavosti), Detail pacienta, Požadavek na posádku, Spolupráce a spodní tlačítka. Označené cihly mají šikmé pruhování a jen doporučí N a typ posádky (vyšší barva vyhrává), naléhavost a požadavek na posádku zadáváš vždy ručně. Bez nich „Případ nelze založit“.
