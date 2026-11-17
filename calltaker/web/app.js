@@ -96,22 +96,45 @@
     hp.connect(lp); lp.connect(ws); ws.connect(comp); comp.connect(out);
     return { input: hp, output: out };
   }
+  // šum linky „přes hlas“: sílí podle hlasitosti řeči, v pauzách skoro zmizí, občas lupne; jde do filtru spolu s hlasem
+  function lineNoise(ctx, src, dest) {
+    const an = ctx.createAnalyser(); an.fftSize = 1024; src.connect(an);
+    const len = ctx.sampleRate * 2, nb = ctx.createBuffer(1, len, ctx.sampleRate), nd = nb.getChannelData(0);
+    for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = ctx.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    const ng = ctx.createGain(); ng.gain.value = 0.003; ns.connect(ng); ng.connect(dest); ns.start();
+    const data = new Float32Array(an.fftSize); let q = 1;
+    function click() {
+      const n = Math.floor(ctx.sampleRate * (0.002 + Math.random() * 0.004)), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const sn = ctx.createBufferSource(); sn.buffer = b; const g = ctx.createGain(); g.gain.value = 0.1 + Math.random() * 0.2; sn.connect(g); g.connect(dest); sn.start();
+    }
+    const timer = setInterval(() => {
+      if (ctx.state === 'closed') { clearInterval(timer); return; }
+      an.getFloatTimeDomainData(data);
+      let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+      const rms = Math.sqrt(sum / data.length);
+      if (Math.random() < 0.03) q = 0.6 + Math.random() * 0.9;   // kolísání kvality linky
+      ng.gain.setTargetAtTime((0.003 + rms * 0.45) * q, ctx.currentTime, 0.04);
+      if (rms > 0.02 && Math.random() < 0.05) click();
+    }, 40);
+  }
+  // hlas (+ šum přes něj) → telefonní filtr
+  function phoneLine(ctx, src) {
+    const mixIn = ctx.createGain(), f = phoneFilter(ctx);
+    src.connect(mixIn); lineNoise(ctx, src, mixIn); mixIn.connect(f.input);
+    return f.output;
+  }
   function phoneChain(c, stream) {
     const ctx = c.ctx; ctx.resume();
-    const src = ctx.createMediaStreamSource(stream), f = phoneFilter(ctx);
-    src.connect(f.input); f.output.connect(ctx.destination);
-    if (c.rx) f.output.connect(c.rx);
-    const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    const ns = ctx.createBufferSource(); ns.buffer = buf; ns.loop = true;
-    const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1500; nf.Q.value = 0.4;
-    const ng = ctx.createGain(); ng.gain.value = 0.012;
-    ns.connect(nf); nf.connect(ng); ng.connect(ctx.destination); if (c.rx) ng.connect(c.rx); ns.start();
+    const out = phoneLine(ctx, ctx.createMediaStreamSource(stream));
+    out.connect(ctx.destination);
+    if (c.rx) out.connect(c.rx);
   }
   // mikrofon: pro záznam (volitelně přes telefonní filtr); volajícímu jde vždy čistý
   function setupMic(c) {
     const ctx = c.ctx, src = ctx.createMediaStreamSource(c.mic);
-    if ($('filt').checked) { const f = phoneFilter(ctx); src.connect(f.input); c.micTap = f.output; } else c.micTap = src;
+    c.micTap = $('filt').checked ? phoneLine(ctx, src) : src;
   }
   function attachAudio(c, ev) {
     const stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
