@@ -3,7 +3,7 @@
   "private": true,
   "description": "Simulátor primárního dispečera ZOS ZZS Jihočeského kraje",
   "scripts": {
-    "test": "node tests/test.js && node tests/calltaker_test.js && node tests/spider_test.js && node tests/cihly_test.js && node tests/phone_codec_test.js && node tests/content_audit.js && node tests/tutorial.js",
+    "test": "node tests/test.js && node tests/calltaker_test.js && node tests/spider_test.js && node tests/cihly_test.js && node tests/phone_codec_test.js && node tests/addr_test.js && node tests/content_audit.js && node tests/tutorial.js",
     "build": "python3 build.py",
     "serve": "python3 -m http.server -d site 8765",
     "data": "bash pipeline/run.sh",

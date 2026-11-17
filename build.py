@@ -13,7 +13,7 @@ ui = "(function () {\n'use strict';\n" + ''.join(rd('src/%s.js' % n) for n in UI
 os.makedirs('work', exist_ok=True)
 open('work/ui.bundle.js', 'w', encoding='utf8').write(ui)  # jen pro lint (npm run lint)
 open('work/engine.bundle.js', 'w', encoding='utf8').write(d + symptoms + e + strip(rd('src/router.js')))  # engine + data pro stránku calltakera (calltaker/build_web.js)
-ctmods = ''.join('(function () {' + chr(10) + rd('calltaker/%s.js' % n) + chr(10) + '})();' + chr(10) for n in ['personas', 'cizinci', 'check', 'prompts', 'spider', 'cihly', 'phonecodec'])  # moduly calltakera (UMD, v prohlížeči nastaví window.CT_*)
+ctmods = ''.join('(function () {' + chr(10) + rd('calltaker/%s.js' % n) + chr(10) + '})();' + chr(10) for n in ['personas', 'cizinci', 'check', 'prompts', 'spider', 'cihly', 'phonecodec', 'addrindex'])  # moduly calltakera (UMD, v prohlížeči nastaví window.CT_*)
 u = strip(rd('src/voice.js')) + strip(rd('src/live-voice.js')) + ctmods + strip(rd('src/tutorial.js')) + ui
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'

@@ -37,7 +37,7 @@ class SimCalltaker {
   _ctParse(text) {
     const t = String(text || '').replace(/\([^)]*\)/g, ' '), parts = t.split(',').map(x => x.trim()).filter(Boolean);
     let left = parts[0] || '', city = parts.length > 1 ? parts[parts.length - 1] : '';
-    const m = left.match(/(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)\s*$/) || left.match(/(?:č\.?\s*p\.?\s*)?(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)/i);
+    const m = left.match(/(\bev\.?\s*\d+[a-zA-Z]?)\s*$/i) || left.match(/(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)\s*$/) || left.match(/(?:č\.?\s*p\.?\s*)?(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)/i);
     const num = m ? m[1] : '';
     // „čp.“ není ulice (\b nefunguje u „č“); ulice stejná jako obec (vesnice bez ulic) se bere jako bez ulice
     let street = ctNorm(left.replace(num, ' ').replace(/(^|\s)č\.?\s*p\.?(?=\s|$)/i, ' '));
@@ -57,19 +57,21 @@ class SimCalltaker {
     return (this._ctIdx = idx);
   }
   // najde bod zadané adresy; kvalita: exact (ulice+číslo) / street (jen ulice) / town (jen obec) / null
-  _ctGeocode(text) {
+  // near = {lat, lon}: stejnojmenné obce (Bernartice, Lhota …) a stejná adresa v různých částech obce se rozliší podle blízkosti k této poloze (AML, skutečné místo)
+  _ctGeocode(text, near) {
     const idx = this._ctIndex(), p = this._ctParse(text);
     if (!idx.A || !p.city) return { quality: null, p };
-    const list = idx.byCity.get(p.city); if (!list) return { quality: null, p };
-    const a = idx.A.a, N = idx.N, S = idx.A.s;
+    let list = idx.byCity.get(p.city); if (!list) return { quality: null, p };
+    const a = idx.A.a, N = idx.N, S = idx.A.s, hasNear = !!near && Number.isFinite(near.lat) && Number.isFinite(near.lon), dist = i => hav(a[i] / 1e5, a[i + 1] / 1e5, near.lat, near.lon);
+    if (hasNear) { const close = list.filter(i => dist(i) < 15); if (close.length) list = close; }
     const num0 = p.num.split('/')[0], same = [];
-    let exact = null;
+    let exact = null, exactD = Infinity;
     for (const i of list) {
       const street = N(a[i + 2]), city = N(a[i + 3]), num = N(a[i + 4]);
       const st = street && street !== city ? street : '';
       if (st === p.street || (!p.street && !st)) {
         same.push(i);
-        if (num === p.num || (num0 && num.split('/')[0] === num0)) { exact = i; break; }
+        if (num === p.num || (num0 && num.split('/')[0] === num0)) { if (!hasNear) { exact = i; break; } const dd = dist(i); if (dd < exactD) { exactD = dd; exact = i; } }
       }
     }
     const at = i => ({ lat: a[i] / 1e5, lon: a[i + 1] / 1e5, label: S[a[i + 3]] });
@@ -82,19 +84,25 @@ class SimCalltaker {
   _ctKind(tc) { const a = String(tc.addr || ''); return /okolí obce/i.test(a) || !/\d/.test(a) ? 'silnice' : /\(/.test(a) ? 'poi' : 'dum'; }
   _ctTol(tc) { return CT_TOL[this._ctKind(tc)]; }
   // zadaná poloha proti pravdě. Bod z mapy má přednost před textem adresy; bez bodu se kontroluje standardní adresa z databáze (silnice a místa bez čísla calltaker najde na mapě a berou se jako správná)
+  // referenční bod standardní adresy = adresní bod skutečné adresy (skutečné místo může být posunuté, např. provozovna nebo „před domem“); správně zadaná adresa pak nemá chybu
+  _ctRef(tc) {
+    const a = String(tc.addr || ''), m = /^(.+?) čp\. (.+)$/.exec(a), t = !a.includes(',') && m ? 'čp. ' + m[2] + ', ' + m[1] : a;
+    const g = a ? this._ctGeocode(t, { lat: tc.lat, lon: tc.lon }) : null;
+    return g && g.quality === 'exact' ? { lat: g.lat, lon: g.lon } : { lat: tc.lat, lon: tc.lon };
+  }
   _ctLocate(adresa, tc, bod) {
-    const standard = this._ctKind(tc) === 'dum', tol = this._ctTol(tc);
+    const standard = this._ctKind(tc) === 'dum', tol = this._ctTol(tc), ref = standard ? this._ctRef(tc) : { lat: tc.lat, lon: tc.lon };
     if (bod && Number.isFinite(Number(bod.lat)) && Number.isFinite(Number(bod.lon))) {
-      const lat = Number(bod.lat), lon = Number(bod.lon), errM = Math.round(hav(lat, lon, tc.lat, tc.lon) * 1000);
+      const lat = Number(bod.lat), lon = Number(bod.lon), errM = Math.round(hav(lat, lon, ref.lat, ref.lon) * 1000);
       const miss = errM > 3 * tol ? { lat: tc.lat, lon: tc.lon, m: errM, addr: tc.addr, thr: 3 * tol } : null;
       const searchDelay = !miss && errM > tol ? Math.round(60 + 90 * (errM - tol) / (2 * tol)) : 0;
       let conflict = false;
-      if (adresa && standard) { const g = this._ctGeocode(adresa); conflict = !!(g.quality && hav(g.lat, g.lon, lat, lon) * 1000 > 3 * tol); }
+      if (adresa && standard) { const g = this._ctGeocode(adresa, { lat: tc.lat, lon: tc.lon }); conflict = !!(g.quality && hav(g.lat, g.lon, lat, lon) * 1000 > 3 * tol); }
       return { standard, typed: String(adresa || '').trim() || 'bod z mapy', geo: { quality: 'point', lat, lon }, errM, miss, tol, searchDelay, byPoint: true, conflict };
     }
     if (!adresa || !standard) return { standard, typed: String(adresa || tc.addr || '').trim(), geo: null, errM: 0, miss: null, tol, searchDelay: 0 };
-    const geo = this._ctGeocode(adresa);
-    const errM = geo.quality ? Math.round(hav(geo.lat, geo.lon, tc.lat, tc.lon) * 1000) : 0;
+    const geo = this._ctGeocode(adresa, { lat: tc.lat, lon: tc.lon });
+    const errM = geo.quality ? Math.round(hav(geo.lat, geo.lon, ref.lat, ref.lon) * 1000) : 0;
     const miss = geo.quality && errM > 250 ? { lat: tc.lat, lon: tc.lon, m: errM, addr: tc.addr, thr: 250 } : null;
     return { standard, typed: String(adresa).trim(), geo, errM, miss, tol, searchDelay: 0 };
   }

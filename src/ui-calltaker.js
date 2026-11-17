@@ -313,7 +313,7 @@ function ctMapClick(e) {
 function ctFind() {
   ctAddrSync(); const t = ctVal('ctf-adresa'); if (!t) return;
   ct.addrAuto = false;
-  const g = sim._ctGeocode(t);
+  const ph = ctAmlPhases(), last = ph[ph.length - 1], g = sim._ctGeocode(t, last ? { lat: last.lat, lon: last.lon } : null);   // stejnojmenné obce se rozliší podle AML
   if (!g.quality) { ct.ptInfo = 'Adresu se nepodařilo najít v databázi adres.'; ct.pt = null; ctPtInfo(); toast('Adresu se nepodařilo najít.', 'warn'); return; }
   ctSetPoint(g.lat, g.lon, 'adresa');
   ct.ptInfo = ({ exact: 'Adresa nalezena přesně.', street: 'Nalezena jen ulice (střed), upřesni číslo.', town: 'Nalezena jen obec (střed), upřesni adresu.' })[g.quality]; ctPtInfo();
@@ -605,7 +605,7 @@ function ctResultModal(rec) {
       + row('Poloha', cc.miss ? false : ck.bodM <= ck.tol, `${ck.bodM} m od pravdy (tolerance ${ck.tol} m), zdroj ${esc(ck.zdroj)}${ck.aml ? ', použit AML' : ''}`);
   }
   const cons = !c ? '<p class="ct-note bad">Hovor byl ukončen bez odeslání případu dispečerovi (−20 b.).</p>' : `<ul style="margin:4px 0;padding-left:18px;font-size:12.5px"><li>${cc.miss ? `<b>Poloha mimo toleranci o ${cc.errM} m: posádka jela na zadané místo, nenašla pacienta a hledala.</b>` : cc.searchDelay ? `Bod vedle o ${cc.errM} m: posádka pacienta chvíli hledala (+${cc.searchDelay} s).` : cc.unlocatable ? 'Adresu se nepodařilo najít, dispečer ji dohledával.' : 'Poloha sedí, posádka jela správně.'}</li><li>Naléhavost ${cc.typedN === cc.truthN ? 'sedí' : `zadána N${cc.typedN}, skutečně N${cc.truthN}`}${cc.conflict ? ' · adresa a bod z mapy se rozcházely, přednost měl bod' : ''}</li><li>Doplnění po odeslání: ${cc.updates}×${cc.sec != null ? ', hovor ' + cc.sec + ' s' : ''}</li></ul>`;
-  const typedPt = c ? (cc.bod ? { lat: cc.bod.lat, lon: cc.bod.lon, tol: cc.tol } : (() => { const g = sim._ctGeocode(cc.typed); return g.quality ? { lat: g.lat, lon: g.lon, tol: cc.tol } : null; })()) : null;
+  const typedPt = c ? (cc.bod ? { lat: cc.bod.lat, lon: cc.bod.lon, tol: cc.tol } : (() => { const g = sim._ctGeocode(cc.typed, { lat: k.lat, lon: k.lon }); return g.quality ? { lat: g.lat, lon: g.lon, tol: cc.tol } : null; })()) : null;
   const ph = f.aml.phases, aml = ph.length > 1 ? ph[ph.length - 1] : null;
   window._ctRes = rec;
   const sk = cc && cc.skore, kindTxt = (rec.call.kind || 'vyjezd') === 'bez' ? `<p class="ct-note"><b>Hovor nevyžadoval výjezd</b> (${esc(k.spravne || '')}). ${rec.call.wrongSend ? 'Případ byl zbytečně odeslán.' : 'Správně nevysláno.'}</p>`
@@ -641,20 +641,12 @@ const ctNk = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\
 let ctAx = null;
 // index z ZOS_ADDR: obec → ulice → čísla (staví se líně při prvním psaní)
 function ctAddrIndex() {
-  if (ctAx) return ctAx; const A = window.ZOS_ADDR; if (!A) return null;
-  const a = A.a, S = A.s, towns = new Map();
-  for (let i = 0; i < a.length; i += 8) {
-    const city = S[a[i + 3]], st = S[a[i + 2]], num = S[a[i + 4]], key = st && st !== city ? st : '';
-    let T = towns.get(city); if (!T) towns.set(city, T = { n: city, nk: ctNk(city), c: 0, okres: (A.okresy || [])[a[i + 6]] || '', streets: new Map() });
-    T.c++; let ss = T.streets.get(key); if (!ss) T.streets.set(key, ss = { n: key, nk: ctNk(key), nums: new Set(), c: 0, cast: S[a[i + 5]] || '' });
-    ss.nums.add(num); ss.c++;
-  }
-  const list = [...towns.values()];
-  return (ctAx = { towns: list, byNk: new Map(list.map(t => [t.nk, t])) });
+  if (ctAx) return ctAx; const A = window.ZOS_ADDR; if (!A || !window.CT_ADDR) return null;
+  return (ctAx = window.CT_ADDR.build(A));
 }
 function ctAddrSync() {
   const o = ctVal('ctf-obec'), u = ctVal('ctf-ulice'), n = ctVal('ctf-cp');
-  const left = u ? u + (n ? ' ' + n : '') : n ? 'čp. ' + n : '';
+  const left = u ? u + (n ? ' ' + n : '') : n ? (/^ev/i.test(n) ? n : 'čp. ' + n) : '';
   ctSet('ctf-adresa', ct.okoli && !u && !n && o ? 'okolí obce ' + o : [left, o].filter(Boolean).join(', '));
 }
 function ctSetAddr(p) { ctSet('ctf-obec', p.obec || ''); ctSet('ctf-ulice', p.ulice || ''); ctSet('ctf-cp', p.cp || ''); ct.okoli = !!p.okoli; ctAddrSync(); }
@@ -672,7 +664,7 @@ function ctSugList(field) {
   const rank = nk => (nk.startsWith(q) ? 0 : nk.split(' ').some(w => w.startsWith(q)) ? 1 : nk.includes(q) ? 2 : -1);
   const out = [];
   if (field === 'obec') {
-    if (q) for (const t of ix.towns) { const r = rank(t.nk); if (r >= 0) out.push({ r, c: t.c, label: t.n, v: t.n }); }
+    if (q) for (const t of ix.towns) { const r = rank(t.nk); if (r >= 0) out.push({ r, c: t.c, label: t.n, sub: t.okresNames && t.okresNames.length ? 'okres ' + t.okresNames.join(' / ') : '', v: t.n }); }
   } else if (field === 'ulice') {
     for (const t of town ? [town] : q.length >= 2 ? ix.towns : []) for (const st of t.streets.values()) {
       if (!st.n) continue; const r = q ? rank(st.nk) : 0; if (r >= 0) out.push({ r, c: st.c, label: st.n, sub: town ? '' : t.n, v: st.n, town: t.n });

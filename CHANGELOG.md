@@ -8,6 +8,15 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.36.1 – rozpracováno
+Opravy:
+- **Našeptávač adres:** v Českých Budějovicích se nenabízely ulice (například Matice školské). Příčinou byly varianty zápisu obcí v datech („Ceske Budejovice“ bez diakritiky, „VIMPERK“ velkými písmeny), které přepsaly skutečnou obec. Varianty se teď slučují; index se testuje na všech 227 tisících adres.
+- **Stejnojmenné obce** (Bernartice, Lhota a dalších 20) se nabízejí s okresem a při hledání bodu se vybere ta u polohy z AML.
+- **Správně zadaná adresa už nezpůsobí zdržení**, i když je skutečné místo posunuté od adresního bodu (provozovna, ordinace, „před domem“).
+- **Evidenční čísla** (ev. 74) se čtou jako celé číslo, ne jako číslo popisné 74.
+Interní:
+- `calltaker/addrindex.js`, test `tests/addr_test.js` (všechny adresy, geokódování, stejnojmenné obce, adresy generovaných případů).
+
 ## v0.36.0 – 2026-11-17
 Nové:
 - **Realističtější telefonní linka u volajícího.** Filtr už není jen ekvalizér: hlas prochází strmým pásmem 300–3400 Hz, převzorkováním na 8 kHz (typická telefonní zrnitost), kvantizací G.711 µ-law, měkkým ořezáním špiček a jemnou kompresí. Šum je růžový a sleduje hlasitost řeči. Linka má tři profily podle hovoru: **pevná linka** (jen pásmo a kodek, slabý brum), **mobil** (občasné vypadnutí 20ms rámců s náhradou předchozím, jako při ztrátě paketu) a **slabý signál** (hrubší kvantizace, víc ztrát a šumu; u těžké úrovně častěji).
