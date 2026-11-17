@@ -15,6 +15,9 @@ Nové:
 - Okno Pavouk zrušeno (klasifikace je přímo v obrazovce).
 - **Čekající případ zůstává v čekajících, dokud není splněn celý požadavek na posádku** (například N2 s lékařem a vyslané jen RZP). Ukáže „Čeká na: RV“. Po převodu na dynamickou indikaci nebo příznaku ZZUM přejde do probíhajících. Platí pro celou hru.
 - Způsob ohlášení se vyplňuje automaticky, POI/NIS/Souřadnice jsou vypnuté (terén a body zájmu v mapě), plné znění cihličky se ukáže pod myší.
+- **Dispečer vidí to, co calltaker zadal:** klasifikace z tabulky (například CMP) a označené cihličky, ne skrytou pravdu o případu.
+- **V záložce Moje případy** je seznam vyhodnocených hovorů s tlačítkem Analýza u každého. Přepis hovoru se zobrazuje jen v textovém režimu.
+- **Realističtější volající:** většina zná přesnou adresu (neví jen svědek na silnici či v terénu, dítě a turista), v pozadí už nehraje rádio ani nešteká pes a AI volající nepřidává zvracení.
 Interní:
 - `src/ui-intake.js`, `CT_CIHLY.createIntake`, `tools/build_cihly.py` generuje kritéria s kódy; Požadavek na posádku řídí potřebu lékaře v enginu.
 

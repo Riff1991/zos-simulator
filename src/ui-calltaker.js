@@ -79,7 +79,7 @@ function ctStart() {
 function ctReset() {
   if (ct.voice) { try { ct.voice.stop(); } catch (e) { /* ignore */ } }
   ctStopRing();
-  ct = Object.assign(ct, { tanr: null, dropAt: null, kindNote: '', lastRes: null, wavs: [], usage: 0, was: false, call: null, facts: {}, tab: 'intake', ringId: null, voice: null, transcript: [], pt: null, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, hash: '', mapHash: '', built: false, phoneKey: '', msgs: [], wav: null });
+  ct = Object.assign(ct, { tanr: null, dropAt: null, kindNote: '', lastRes: null, recs: [], wavs: [], usage: 0, was: false, call: null, facts: {}, tab: 'intake', ringId: null, voice: null, transcript: [], pt: null, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, hash: '', mapHash: '', built: false, phoneKey: '', msgs: [], wav: null });
   const b = $('ct-body'); if (b) b.innerHTML = '';
   document.body.classList.add('ct-spider-off');
 }
@@ -184,6 +184,7 @@ function ctCasesHtml() {
   }).join('') + '</table>' : '<p class="ct-note">Zatím žádný tvůj případ.</p>';
   const other = s.cases.filter(c => !c.call && c.status !== 'closed').length;
   if (other) h += `<p class="ct-note">Případy od kolegů právě v řešení: ${other}</p>`;
+  if (ct.recs && ct.recs.length) h += '<h3 style="margin:10px 0 4px;font-size:13px">Vyhodnocené hovory</h3><table class="ct-t"><tr><th>Hovor</th><th>Zadáno</th><th>Body</th><th></th></tr>' + ct.recs.map((r, i) => { const cs = r.call && r.call.caseId ? sim.caseOf(r.call.caseId) : null, sk = cs && cs.call && cs.call.skore; return `<tr><td>${sim.clockAt(r.call.pickedAt)}<br><small>${esc(r.facts.view.volajici.jmeno)}</small></td><td>${esc((r.form && r.form.klasifTabulka) || '–')}${cs ? ' · N' + cs.n : ' · bez případu'}</td><td>${sk ? sk.total + ' / ' + sk.max : '–'}</td><td><button class="btn" data-act="ct-rozbor-i" data-i="${i}" style="margin:0">Analýza</button></td></tr>`; }).reverse().join('') + '</table>';
   $('ct-pane-mine').innerHTML = h;
 }
 
@@ -347,7 +348,7 @@ const ctFemale = v => /á$/.test(String(v.volajici.jmeno).trim().split(/\s+/).po
 async function ctVoiceStart(facts, opts) {
   opts = opts || {};
   const P = window.CT_PROMPTS, v = facts.view, tr = $('ct-textrow');
-  tr.style.display = cts.mode === 'text' ? 'flex' : 'none'; if (!opts.resume && !opts.tanr) $('ct-trwrap').open = cts.mode === 'text';
+  tr.style.display = cts.mode === 'text' ? 'flex' : 'none'; $('ct-trwrap').hidden = cts.mode !== 'text'; if (!opts.resume && !opts.tanr) $('ct-trwrap').open = cts.mode === 'text';
   if (!cts.key) { ct.vstatus = 'bez klíče OpenAI – hovor bez hlasu (nastavení v menu Calltaker)'; ct.vbad = true; return; }
   if (cts.mode === 'text') { ct.vstatus = 'textový režim'; if (!opts.tanr) ctTrAdd('sys', opts.resume ? 'Spojení obnoveno.' : 'Hovor spojen. Pozdrav a nabírej (píšeš do pole níže).'); return; }
   let instr = P.callerSystem(v, true);
@@ -427,7 +428,7 @@ function ctFinish() {
   const hc = sim.finishCall(call.id);
   const rec = { call: hc || call, facts, form, transcript, wavs: (ct.wavs || []).slice(), usage: ct.usage || 0, cls: ct.cls };
   ct.call = null; ct.ended = false; ct.phoneKey = ''; ct.wavs = []; ct.usage = 0; ct.tanr = null;
-  ct.lastRes = rec; window._ctRes = rec;
+  ct.lastRes = rec; window._ctRes = rec; (ct.recs || (ct.recs = [])).push(rec);
   document.body.classList.add('ct-spider-off'); layoutApply(true);
   toast('Hovor dokončen. Rozbor najdeš v telefonním pruhu (tlačítko Rozbor hovoru).', '');
   render();
@@ -565,7 +566,7 @@ function ctResultModal(rec) {
   let tb = '';
   if (ck) {
     tb = row('Klasifikace', ck.klasif.ok, `zadáno ${esc(ck.klasif.typed || '–')}, správně <b>${esc(ck.klasif.truth)}</b>`) + row('Naléhavost', ck.n.ok, `zadáno N${ck.n.typed}, správně <b>N${ck.n.truth}</b>`) + row('Dynamická indikace', ck.dyn.ok, `zadáno ${ck.dyn.typed == null ? '–' : ck.dyn.typed ? 'ano' : 'ne'}, správně <b>${ck.dyn.truth ? 'ano' : 'ne'}</b>`)
-      + row('Příznaky', ck.priznaky.jaccard >= 0.5, `shoda ${Math.round(ck.priznaky.jaccard * 100)} % (${ck.priznaky.typed} zadáno, ${ck.priznaky.truth} skutečných)`) + row('Věk pacienta', ck.vek.ok, `zadáno ${ck.vek.typed == null ? '–' : ck.vek.typed}, správně <b>${ck.vek.truth}</b>`)
+      + (ck.priznaky.cihla ? '' : row('Příznaky', ck.priznaky.jaccard >= 0.5, `shoda ${Math.round(ck.priznaky.jaccard * 100)} % (${ck.priznaky.typed} zadáno, ${ck.priznaky.truth} skutečných)`)) + row('Věk pacienta', ck.vek.ok, `zadáno ${ck.vek.typed == null ? '–' : ck.vek.typed}, správně <b>${ck.vek.truth}</b>`)
       + row('Jméno pacienta', ck.jmena.pacient, esc(k.pacient)) + row('Jméno volajícího', ck.jmena.volajici, esc(f.view.volajici.jmeno))
       + row('Poloha', cc.miss ? false : ck.bodM <= ck.tol, `${ck.bodM} m od pravdy (tolerance ${ck.tol} m), zdroj ${esc(ck.zdroj)}${ck.aml ? ', použit AML' : ''}`);
   }
@@ -724,6 +725,7 @@ function ctAct(a, el) {
     case 'ct-n1': ctSend(true); break;
     case 'ct-use-abonent': ctUseAbonent(); break;
     case 'ct-rozbor': ctRozbor(); break;
+    case 'ct-rozbor-i': { const r = (ct.recs || [])[Number(d.i)]; if (r) ctResultModal(r); break; }
     case 'ct-prehled': ctPrehled(); break;
     case 'ct-finish': ctFinish(); break;
     case 'ct-mute': ctMute(); break;

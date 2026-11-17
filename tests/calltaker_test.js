@@ -293,4 +293,8 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   for (let i = 0; i < 3000 && c.cs.status === 'waiting'; i++) step(c.sim);
   ok(c.cs.status !== 'closed' || !c.cs.unserved, 'částečně obsazený případ se nezavře jako neobsloužený');
 }
+{ // dispečer vidí klasifikaci a cihly zadané calltakerem, ne skrytou pravdu
+  const sim = new Sim({ seed: 777, mode: 'free' }), c = sim.addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: '2', cihla: true, klasifTabulka: 'CMP', kody: ['FAST_ASYMETRIE', 'DOSPĚLÝ'], klasif: 'CMP' }, sec: 100 });
+  ok(c.klasif === 'CMP' && c.klasifTruth === truth.klasif && c.sympShown.join() === 'FAST_ASYMETRIE,DOSPĚLÝ' && c.call.truth.klasif === truth.klasif, 'případ nese zadanou klasifikaci a cihly, pravda zůstává v c.call.truth');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

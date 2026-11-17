@@ -90,7 +90,7 @@ function kiHtml() {
     <button class="ki-bx" type="button" data-act="ct-ki-sluc">Sloučit</button><button class="ki-bx" type="button" data-act="ct-ki-end" data-why="Zlomyslné volání">Zlomyslný</button><button class="ki-bx" type="button" data-act="ct-ki-end" data-why="Informační hovor">Informační</button><button class="ki-bx" type="button" disabled>Storno</button><button class="ki-bx" type="button" data-act="ct-ki-end" data-why="Odmítnuto">Odmítnout</button>
   </div>
   <div id="ct-sendinfo" class="ct-note ki-info"></div>
-  <details id="ct-trwrap"><summary class="ct-note">Přepis hovoru</summary><div id="ct-tr" class="ct-tr"></div><div id="ct-textrow" style="display:none;gap:6px"><input id="ct-say" placeholder="Co řekneš volajícímu…"><button class="btn" data-act="ct-say" style="margin:0">Poslat</button></div></details>
+  <details id="ct-trwrap" hidden><summary class="ct-note">Přepis hovoru</summary><div id="ct-tr" class="ct-tr"></div><div id="ct-textrow" style="display:none;gap:6px"><input id="ct-say" placeholder="Co řekneš volajícímu…"><button class="btn" data-act="ct-say" style="margin:0">Poslat</button></div></details>
   </div></div><div id="ct-pane-mine" hidden style="padding:6px 8px"></div>`;
 }
 
@@ -196,7 +196,7 @@ function kiReadForm() {
     adresa: ctVal('ctf-adresa'), bod: p && p.src !== 'adresa' ? { lat: p.lat, lon: p.lon } : null, zdroj, cast: ctVal('ctf-cast'), upresneni: pozn,
     vJmeno: vol[0] || '', vPrijmeni: vol.slice(1).join(' '), vTelefon: ctVal('ctf-vTel'), vVztah: ch('ctf-hovor3') ? '3. ruka' : '', telMisto: ctVal('ctf-telMisto'), kontaktMisto: ctVal('ctf-kontaktMisto'), zpusob: ctVal('ctf-zpusob'),
     pJmeno: ctVal('ctf-pJmeno'), pPrijmeni: ctVal('ctf-pPrijmeni'), pPohlavi: kf.sex, pRok: num > 1900 ? num : '', pVek: v && num <= 130 ? num : '',
-    cihla: true, klasif: kl ? kl.engine : '', klasifTabulka: kf.klasif, priznaky: [], cihly: [...kf.sel], n: kf.n >= 1 && kf.n <= 4 ? String(kf.n) : '', dyn: kf.n ? dyn : null, posadky: Object.assign({}, kf.pos),
+    cihla: true, kody: kiCodes(), klasif: kl ? kl.engine : '', klasifTabulka: kf.klasif, priznaky: [], cihly: [...kf.sel], n: kf.n >= 1 && kf.n <= 4 ? String(kf.n) : '', dyn: kf.n ? dyn : null, posadky: Object.assign({}, kf.pos),
     charakter: ctVal('ctf-charakter'), popis: ctVal('ctf-popis'), poznamka: kiNote(), spoluprace: [...kf.coop],
     agPcr: kf.coop.has('PJHC'), agHzs: kf.coop.has('HJHC'), nebezpeci: Number(ctVal('ctf-ohrozeno')) > 0, vyprosteni: ch('ctf-vyprosteni'), ohrozeno: ctVal('ctf-ohrozeno'), osVoz: ctVal('ctf-osVoz'), naklVoz: ctVal('ctf-naklVoz'),
     pocet: pc > 0 ? pc : '', slucitS: ctVal('ctf-sluc'),

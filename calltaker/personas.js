@@ -30,7 +30,7 @@ const SLOVNIK = {
   senior3: 'jednoduché zdvořilé věty („prosím vás“, „pane“), nářečně („voni“, „dyť“), pletou se ti časy, dny i jména, občas se ptáš „co jste řekl?“',
 };
 const PROSTREDI = {
-  doma: ['doma je ticho', 'doma štěká pes', 'v pozadí křičí děti', 'v pozadí hraje rádio', 'telefon máš na hlasitý odposlech a hlas zní vzdáleně'],
+  doma: ['doma je ticho', 'doma je ticho', 'doma je ticho', 'doma je ticho', 'doma je ticho', 'v pozadí křičí děti', 'telefon máš na hlasitý odposlech a hlas zní vzdáleně'],
   venku: ['venku hučí auta, špatně se slyší', 'venku fouká silný vítr', 'prší a je hluk, mluvíš hlasitěji', 'okolo stojí lidé a mluví přes sebe'],
   prace: ['jsi v práci a hučí stroje', 'jsi v kanceláři a okolo je ticho', 'okolo je hluk a lidé volají přes sebe'],
   skola: ['okolo je hluk dětí na chodbě', 'jsi v ředitelně, ticho'],
@@ -106,7 +106,8 @@ function pickPersona(rnd, c, level, fo) {
   for (const a of pool) { r -= wt(a); if (r <= 0) { ch = a; break; } }
   if (fo) ch = ARCH.find(a => a.id === fo.typ) || ch;   // cizinec nebo příslušník menšiny (vybráno podle místa a jména)
   const lvl = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
-  const adresa = x.venku ? lvl(1, 2) : ['opily', 'dite', 'cizinec', 'teen', 'turista', 'svedek_nezna', 'senior_zmateny'].includes(ch.id) ? lvl(1, 2) : lvl(2, 3);
+  // většina volajících zná přesnou adresu (3); neví jen svědek na silnici či v terénu, dítě a turista
+  const adresa = ['silnice', 'priroda'].includes(where) || ['dite', 'svedek_nezna', 'turista'].includes(ch.id) ? lvl(1, 2) : rnd() < 0.9 ? 3 : 2;
   const band = bandOf(vek);
   const jaz = ch.cizi ? (() => { let t = rnd() * JAZYKY.reduce((s, j) => s + j.w, 0); for (const j of JAZYKY) { t -= j.w; if (t <= 0) return j; } return JAZYKY[0]; })() : null;
   return {

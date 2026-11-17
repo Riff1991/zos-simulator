@@ -1,7 +1,7 @@
 // UI – Nastavení, vzhled a ikony (části se v build.py skládají v tomto pořadí do jednoho skriptu).
 const D = ZOS_DATA;
 const $ = id => document.getElementById(id);
-const symptomsOf = c => (Array.isArray(c.symptoms) && c.symptoms.length ? c.symptoms : String(c.up || '').split(',')).map(x => String(x).trim()).filter(Boolean);
+const symptomsOf = c => (Array.isArray(c.sympShown) ? c.sympShown : Array.isArray(c.symptoms) && c.symptoms.length ? c.symptoms : String(c.up || '').split(',')).map(x => String(x).trim()).filter(Boolean);
 const clarificationOf = c => [symptomsOf(c).join(', '), c.poznamka && `Poznámka: ${c.poznamka}`].filter(Boolean).join('; ') || '–';
 const missingInitialDispatch = c => (c.initialDispatchRequired || []).filter(type => !(c.initialDispatchSent || []).includes(type));
 const isVstricnaRadioMessage = text => /vstřícn|vstricn/i.test(String(text || ''));
