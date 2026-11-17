@@ -326,4 +326,14 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   ok(g('čp. 83, Myslkovice') === 'exact' && g('83, Myslkovice') === 'exact' && g('Myslkovice 83, Myslkovice') === 'exact' && g('č. p. 83, Myslkovice') === 'exact', 'adresa vesnice bez ulic: čp. 83 najde dům (exact)');
   ok(g('Pražská 156, Tábor') === 'exact', 'adresa s ulicí se stále najde');
 }
+{ // dispečer vidí jen zadané: místo, poznámku, volajícího, telefon, pacienta, věk, pohlaví a charakter, ne skrytou pravdu z generátoru
+  const sim = new Sim({ seed: 777, mode: 'free' }), form = { adresa: truth.addr, n: '3', cihla: true, klasifTabulka: 'Trauma', klasif: truth.klasif, kody: ['AVPU-A', 'Hlava'], upresneni: 'panelák, patro 4', popis: 'pád v koupelně', poznamka: '#+PČR', vJmeno: 'Jana', vPrijmeni: 'Nováková', vTelefon: '0999111222', pJmeno: 'Petr', pPrijmeni: 'Novák', pVek: 68, pPohlavi: 'muž', charakter: 'Tísňová výzva v budově', posadky: { DI: 0, KOR: 0, LZS: 0, RLP: 0, RV: 0, RZP: 1 } };
+  const c = sim.addCallCase({ v: 1, seed, form, sec: 100 });
+  ok(c.place === 'panelák, patro 4' && c.poznamka === 'pád v koupelně; #+PČR', 'místo a poznámka jsou jen zadané (' + c.place + ' | ' + c.poznamka + ')');
+  ok(c.ozn === 'Jana Nováková' && c.phone === '0999111222' && c.patientName === 'Novák Petr' && c.charakter === 'Tísňová výzva v budově', 'volající, telefon, pacient a charakter jsou zadané');
+  ok(c.ageText === '68 let', 'věk je tak, jak ho calltaker zapsal (' + c.ageText + ')');
+  ok(c.shown.age === 68 && c.shown.sex === 'M' && c.sympShown.join() === 'AVPU-A,Hlava', 'věk, pohlaví a příznaky jsou zadané');
+  const f2 = Object.assign({}, form, { upresneni: 'patro 5', poznamka: '', popis: 'doplněno' }); sim.updateCallCase(c, f2);
+  ok(c.place === 'patro 5' && c.poznamka === 'doplněno', 'aktualizace přepíše jen zadané, bez skryté poznámky');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

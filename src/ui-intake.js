@@ -113,16 +113,17 @@ function kiSelText() {
   const e = $('ki-seltxt'); if (!e) return; const u = kInst();
   e.innerHTML = [...kf.sel].map(id => { const x = u.chip(id); return x ? `<span class="ki-st ${x.kind}">${kiTxt(x.t)}</span>` : ''; }).join('');
 }
-// označené cihly se dělí podle excelu: do Upřesnění jdou cihly klasifikace, šedé a TANR / DÍTĚ / DOSPĚLÝ / DYNAMICKÁ_INDIK; ostatní univerzální (+PČR, +HZS, DR_NA_ŽÁDOST, TRANSPORT_PAC …) jen do Poznámky
-const KI_SYM_U = new Set(['TANR', 'TANR_NELZE', 'DÍTĚ', 'DOSPĚLÝ', 'DYNAMICKÁ_INDIK']);
+// označené cihly se dělí: do Upřesnění jdou příznaky ze skutečného katalogu (AVPU-A, při vědomí, Poúrazová zmatenost, Hlava, Horní končetina, Otevřené rány …),
+// cihla bez příznaku v katalogu (+PČR, +HZS, DR_NA_ŽÁDOST, TRANSPORT_PAC, SpO2_<74% …) jde jen jako štítek #… do Poznámky
 const kiCodes = () => {
-  const u = kInst(), out = { sym: [], note: [] };
+  const u = kInst(), sym = [], note = [], add = (arr, v) => { if (v && !arr.includes(v)) arr.push(v); };
   for (const id of kf.sel) {
-    if (id.startsWith('u:')) { const x = CT_CIHLY.UNIVERSAL[Number(id.slice(2))]; if (x && x.cls !== 'u-empty') (KI_SYM_U.has(x.c) ? out.sym : out.note).push(x.c.replace(/^\+ /, '+')); }
-    else if (id.startsWith('g:')) out.sym.push(id.split(':').slice(2).join(':'));
-    else { const x = u.chip(id); if (x) out.sym.push(x.c); }
+    if (id.startsWith('u:')) { const x = CT_CIHLY.UNIVERSAL[Number(id.slice(2))]; if (!x || x.cls === 'u-empty') continue; const sy = CT_CIHLY.UNIV_SYM[x.c]; if (sy) add(sym, sy); else add(note, x.c.replace(/^\+ /, '+')); }
+    else if (id.startsWith('g:')) { const code = id.split(':').slice(2).join(':'), sy = u.graySym(code); if (sy) add(sym, sy); else add(note, code); }
+    else { const x = u.chip(id); if (!x) continue; if (x.s && x.s.length) x.s.forEach(v => add(sym, v)); else add(note, x.c); }
   }
-  return out;
+  for (const l of kf.lok) add(sym, l);
+  return { sym, note };
 };
 function kiToggleChip(id) {
   const x = id.startsWith('u:') ? CT_CIHLY.UNIVERSAL[Number(id.slice(2))] : null;
@@ -189,8 +190,8 @@ const kiLog = t => { kf.log.push(sim.clock() + ' ' + t); kiRenderCoop(); };
 
 // ---------- čtení a plnění formuláře ----------
 function kiNote() {
-  const codes = kiCodes().note, user = ctVal('ctf-poznamka'), lok = [...kf.lok].join(', ');
-  return [user, codes.map(c => '#' + c).join(' '), lok ? 'zranění: ' + lok : '', ctVal('ctf-pPozn') ? 'pacient: ' + ctVal('ctf-pPozn') : ''].filter(Boolean).join(' | ');
+  const codes = kiCodes().note, user = ctVal('ctf-poznamka');
+  return [user, codes.map(c => '#' + c).join(' '), ctVal('ctf-pPozn') ? 'pacient: ' + ctVal('ctf-pPozn') : ''].filter(Boolean).join(' | ');
 }
 function kiReadForm() {
   ctAddrSync();

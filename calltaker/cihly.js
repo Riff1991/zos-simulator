@@ -70,10 +70,13 @@
   // u Dušnosti, Arytmie a Křečových stavů jsou navíc šedé cihly podle screenů skutečného systému
   const DETECT = [[/epilept/i, 'EPILEPTIK'], [/diabet|hypoglyk|hyperglyk/i, 'DIABETIK'], [/CHOPN/, 'CHOPN'], [/ICHS/, 'ICHS'], [/\bICD\b|kardiovert/i, 'ICD'], [/hypertenz/i, 'HYPERTONIK'], [/astma/i, 'ASTMATIK'], [/alkohol/i, 'ALKOHOL'],
     [/těhotenst|gravid/i, 'TĚHOTNÁ'], [/varix/i, 'VARIXY'], [/epistax/i, 'EPISTAXE'], [/meléna|hematemeza|enterorhag/i, 'GIT_KRVÁCENÍ'], [/\bPMK\b|urokatetr/i, 'PMK'], [/paliativ/i, 'PALIATIVNÍ_PAC'], [/\bGIT\b/, 'GIT'], [/\bURO\b/, 'URO'], [/\bGYN\b/, 'GYN'], [/\bDC\b/, 'DÝCHACÍ_CESTY'],
-    [/hlav[yaě]/i, 'HLAVA'], [/\bkrk/i, 'KRK'], [/hrudník/i, 'HRUDNÍK'], [/břich/i, 'BŘICHO'], [/pánv/i, 'PÁNEV'], [/zad\b|zádech|zad,/i, 'ZÁDA'], [/končetin/i, 'KONČETINY'], [/prst/i, 'PRSTY'], [/chodec/i, 'CHODEC'], [/cyklist/i, 'CYKLISTA'], [/moto/i, 'MOTOCYKL'], [/vozidl/i, 'VOZIDLO'],
+    [/hlav[yaě]/i, 'HLAVA'], [/\bkrk/i, 'KRK'], [/hrudník/i, 'HRUDNÍK'], [/břich/i, 'BŘICHO'], [/pánv/i, 'PÁNEV'], [/zad\b|zádech|zad,/i, 'ZÁDA'], [/horn\w* končetin|paž|ruk/i, 'HK'], [/dolní\w* končetin|noh/i, 'DK'], [/končetin/i, 'HK'], [/končetin/i, 'DK'], [/prst/i, 'PRSTY'], [/chodec/i, 'CHODEC'], [/cyklist/i, 'CYKLISTA'], [/moto/i, 'MOTOCYKL'], [/vozidl/i, 'VOZIDLO'],
     [/popálen/i, 'POPÁLENINY'], [/polepten/i, 'POLEPTÁNÍ'], [/elektr/i, 'ELEKTR_PROUD'], [/výbuch/i, 'VÝBUCH'], [/utonut|tonut/i, 'TONUTÍ'], [/vis[ií]c|oběšen/i, 'OBĚŠENÍ'], [/zlomen/i, 'ZLOMENINA'], [/rán[ay]/i, 'RÁNA'], [/hypotermi/i, 'HYPOTERMIE'], [/agres/i, 'AGRESE'], [/sebevra/i, 'SEBEVRAŽDA'], [/halucin|blud/i, 'PSYCHÓZA']];
   const GRAY_BY = { Arytmie: ['HYPERTONIK', 'KARDIAK'], Dušnost: ['ASPIRACE', 'ASTMATIK', 'DIABETIK', 'HYPERTONIK', 'CHOPN', 'KARDIAK', 'DDOT'], 'Křečové stavy': ['DIABETIK', 'EPILEPTIK'] };
   const NOGRAY = new Set(['Převoz', 'Vstřícná jízda', 'Posouzení stavu', 'Asistence', 'Technická jízda', 'MU – MATRA 722', 'Vysoce nebezpečná nákaza (VNN)', 'Babybox']);
+  // příznak ze skutečného katalogu, který cihla zapíše do Upřesnění (cihla bez příznaku jde jako štítek do poznámky)
+  const UNIV_SYM = { 'DÍTĚ': 'Dítě', 'DOSPĚLÝ': 'Dospělý', 'TANR': 'TANR', 'TANR_NELZE': 'TANR nelze', 'DYNAMICKÁ_INDIK': 'DYNAMICKÁ INDIKACE' };
+  const GRAY_SYM = { HLAVA: 'Hlava', KRK: 'Krk', HRUDNÍK: 'Hrudník', BŘICHO: 'Břicho', PÁNEV: 'Pánev', ZÁDA: 'Záda', HK: 'Horní končetina', DK: 'Dolní končetina', ALKOHOL: 'Alkohol', DIABETIK: 'Diabetik', EPILEPTIK: 'Epileptik', CHOPN: 'CHOPN', ZLOMENINA: 'Zavřená zlomenina', RÁNA: 'Otevřené rány' };
   const cs = (a, b) => String(a).localeCompare(String(b), 'cs');
   function createIntake(data, opts) {
     if (!data || data.format !== 'zos-cihly/1') throw new Error('Neplatná data cihliček (formát zos-cihly/1).');
@@ -86,7 +89,7 @@
       const groups = [];
       for (const kind of KIND_ORD) {
         const chips = [];
-        (byK.get(k) || []).filter(b => b.kind === kind).forEach(b => b.chips.forEach((c, i) => { const x = { id: 'k:' + b.id + ':' + i, c: c.c, t: c.t, kind, crew: b.crew, n: b.n, dyn: b.dyn, cmp: b.cmp, brick: b.id }; chipIndex.set(x.id, x); chips.push(x); }));
+        (byK.get(k) || []).filter(b => b.kind === kind).forEach(b => b.chips.forEach((c, i) => { const x = { id: 'k:' + b.id + ':' + i, c: c.c, t: c.t, s: c.s || [], kind, crew: b.crew, n: b.n, dyn: b.dyn, cmp: b.cmp, brick: b.id }; chipIndex.set(x.id, x); chips.push(x); }));
         if (chips.length) groups.push({ kind, chips });
       }
       return groups;
@@ -96,6 +99,7 @@
       classifications: () => names.map(n => ({ name: n, engine: engineKlasif(n, known) })),
       chipsFor: k => { if (!cache.has(k)) cache.set(k, { groups: chipsOf(k), gray: NOGRAY.has(k) ? [] : [...new Set((GRAY_BY[k] || []).concat(DETECT.filter(d => d[0].test(textOf(k))).map(d => d[1])))].sort(cs) }); return cache.get(k); },
       universal: UNIVERSAL,
+      graySym: code => GRAY_SYM[code] || '',
       // doporučení z označených cihliček: nejvyšší barva vyhrává; vrací N, barvu a typy posádek z bloků téže barvy
       evaluate(ids) {
         let best = null;
@@ -112,6 +116,6 @@
       chip: id => chipIndex.get(id) || null,
     };
   }
-  const api = { create, createIntake, engineKlasif, norm, KIND_LAB, KIND_ORD, UNIVERSAL, RANK };
+  const api = { create, createIntake, engineKlasif, norm, KIND_LAB, KIND_ORD, UNIVERSAL, RANK, UNIV_SYM, GRAY_SYM };
   if (typeof module !== 'undefined') module.exports = api; else window.CT_CIHLY = api;
 })();

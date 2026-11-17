@@ -10,6 +10,8 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ## v0.36.2 – rozpracováno
 Opravy:
+- **Dispečer vidí jen to, co calltaker zadal.** U případu z nabírání se dřív přimíchávaly skryté údaje z generátoru: poznámka („zvracení, průjem“), místo („4.p.“, takže patro bylo dvakrát), jméno a telefon volajícího, jméno, věk a pohlaví pacienta a charakter. Teď je tam jen zadané.
+- **Upřesnění tvoří skutečné příznaky z katalogu** (AVPU-A, při vědomí, Poúrazová zmatenost, Otevřené rány, Hlava, Horní končetina …), ne text cihličky. Cihlička bez příznaku v katalogu a univerzální cihly (+PČR, TRANSPORT_PAC …) jdou jako štítek #… do poznámky. Lokalizace zranění je příznak, ne poznámka. „AVPU-V, AVPU-A“ jsou dvě samostatné cihličky.
 - **Čísla domů „popisné/orientační“:** volající často řekne opačné pořadí nebo jen jedno z čísel (například „Mánesova 70/401“, v datech je 401/70). Hra to dřív nenašla a hlásila „poloha nesedí“. Teď se najde i opačné pořadí, i samotné orientační či popisné číslo; našeptávač nabízí čísla podle kterékoli části.
 
 ## v0.36.1 – 2026-11-17

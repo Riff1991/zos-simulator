@@ -136,6 +136,50 @@ def abbr(t):
     return ('_'.join(out) or 'KRITÉRIUM')[:24]
 
 
+# vzory textu kritéria → příznak ze skutečného katalogu (src/symptoms.json); cihlička bez shody se zapíše jen jako #štítek do poznámky
+SYMPAT = [
+    (r'AVPU-A', 'AVPU-A'), (r'AVPU-V', 'AVPU-V'), (r'AVPU-P', 'AVPU-P'), (r'AVPU-U', 'AVPU-U'),
+    (r'při vědomí', 'při vědomí'), (r'reaguje na bolest', 'reaguje na bolest'), (r'poúrazov\w* zmatenost', 'Poúrazová zmatenost'),
+    (r'komoční syndrom', 'Komoční syndrom'), (r'psychick\w* otřes', 'Psychický otřes'),
+    (r'otevřen\w* zlomenin', 'Otevřená zlomenina'), (r'zavřen\w* zlomenin', 'Zavřená zlomenina'), (r'zlomenina 2 a více dlouhých', 'Zlomenina 2 dlouhých kostí (femur, humerus, tibie)'),
+    (r'otevřen\w* rán', 'Otevřené rány'),
+    (r'závažn\w* krvácení z končetin', 'Závažné krvácení z končetin'), (r'nezávažn\w* krvácení z končetin|ošetřiteln\w* poranění', 'Nezávažné krvácení z končetin'),
+    (r'masivn\w* nezastavitelné krvácení', 'Masivní krvácení nezastavitelné'), (r'pokračující nezastavitelné krvácení', 'Pokračující krvácení většího rozsahu nezastavitelné'),
+    (r'paréz|brnění končetin', 'Paréza/brnění končetin'),
+    (r'dušnost', 'Dušnost'), (r'bolest hrudníku', 'Bolest hrudníku'),
+    (r'epileptik', 'Epileptik'), (r'diabetik', 'Diabetik'), (r'alkohol', 'Alkohol'),
+    (r'křeče febrilní|febrilní křeče', 'Křeče febrilní'), (r'křeče v těhotenství|křeče v gravid', 'Křeče v souvislosti s graviditou'),
+    (r'\bnedýchá\b', 'nedýchá'), (r'\bdýchá\b', 'dýchá'), (r'gasping', 'Gasping'),
+    (r'prekolaps|předkolaps', 'Prekolaps'), (r'po kolapsu|stav po kolapsu', 'Po kolapsu'), (r'opakovan\w* kolabuje', 'Opakovaný kolaps'),
+    (r'výboj', 'ICD výboj (kardioverter)'),
+]
+
+
+def load_catalog():
+    import os
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'symptoms.json')
+    cat = json.load(open(p, encoding='utf-8'))['symptomCatalog']
+    names = {}
+    for x in cat:
+        n = re.sub(r'^[^A-Za-zÀ-ž0-9]+', '', x).strip()
+        names.setdefault(n.lower(), n)
+    return names
+
+
+CATALOG = load_catalog()
+
+
+def symptoms_of(text):
+    """Příznaky z katalogu, které text kritéria obsahuje (v pořadí výskytu, bez duplicit)."""
+    found = []
+    for rx, name in SYMPAT:
+        m = re.search(rx, text, flags=0 if rx.startswith('AVPU') else re.I)
+        real = CATALOG.get(name.lower())
+        if m and real and real not in [f[1] for f in found]:
+            found.append((m.start(), real))
+    return [n for _, n in sorted(found)]
+
+
 def add_chips(bricks):
     """Každé kritérium (řádek) cihly je jedna cihlička; kódy jsou v rámci klasifikace jedinečné."""
     seen = {}
@@ -151,10 +195,15 @@ def add_chips(bricks):
                 seen[k] = seen.get(k, 0) + 1
                 if seen[k] > 1:
                     code = code[:21] + '_' + str(seen[k])
-                chips.append({'c': code, 't': part[:1].upper() + part[1:]})
+                avpu = re.findall(r'AVPU-[AVPU]', part)
+                if len(avpu) > 1:   # „AVPU-V, AVPU-A“ jsou dvě cihličky, ne jedna
+                    for tok in avpu:
+                        chips.append({'c': tok, 't': part[:1].upper() + part[1:], 's': [CATALOG.get(tok.lower(), tok)]})
+                    continue
+                chips.append({'c': code, 't': part[:1].upper() + part[1:], 's': symptoms_of(part)})
         if not chips:
             code = (b['klasif'].upper().replace(' ', '_') + '_N' + str(b['n']) + '_' + (b['crew'] or '').replace(', ', '_').replace('/', '_'))[:24]
-            chips.append({'c': code, 't': ' '.join(b['lines'])})
+            chips.append({'c': code, 't': ' '.join(b['lines']), 's': []})
         b['chips'] = chips
 
 

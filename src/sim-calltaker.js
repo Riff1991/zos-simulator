@@ -212,6 +212,16 @@ class SimCalltaker {
   }
   _ctStr(v) { return String(v == null ? '' : v).trim(); }
   // poznámka pro dispečera z nových polí formuláře
+  // poznámka, kterou vidí dispečer u případu z cihliček: jen zadané (Co se stalo, poznámka a štítky), bez skryté poznámky generátoru
+  _ctNoteShown(f) { return [f.popis, f.poznamka].map(x => this._ctStr(x)).filter(Boolean).join('; '); }
+  // co dispečer vidí o případu: zadané údaje místo skrytých z generátoru
+  _ctShow(c, f) {
+    const year = Number(String(this.s.date || '').slice(0, 4)) || 2026, num = Number(f.pVek), rok = Number(f.pRok);
+    c.place = this._ctStr(f.upresneni); c.ozn = [f.vJmeno, f.vPrijmeni].map(x => this._ctStr(x)).filter(Boolean).join(' '); c.phone = this._ctStr(f.vTelefon); c.oznRel = this._ctStr(f.vVztah);
+    c.patientName = [f.pPrijmeni, f.pJmeno].map(x => this._ctStr(x)).filter(Boolean).join(' '); c.charakter = this._ctStr(f.charakter);
+    c.shown = { age: f.pVek !== '' && f.pVek != null && Number.isFinite(num) ? num : rok > 1900 ? year - rok : null, sex: f.pPohlavi === 'muž' ? 'M' : f.pPohlavi === 'žena' ? 'Ž' : '' };
+    c.ageText = rok > 1900 ? String(rok) : f.pVek !== '' && f.pVek != null && Number.isFinite(num) ? num + ' let' : '';   // věk tak, jak ho calltaker zapsal
+  }
   _ctNote(f) { return [f.upresneni && 'Upřesnění místa: ' + f.upresneni, f.popis, f.poznamka].map(x => this._ctStr(x)).filter(Boolean).join('; '); }
   // vytvoří případ z hovoru calltakera (viz formát nahoře); vrací případ
   // form: adresa, bod {lat,lon}, zdroj (mapa/adresa/AML), cast, upresneni, vJmeno, vPrijmeni, vTelefon, vVztah, pJmeno, pPrijmeni, pRok, pVek, pPohlavi, klasif, priznaky[], n, dyn, popis, poznamka
@@ -230,14 +240,14 @@ class SimCalltaker {
     if (Array.isArray(o.radioReports)) for (const r of o.radioReports) if (r.at != null) r.at += dt;
     if (o.wakeAt != null) o.wakeAt += dt;
     const truth = { addr: tc.addr, lat: tc.lat, lon: tc.lon, n: tc.n, klasif: tc.klasif, rvNeed: !!tc.rvNeed, agNeed: needAg.slice(), pocet: tc.patientCount || 1, where: tc.where, dyn: !!tc.dyn, age: tc.age, sex: tc.sex, symptoms: (tc.symptoms || []).slice(), patient: tc.patientName, caller: (this._ctForeign(h.seed, tc) || {}).jmeno || tc.ozn };
-    const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc, f.bod), baseNote = o.poznamka || '', note = this._ctNote(f);
+    const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc, f.bod), baseNote = f.cihla ? '' : (o.poznamka || ''), note = f.cihla ? this._ctNoteShown(f) : this._ctNote(f);
     o.n = typedN; o.intake = 0; o.addr = loc.typed;
     if (loc.geo && loc.miss) { o.lat = loc.geo.lat; o.lon = loc.geo.lon; }
     if (f.klasif && !ctKlasifOk(f.klasif, tc.klasif)) o.klasifZadana = String(f.klasif);
     if (note) o.poznamka = (baseNote ? baseNote + '; ' : '') + note;
     const c = this._newCase(o);
     c.src = c.src || 'Linka 155';
-    if (f.cihla) { c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || 'Neklasifikováno'; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; }   // dispečer vidí zadané (klasifikace, cihly, dynamická indikace), ne pravdu
+    if (f.cihla) { c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || 'Neklasifikováno'; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; this._ctShow(c, f); }   // dispečer vidí zadané (klasifikace, cihly, dynamická indikace, místo, osoby), ne pravdu
     c.call = { seed: h.seed, sec: h.sec || null, truth, typed: loc.typed, standard: loc.standard, quality: loc.geo ? loc.geo.quality : 'n/a', errM: loc.errM, miss: !!loc.miss, tol: loc.tol, searchDelay: loc.searchDelay || 0, conflict: !!loc.conflict, bod: loc.byPoint ? { lat: loc.geo.lat, lon: loc.geo.lon } : null, zdroj: f.zdroj || (loc.byPoint ? 'mapa' : 'adresa'), truthN: tc.n, typedN, klasifOk: !f.klasif || f.klasif === tc.klasif, baseNote, note, updates: 0, unlocatable: !!(f.adresa && loc.standard && !loc.byPoint && loc.geo && !loc.geo.quality), form: JSON.parse(JSON.stringify(f)) };
     c.call.check = this._ctCheck(f, truth, c.call);
     c.call.predpoplach = !!f.predpoplach; c.call.callId = h.callId || null; c.call.sentAtT = t;
@@ -310,10 +320,10 @@ class SimCalltaker {
     f = f || {};
     const n = this._ctN(f.n, c.n);
     if (n !== c.n) { this.L('case', `${c.num}: calltaker mění naléhavost N${c.n} → N${n}`, c.id); c.n = n; c.call.typedN = n; c.call.updates++; }
-    const note = this._ctNote(f);
+    const note = f.cihla ? this._ctNoteShown(f) : this._ctNote(f);
     if (f.poznamka != null || f.popis != null || f.upresneni != null) if (note !== c.call.note) { c.call.note = note; c.poznamka = (c.call.baseNote ? c.call.baseNote + '; ' : '') + note; this.L('case', `${c.num}: doplněna poznámka od calltakera`, c.id); c.call.updates++; }
     if (f.klasif) { const kOk = ctKlasifOk(f.klasif, c.call.truth.klasif); c.klasifZadana = kOk ? null : String(f.klasif); c.call.klasifOk = kOk; }
-    if (f.cihla) { if (c.klasifTruth == null) c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || c.klasif; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; }
+    if (f.cihla) { if (c.klasifTruth == null) c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || c.klasif; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; this._ctShow(c, f); }
     const sig = JSON.stringify([this._ctStr(f.adresa), f.bod ? [f.bod.lat, f.bod.lon] : null]);
     if (c.call.sig == null) c.call.sig = JSON.stringify([c.call.form && this._ctStr(c.call.form.adresa), c.call.form && c.call.form.bod ? [c.call.form.bod.lat, c.call.form.bod.lon] : null]);
     if ((f.adresa || f.bod) && sig !== c.call.sig) {

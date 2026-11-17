@@ -162,7 +162,7 @@ function renderCases() {
         : intk ? `${c.op} nabírá výzvu`
           : rvPending ? `RZP žádá RV: ${c.rvReq.kind || 'posouzení stavu'}` : 'Řeší se';
     const crewLine = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(chipHTML).join('') + (c.frs || []).map(f => `<span class="chip fr">${esc(f.name)}</span>`).join('');
-    const patient = (c.patientCount || 1) > 1 ? `${c.patientCount} ${victimWord(c)[0]}` : c.age != null ? `${Number(c.age) < 18 ? 'Dítě' : c.sex === 'Ž' ? 'Žena' : 'Muž'}, ${c.age} let` : c.desc;
+    const patient = (c.patientCount || 1) > 1 ? `${c.patientCount} ${victimWord(c)[0]}` : (c.shown ? c.shown.age != null : c.age != null) ? (c.shown ? `${Number(c.shown.age) < 18 ? 'Dítě' : c.shown.sex === 'Ž' ? 'Žena' : c.shown.sex === 'M' ? 'Muž' : 'Pacient'}, ${c.shown.age} let` : `${Number(c.age) < 18 ? 'Dítě' : c.sex === 'Ž' ? 'Žena' : 'Muž'}, ${c.age} let`) : (c.shown ? '' : c.desc);
     const detail = c.typ === 'sekundární'
       ? `Převoz: ${(D.hospitals.find(h => h.id === c.originHospitalId) || {}).short || '?'} → ${(D.hospitals.find(h => h.id === c.targetHospitalId) || {}).short || '?'}`
       : [c.place && `Místo: ${c.place}`, c.poznamka && `Poznámka ZOS: ${c.poznamka}`].filter(Boolean).join(' · ');

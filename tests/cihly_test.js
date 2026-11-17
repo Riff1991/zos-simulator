@@ -54,4 +54,16 @@ ok(dnb.length === 4 && dnb.some(b => b.kind === 'n1') && dnb.some(b => b.kind ==
   ok(it.evaluate([red]).crew.length > 0 && it.universal.length === 24, 'doporučení nese typ posádky; univerzálních cihel je 24');
   ok(it.classifications().find(x => x.name === 'NZO – spatřená').engine === known.find(k => /NZO/.test(k)), 'klasifikace z tabulky se mapuje na klasifikaci generátoru');
 }
+// příznaky z katalogu: Upřesnění tvoří skutečné příznaky, ne text cihly
+{
+  const it = C.createIntake(DATA, { klasifs: known }), all = [];
+  for (const k of it.classifications()) for (const g of it.chipsFor(k.name).groups) for (const x of g.chips) all.push(x);
+  const withS = all.filter(x => x.s.length).length;
+  ok(withS > 80 && withS < all.length, 'cihličky s příznakem z katalogu: ' + withS + ' z ' + all.length);
+  const cat = require(path.join(R, 'src/symptoms.json')).symptomCatalog.map(x => x.replace(/^[^A-Za-zÀ-ž0-9]+/, '').trim().toLowerCase());
+  ok(all.every(x => x.s.every(n => cat.includes(n.toLowerCase()))), 'každý příznak cihličky existuje v katalogu příznaků');
+  const dn = it.chipsFor('Dopravní nehoda').groups.flatMap(g => g.chips);
+  ok(dn.some(x => x.c === 'AVPU-A' && x.s.join() === 'AVPU-A') && dn.some(x => x.s.includes('Otevřené rány')) && dn.some(x => x.s.includes('Poúrazová zmatenost')), 'AVPU-A, Otevřené rány a Poúrazová zmatenost jsou příznaky cihliček');
+  ok(it.graySym('HLAVA') === 'Hlava' && it.graySym('HK') === 'Horní končetina' && it.graySym('ASTMATIK') === '', 'šedé cihly mapují na příznaky (neznámé jdou do poznámky)');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'cihly test OK'); process.exit(fail ? 1 : 0);

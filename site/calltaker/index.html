@@ -1113,7 +1113,11 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "SPATŘENÝ_KOLAPS",
-     "t": "Spatřený kolaps, nereaguje na oslovení, bolest, nedýchá normálně (gasping), zahájení TANR"
+     "t": "Spatřený kolaps, nereaguje na oslovení, bolest, nedýchá normálně (gasping), zahájení TANR",
+     "s": [
+      "nedýchá",
+      "Gasping"
+     ]
     }
    ]
   },
@@ -1133,11 +1137,16 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NALEZEN_NEREAGUJÍCÍ",
-     "t": "Nalezen nereagující na bolest, oslovení, nejde o nález těla zemřelého, nedýchá normálně, AVPU-U nedýchá"
+     "t": "Nalezen nereagující na bolest, oslovení, nejde o nález těla zemřelého, nedýchá normálně, AVPU-U nedýchá",
+     "s": [
+      "nedýchá",
+      "AVPU-U"
+     ]
     },
     {
      "c": "TANR_INDIKOVÁN_ČI",
-     "t": "TANR indikován či TANR nelze"
+     "t": "TANR indikován či TANR nelze",
+     "s": []
     }
    ]
   },
@@ -1156,11 +1165,17 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NEREAGUJE_OSLOVENÍ",
-     "t": "Nereaguje na oslovení a bolest"
+     "t": "Nereaguje na oslovení a bolest",
+     "s": []
     },
     {
      "c": "POUZE_GRIMASUJE",
-     "t": "Pouze grimasuje, dýchá normálně, pravidelně, opakovaně kolabuje (probere se, následně ihned kolaps), AVPU-U dýchá"
+     "t": "Pouze grimasuje, dýchá normálně, pravidelně, opakovaně kolabuje (probere se, následně ihned kolaps), AVPU-U dýchá",
+     "s": [
+      "dýchá",
+      "Opakovaný kolaps",
+      "AVPU-U"
+     ]
     }
    ]
   },
@@ -1179,7 +1194,11 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NEREAGUJE_OSLOVENÍ_2",
-     "t": "Nereaguje na oslovení, ale reaguje na bolestivý podnět slovní reakcí, zachovalé spontánní dýchání, AVPU-P"
+     "t": "Nereaguje na oslovení, ale reaguje na bolestivý podnět slovní reakcí, zachovalé spontánní dýchání, AVPU-P",
+     "s": [
+      "reaguje na bolest",
+      "AVPU-P"
+     ]
     }
    ]
   },
@@ -1201,19 +1220,32 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "REAGUJE_OSLOVENÍ",
-     "t": "Reaguje na oslovení, reaguje na bolestivý podnět slovní reakcí"
+     "t": "Reaguje na oslovení, reaguje na bolestivý podnět slovní reakcí",
+     "s": [
+      "reaguje na bolest"
+     ]
     },
     {
      "c": "AVPU-V",
-     "t": "AVPU-V"
+     "t": "AVPU-V",
+     "s": [
+      "AVPU-V"
+     ]
     },
     {
      "c": "STAV",
-     "t": "Stav po kolapsu/prekolaps, nyní při vědomí, bez obtíží, AVPU-A"
+     "t": "Stav po kolapsu/prekolaps, nyní při vědomí, bez obtíží, AVPU-A",
+     "s": [
+      "Po kolapsu",
+      "Prekolaps",
+      "při vědomí",
+      "AVPU-A"
+     ]
     },
     {
      "c": "LEŽÍCÍ_OSOBA_NELZE",
-     "t": "Ležící osoba, nelze ověřit stav životních funkcí"
+     "t": "Ležící osoba, nelze ověřit stav životních funkcí",
+     "s": []
     }
    ]
   },
@@ -1232,7 +1264,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NÁLEZ_TĚLA_ZEMŘELÉHO",
-     "t": "Nález těla zemřelého a koroner nedostupný"
+     "t": "Nález těla zemřelého a koroner nedostupný",
+     "s": []
     }
    ]
   },
@@ -1251,7 +1284,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NZO_PROKAZATELNÉ",
-     "t": "NZO v prokazatelné době více jak 30 min bez podmínek hypotermie terminální stádium nevyléčit.nemoci bez zn.aktivity vitálních fcí jisté známky smrti (posrmtná ztuhlost, hnilobný rozklad) zranění neslučitelné se životem, nález kosterních ostatků oznámení o nálezu těla zemřelého nahláš.lékařem / vedoucím VS"
+     "t": "NZO v prokazatelné době více jak 30 min bez podmínek hypotermie terminální stádium nevyléčit.nemoci bez zn.aktivity vitálních fcí jisté známky smrti (posrmtná ztuhlost, hnilobný rozklad) zranění neslučitelné se životem, nález kosterních ostatků oznámení o nálezu těla zemřelého nahláš.lékařem / vedoucím VS",
+     "s": []
     }
    ]
   },
@@ -1270,11 +1304,15 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OBJ_DUŠ_NEMŮŽE_MLUVIT",
-     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo"
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_<74%",
-     "t": "Zjištěná SpO2 pod 74%"
+     "t": "Zjištěná SpO2 pod 74%",
+     "s": []
     }
    ]
   },
@@ -1294,19 +1332,25 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ANGINOSNÍ_BOLEST",
-     "t": "Anginosní bolest = stenokardie (bolest klidová, svíravá, pálivá, neohraničená) s propagací"
+     "t": "Anginosní bolest = stenokardie (bolest klidová, svíravá, pálivá, neohraničená) s propagací",
+     "s": []
     },
     {
      "c": "PŘÍTOMNÝ_PRE)KOLAPS",
-     "t": "Přítomný (pre)kolaps"
+     "t": "Přítomný (pre)kolaps",
+     "s": []
     },
     {
      "c": "OBJ_DUŠ_SCHOPEN",
-     "t": "Objektivizovaná dušnost - schopen říci pouze větu"
+     "t": "Objektivizovaná dušnost - schopen říci pouze větu",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_75-81%",
-     "t": "Zjištěná SpO2 75 - 81%"
+     "t": "Zjištěná SpO2 75 - 81%",
+     "s": []
     }
    ]
   },
@@ -1327,19 +1371,25 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "STENOKARDIE_PROPAGACE",
-     "t": "Stenokardie bez propagace"
+     "t": "Stenokardie bez propagace",
+     "s": []
     },
     {
      "c": "STENOKARDIE_TRVAJÍCÍ",
-     "t": "Stenokardie trvající 0-6 hodin"
+     "t": "Stenokardie trvající 0-6 hodin",
+     "s": []
     },
     {
      "c": "OBJEKTIVIZ_DUŠ_UDRŽÍ",
-     "t": "Objektiviz. dušnost - udrží konverzaci"
+     "t": "Objektiviz. dušnost - udrží konverzaci",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_82-93%",
-     "t": "SpO2 82 - 93%"
+     "t": "SpO2 82 - 93%",
+     "s": []
     }
    ]
   },
@@ -1360,23 +1410,30 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "BOLEST_RŮZNÉ",
-     "t": "Bolest různé intenzity, kolísavá"
+     "t": "Bolest různé intenzity, kolísavá",
+     "s": []
     },
     {
      "c": "PŘESNĚ",
-     "t": "Přesně lokalizovatelná"
+     "t": "Přesně lokalizovatelná",
+     "s": []
     },
     {
      "c": "STENOKARDIE_TRVAJÍCÍ_2",
-     "t": "Stenokardie trvající nad 6 hodin"
+     "t": "Stenokardie trvající nad 6 hodin",
+     "s": []
     },
     {
      "c": "SUBJEKTIVNÍ_DUŠ",
-     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin"
+     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_>94%",
-     "t": "Zjištěná SpO2 nad 94%"
+     "t": "Zjištěná SpO2 nad 94%",
+     "s": []
     }
    ]
   },
@@ -1397,19 +1454,25 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OBJ_DUŠ_NEMŮŽE_MLUVIT",
-     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo"
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_<74%",
-     "t": "Zjištěná SpO2 pod 74%"
+     "t": "Zjištěná SpO2 pod 74%",
+     "s": []
     },
     {
      "c": "NÁHLÝ_VZNIK",
-     "t": "Náhlý vznik"
+     "t": "Náhlý vznik",
+     "s": []
     },
     {
      "c": "ZAPOJUJE_POMOCNÉ",
-     "t": "Zapojuje pomocné dýchácí svaly, neklid, apatie"
+     "t": "Zapojuje pomocné dýchácí svaly, neklid, apatie",
+     "s": []
     }
    ]
   },
@@ -1429,15 +1492,22 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OBJ_DUŠ_SCHOPEN",
-     "t": "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech"
+     "t": "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "PROGRESE_DUŠ_POSLEDNÍ",
-     "t": "Progrese dušnosti v poslední hodině"
+     "t": "Progrese dušnosti v poslední hodině",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_75-81%",
-     "t": "Zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)"
+     "t": "Zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)",
+     "s": []
     }
    ]
   },
@@ -1458,23 +1528,34 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OBJEKTIVIZ_DUŠ_UDRŽÍ",
-     "t": "Objektiviz. dušnost - udrží konverzaci"
+     "t": "Objektiviz. dušnost - udrží konverzaci",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "SpO2_82-93%",
-     "t": "SpO2 82 - 93%"
+     "t": "SpO2 82 - 93%",
+     "s": []
     },
     {
      "c": "DUŠ_TRVAJÍCÍ_DÉLE",
-     "t": "Dušnost trvající déle než 1 hodinu"
+     "t": "Dušnost trvající déle než 1 hodinu",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "DUŠ_VOLÁNÍ_3.RUKY",
-     "t": "Dušnost volání z 3.ruky"
+     "t": "Dušnost volání z 3.ruky",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "VÝRAZNÉ_ZHORŠENÍ",
-     "t": "Výrazné zhoršení chronického stavu (zejm. CHOPN, ICHS)"
+     "t": "Výrazné zhoršení chronického stavu (zejm. CHOPN, ICHS)",
+     "s": []
     }
    ]
   },
@@ -1494,15 +1575,20 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "SUBJEKTIVNÍ_DUŠ",
-     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin"
+     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "HYPERVENTILACE",
-     "t": "Hyperventilace, celkový stav dobrý"
+     "t": "Hyperventilace, celkový stav dobrý",
+     "s": []
     },
     {
      "c": "SpO2_>94%",
-     "t": "Zjištěná SpO2 nad 94%"
+     "t": "Zjištěná SpO2 nad 94%",
+     "s": []
     }
    ]
   },
@@ -1524,27 +1610,38 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "KŘEČE_NEZNÁMÉHO",
-     "t": "Křeče neznámého původu, celotělové s poruchou vědomí"
+     "t": "Křeče neznámého původu, celotělové s poruchou vědomí",
+     "s": []
     },
     {
      "c": "NEJDE_LÉČENÉHO",
-     "t": "Nejde o léčeného epileptika"
+     "t": "Nejde o léčeného epileptika",
+     "s": [
+      "Epileptik"
+     ]
     },
     {
      "c": "TOTO_NELZE_ZJISTIT",
-     "t": "Toto nelze zjistit"
+     "t": "Toto nelze zjistit",
+     "s": []
     },
     {
      "c": "OPAKOVANÝ_KŘEČOVÝ",
-     "t": "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty"
+     "t": "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty",
+     "s": []
     },
     {
      "c": "KŘEČÍCH_NĚKOL_MIN",
-     "t": "Po křečích několik minut a neprobírá se (hrozící status epil.)"
+     "t": "Po křečích několik minut a neprobírá se (hrozící status epil.)",
+     "s": []
     },
     {
      "c": "FEBRILNÍ_KŘEČE_KŘEČE",
-     "t": "Febrilní křeče / křeče v těhotenství / neznámá příčina"
+     "t": "Febrilní křeče / křeče v těhotenství / neznámá příčina",
+     "s": [
+      "Křeče febrilní",
+      "Křeče v souvislosti s graviditou"
+     ]
     }
    ]
   },
@@ -1564,15 +1661,20 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "KŘEČE_PROBÍHAJÍCÍ",
-     "t": "Křeče probíhající u léčeného"
+     "t": "Křeče probíhající u léčeného",
+     "s": []
     },
     {
      "c": "ZNÁMÉHO_EPILEPTIKA",
-     "t": "Známého epileptika"
+     "t": "Známého epileptika",
+     "s": [
+      "Epileptik"
+     ]
     },
     {
      "c": "KŘEČE_TYPICKÝM",
-     "t": "Křeče s typickým průběhem svědčící pro epileptický záchvat"
+     "t": "Křeče s typickým průběhem svědčící pro epileptický záchvat",
+     "s": []
     }
    ]
   },
@@ -1592,15 +1694,20 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "STAV_EPILEPTICKÉM",
-     "t": "Stav po epileptickém záchvatu u známého epileptika"
+     "t": "Stav po epileptickém záchvatu u známého epileptika",
+     "s": [
+      "Epileptik"
+     ]
     },
     {
      "c": "PROBÍRÁ_ZAČÍNÁ",
-     "t": "Probírá se, začíná komunikovat"
+     "t": "Probírá se, začíná komunikovat",
+     "s": []
     },
     {
      "c": "HYPERVENTILAČNÍ",
-     "t": "Hyperventilační tetanie"
+     "t": "Hyperventilační tetanie",
+     "s": []
     }
    ]
   },
@@ -1620,15 +1727,20 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OPAKOVANÝ_VÝBOJ",
-     "t": "Opakovaný výboj ICD (kardioverter)"
+     "t": "Opakovaný výboj ICD (kardioverter)",
+     "s": [
+      "ICD výboj (kardioverter)"
+     ]
     },
     {
      "c": "TF_<_30/MIN",
-     "t": "Zjištěná TF < 30/min"
+     "t": "Zjištěná TF < 30/min",
+     "s": []
     },
     {
      "c": "TF_>_200/MIN",
-     "t": "TF > 200/min"
+     "t": "TF > 200/min",
+     "s": []
     }
    ]
   },
@@ -1649,23 +1761,32 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "TF_30-45/MIN",
-     "t": "Zjištěná TF 30-45/min"
+     "t": "Zjištěná TF 30-45/min",
+     "s": []
     },
     {
      "c": "TF_150-200/MIN",
-     "t": "TF 150-200/min"
+     "t": "TF 150-200/min",
+     "s": []
     },
     {
      "c": "NÁHLE_NOVĚ_VZNIKLÉ",
-     "t": "Náhle nově vzniklé palpitace"
+     "t": "Náhle nově vzniklé palpitace",
+     "s": []
     },
     {
      "c": "PALPITACE_SPOJENÉ",
-     "t": "Palpitace spojené s klidovou dušností či kolapsem či BNH"
+     "t": "Palpitace spojené s klidovou dušností či kolapsem či BNH",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "IZOLOVANÝ_VÝBOJ",
-     "t": "Izolovaný výboj ICD (kardioverter)"
+     "t": "Izolovaný výboj ICD (kardioverter)",
+     "s": [
+      "ICD výboj (kardioverter)"
+     ]
     }
    ]
   },
@@ -1684,7 +1805,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "BUŠENÍ_SRDCE",
-     "t": "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů"
+     "t": "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů",
+     "s": []
     }
    ]
   },
@@ -1703,11 +1825,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OBJ_HYPERTENZE",
-     "t": "Objektivizovaná hypertenze, bez dalších závažných příznaků"
+     "t": "Objektivizovaná hypertenze, bez dalších závažných příznaků",
+     "s": []
     },
     {
      "c": "HYPERTEZE_NEREAGJÍCÍ",
-     "t": "Hyperteze nereagjící na terapii"
+     "t": "Hyperteze nereagjící na terapii",
+     "s": []
     }
    ]
   },
@@ -1726,7 +1850,11 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PŘÍZNAKY_CMP_PORUCHOU",
-     "t": "Příznaky CMP s poruchou vědomí AVPU-U, bezvědomí, dýchá"
+     "t": "Příznaky CMP s poruchou vědomí AVPU-U, bezvědomí, dýchá",
+     "s": [
+      "AVPU-U",
+      "dýchá"
+     ]
     }
    ]
   },
@@ -1746,15 +1874,23 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PŘÍZNAKY_CMP_PORUCHOU_2",
-     "t": "Příznaky CMP s poruchou vědomí AVPU-P, reaguje na bolest"
+     "t": "Příznaky CMP s poruchou vědomí AVPU-P, reaguje na bolest",
+     "s": [
+      "AVPU-P",
+      "reaguje na bolest"
+     ]
     },
     {
      "c": "FAST_ASYMETRIE",
-     "t": "FAST: asymetrie obličeje, pokles koutku, poruchy řeči (afázie, dysratrie), hemiparéza či monoparéza končetin, plegie konč"
+     "t": "FAST: asymetrie obličeje, pokles koutku, poruchy řeči (afázie, dysratrie), hemiparéza či monoparéza končetin, plegie konč",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
     },
     {
      "c": "2_VÍCE_VEDLEJŠÍ",
-     "t": "2 a více vedlejší kritéria"
+     "t": "2 a více vedlejší kritéria",
+     "s": []
     }
    ]
   },
@@ -1773,7 +1909,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "FAST_POZITIVNÍ",
-     "t": "FAST pozitivní kritérium se vznikem do 4,5 hodiny"
+     "t": "FAST pozitivní kritérium se vznikem do 4,5 hodiny",
+     "s": []
     }
    ]
   },
@@ -1793,7 +1930,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "AVPU-V_NÁHLE_VZNIKLÉ",
-     "t": "AVPU-V, náhle vzniklé - poruchy čití 1/2 těla, vertigo s nauzeou, výpadek 1/2 zorného pole, dvojité vidění, opozice šíje, prudká / atypická cefalea"
+     "t": "AVPU-V, náhle vzniklé - poruchy čití 1/2 těla, vertigo s nauzeou, výpadek 1/2 zorného pole, dvojité vidění, opozice šíje, prudká / atypická cefalea",
+     "s": [
+      "AVPU-V"
+     ]
     }
    ]
   },
@@ -1812,7 +1952,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "HYPERVENTILACE",
-     "t": "Hyperventilace, parestezie nespecifické, prokolaps, třes těla, vertigo bez náhlého vzniku, zmatenost bez známé anamnézy"
+     "t": "Hyperventilace, parestezie nespecifické, prokolaps, třes těla, vertigo bez náhlého vzniku, zmatenost bez známé anamnézy",
+     "s": []
     }
    ]
   },
@@ -1832,15 +1973,18 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "HALUCINACE",
-     "t": "Halucinace"
+     "t": "Halucinace",
+     "s": []
     },
     {
      "c": "BLUDY_+_AGRESE_VŮČI",
-     "t": "Bludy + agrese vůči sobě či jiné osobě"
+     "t": "Bludy + agrese vůči sobě či jiné osobě",
+     "s": []
     },
     {
      "c": "ZÁVAŽ_POKUS",
-     "t": "Závažný pokus o sebevraždu"
+     "t": "Závažný pokus o sebevraždu",
+     "s": []
     }
    ]
   },
@@ -1860,15 +2004,18 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "HALUCINACE_2",
-     "t": "Halucinace"
+     "t": "Halucinace",
+     "s": []
     },
     {
      "c": "BLUDY_AGRESE_VŮČI",
-     "t": "Bludy bez agrese vůči sobě či jiné osobě"
+     "t": "Bludy bez agrese vůči sobě či jiné osobě",
+     "s": []
     },
     {
      "c": "PSYCHOTICKÉ_JEDNÁNÍ",
-     "t": "Psychotické jednání s pouze verbální agresí)"
+     "t": "Psychotické jednání s pouze verbální agresí)",
+     "s": []
     }
    ]
   },
@@ -1888,11 +2035,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ZMATENOST_ANAMNÉZY",
-     "t": "Zmatenost bez anamnézy, deprese, poruchy chování nezávažného stupně, izolovaná agrese BEZ bludů/halucinací"
+     "t": "Zmatenost bez anamnézy, deprese, poruchy chování nezávažného stupně, izolovaná agrese BEZ bludů/halucinací",
+     "s": []
     },
     {
      "c": "STRESOVÁ_REAKCE",
-     "t": "Stresová reakce na psychickou zátěž, hyperventilace"
+     "t": "Stresová reakce na psychickou zátěž, hyperventilace",
+     "s": []
     }
    ]
   },
@@ -1911,7 +2060,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OVĚŘENÁ_HYPOGLYKÉMIE",
-     "t": "Ověřená hypoglykémie, potvrzený a léčený diabetik, porucha vědomí, nereaguje, neudrží hrnek v ruce s pitím"
+     "t": "Ověřená hypoglykémie, potvrzený a léčený diabetik, porucha vědomí, nereaguje, neudrží hrnek v ruce s pitím",
+     "s": [
+      "Diabetik"
+     ]
     }
    ]
   },
@@ -1931,11 +2083,16 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "OVĚŘENÁ_HYPOGLYKÉMIE_2",
-     "t": "Ověřená hypoglykémie, potvrzený a léčený diabetik, při vědomí, reaguje na oslovení, udrží hrnek s pitím v ruce"
+     "t": "Ověřená hypoglykémie, potvrzený a léčený diabetik, při vědomí, reaguje na oslovení, udrží hrnek s pitím v ruce",
+     "s": [
+      "Diabetik",
+      "při vědomí"
+     ]
     },
     {
      "c": "JINÉ_OBTÍŽE",
-     "t": "Jiné obtíže v souvislosti DM, hyperglykémie"
+     "t": "Jiné obtíže v souvislosti DM, hyperglykémie",
+     "s": []
     }
    ]
   },
@@ -1955,11 +2112,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POROD_CHODU_VIDĚT",
-     "t": "Porod v chodu, je vidět část dítěte v porodních cestách"
+     "t": "Porod v chodu, je vidět část dítěte v porodních cestách",
+     "s": []
     },
     {
      "c": "BEZPROSTŘEDNĚ",
-     "t": "Bezprostředně porozené dítě"
+     "t": "Bezprostředně porozené dítě",
+     "s": []
     }
    ]
   },
@@ -1978,7 +2137,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ZÁVAŽ_KOMPLIKACE",
-     "t": "Závažné komplikace v těhotenství - dušnost, obj. hypertenze křeče, prudká cefalea (NE krvácení--> klasif. KRVÁCENÍ)"
+     "t": "Závažné komplikace v těhotenství - dušnost, obj. hypertenze křeče, prudká cefalea (NE krvácení--> klasif. KRVÁCENÍ)",
+     "s": [
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -1997,7 +2159,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "HROZÍCÍ_POROD_TRVALÝ",
-     "t": "Hrozící porod, trvalý tlak na konečník, kontrakce < 5 minut bez ohledu na odtok plodové vody"
+     "t": "Hrozící porod, trvalý tlak na konečník, kontrakce < 5 minut bez ohledu na odtok plodové vody",
+     "s": []
     }
    ]
   },
@@ -2017,11 +2180,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "VŠEOBECNÉ_KOMPLIKACE",
-     "t": "Všeobecné komplikace v těhotenství, zejm. bolesti zad, břicha, nezávažného průběhu, bez krvácení, bez křečí"
+     "t": "Všeobecné komplikace v těhotenství, zejm. bolesti zad, břicha, nezávažného průběhu, bez krvácení, bez křečí",
+     "s": []
     },
     {
      "c": "HROZÍCÍ_POROD",
-     "t": "Hrozící porod, kontrakce > 5 minut či pouze odteklá PV"
+     "t": "Hrozící porod, kontrakce > 5 minut či pouze odteklá PV",
+     "s": []
     }
    ]
   },
@@ -2040,15 +2205,23 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ANAFYLAXE_AVPU-U",
-     "t": "Anafylaxe s AVPU-U (nedýchá)"
+     "t": "Anafylaxe s AVPU-U (nedýchá)",
+     "s": [
+      "AVPU-U",
+      "nedýchá"
+     ]
     },
     {
      "c": "DUŠ_NEMŮŽE_MLUVIT",
-     "t": "Dušnost - nemůže vůbec mluvit / mluvit / schopen říci pouze slovo"
+     "t": "Dušnost - nemůže vůbec mluvit / mluvit / schopen říci pouze slovo",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "MAS_RYCHLÝ_OTOK",
-     "t": "Masivní rychlý otok DC, dusí se"
+     "t": "Masivní rychlý otok DC, dusí se",
+     "s": []
     }
    ]
   },
@@ -2067,7 +2240,12 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ALERGICKÁ_REAKCE",
-     "t": "Alergická reakce s AVPU-U (dýchá), dušnost - schopen řici pouze větu, kolabuje, patrný vzdálený (generalizovaný) otok na těle"
+     "t": "Alergická reakce s AVPU-U (dýchá), dušnost - schopen řici pouze větu, kolabuje, patrný vzdálený (generalizovaný) otok na těle",
+     "s": [
+      "AVPU-U",
+      "dýchá",
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -2087,11 +2265,16 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ALERGICKÁ_REAKCE_2",
-     "t": "Alergická reakce s AVPU-P, dušnost - schopen udržet konverzaci"
+     "t": "Alergická reakce s AVPU-P, dušnost - schopen udržet konverzaci",
+     "s": [
+      "AVPU-P",
+      "Dušnost"
+     ]
     },
     {
      "c": "RIZIKA!_RYCHLÝ_ROZVOJ",
-     "t": "RIZIKA! - rychlý rozvoj, alergie na noxu v anamnéze, nereaguje na podanou medikamentosní terapii"
+     "t": "RIZIKA! - rychlý rozvoj, alergie na noxu v anamnéze, nereaguje na podanou medikamentosní terapii",
+     "s": []
     }
    ]
   },
@@ -2110,7 +2293,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ALERGICKÁ_REAKCE_3",
-     "t": "Alergická reakce pouze s kožními příznaky, bez vývoje, AVPU A/V, otok lokálního charakteru, celkový stav dobrý"
+     "t": "Alergická reakce pouze s kožními příznaky, bez vývoje, AVPU A/V, otok lokálního charakteru, celkový stav dobrý",
+     "s": []
     }
    ]
   },
@@ -2129,7 +2313,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "BLEDOST_KOLAPS_MAS",
-     "t": "Bledost, kolaps a MASIVNÍ krvácení z nezastavitelné oblasti (zejm. GIT, URO, GYN, DC)., AVPU - U (nedýchá)"
+     "t": "Bledost, kolaps a MASIVNÍ krvácení z nezastavitelné oblasti (zejm. GIT, URO, GYN, DC)., AVPU - U (nedýchá)",
+     "s": [
+      "nedýchá"
+     ]
     }
    ]
   },
@@ -2148,7 +2335,11 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "KONTINUÁLNÍ_KRVÁC",
-     "t": "KONTINUÁLNÍ krvác. většího char. z nezastavitelné oblasti (GIT, URO, GYN, DC), ekviv. 150 ml/min, AVPU-U (dýchá)"
+     "t": "KONTINUÁLNÍ krvác. většího char. z nezastavitelné oblasti (GIT, URO, GYN, DC), ekviv. 150 ml/min, AVPU-U (dýchá)",
+     "s": [
+      "AVPU-U",
+      "dýchá"
+     ]
     }
    ]
   },
@@ -2168,11 +2359,15 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ZÁVAŽ_KRV_KONČ_VARIXY",
-     "t": "ZÁVAŽNÉ krvácení z končetin (varixy)"
+     "t": "ZÁVAŽNÉ krvácení z končetin (varixy)",
+     "s": [
+      "Závažné krvácení z končetin"
+     ]
     },
     {
      "c": "AVPU-_P",
-     "t": "AVPU- P"
+     "t": "AVPU- P",
+     "s": []
     }
    ]
   },
@@ -2192,15 +2387,18 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "KRV_MENŠÍHO_ROZSAHU",
-     "t": "Krvácení MENŠÍHO rozsahu"
+     "t": "Krvácení MENŠÍHO rozsahu",
+     "s": []
     },
     {
      "c": "JEDNORÁZOVÉ_URO/GYN",
-     "t": "Jednorázové - uro/gyn., meléna, hemateméza, enterorhagie, epistaxe"
+     "t": "Jednorázové - uro/gyn., meléna, hemateméza, enterorhagie, epistaxe",
+     "s": []
     },
     {
      "c": "ZASTAVITELNÉ_NEÚR",
-     "t": "ZASTAVITELNÉ neúr. krvácení z končetin, celkový stav dobrý"
+     "t": "ZASTAVITELNÉ neúr. krvácení z končetin, celkový stav dobrý",
+     "s": []
     }
    ]
   },
@@ -2220,11 +2418,15 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NÁHLE_VZNIKLÁ_PRUDKÁ",
-     "t": "Náhle vzniklá prudká, intenzivní bolest + alterace celkového stavu s celkovými příznaky (kolaps, dušnost)"
+     "t": "Náhle vzniklá prudká, intenzivní bolest + alterace celkového stavu s celkovými příznaky (kolaps, dušnost)",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "TLUMENÍ_BOLEST",
-     "t": "Tlumení bolesti u paliativního pacienta"
+     "t": "Tlumení bolesti u paliativního pacienta",
+     "s": []
     }
    ]
   },
@@ -2244,11 +2446,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "SILNÁ_BOLEST",
-     "t": "Silná bolest / snesitelná / opakovaná / známá / jiné bolesti (hlava, záda, břicho, končetiny, jiná oblast)"
+     "t": "Silná bolest / snesitelná / opakovaná / známá / jiné bolesti (hlava, záda, břicho, končetiny, jiná oblast)",
+     "s": []
     },
     {
      "c": "RETENCE/NEPRŮCHODNÝ/EXTR",
-     "t": "Retence/neprůchodný/extrahovaný PMK + bol.břicha"
+     "t": "Retence/neprůchodný/extrahovaný PMK + bol.břicha",
+     "s": []
     }
    ]
   },
@@ -2267,7 +2471,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "TEPLOTY_NAD_39°C",
-     "t": "Teploty nad 39°C + příznaky pro IMO: světloplachost / váznutí šíje / rozvíjející se kožní skvrny / rychlá progrese stavu"
+     "t": "Teploty nad 39°C + příznaky pro IMO: světloplachost / váznutí šíje / rozvíjející se kožní skvrny / rychlá progrese stavu",
+     "s": []
     }
    ]
   },
@@ -2286,7 +2491,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "TEPLOTY_OSTATNÍ",
-     "t": "Teploty ostatní"
+     "t": "Teploty ostatní",
+     "s": []
     }
    ]
   },
@@ -2306,11 +2512,15 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ZVRACENÍ_OPAKOVANÉ",
-     "t": "Zvracení opakované / průjem opakovaný, další doprovodný příznak s alterací stavu = dehydratace, prekolaps, zhor.stavu"
+     "t": "Zvracení opakované / průjem opakovaný, další doprovodný příznak s alterací stavu = dehydratace, prekolaps, zhor.stavu",
+     "s": [
+      "Prekolaps"
+     ]
     },
     {
      "c": "NEREAGUJE_ZÁKLADNÍ",
-     "t": "Nereaguje na základní terapii a je alterace stavu"
+     "t": "Nereaguje na základní terapii a je alterace stavu",
+     "s": []
     }
    ]
   },
@@ -2330,11 +2540,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "VŠEOBECNÉ_ZHORŠENÍ",
-     "t": "Všeobecné zhoršení stavu, chronické polymorfní obtíže, nespecifikovaná nevolnost, stav nereag. na ordinovanou th"
+     "t": "Všeobecné zhoršení stavu, chronické polymorfní obtíže, nespecifikovaná nevolnost, stav nereag. na ordinovanou th",
+     "s": []
     },
     {
      "c": "SOCIÁLNÍ_PŘÍPAD",
-     "t": "Sociální případ, nezvládají péči"
+     "t": "Sociální případ, nezvládají péči",
+     "s": []
     }
    ]
   },
@@ -2354,11 +2566,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POTÍŽE_NEZAŘADITELNÉ",
-     "t": "Potíže nezařaditelné do určité klasifikace"
+     "t": "Potíže nezařaditelné do určité klasifikace",
+     "s": []
     },
     {
      "c": "NEODVÁDĚJÍCÍ/VYPADLÝ",
-     "t": "Neodvádějící/vypadlý urokatetr, výměna PMK, bez celkových příznaků, DRNR nedostupná"
+     "t": "Neodvádějící/vypadlý urokatetr, výměna PMK, bez celkových příznaků, DRNR nedostupná",
+     "s": []
     }
    ]
   },
@@ -2377,7 +2591,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "DÍTĚ_BABYBOXU",
-     "t": "Dítě v babyboxu"
+     "t": "Dítě v babyboxu",
+     "s": []
     }
    ]
   },
@@ -2399,19 +2614,30 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PORUCHY_VĚDOMÍ_AVPU-U",
-     "t": "Poruchy vědomí = AVPU-U nedýchá"
+     "t": "Poruchy vědomí = AVPU-U nedýchá",
+     "s": [
+      "AVPU-U",
+      "nedýchá"
+     ]
     },
     {
      "c": "OBJ_DUŠ_SOUVISL.S",
-     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit"
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "MAS_NEZAST_KRV",
-     "t": "Masivní nezastavitelné krvácení, amputace končetiny"
+     "t": "Masivní nezastavitelné krvácení, amputace končetiny",
+     "s": [
+      "Masivní krvácení nezastavitelné"
+     ]
     },
     {
      "c": "ZÁVAŽ_ROZS_POPÁL",
-     "t": "Závažné rozsáhlé popáleniny / poleptání"
+     "t": "Závažné rozsáhlé popáleniny / poleptání",
+     "s": []
     }
    ]
   },
@@ -2441,55 +2667,83 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PÁD_VÝŠE_>6_M",
-     "t": "Pád z výše >6 m"
+     "t": "Pád z výše >6 m",
+     "s": []
     },
     {
      "c": "TROJNÁSOBEK_SVÉ",
-     "t": "Trojnásobek své výšky (děti)"
+     "t": "Trojnásobek své výšky (děti)",
+     "s": []
     },
     {
      "c": "PŘEJETÍ_VOZ",
-     "t": "Přejetí vozidlem"
+     "t": "Přejetí vozidlem",
+     "s": []
     },
     {
      "c": "PORUCHA_VĚDOMÍ_AVPU-U",
-     "t": "Porucha vědomí = AVPU-U dýchá"
+     "t": "Porucha vědomí = AVPU-U dýchá",
+     "s": [
+      "AVPU-U",
+      "dýchá"
+     ]
     },
     {
      "c": "DUŠ_NEKRITICKÁ_ZNÁMEK",
-     "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu"
+     "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "PARÉZA",
-     "t": "Paréza"
+     "t": "Paréza",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
     },
     {
      "c": "BRNĚNÍ_KONČ",
-     "t": "Brnění končetin"
+     "t": "Brnění končetin",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
     },
     {
      "c": "OTEVŘ_ZLOM",
-     "t": "Otevřená zlomenina"
+     "t": "Otevřená zlomenina",
+     "s": [
+      "Otevřená zlomenina"
+     ]
     },
     {
      "c": "ZLOM_2_VÍCE_DLOUHÝCH",
-     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)"
+     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
+     "s": [
+      "Zlomenina 2 dlouhých kostí (femur, humerus, tibie)"
+     ]
     },
     {
      "c": "ZAVALENÍ_TĚŽKÝMI",
-     "t": "Zavalení těžkými předměty"
+     "t": "Zavalení těžkými předměty",
+     "s": []
     },
     {
      "c": "PERFO_PORAN_HLAVY",
-     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve"
+     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
+     "s": []
     },
     {
      "c": "POKRAČUJÍCÍ_NEZAST",
-     "t": "Pokračující nezastavitelné krvácení většího rozsahu"
+     "t": "Pokračující nezastavitelné krvácení většího rozsahu",
+     "s": [
+      "Pokračující krvácení většího rozsahu nezastavitelné"
+     ]
     },
     {
      "c": "DÍTĚ_PŘEDPOKLAD",
-     "t": "Dítě - předpoklad potřeby analgezie/sedace"
+     "t": "Dítě - předpoklad potřeby analgezie/sedace",
+     "s": []
     }
    ]
   },
@@ -2509,11 +2763,18 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "AVPU-P_POÚRAZOVÁ",
-     "t": "AVPU-P, poúrazová zmatenost"
+     "t": "AVPU-P, poúrazová zmatenost",
+     "s": [
+      "AVPU-P",
+      "Poúrazová zmatenost"
+     ]
     },
     {
      "c": "ZÁVAŽ_KRV_KONČ",
-     "t": "Závažné krvácení z končetin"
+     "t": "Závažné krvácení z končetin",
+     "s": [
+      "Závažné krvácení z končetin"
+     ]
     }
    ]
   },
@@ -2537,36 +2798,63 @@ const ZOS_CIHLY = {
    ],
    "chips": [
     {
-     "c": "ZÁVAŽ_PORUCHY_VĚDOMÍ",
-     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A"
+     "c": "AVPU-V",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "AVPU-A",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "s": [
+      "AVPU-A"
+     ]
     },
     {
      "c": "KOMOČNÍ_SYNDROM",
-     "t": "Komoční syndrom"
+     "t": "Komoční syndrom",
+     "s": [
+      "Komoční syndrom"
+     ]
     },
     {
      "c": "PSYCHICKÝ_OTŘES",
-     "t": "Psychický otřes"
+     "t": "Psychický otřes",
+     "s": [
+      "Psychický otřes"
+     ]
     },
     {
      "c": "OTEVŘ_RÁNY_MENŠÍHO",
-     "t": "Otevřené rány menšího rozsahu"
+     "t": "Otevřené rány menšího rozsahu",
+     "s": [
+      "Otevřené rány"
+     ]
     },
     {
      "c": "ZAVŘENÁ_ZLOM",
-     "t": "Zavřená zlomenina, vykloubení"
+     "t": "Zavřená zlomenina, vykloubení",
+     "s": [
+      "Zavřená zlomenina"
+     ]
     },
     {
      "c": "TUPÉ_TRAUMA_HRUDNÍKU",
-     "t": "Tupé trauma hrudníku, břicha, pánve, zad"
+     "t": "Tupé trauma hrudníku, břicha, pánve, zad",
+     "s": []
     },
     {
      "c": "ZTRÁTOVÉ_PORAN_PRSTŮ",
-     "t": "Ztrátové poranění prstů"
+     "t": "Ztrátové poranění prstů",
+     "s": []
     },
     {
      "c": "OŠETŘITELNÉ_PORAN",
-     "t": "Ošetřitelné poranění bez masivního krvácení"
+     "t": "Ošetřitelné poranění bez masivního krvácení",
+     "s": [
+      "Nezávažné krvácení z končetin"
+     ]
     }
    ]
   },
@@ -2585,11 +2873,17 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PAC_JEŠTĚ_VODĚ",
-     "t": "Pacient je ještě ve vodě"
+     "t": "Pacient je ještě ve vodě",
+     "s": []
     },
     {
      "c": "TONUTÍ_BŘEHU",
-     "t": "Po tonutí na břehu, v bezvědomí, bezděší, křeče, kritická dušnost, AVPU-U nedýchá"
+     "t": "Po tonutí na břehu, v bezvědomí, bezděší, křeče, kritická dušnost, AVPU-U nedýchá",
+     "s": [
+      "Dušnost",
+      "AVPU-U",
+      "nedýchá"
+     ]
     }
    ]
   },
@@ -2608,11 +2902,19 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PAC_TONUTÍ_JIŽ",
-     "t": "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-U dýchá"
+     "t": "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-U dýchá",
+     "s": [
+      "AVPU-U",
+      "dýchá"
+     ]
     },
     {
      "c": "JIŽ_VĚDOMÍ_+",
-     "t": "Již při vědomí + přítomnost některých závažných okolností: dušnost, vykašlávání, neurol. příznaky (motorické poruchy či poruchy čití končetin)"
+     "t": "Již při vědomí + přítomnost některých závažných okolností: dušnost, vykašlávání, neurol. příznaky (motorické poruchy či poruchy čití končetin)",
+     "s": [
+      "při vědomí",
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -2631,7 +2933,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PAC_TONUTÍ_JIŽ_2",
-     "t": "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-P není přítomná další závažná okolnost"
+     "t": "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-P není přítomná další závažná okolnost",
+     "s": [
+      "AVPU-P"
+     ]
     }
    ]
   },
@@ -2649,8 +2954,18 @@ const ZOS_CIHLY = {
    ],
    "chips": [
     {
-     "c": "PAC_TONUTÍ_AVPU-V",
-     "t": "Pacient po tonutí, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+     "c": "AVPU-V",
+     "t": "Pacient po tonutí, AVPU-V, AVPU-A, není přítomná další závažná okolnost",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "AVPU-A",
+     "t": "Pacient po tonutí, AVPU-V, AVPU-A, není přítomná další závažná okolnost",
+     "s": [
+      "AVPU-A"
+     ]
     }
    ]
   },
@@ -2672,19 +2987,25 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "HLUBOKÉ_POPÁL_ROZS",
-     "t": "Hluboké popáleniny / rozsáhlé popáleniny"
+     "t": "Hluboké popáleniny / rozsáhlé popáleniny",
+     "s": []
     },
     {
      "c": "MAS_POPÁL_ORL_OBLASTI",
-     "t": "Masivní popáleniny ORL oblasti či očí"
+     "t": "Masivní popáleniny ORL oblasti či očí",
+     "s": []
     },
     {
      "c": "VÝBUCH",
-     "t": "Výbuch"
+     "t": "Výbuch",
+     "s": []
     },
     {
      "c": "POPÁL_+_DUŠ_NEMŮŽE",
-     "t": "Popáleniny + dušnost (nemůže mluvit, schopen říci max slovo)"
+     "t": "Popáleniny + dušnost (nemůže mluvit, schopen říci max slovo)",
+     "s": [
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -2706,23 +3027,28 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POPÁL_DĚTÍ",
-     "t": "Popáleniny dětí jakéhokoliv rozsahu"
+     "t": "Popáleniny dětí jakéhokoliv rozsahu",
+     "s": []
     },
     {
      "c": "DOSPĚLÝ_CCA_9%_VÝŠE",
-     "t": "Dospělý cca 9% a výše v nepredikované oblasti"
+     "t": "Dospělý cca 9% a výše v nepredikované oblasti",
+     "s": []
     },
     {
      "c": "POPÁL_EL.PROUDEM",
-     "t": "Popáleniny El.proudem"
+     "t": "Popáleniny El.proudem",
+     "s": []
     },
     {
      "c": "POP_PREDIKOVATELNÉ",
-     "t": "Pop. v predikovatelné oblasti = obličej, krk, genitál"
+     "t": "Pop. v predikovatelné oblasti = obličej, krk, genitál",
+     "s": []
     },
     {
      "c": "ZÁVAŽ_POPÁL_ORL",
-     "t": "Závažné popáleniny ORL oblasti či očí"
+     "t": "Závažné popáleniny ORL oblasti či očí",
+     "s": []
     }
    ]
   },
@@ -2741,7 +3067,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POVRCHOVÉ_POPÁL",
-     "t": "Povrchové popáleniny menšího rozsahu a hloubky, nepatřící do skupiny výše, popáleniny dospělého < 9%"
+     "t": "Povrchové popáleniny menšího rozsahu a hloubky, nepatřící do skupiny výše, popáleniny dospělého < 9%",
+     "s": []
     }
    ]
   },
@@ -2763,19 +3090,30 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PORUCHY_VĚDOMÍ_AVPU-U",
-     "t": "Poruchy vědomí = AVPU-U nedýchá"
+     "t": "Poruchy vědomí = AVPU-U nedýchá",
+     "s": [
+      "AVPU-U",
+      "nedýchá"
+     ]
     },
     {
      "c": "OBJ_DUŠ_SOUVISL.S",
-     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit"
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "MAS_NEZAST_KRV",
-     "t": "Masivní nezastavitelné krvácení, amputace končetiny"
+     "t": "Masivní nezastavitelné krvácení, amputace končetiny",
+     "s": [
+      "Masivní krvácení nezastavitelné"
+     ]
     },
     {
      "c": "ZÁVAŽ_ROZS_POPÁL",
-     "t": "Závažné rozsáhlé popáleniny / poleptání"
+     "t": "Závažné rozsáhlé popáleniny / poleptání",
+     "s": []
     }
    ]
   },
@@ -2808,63 +3146,93 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ČELNÍ_NÁRAZ_VYSOKÉ",
-     "t": "Čelní náraz ve vysoké rychlosti bez zn stavu"
+     "t": "Čelní náraz ve vysoké rychlosti bez zn stavu",
+     "s": []
     },
     {
      "c": "PŘEJETÍ_VOZ",
-     "t": "Přejetí vozidlem"
+     "t": "Přejetí vozidlem",
+     "s": []
     },
     {
      "c": "SRAŽENÍ_VOZ_RYCHLOSTÍ",
-     "t": "Sražení vozidlem rychlostí >35 km/hod (chodec,cyklista,moto)"
+     "t": "Sražení vozidlem rychlostí >35 km/hod (chodec,cyklista,moto)",
+     "s": []
     },
     {
      "c": "KATAPULTÁŽ_VOZ",
-     "t": "Katapultáž z vozidla"
+     "t": "Katapultáž z vozidla",
+     "s": []
     },
     {
      "c": "ZAKLÍNĚNÍ_VOZIDLE",
-     "t": "Zaklínění ve vozidle"
+     "t": "Zaklínění ve vozidle",
+     "s": []
     },
     {
      "c": "ZAVALENÍ_TĚŽKÝMI",
-     "t": "Zavalení těžkými předměty"
+     "t": "Zavalení těžkými předměty",
+     "s": []
     },
     {
      "c": "PARÉZA",
-     "t": "Paréza"
+     "t": "Paréza",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
     },
     {
      "c": "BRNĚNÍ_KONČ",
-     "t": "Brnění končetin"
+     "t": "Brnění končetin",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
     },
     {
      "c": "PERFO_PORAN_HLAVY",
-     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve"
+     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
+     "s": []
     },
     {
      "c": "PORUCHA_VĚDOMÍ_AVPU-U",
-     "t": "Porucha vědomí = AVPU-U dýchá"
+     "t": "Porucha vědomí = AVPU-U dýchá",
+     "s": [
+      "AVPU-U",
+      "dýchá"
+     ]
     },
     {
      "c": "DUŠ_NEKRITICKÁ_ZNÁMEK",
-     "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu"
+     "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu",
+     "s": [
+      "Dušnost"
+     ]
     },
     {
      "c": "POKRAČUJÍCÍ_NEZAST",
-     "t": "Pokračující nezastavitelné krvácení většího rozsahu"
+     "t": "Pokračující nezastavitelné krvácení většího rozsahu",
+     "s": [
+      "Pokračující krvácení většího rozsahu nezastavitelné"
+     ]
     },
     {
      "c": "OTEVŘ_ZLOM",
-     "t": "Otevřená zlomenina"
+     "t": "Otevřená zlomenina",
+     "s": [
+      "Otevřená zlomenina"
+     ]
     },
     {
      "c": "ZLOM_2_VÍCE_DLOUHÝCH",
-     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)"
+     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
+     "s": [
+      "Zlomenina 2 dlouhých kostí (femur, humerus, tibie)"
+     ]
     },
     {
      "c": "DÍTĚ_PŘEDPOKLAD",
-     "t": "Dítě - předpoklad potřeby analgezie/sedace"
+     "t": "Dítě - předpoklad potřeby analgezie/sedace",
+     "s": []
     }
    ]
   },
@@ -2885,15 +3253,23 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "AVPU-P_POÚRAZOVÁ",
-     "t": "AVPU-P, poúrazová zmatenost"
+     "t": "AVPU-P, poúrazová zmatenost",
+     "s": [
+      "AVPU-P",
+      "Poúrazová zmatenost"
+     ]
     },
     {
      "c": "ZÁVAŽ_KRV_KONČ",
-     "t": "Závažné krvácení z končetin"
+     "t": "Závažné krvácení z končetin",
+     "s": [
+      "Závažné krvácení z končetin"
+     ]
     },
     {
      "c": "ROTACE_VOZ_PŘES",
-     "t": "Rotace vozidla přes střechu"
+     "t": "Rotace vozidla přes střechu",
+     "s": []
     }
    ]
   },
@@ -2918,40 +3294,68 @@ const ZOS_CIHLY = {
    ],
    "chips": [
     {
-     "c": "ZÁVAŽ_PORUCHY_VĚDOMÍ",
-     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A"
+     "c": "AVPU-V",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "AVPU-A",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "s": [
+      "AVPU-A"
+     ]
     },
     {
      "c": "KOMOČNÍ_SYNDROM",
-     "t": "Komoční syndrom"
+     "t": "Komoční syndrom",
+     "s": [
+      "Komoční syndrom"
+     ]
     },
     {
      "c": "PSYCHICKÝ_OTŘES",
-     "t": "Psychický otřes"
+     "t": "Psychický otřes",
+     "s": [
+      "Psychický otřes"
+     ]
     },
     {
      "c": "OTEVŘ_RÁNY_MENŠÍHO",
-     "t": "Otevřené rány menšího rozsahu"
+     "t": "Otevřené rány menšího rozsahu",
+     "s": [
+      "Otevřené rány"
+     ]
     },
     {
      "c": "ZAVŘENÁ_ZLOM",
-     "t": "Zavřená zlomenina, vykloubení"
+     "t": "Zavřená zlomenina, vykloubení",
+     "s": [
+      "Zavřená zlomenina"
+     ]
     },
     {
      "c": "TUPÉ_TRAUMA_HRUDNÍKU",
-     "t": "Tupé trauma hrudníku, břicha, pánve, zad"
+     "t": "Tupé trauma hrudníku, břicha, pánve, zad",
+     "s": []
     },
     {
      "c": "ZTRÁTOVÉ_PORAN_PRSTŮ",
-     "t": "Ztrátové poranění prstů"
+     "t": "Ztrátové poranění prstů",
+     "s": []
     },
     {
      "c": "OŠETŘITELNÉ_PORAN",
-     "t": "Ošetřitelné poranění bez masivního krvácení"
+     "t": "Ošetřitelné poranění bez masivního krvácení",
+     "s": [
+      "Nezávažné krvácení z končetin"
+     ]
     },
     {
      "c": "PAC_VIDITELNÉHO",
-     "t": "Pacient bez viditelného poranění a není triage pozitivní"
+     "t": "Pacient bez viditelného poranění a není triage pozitivní",
+     "s": []
     }
    ]
   },
@@ -2971,15 +3375,23 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NALEZEN_OBĚŠENÝ",
-     "t": "Nalezen oběšený"
+     "t": "Nalezen oběšený",
+     "s": []
     },
     {
      "c": "STÁLE_VISÍCÍ_POR",
-     "t": "Stále visící, por. vědomí, AVPU-U nedýchá"
+     "t": "Stále visící, por. vědomí, AVPU-U nedýchá",
+     "s": [
+      "AVPU-U",
+      "nedýchá"
+     ]
     },
     {
      "c": "KRITICKÁ_DUŠ_NEJSOU",
-     "t": "Kritická dušnost, nejsou jisté známky smrti"
+     "t": "Kritická dušnost, nejsou jisté známky smrti",
+     "s": [
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -2998,11 +3410,20 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "STAVY_OBĚŠENÍ_PORUCHA",
-     "t": "Stavy po oběšení, porucha vědomí, AVPU-U dýchá"
+     "t": "Stavy po oběšení, porucha vědomí, AVPU-U dýchá",
+     "s": [
+      "AVPU-U",
+      "dýchá"
+     ]
     },
     {
      "c": "JIŽ_VĚDOMÍ_KOMUNIKUJE",
-     "t": "Již při vědomí, komunikuje + další závažný příznak (nekritická dušnost, paréza končetin, psychiatrické přízn.)"
+     "t": "Již při vědomí, komunikuje + další závažný příznak (nekritická dušnost, paréza končetin, psychiatrické přízn.)",
+     "s": [
+      "při vědomí",
+      "Dušnost",
+      "Paréza/brnění končetin"
+     ]
     }
    ]
   },
@@ -3021,7 +3442,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PORUCHA_VĚDOMÍ_AVPU-P",
-     "t": "Porucha vědomí AVPU-P není přítomná další závažná okolnost"
+     "t": "Porucha vědomí AVPU-P není přítomná další závažná okolnost",
+     "s": [
+      "AVPU-P"
+     ]
     }
    ]
   },
@@ -3039,8 +3463,18 @@ const ZOS_CIHLY = {
    ],
    "chips": [
     {
-     "c": "PAC_OBĚŠENÍ_AVPU-V",
-     "t": "Pacient po oběšení, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+     "c": "AVPU-V",
+     "t": "Pacient po oběšení, AVPU-V, AVPU-A, není přítomná další závažná okolnost",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "AVPU-A",
+     "t": "Pacient po oběšení, AVPU-V, AVPU-A, není přítomná další závažná okolnost",
+     "s": [
+      "AVPU-A"
+     ]
     }
    ]
   },
@@ -3059,11 +3493,20 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "KRITICKÝ_STAV_PORUCHY",
-     "t": "Kritický stav - poruchy vědomí, nereaguje na bolest ani oslovení, nedýchá normálně"
+     "t": "Kritický stav - poruchy vědomí, nereaguje na bolest ani oslovení, nedýchá normálně",
+     "s": [
+      "reaguje na bolest",
+      "nedýchá"
+     ]
     },
     {
      "c": "DUŠ_NEMŮŽE_MLUVIT",
-     "t": "Dušnost - nemůže mluvit, schopen říci pouze slovo AVPU-U nedýchá"
+     "t": "Dušnost - nemůže mluvit, schopen říci pouze slovo AVPU-U nedýchá",
+     "s": [
+      "Dušnost",
+      "AVPU-U",
+      "nedýchá"
+     ]
     }
    ]
   },
@@ -3082,7 +3525,12 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ZÁVAŽ_STAV_NEREAGUJE",
-     "t": "Závažný stav - nereaguje na oslovení ani bolest, dýchá normálně, nekritická dušnost, schopen říci pouze větu, AVPU-U dýchá"
+     "t": "Závažný stav - nereaguje na oslovení ani bolest, dýchá normálně, nekritická dušnost, schopen říci pouze větu, AVPU-U dýchá",
+     "s": [
+      "dýchá",
+      "Dušnost",
+      "AVPU-U"
+     ]
     }
    ]
   },
@@ -3101,7 +3549,12 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "ZÁVAŽ_STAV_NEREAGUJE_2",
-     "t": "Závažný stav - nereaguje na oslovení, ale reaguje na bolest slovní reakcí, AVPU-P, dušnost udrží konverzaci"
+     "t": "Závažný stav - nereaguje na oslovení, ale reaguje na bolest slovní reakcí, AVPU-P, dušnost udrží konverzaci",
+     "s": [
+      "reaguje na bolest",
+      "AVPU-P",
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -3119,8 +3572,18 @@ const ZOS_CIHLY = {
    ],
    "chips": [
     {
-     "c": "NEZÁVAŽNÝ_STAV",
-     "t": "Nezávažný stav - probuditelný, reaguje na oslovení, bez dušnosti, pravděpodobně v souvislosti s alkoholem, AVPU-V, AVPU-A"
+     "c": "AVPU-V",
+     "t": "Nezávažný stav - probuditelný, reaguje na oslovení, bez dušnosti, pravděpodobně v souvislosti s alkoholem, AVPU-V, AVPU-A",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "AVPU-A",
+     "t": "Nezávažný stav - probuditelný, reaguje na oslovení, bez dušnosti, pravděpodobně v souvislosti s alkoholem, AVPU-V, AVPU-A",
+     "s": [
+      "AVPU-A"
+     ]
     }
    ]
   },
@@ -3139,11 +3602,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POSTIŽENÍ_VÍCE_JAK",
-     "t": "Postižení více jak 15 osob"
+     "t": "Postižení více jak 15 osob",
+     "s": []
     },
     {
      "c": "5_VÍCE_VYSLANÝCH",
-     "t": "5 a více vyslaných výjezd.skupin"
+     "t": "5 a více vyslaných výjezd.skupin",
+     "s": []
     }
    ]
   },
@@ -3162,7 +3627,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "VNN_+_KRITICKÝ_STAV",
-     "t": "VNN + kritický stav (por.vědomí, kritická dušnost)"
+     "t": "VNN + kritický stav (por.vědomí, kritická dušnost)",
+     "s": [
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -3181,7 +3649,10 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "VNN_+_ZÁVAŽ_STAV",
-     "t": "VNN + závažný stav (reaguje na oslovení,nekritická dušnost)"
+     "t": "VNN + závažný stav (reaguje na oslovení,nekritická dušnost)",
+     "s": [
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -3200,7 +3671,11 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "VNN_+_NEZÁV.STAV",
-     "t": "VNN + nezáv.stav (při vědomí, bez dušnosti, stav dobrý)"
+     "t": "VNN + nezáv.stav (při vědomí, bez dušnosti, stav dobrý)",
+     "s": [
+      "při vědomí",
+      "Dušnost"
+     ]
     }
    ]
   },
@@ -3220,11 +3695,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NEBEZPEČÍ_ČASOVÉHO",
-     "t": "Nebezpečí časového prodlení"
+     "t": "Nebezpečí časového prodlení",
+     "s": []
     },
     {
      "c": "NESNESE_ODKLADU",
-     "t": "Nesnese odkladu (= akutní)"
+     "t": "Nesnese odkladu (= akutní)",
+     "s": []
     }
    ]
   },
@@ -3243,7 +3720,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PŘEVOZ_SPECIALIZOVANÉ",
-     "t": "Převoz na specializované pracoviště"
+     "t": "Převoz na specializované pracoviště",
+     "s": []
     }
    ]
   },
@@ -3262,7 +3740,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PŘEVOZ_N3_RZP",
-     "t": "Bez doplňujícího popisu v tabulce"
+     "t": "Bez doplňujícího popisu v tabulce",
+     "s": []
     }
    ]
   },
@@ -3283,15 +3762,18 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NEBEZPEČÍ_ČASOVÉHO_2",
-     "t": "Bez nebezpečí časového prodlení"
+     "t": "Bez nebezpečí časového prodlení",
+     "s": []
     },
     {
      "c": "SNESE_ODKLADU",
-     "t": "Snese odkladu (= plánovaný)"
+     "t": "Snese odkladu (= plánovaný)",
+     "s": []
     },
     {
      "c": "PŘEVOZ_NIŽŠÍHO_VYŠŠÍ",
-     "t": "Převoz z nižšího na vyšší pracoviště"
+     "t": "Převoz z nižšího na vyšší pracoviště",
+     "s": []
     }
    ]
   },
@@ -3310,7 +3792,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PŘEVOZ_VYŠŠÍHO_NIŽŠÍ",
-     "t": "Převoz z vyššího na nižší pracoviště"
+     "t": "Převoz z vyššího na nižší pracoviště",
+     "s": []
     }
    ]
   },
@@ -3329,7 +3812,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "PŘEVOZ_N4_RZP",
-     "t": "Bez doplňujícího popisu v tabulce"
+     "t": "Bez doplňujícího popisu v tabulce",
+     "s": []
     }
    ]
   },
@@ -3348,7 +3832,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POŽADAVEK_RZP_POSÁDKY",
-     "t": "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - RESUSCITACE /ANAFYLAXE"
+     "t": "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - RESUSCITACE /ANAFYLAXE",
+     "s": []
     }
    ]
   },
@@ -3367,7 +3852,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POŽADAVEK_RZP_POSÁDKY_2",
-     "t": "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - ZHORŠENÍ STAVU"
+     "t": "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - ZHORŠENÍ STAVU",
+     "s": []
     }
    ]
   },
@@ -3387,11 +3873,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "NENÍ_DISPOZICI_ŽÁDNÁ",
-     "t": "Není k dispozici žádná další dostupná RZP posádka na témže výjezdovém stanovišti"
+     "t": "Není k dispozici žádná další dostupná RZP posádka na témže výjezdovém stanovišti",
+     "s": []
     },
     {
      "c": "JÍZDA_RZP_MIMO",
-     "t": "Jízda RZP mimo zajišťovanou oblast posádkou o jedné posádce RZP na výjezdovém stanovišti"
+     "t": "Jízda RZP mimo zajišťovanou oblast posádkou o jedné posádce RZP na výjezdovém stanovišti",
+     "s": []
     }
    ]
   },
@@ -3410,11 +3898,13 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "POSOUZENÍ_STAVU",
-     "t": "Posouzení stavu lékařem ZZS JčK v blízkém dosahu základny na žádost PČR"
+     "t": "Posouzení stavu lékařem ZZS JčK v blízkém dosahu základny na žádost PČR",
+     "s": []
     },
     {
      "c": "DOJEZD_POSÁDKY_RZP",
-     "t": "Dojezd posádky RZP za lékařem ZZS JčK na základnu k posouzení stavu"
+     "t": "Dojezd posádky RZP za lékařem ZZS JčK na základnu k posouzení stavu",
+     "s": []
     }
    ]
   },
@@ -3435,23 +3925,28 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "AKUTNÍ_ASISTENCE",
-     "t": "Akutní asistence, otevírání bytu, info uvnitř je osoba, nekomunikuje"
+     "t": "Akutní asistence, otevírání bytu, info uvnitř je osoba, nekomunikuje",
+     "s": []
     },
     {
      "c": "ASISTENCE_POLICEJNÍHO",
-     "t": "Asistence u policejního či hasičského zásahu, např. rozsáhlý požár"
+     "t": "Asistence u policejního či hasičského zásahu, např. rozsáhlý požár",
+     "s": []
     },
     {
      "c": "NENÍ_ZNÁMÁ_INFORMACE",
-     "t": "NENÍ ZNÁMÁ INFORMACE"
+     "t": "NENÍ ZNÁMÁ INFORMACE",
+     "s": []
     },
     {
      "c": "ZDRAVOTNÍM_STAVU",
-     "t": "O ZDRAVOTNÍM STAVU"
+     "t": "O ZDRAVOTNÍM STAVU",
+     "s": []
     },
     {
      "c": "REAKCE_STRANY_ZOS",
-     "t": "Reakce ze strany ZOS na tísňové zprávy / volání bez možnosti ověřit zdravotní stav (eCALL, SMS, autom.volání)"
+     "t": "Reakce ze strany ZOS na tísňové zprávy / volání bez možnosti ověřit zdravotní stav (eCALL, SMS, autom.volání)",
+     "s": []
     }
    ]
   },
@@ -3470,7 +3965,8 @@ const ZOS_CIHLY = {
    "chips": [
     {
      "c": "TECHNICKÁ_JÍZDA",
-     "t": "Technická jízda"
+     "t": "Technická jízda",
+     "s": []
     }
    ]
   }
@@ -7248,6 +7744,16 @@ class SimCalltaker {
   }
   _ctStr(v) { return String(v == null ? '' : v).trim(); }
   // poznámka pro dispečera z nových polí formuláře
+  // poznámka, kterou vidí dispečer u případu z cihliček: jen zadané (Co se stalo, poznámka a štítky), bez skryté poznámky generátoru
+  _ctNoteShown(f) { return [f.popis, f.poznamka].map(x => this._ctStr(x)).filter(Boolean).join('; '); }
+  // co dispečer vidí o případu: zadané údaje místo skrytých z generátoru
+  _ctShow(c, f) {
+    const year = Number(String(this.s.date || '').slice(0, 4)) || 2026, num = Number(f.pVek), rok = Number(f.pRok);
+    c.place = this._ctStr(f.upresneni); c.ozn = [f.vJmeno, f.vPrijmeni].map(x => this._ctStr(x)).filter(Boolean).join(' '); c.phone = this._ctStr(f.vTelefon); c.oznRel = this._ctStr(f.vVztah);
+    c.patientName = [f.pPrijmeni, f.pJmeno].map(x => this._ctStr(x)).filter(Boolean).join(' '); c.charakter = this._ctStr(f.charakter);
+    c.shown = { age: f.pVek !== '' && f.pVek != null && Number.isFinite(num) ? num : rok > 1900 ? year - rok : null, sex: f.pPohlavi === 'muž' ? 'M' : f.pPohlavi === 'žena' ? 'Ž' : '' };
+    c.ageText = rok > 1900 ? String(rok) : f.pVek !== '' && f.pVek != null && Number.isFinite(num) ? num + ' let' : '';   // věk tak, jak ho calltaker zapsal
+  }
   _ctNote(f) { return [f.upresneni && 'Upřesnění místa: ' + f.upresneni, f.popis, f.poznamka].map(x => this._ctStr(x)).filter(Boolean).join('; '); }
   // vytvoří případ z hovoru calltakera (viz formát nahoře); vrací případ
   // form: adresa, bod {lat,lon}, zdroj (mapa/adresa/AML), cast, upresneni, vJmeno, vPrijmeni, vTelefon, vVztah, pJmeno, pPrijmeni, pRok, pVek, pPohlavi, klasif, priznaky[], n, dyn, popis, poznamka
@@ -7266,14 +7772,14 @@ class SimCalltaker {
     if (Array.isArray(o.radioReports)) for (const r of o.radioReports) if (r.at != null) r.at += dt;
     if (o.wakeAt != null) o.wakeAt += dt;
     const truth = { addr: tc.addr, lat: tc.lat, lon: tc.lon, n: tc.n, klasif: tc.klasif, rvNeed: !!tc.rvNeed, agNeed: needAg.slice(), pocet: tc.patientCount || 1, where: tc.where, dyn: !!tc.dyn, age: tc.age, sex: tc.sex, symptoms: (tc.symptoms || []).slice(), patient: tc.patientName, caller: (this._ctForeign(h.seed, tc) || {}).jmeno || tc.ozn };
-    const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc, f.bod), baseNote = o.poznamka || '', note = this._ctNote(f);
+    const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc, f.bod), baseNote = f.cihla ? '' : (o.poznamka || ''), note = f.cihla ? this._ctNoteShown(f) : this._ctNote(f);
     o.n = typedN; o.intake = 0; o.addr = loc.typed;
     if (loc.geo && loc.miss) { o.lat = loc.geo.lat; o.lon = loc.geo.lon; }
     if (f.klasif && !ctKlasifOk(f.klasif, tc.klasif)) o.klasifZadana = String(f.klasif);
     if (note) o.poznamka = (baseNote ? baseNote + '; ' : '') + note;
     const c = this._newCase(o);
     c.src = c.src || 'Linka 155';
-    if (f.cihla) { c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || 'Neklasifikováno'; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; }   // dispečer vidí zadané (klasifikace, cihly, dynamická indikace), ne pravdu
+    if (f.cihla) { c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || 'Neklasifikováno'; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; this._ctShow(c, f); }   // dispečer vidí zadané (klasifikace, cihly, dynamická indikace, místo, osoby), ne pravdu
     c.call = { seed: h.seed, sec: h.sec || null, truth, typed: loc.typed, standard: loc.standard, quality: loc.geo ? loc.geo.quality : 'n/a', errM: loc.errM, miss: !!loc.miss, tol: loc.tol, searchDelay: loc.searchDelay || 0, conflict: !!loc.conflict, bod: loc.byPoint ? { lat: loc.geo.lat, lon: loc.geo.lon } : null, zdroj: f.zdroj || (loc.byPoint ? 'mapa' : 'adresa'), truthN: tc.n, typedN, klasifOk: !f.klasif || f.klasif === tc.klasif, baseNote, note, updates: 0, unlocatable: !!(f.adresa && loc.standard && !loc.byPoint && loc.geo && !loc.geo.quality), form: JSON.parse(JSON.stringify(f)) };
     c.call.check = this._ctCheck(f, truth, c.call);
     c.call.predpoplach = !!f.predpoplach; c.call.callId = h.callId || null; c.call.sentAtT = t;
@@ -7346,10 +7852,10 @@ class SimCalltaker {
     f = f || {};
     const n = this._ctN(f.n, c.n);
     if (n !== c.n) { this.L('case', `${c.num}: calltaker mění naléhavost N${c.n} → N${n}`, c.id); c.n = n; c.call.typedN = n; c.call.updates++; }
-    const note = this._ctNote(f);
+    const note = f.cihla ? this._ctNoteShown(f) : this._ctNote(f);
     if (f.poznamka != null || f.popis != null || f.upresneni != null) if (note !== c.call.note) { c.call.note = note; c.poznamka = (c.call.baseNote ? c.call.baseNote + '; ' : '') + note; this.L('case', `${c.num}: doplněna poznámka od calltakera`, c.id); c.call.updates++; }
     if (f.klasif) { const kOk = ctKlasifOk(f.klasif, c.call.truth.klasif); c.klasifZadana = kOk ? null : String(f.klasif); c.call.klasifOk = kOk; }
-    if (f.cihla) { if (c.klasifTruth == null) c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || c.klasif; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; }
+    if (f.cihla) { if (c.klasifTruth == null) c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || c.klasif; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; this._ctShow(c, f); }
     const sig = JSON.stringify([this._ctStr(f.adresa), f.bod ? [f.bod.lat, f.bod.lon] : null]);
     if (c.call.sig == null) c.call.sig = JSON.stringify([c.call.form && this._ctStr(c.call.form.adresa), c.call.form && c.call.form.bod ? [c.call.form.bod.lat, c.call.form.bod.lon] : null]);
     if ((f.adresa || f.bod) && sig !== c.call.sig) {
