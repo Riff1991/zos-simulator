@@ -21,14 +21,21 @@ ul{margin:.3em 0;padding-left:1.2em}
 <label for="key">API klíč OpenAI (platform.openai.com → API keys; není to předplatné ChatGPT)</label>
 <input id="key" type="password" autocomplete="off" placeholder="sk-…">
 <label><input type="checkbox" id="remember"> zapamatovat v tomto prohlížeči (jen na svém zařízení)</label>
-<label for="model">Model</label>
+<label>Režim</label>
+<label><input type="radio" name="mode" value="voice" checked> Hlas (OpenAI GPT-Live, mikrofon + sluchátka)</label>
+<label><input type="radio" name="mode" value="text"> Jen text</label>
+<div id="voiceOpts"><div class="row"><div style="flex:1"><label for="vF">Hlas: volající žena</label><input id="vF" type="text" value="marin"></div><div style="flex:1"><label for="vM">Hlas: volající muž</label><input id="vM" type="text" value="cedar"></div></div>
+<label><input type="checkbox" id="filt" checked> telefonní filtr a šum linky</label>
+<small>Doporučuju sluchátka s mikrofonem, jinak volající slyší sám sebe z reproduktorů. Hlas se účtuje 0,05 $ za minutu hovoru.</small></div>
+<label for="model">Model (pro hodnocení a textový režim)</label>
 <div class="row"><input id="model" type="text" list="modelList" placeholder="např. gpt-4.1-mini"><datalist id="modelList"></datalist><button id="load">Načíst modely</button></div>
 <small>Klíč jde jen z prohlížeče přímo na api.openai.com, nikam jinam se neposílá.</small>
 <p><button id="start" class="pri">Nový hovor</button></p></details>
 <div id="status"></div>
 <div id="call" class="card" hidden>
 <div id="ani"></div><div id="log"></div>
-<div class="row"><input id="say" type="text" placeholder="Co řekneš volajícímu…" autocomplete="off"><button id="send" class="pri">Poslat</button></div>
+<div id="vctl" hidden><button id="mute">Ztlumit mikrofon</button> <span id="live"></span></div>
+<div class="row" id="textrow"><input id="say" type="text" placeholder="Co řekneš volajícímu…" autocomplete="off"><button id="send" class="pri">Poslat</button></div>
 <p><button id="end">Ukončit hovor</button></p></div>
 <div id="form" class="card" hidden><h3>Formulář (jako v dispečerském systému)</h3>
 <label for="fAdr">Adresa (ulice č., obec)</label><input id="fAdr" type="text">

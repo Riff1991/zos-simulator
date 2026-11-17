@@ -8,6 +8,8 @@ Všechna data jsou generovaná. Do repa nepatří klíče ani skutečné přepis
 
 Otevři soubor `calltaker/web/index.html` v prohlížeči (dvojklik, funguje na Windows, Macu i v telefonu). Vlož svůj **API klíč OpenAI** (platform.openai.com → API keys; ChatGPT předplatné API nezahrnuje), klikni „Načíst modely“, vyber model a „Nový hovor“. Klíč jde jen z prohlížeče na api.openai.com. Po hovoru vyplníš formulář, dostaneš hodnocení a můžeš stáhnout JSON s hovorem.
 
+**Hlasový režim (výchozí):** OpenAI **GPT-Live** (`gpt-live-1`, `POST /v1/live/sessions`, WebRTC). Mluvíš do mikrofonu (nejlépe sluchátka s mikrofonem), volající odpovídá hlasem přes telefonní filtr (pásmo 320–3300 Hz, zkreslení, šum linky; lze vypnout). Přepis obou stran se skládá z `session.input_transcript.delta` a `session.output_transcript.delta`. Cena hlasu 0,05 $ za minutu. Čeština a český hlas nejsou v dokumentaci výslovně uvedené, je to potřeba vyzkoušet; hlas volajícího se volí podle pohlaví (výchozí `marin` / `cedar`, lze přepsat). Režim „Jen text“ zůstává pro srovnání.
+
 Přegenerování: `node calltaker/build_cases.js 200 && node calltaker/build_web.js` (případy z generátoru → `web/cases.js` → samostatný `web/index.html`).
 
 ## Příkazová řádka (Anthropic)
