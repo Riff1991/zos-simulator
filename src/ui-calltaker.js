@@ -1,7 +1,7 @@
 // UI – Režim calltaker: telefon, okno Nabírání (+ Moje případy), Pavouk, AML a výběr místa na mapě, výsledek hovoru (části se v build.py skládají do jedné IIFE).
 // Hlas je v src/live-voice.js (ZOS_LIVE), pavouk v calltaker/spider.js (CT_SPIDER), engine v src/sim-calltaker.js (za s.liveCalls).
 const CTS_KEY = 'zos_ct_settings_v1';
-const CTS_DEF = { key: '', remember: true, textModel: '', vModel: 'gpt-live-1', vF: 'marin', vM: 'cedar', vFy: 'coral', vMy: 'ash', vFs: 'sage', vMs: 'echo', voiceAge: true, level: 'bezne', mode: 'voice', filt: true, rec: true, flow: 'realistic', gapMin: 3, fast: 10, bot: true, disp: false, crewsOnMap: false };
+const CTS_DEF = { when: 'now', date: '', hour: 7, wx: true, key: '', remember: true, textModel: '', vModel: 'gpt-live-1', vF: 'marin', vM: 'cedar', vFy: 'coral', vMy: 'ash', vFs: 'sage', vMs: 'echo', voiceAge: true, level: 'bezne', mode: 'voice', filt: true, rec: true, flow: 'realistic', gapMin: 3, fast: 10, bot: true, disp: false, crewsOnMap: false };
 let cts = Object.assign({}, CTS_DEF);
 try { cts = Object.assign(cts, JSON.parse(localStorage.getItem(CTS_KEY) || '{}')); } catch (_) {}
 const ctSaveSettings = () => { try { localStorage.setItem(CTS_KEY, JSON.stringify(cts.remember ? cts : Object.assign({}, cts, { key: '' }))); } catch (_) {} };
@@ -30,32 +30,62 @@ const ctVal = id => { const e = $(id); return e ? e.value.trim() : ''; };
 const ctSet = (id, v) => { const e = $(id); if (e) e.value = v == null ? '' : v; };
 
 // ---------- vstup do režimu, nabídka, nastavení ----------
+const ctToday = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const ctDateCz = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[3]) + '. ' + Number(m[2]) + '. ' + m[1] : s; };
+// kdy směna začíná: „teď“, nebo zvolené datum a hodina (jako u dispečera; počasí se stáhne podle data)
+function ctWhen() {
+  if (cts.when === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(String(cts.date || ''))) return { date: cts.date, hour: Math.min(23, Math.max(0, Number(cts.hour) || 0)), custom: true };
+  const d = new Date(); return { date: ctToday(), hour: d.getHours(), custom: false };
+}
 function ctMenu() {
-  const c = cts, rb = (k, v, l) => `<label style="display:inline-flex;gap:4px;margin-right:12px;align-items:center"><input type="radio" name="ctm-${k}" value="${v}"${String(c[k]) === String(v) ? ' checked' : ''} style="width:auto"> ${l}</label>`;
-  const cb = (k, l) => `<label style="display:flex;gap:6px;align-items:center;margin:3px 0"><input type="checkbox" id="ctm-${k}"${c[k] ? ' checked' : ''} style="width:auto"> ${l}</label>`;
-  modal(`<div class="card home ct-form ct-card" style="max-width:600px"><h2 style="margin:0">☎ Calltaker – příjem hovorů</h2>
-    <p class="ct-note">Ty jsi calltaker: zazvoní telefon, zvedneš ho a vyslechneš AI volajícího (hlas OpenAI GPT-Live). Vidíš polohu z AML, vybereš místo na mapě, klasifikuješ pavoukem a odešleš případ dispečerovi (zatím bot). Osoby, adresy a telefony jsou generované.</p>
-    <fieldset><legend>Hovory</legend>
-      <div>Úroveň náročnosti: ${rb('level', 'zacatecnik', 'začátečník')}${rb('level', 'bezne', 'běžné')}${rb('level', 'tezke', 'těžké (více paniky, cizinců, agresivních, ztráta spojení)')}</div>
-      <div>${rb('flow', 'realistic', 'Realistický tok (zvoní asi čtvrtina hovorů)')}${rb('flow', 'training', 'Trénink (jen moje hovory)')}</div>
+  const c = cts, today = ctToday(), rb = (k, v, l) => `<label class="ctm-o"><input type="radio" name="ctm-${k}" value="${v}"${String(c[k]) === String(v) ? ' checked' : ''}> ${l}</label>`;
+  const cb = (k, l) => `<label class="ctm-o"><input type="checkbox" id="ctm-${k}"${c[k] ? ' checked' : ''}> ${l}</label>`;
+  const hrs = Array.from({ length: 24 }, (_, h) => `<option value="${h}"${Number(c.hour) === h ? ' selected' : ''}>${h}:00</option>`).join('');
+  const pre = [['Ranní špička', 8], ['Poledne', 12], ['Odpoledne', 15], ['Večer', 19], ['Noc', 2]].map(x => `<button class="btn" type="button" data-act="ct-when-preset" data-h="${x[1]}" style="margin:0">${x[0]} ${x[1]}:00</button>`).join(' ');
+  modal(`<div class="card home ct-form ct-card ctm" style="max-width:660px"><h2 style="margin:0">☎ Calltaker – příjem hovorů</h2>
+    <p class="ct-note">Zvedneš telefon, vyslechneš AI volajícího, zadáš adresu, klasifikaci, naléhavost a posádku a předáš případ dispečerovi. Osoby, adresy a telefony jsou generované.</p>
+    <fieldset><legend>1 · Kdy směna začíná</legend>
+      <div>${rb('when', 'now', 'Teď (aktuální datum a hodina)')}${rb('when', 'custom', 'Zvolit datum a hodinu')}</div>
+      <div class="ct-g" id="ctm-whenrow"><label>Datum<input type="date" id="ctm-date" value="${kiTxt(c.date || today)}" max="${today}"></label><label>Hodina začátku<select id="ctm-hour">${hrs}</select></label></div>
+      <div id="ctm-pre" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${pre}</div>
+      ${cb('wx', 'Stáhnout skutečné počasí podle data (u dnešního data nebo bez sítě se simuluje)')}
+      <div class="ct-note" id="ctm-whensum"></div></fieldset>
+    <fieldset><legend>2 · Hovory</legend>
+      <div class="ctm-r"><b>Úroveň</b>${rb('level', 'zacatecnik', 'začátečník')}${rb('level', 'bezne', 'běžné')}${rb('level', 'tezke', 'těžké (paniky, cizinci, agresivní, ztráta spojení)')}</div>
+      <div class="ctm-r"><b>Tok hovorů</b>${rb('flow', 'realistic', 'realistický (zvoní asi čtvrtina hovorů)')}${rb('flow', 'training', 'trénink (jen moje hovory)')}</div>
       <div class="ct-g" style="margin-top:6px"><label>Interval mezi hovory v tréninku (min)<input id="ctm-gapMin" type="number" min="1" max="30" value="${c.gapMin}"></label>
-      <label>Rychlost mezi hovory<select id="ctm-fast">${[1, 5, 10, 20].map(v => `<option value="${v}"${Number(c.fast) === v ? ' selected' : ''}>${v}×</option>`).join('')}</select></label></div>
+      <label>Rychlost mezi hovory<select id="ctm-fast">${[1, 5, 10, 20].map(v => `<option value="${v}"${Number(c.fast) === v ? ' selected' : ''}>${v}×</option>`).join('')}</select></label></div></fieldset>
+    <fieldset><legend>3 · Dispečer a mapa</legend>
       ${cb('bot', 'Bot dispečer vysílá posádky (vypni, chceš-li případy obsluhovat ručně)')}${cb('disp', 'Zobrazit dispečerská okna (případy, posádky, rádio)')}${cb('crewsOnMap', 'Posádky a případy na mapě')}</fieldset>
-    <fieldset><legend>Hlas a AI (OpenAI)</legend>
+    <details class="ctm-ai"${c.key ? '' : ' open'}><summary><b>4 · Hlas a AI (OpenAI)</b> <span class="ct-note">${c.key ? 'klíč zadán' : 'klíč nezadán: hovor bude bez hlasu'}</span></summary><fieldset style="margin-top:6px"><legend>Spojení</legend>
       <label style="font-size:11px;color:var(--mut)">API klíč OpenAI (platform.openai.com → API keys; není to předplatné ChatGPT). Zůstává jen v tomto prohlížeči.<input id="ctm-key" type="password" autocomplete="off" placeholder="sk-…" value="${esc(c.key)}"></label>
       ${cb('remember', 'zapamatovat klíč v tomto prohlížeči (jen na svém zařízení)')}
-      <div>${rb('mode', 'voice', 'Hlas (mikrofon + sluchátka)')}${rb('mode', 'text', 'Jen text')}</div>
+      <div class="ctm-r">${rb('mode', 'voice', 'Hlas (mikrofon + sluchátka)')}${rb('mode', 'text', 'Jen text')}</div>
       <div class="ct-g"><label>Hlasový model<input id="ctm-vModel" value="${esc(c.vModel)}"></label><label>Hlas: volající žena<input id="ctm-vF" value="${esc(c.vF)}"></label><label>Hlas: volající muž<input id="ctm-vM" value="${esc(c.vM)}"></label>
       <label>Hlas: mladá žena / dítě<input id="ctm-vFy" value="${esc(c.vFy)}"></label><label>Hlas: mladý muž / chlapec<input id="ctm-vMy" value="${esc(c.vMy)}"></label><label>Hlas: seniorka<input id="ctm-vFs" value="${esc(c.vFs)}"></label><label>Hlas: senior<input id="ctm-vMs" value="${esc(c.vMs)}"></label>
       <label>Textový model (analýza hovoru, textový režim)<input id="ctm-textModel" list="ctm-models" value="${esc(c.textModel)}"><datalist id="ctm-models"></datalist></label></div>
       <button class="btn" data-act="ct-models">Načíst modely</button> <span id="ctm-status" class="ct-note"></span>
-      ${cb('voiceAge', 'volit hlas podle věku volajícího (senioři, mladí; nedostupný hlas se nahradí jiným)')}${cb('filt', 'telefonní filtr a šum linky přes hlas (volající ve sluchátkách; v nahrávce oba hlasy)')}${cb('rec', 'nahrávat hovor (WAV ke stažení po hovoru)')}</fieldset>
+      ${cb('voiceAge', 'volit hlas podle věku volajícího (senioři, mladí; nedostupný hlas se nahradí jiným)')}${cb('filt', 'telefonní filtr a šum linky přes hlas')}${cb('rec', 'nahrávat hovor (WAV ke stažení po hovoru)')}</fieldset></details>
     <div class="foot"><button class="btn" data-act="home">‹ Zpět</button><button class="btn pri" data-act="ct-start">▶ Spustit směnu calltakera</button></div></div>`);
+  ctMenuSync();
 }
+// podle zvolených hodnot zapne či vypne pole a ukáže shrnutí začátku
+function ctMenuSync() {
+  const sum = $('ctm-whensum'); if (!sum) return;
+  const g = k => { const e = document.querySelector('input[name=ctm-' + k + ']:checked'); return e ? e.value : ''; };
+  const custom = g('when') === 'custom', d = ctVal('ctm-date') || ctToday(), h = Number(ctVal('ctm-hour')) || 0, now = new Date();
+  const gap = $('ctm-gapMin'); if (gap) gap.disabled = g('flow') !== 'training';
+  sum.textContent = 'Začátek směny: ' + (custom ? ctDateCz(d) + ' v ' + h + ':00' : 'teď (' + ctDateCz(ctToday()) + ' v ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ')');
+}
+// úprava data nebo hodiny sama přepne na „Zvolit datum a hodinu“
+const ctWhenCustom = () => { const r = document.querySelector('input[name=ctm-when][value=custom]'); if (r) r.checked = true; };
+document.addEventListener('change', ev => { const t = ev.target; if (t && (t.id === 'ctm-date' || t.id === 'ctm-hour')) ctWhenCustom(); if (t && t.closest && t.closest('.ctm')) ctMenuSync(); });
+document.addEventListener('input', ev => { const t = ev.target; if (t && t.id === 'ctm-date') { ctWhenCustom(); ctMenuSync(); } });
 function ctReadMenu() {
   const g = k => document.querySelector(`input[name=ctm-${k}]:checked`);
-  for (const k of ['flow', 'mode', 'level']) if (g(k)) cts[k] = g(k).value;
-  for (const k of ['bot', 'disp', 'crewsOnMap', 'remember', 'filt', 'rec', 'voiceAge']) if ($('ctm-' + k)) cts[k] = $('ctm-' + k).checked;
+  for (const k of ['flow', 'mode', 'level', 'when']) if (g(k)) cts[k] = g(k).value;
+  cts.date = ctVal('ctm-date') || ''; cts.hour = Math.min(23, Math.max(0, Number(ctVal('ctm-hour')) || 0));
+  for (const k of ['bot', 'disp', 'crewsOnMap', 'remember', 'filt', 'rec', 'voiceAge', 'wx']) if ($('ctm-' + k)) cts[k] = $('ctm-' + k).checked;
   for (const k of ['key', 'vModel', 'vF', 'vM', 'vFy', 'vMy', 'vFs', 'vMs', 'textModel']) if ($('ctm-' + k)) cts[k] = ctVal('ctm-' + k);
   cts.gapMin = Math.max(1, Number(ctVal('ctm-gapMin')) || 3); cts.fast = Number(ctVal('ctm-fast')) || 5;
   ctSaveSettings();
@@ -66,12 +96,14 @@ async function ctLoadModels() {
   st.textContent = 'Načítám modely…';
   try { const r = await ZOS_LIVE.models(cts.key); $('ctm-models').innerHTML = r.ids.map(i => `<option value="${esc(i)}">`).join(''); if (!ctVal('ctm-textModel')) ctSet('ctm-textModel', r.best); st.textContent = 'Modelů: ' + r.ids.length + (r.best ? '. Vybrán ' + r.best + '.' : '.'); } catch (e) { st.textContent = 'Klíč nebo síť: ' + e.message; }
 }
-function ctStart() {
+async function ctStart() {
   ctReadMenu();
   if (!window.ZOS_ADDR || !ROUTER.ready) { toast('Mapová data se ještě načítají, zkus to za chvíli.', 'warn'); return; }
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { /* zvuk není nutný */ }
-  const seed = (Math.random() * 1e9) | 0, now = new Date();
-  sim = new Sim({ date: now.toISOString().slice(0, 10), weather: null, mode: 'free', startHour: now.getHours(), seed, radio: 'auto', secondaryEnabled: false, muEnabled: false });
+  const seed = (Math.random() * 1e9) | 0, w = ctWhen();
+  let weather = null;
+  if (cts.wx) { toast('Stahuji počasí pro ' + ctDateCz(w.date) + '…', ''); try { weather = await ZOS_WX.load(w.date, seed); } catch (e) { weather = null; } }
+  sim = new Sim({ date: w.date, weather, mode: 'free', startHour: w.hour, seed, radio: 'auto', secondaryEnabled: false, muEnabled: false });
   sim.enableLiveCalls({ mode: cts.flow, gapSec: cts.gapMin * 60, bot: cts.bot, level: cts.level });
   applyVoice(); afterLoad(); ctSpiderLoad(); speed = Number(cts.fast); savedSpeed = speed; ctReset(); view = 'intake';
   closeModal(); toast('Směna calltakera začala. Čekej na zazvonění telefonu.', '');
@@ -717,6 +749,7 @@ function ctAct(a, el) {
     case 'ct-menu': ctMenu(); break;
     case 'ct-models': ctLoadModels(); break;
     case 'ct-start': ctStart(); break;
+    case 'ct-when-preset': ctWhenCustom(); ctSet('ctm-hour', d.h); ctMenuSync(); break;
     case 'ct-home': homeModal(); break;
     case 'ct-pickup': ctPickup(); break;
     case 'ct-hangup': ctHangup(); break;

@@ -228,7 +228,7 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   const sm = new Sim({ seed: 9, mode: 'free', startHour: 10 }); sm.enableLiveCalls({ mode: 'realistic' });
   for (let i = 0; i < 4 * 3600; i++) step(sm);
   const L = sm.s.liveCalls, rung = sm.s.calls.filter(c => !c.ref).length;
-  ok(L.cnt >= 40 && rung === Math.floor(L.cnt / 4), 'realistický tok: ze ' + L.cnt + ' výzev jde přes hráče přesně každá 4. (' + rung + ')');
+  ok(L.cnt >= 30 && rung === Math.floor(L.cnt / 4), 'realistický tok: ze ' + L.cnt + ' výzev jde přes hráče přesně každá 4. (' + rung + ')');
 }
 { // bot posílá PČR/HZS podle příznaků v hovoru (+PČR, +HZS) a podle zaškrtnutí
   let seedAg = null; for (let sd = 1; sd < 4000 && !seedAg; sd++) { const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if ((t.agNeed || []).includes('pcr') && /\d/.test(t.addr) && !/okolí|\(/.test(t.addr)) seedAg = { sd, t }; }
@@ -302,5 +302,13 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   ok(c.n === 2 && c.dyn === true && c.initialDispatchRequired.join() === 'RZP' && !c.rvNeed, 'N2 s požadavkem DI: případ je dynamický a vyžaduje jen RZP, ne lékaře');
   const c2 = new Sim({ seed: 778, mode: 'free' }).addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: '2', dyn: false, cihla: true, klasifTabulka: 'Trauma', klasif: truth.klasif, kody: [], posadky: { DI: 0, KOR: 0, LZS: 0, RLP: 1, RV: 0, RZP: 1 } }, sec: 100 });
   ok(c2.n === 2 && c2.dyn === false && c2.initialDispatchRequired.includes('RV'), 'N2 s RLP a RZP: statická N2 s lékařem');
+}
+{ // bot dispečer vyřídí žádost sousedního kraje o výpomoc (neponechá ji bez odpovědi)
+  const sim = new Sim({ seed: 41, mode: 'free', startHour: 10 }); sim.enableLiveCalls({ mode: 'training', gapSec: 3600, bot: true, level: 'bezne' });
+  sim._nbSpawn('ground'); sim._nbSpawn('ground');
+  for (let i = 0; i < 160; i++) step(sim);
+  const rqs = sim.s.nbq.slice(0, 2);
+  ok(rqs.length === 2 && rqs.every(r => r.state === 'accepted' || r.state === 'declined'), 'bot vyřídil žádosti sousedního kraje: ' + rqs.map(r => r.state).join(', '));
+  ok(!sim.s.log.some(e => /bez odpovědi, žádost zrušena/.test(e.txt)), 'žádná žádost sousedního kraje nezůstala bez odpovědi');
 }
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

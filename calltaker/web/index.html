@@ -7454,8 +7454,22 @@ class SimCalltaker {
     return call;
   }
   // bot dispečer: vysílá posádky po krátké reakční době (jako kolega u dispečinku)
+  // bot dispečer vyřizuje i žádosti sousedních krajů o výpomoc: za 25–80 s vyhoví nejbližší posádkou (v oblasti musí zůstat jiná volná), jinak odmítne
+  _botNeighbors() {
+    const s = this.s, t = s.t;
+    for (const rq of s.nbq || []) {
+      if (rq.state !== 'open') continue;
+      if (rq.botAt == null) rq.botAt = t + this.rr(25, 80);
+      if (t < rq.botAt) continue;
+      if (rq.kind === 'lzs') { const lz = this.crewOf('lzs'); if (lz && this.avail(lz) && this._lzsWeatherStatus() !== 'neletovo') this._nbAccept(rq, 'lzs'); else this._nbDecline(rq); continue; }
+      const cand = s.crews.filter(k => !k.ext && k.type === rq.rtype && this.avail(k) && s.crews.some(x => !x.ext && x.type === k.type && x.oblast === k.oblast && x.id !== k.id && this.avail(x)))
+        .map(k => ({ k, eta: this._eta(k.lat, k.lon, rq.lat, rq.lon) })).sort((a, b) => a.eta - b.eta);
+      if (cand.length) this._nbAccept(rq, cand[0].k.id); else this._nbDecline(rq);
+    }
+  }
   botTick() {
     const s = this.s, t = s.t;
+    this._botNeighbors();
     for (const c of s.cases.slice()) {
       if (c.dupOf && c.status === 'waiting') {   // dispečer pozná duplicitu a případ sloučí
         if (c.botAt == null) c.botAt = t + this.rr(40, 90);

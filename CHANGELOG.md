@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.35.0 – rozpracováno
+Nové:
+- **Calltaker: nabídka nastavení přeskupená** do čtyř částí: kdy směna začíná, hovory, dispečer a mapa, hlas a AI (sbalené). Začátek směny jde zvolit jako **datum a hodina** (nebo „teď“), s rychlými volbami denní doby a se stažením počasí podle data, stejně jako u dispečera.
+Opravy:
+- **Bot dispečer v režimu calltaker vyřizuje žádosti sousedních krajů o výpomoc** (RZP, lékař, LZS): za 25–80 s vyhoví, nebo odmítne, když nelze uvolnit posádku. Dřív zůstaly bez odpovědi a stály body.
+
 ## v0.34.4 – 2026-11-17
 Opravy:
 - **Dynamická indikace zadaná při nabírání** (DI v požadavku na posádku nebo cihla DYNAMICKÁ_INDIK u N2) dojde k dispečerovi jako N2 dynamická, jen s RZP bez lékaře. Dřív přišla jako obyčejná N2.
