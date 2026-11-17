@@ -15,7 +15,7 @@ const kiTxt = s => esc(String(s == null ? '' : s));
 
 function kiHtml() {
   const u = kInst(), opts = u.classifications().map(c => `<option value="${kiTxt(c.name)}">${kiTxt(c.name)}</option>`).join('');
-  const chr = ZOS_DATA.charaktery.concat(ZOS_DATA.charakteryJine || []).map(c => `<option>${kiTxt(c)}</option>`).join('');
+  const chr = ZOS_DATA.charaktery.map(c => `<option>${kiTxt(c)}</option>`).join('');
   const sb = (t, extra) => `<button class="ki-b" type="button" ${extra || 'disabled'}>${t}</button>`;
   const pos = k => `<label class="ki-pos"><span>${k}</span><input type="number" id="ki-pos-${k}" min="0" max="9" value="0" data-k="${k}"></label>`;
   return `<div id="ct-pane-intake" class="ct-form ki">

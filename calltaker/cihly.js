@@ -66,10 +66,13 @@
     { c: 'VOLÁNÍ_3.RUKA', cls: 'u-gray' }, { c: '0', cls: 'u-empty' }, { c: '0', cls: 'u-empty' }, { c: '0', cls: 'u-empty' },
   ].map((u, i) => Object.assign({ id: 'u:' + i, d: DESC[u.c] || '' }, u));
   // šedé cihly (popisy bez vlivu na naléhavost); u některých klasifikací podle screenů, jinak výchozí sada (doplnit podle skutečných názvů)
-  const GRAY_MED = ['ALKOHOL', 'ASTMATIK', 'CHOPN', 'DEMENCE', 'DIABETIK', 'EPILEPTIK', 'HYPERTONIK', 'KARDIAK', 'ONKOLOGICKÝ', 'PALIATIVNÍ_PAC'];
-  const GRAY_TRAUMA = ['ALKOHOL', 'BÉREC', 'BODNÉ_PORANĚNÍ', 'BŘICHO', 'CIZÍ_TĚLESO', 'CYKLISTA', 'DK', 'ELEKTR_PROUD', 'HK', 'HLAVA', 'HRUDNÍK', 'CHODEC', 'KRK', 'PÁNEV', 'STŘELNÉ_PORANĚNÍ', 'ZÁDA', 'ZVÍŘE'];
-  const GRAY_DN = ['ALKOHOL', 'BÉREC', 'BŘICHO', 'BUS', 'CYKLISTA', 'DK', 'HK', 'HLAVA', 'HRUDNÍK', 'CHODEC', 'KAMION', 'KRK', 'MOTOCYKL', 'OSOBNÍ_AUTO', 'PÁNEV', 'TRAKTOR', 'VLAK', 'ZÁDA'];
-  const GRAY_BY = { Arytmie: ['HYPERTONIK', 'KARDIAK'], Dušnost: ['ASPIRACE', 'ASTMATIK', 'DIABETIK', 'HYPERTONIK', 'CHOPN', 'KARDIAK', 'DDOT'], 'Křečové stavy': ['DIABETIK', 'EPILEPTIK'], Trauma: GRAY_TRAUMA, 'Dopravní nehoda': GRAY_DN, 'Popálení, poleptání': ['ALKOHOL', 'ELEKTR_PROUD', 'HLAVA', 'HRUDNÍK', 'DK', 'HK', 'OBLIČEJ'], Tonutí: ['ALKOHOL', 'DÍTĚ_BEZ_DOHLEDU', 'KOUPALIŠTĚ', 'RYBNÍK', 'ŘEKA'], Oběšení: ['ALKOHOL', 'PSYCHIATRIK'] };
+  // šedé cihly (popisy bez vlivu na naléhavost) se odvozují z textu kritérií klasifikace v tabulce: co se v textu zmiňuje (choroba, část těla, účastník nehody), nabídne se jako šedá cihla;
+  // u Dušnosti, Arytmie a Křečových stavů jsou navíc šedé cihly podle screenů skutečného systému
+  const DETECT = [[/epilept/i, 'EPILEPTIK'], [/diabet|hypoglyk|hyperglyk/i, 'DIABETIK'], [/CHOPN/, 'CHOPN'], [/ICHS/, 'ICHS'], [/\bICD\b|kardiovert/i, 'ICD'], [/hypertenz/i, 'HYPERTONIK'], [/astma/i, 'ASTMATIK'], [/alkohol/i, 'ALKOHOL'],
+    [/těhotenst|gravid/i, 'TĚHOTNÁ'], [/varix/i, 'VARIXY'], [/epistax/i, 'EPISTAXE'], [/meléna|hematemeza|enterorhag/i, 'GIT_KRVÁCENÍ'], [/\bPMK\b|urokatetr/i, 'PMK'], [/paliativ/i, 'PALIATIVNÍ_PAC'], [/\bGIT\b/, 'GIT'], [/\bURO\b/, 'URO'], [/\bGYN\b/, 'GYN'], [/\bDC\b/, 'DÝCHACÍ_CESTY'],
+    [/hlav[yaě]/i, 'HLAVA'], [/\bkrk/i, 'KRK'], [/hrudník/i, 'HRUDNÍK'], [/břich/i, 'BŘICHO'], [/pánv/i, 'PÁNEV'], [/zad\b|zádech|zad,/i, 'ZÁDA'], [/končetin/i, 'KONČETINY'], [/prst/i, 'PRSTY'], [/chodec/i, 'CHODEC'], [/cyklist/i, 'CYKLISTA'], [/moto/i, 'MOTOCYKL'], [/vozidl/i, 'VOZIDLO'],
+    [/popálen/i, 'POPÁLENINY'], [/polepten/i, 'POLEPTÁNÍ'], [/elektr/i, 'ELEKTR_PROUD'], [/výbuch/i, 'VÝBUCH'], [/utonut|tonut/i, 'TONUTÍ'], [/vis[ií]c|oběšen/i, 'OBĚŠENÍ'], [/zlomen/i, 'ZLOMENINA'], [/rán[ay]/i, 'RÁNA'], [/hypotermi/i, 'HYPOTERMIE'], [/agres/i, 'AGRESE'], [/sebevra/i, 'SEBEVRAŽDA'], [/halucin|blud/i, 'PSYCHÓZA']];
+  const GRAY_BY = { Arytmie: ['HYPERTONIK', 'KARDIAK'], Dušnost: ['ASPIRACE', 'ASTMATIK', 'DIABETIK', 'HYPERTONIK', 'CHOPN', 'KARDIAK', 'DDOT'], 'Křečové stavy': ['DIABETIK', 'EPILEPTIK'] };
   const NOGRAY = new Set(['Převoz', 'Vstřícná jízda', 'Posouzení stavu', 'Asistence', 'Technická jízda', 'MU – MATRA 722', 'Vysoce nebezpečná nákaza (VNN)', 'Babybox']);
   const cs = (a, b) => String(a).localeCompare(String(b), 'cs');
   function createIntake(data, opts) {
@@ -77,6 +80,7 @@
     const known = (opts && opts.klasifs) || [], byK = new Map();
     for (const b of data.bricks) { if (!byK.has(b.klasif)) byK.set(b.klasif, []); byK.get(b.klasif).push(b); }
     const names = [...byK.keys()].sort(cs);
+    const textOf = k => (byK.get(k) || []).map(b => b.lines.join(' ')).join(' ');
     const chipIndex = new Map();
     const chipsOf = k => {
       const groups = [];
@@ -90,7 +94,7 @@
     const cache = new Map();
     return {
       classifications: () => names.map(n => ({ name: n, engine: engineKlasif(n, known) })),
-      chipsFor: k => { if (!cache.has(k)) cache.set(k, { groups: chipsOf(k), gray: NOGRAY.has(k) ? [] : (GRAY_BY[k] || GRAY_MED).slice().sort(cs) }); return cache.get(k); },
+      chipsFor: k => { if (!cache.has(k)) cache.set(k, { groups: chipsOf(k), gray: NOGRAY.has(k) ? [] : [...new Set((GRAY_BY[k] || []).concat(DETECT.filter(d => d[0].test(textOf(k))).map(d => d[1])))].sort(cs) }); return cache.get(k); },
       universal: UNIVERSAL,
       // doporučení z označených cihliček: nejvyšší barva vyhrává; vrací N, barvu a typy posádek z bloků téže barvy
       evaluate(ids) {
