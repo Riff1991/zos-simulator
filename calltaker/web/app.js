@@ -2,7 +2,7 @@
   const $ = id => document.getElementById(id);
   const P = window.CT_PROMPTS, CHK = window.CT_CHECK, CASES = window.CT_CASES;
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
-  let cur = null, msgs = [], transcript = [], busy = false, ended = false, mode = 'voice', vc = null, lastWav = null, sim = null, curCall = null, loopT = null, ringT = null, ringCtx = null, ringing = null, dataReady = false, factsCache = {}, lastBoard = 0;
+  let cur = null, msgs = [], transcript = [], busy = false, ended = false, mode = 'voice', vc = null, lastWav = null, sim = null, curCall = null, loopT = null, ringT = null, ringCtx = null, ringing = null, dataReady = false, dataFrom = '', factsCache = {}, lastBoard = 0;
 
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const key = () => $('key').value.trim();
@@ -288,17 +288,23 @@
   // ---------- směna: engine v prohlížeči, zvonění telefonu, bot dispečer ----------
   const STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 'Výjezd', onscene: 'Na místě', transport: 'Transport', handover: 'U ZZ', off: 'Nepřihlášena', activating: 'Aktivace', second: 'Sekundár', attached: 'Ve voze RZP' };
   let lastT = 0, curSpeed = 1;
-  function dataBase() {
+  // kde jsou velká data: ?data= / pole v nastavení; jinak se zkusí ../ (nasazeno v site/calltaker/), ../../site/ (kořen repa) a veřejný web hry
+  async function dataBase() {
     const u = $('dataurl').value.trim() || new URLSearchParams(location.search).get('data');
     if (u) return u.replace(/\/*$/, '/');
-    return /^https?:/.test(location.protocol) && /\/calltaker\//.test(location.pathname) ? '../' : 'https://riff1991.github.io/zos-simulator/';
+    const cand = (/^https?:/.test(location.protocol) ? (/\/calltaker\/web\//.test(location.pathname) ? ['../../site/'] : ['../', '/']) : []).concat(['https://riff1991.github.io/zos-simulator/']);
+    for (const b of cand) {
+      try { const r = await fetch(b + 'graph.wasm', { method: 'HEAD' }); if (r.ok) return b; } catch (e) { /* další možnost */ }
+    }
+    return cand[cand.length - 1];
   }
   async function loadData() {
     if (dataReady) return;
-    const base = dataBase(); status('Načítám data (adresy, silnice)…');
+    status('Hledám data (adresy, silnice)…');
+    const base = await dataBase(); status('Načítám data z ' + base + ' …');
     const get = (f, buf) => fetch(base + f).then(r => { if (!r.ok) throw new Error(f + ' (HTTP ' + r.status + ')'); return buf ? r.arrayBuffer() : r.json(); });
     const [g, addr, poi, rail] = await Promise.all([get('graph.wasm', true), get('addr.json'), get('poi.json'), get('rail.json')]);
-    ROUTER.init(g); window.ZOS_ADDR = addr; window.ZOS_POI = poi; window.ZOS_RAIL = rail; dataReady = true;
+    ROUTER.init(g); window.ZOS_ADDR = addr; window.ZOS_POI = poi; window.ZOS_RAIL = rail; dataReady = true; dataFrom = base;
   }
   function ringOnce() {
     if (!ringCtx) return;
@@ -313,7 +319,7 @@
   function stopRing() { if (ringT) { clearInterval(ringT); ringT = null; } }
   async function startShift() {
     if (!prepare()) return;
-    try { await loadData(); } catch (e) { status('Data se nepodařilo načíst: ' + e.message + ' (zdroj ' + dataBase() + ')', true); return; }
+    try { await loadData(); } catch (e) { status('Data se nepodařilo načíst: ' + e.message + ' (zdroj ' + (dataFrom || 'neznámý') + ')', true); return; }
     stopShift();
     try { ringCtx = ringCtx || new (window.AudioContext || window.webkitAudioContext)(); ringCtx.resume(); } catch (e) { /* zvuk není nutný */ }
     sim = new Sim({ seed: Math.floor(Math.random() * 1e9), mode: 'free', startHour: new Date().getHours() });
