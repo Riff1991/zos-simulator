@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.32.0 – rozpracováno
+## v0.32.0 – 2026-11-17
 Nové:
 - **Režim Calltaker v hlavní aplikaci** (úvodní obrazovka → ☎ Calltaker): hráč zvedá telefon, nabírá výzvu od AI volajícího (hlas OpenAI GPT-Live, volitelně text), klasifikuje ji a odesílá dispečerovi (bot, jde vypnout). Okna: **Nabírání** (telefonní pruh, záložky Nabírání a Moje případy), **Pavouk** a **Mapa**; dispečerská okna jdou zapnout přepínačem.
 - **AML:** u mobilních hovorů se hned objeví kruh z buňky (±0,6–3,5 km) a po 8–40 s zpřesnění (Wi-Fi, GNSS) s různou přesností; starší kruh zšedne, tlačítko „Použít střed AML“. U pevné linky a skrytého čísla poloha není, ~5 % AML fixů je chybných.
