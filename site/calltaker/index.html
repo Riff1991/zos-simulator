@@ -7075,7 +7075,9 @@ class SimCalltaker {
     let left = parts[0] || '', city = parts.length > 1 ? parts[parts.length - 1] : '';
     const m = left.match(/(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)\s*$/) || left.match(/(?:č\.?\s*p\.?\s*)?(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)/i);
     const num = m ? m[1] : '';
-    const street = ctNorm(left.replace(num, ' ').replace(/\bč\.?\s*p\.?\b/i, ' '));
+    // „čp.“ není ulice (\b nefunguje u „č“); ulice stejná jako obec (vesnice bez ulic) se bere jako bez ulice
+    let street = ctNorm(left.replace(num, ' ').replace(/(^|\s)č\.?\s*p\.?(?=\s|$)/i, ' '));
+    if (street === ctNorm(city)) street = '';
     return { street, num: ctNorm(num), city: ctNorm(city) };
   }
   _ctIndex() {

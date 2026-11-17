@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.35.1 – 2026-11-17
+Opravy:
+- **Adresa ve vesnici bez ulic** (například „čp. 83, Myslkovice“) se teď najde jako konkrétní dům. Dřív hra „čp.“ četla jako název ulice a ukázala jen střed obce.
+
 ## v0.35.0 – 2026-11-17
 Nové:
 - **Calltaker: nabídka nastavení přeskupená** do čtyř částí: kdy směna začíná, hovory, dispečer a mapa, hlas a AI (sbalené). Začátek směny jde zvolit jako **datum a hodina** (nebo „teď“), s rychlými volbami denní doby a se stažením počasí podle data, stejně jako u dispečera.

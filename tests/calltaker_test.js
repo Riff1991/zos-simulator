@@ -320,4 +320,10 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   ok(rzp === 1, 'bot vyslal jedinou RZP, ne všechny (' + rzp + ')');
   ok(c.dyn === true && c.status === 'active', 'bez volného lékaře se N2 po 2 min převedla na dynamickou indikaci (' + c.status + ')');
 }
+{ // vesnice bez ulic: adresa „čp. 83, Obec“, „83, Obec“ i „Obec 83, Obec“ najde dům, ne jen střed obce
+  const sim = new Sim({ seed: 1, mode: 'free' });
+  const g = t => sim._ctGeocode(t).quality;
+  ok(g('čp. 83, Myslkovice') === 'exact' && g('83, Myslkovice') === 'exact' && g('Myslkovice 83, Myslkovice') === 'exact' && g('č. p. 83, Myslkovice') === 'exact', 'adresa vesnice bez ulic: čp. 83 najde dům (exact)');
+  ok(g('Pražská 156, Tábor') === 'exact', 'adresa s ulicí se stále najde');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);
