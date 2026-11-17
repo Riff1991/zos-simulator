@@ -28,7 +28,7 @@ function kiHtml() {
       <label class="ki-ck ki-c34"><input type="checkbox" id="ctf-hovor3"> Hovor z 3. ruky</label>
       <label>Volající</label><div class="ki-in"><input id="ctf-volajici" autocomplete="off" placeholder="jméno a příjmení"></div>
       <label>Telefon na místo:</label><div class="ki-in"><input id="ctf-telMisto" autocomplete="off">${sb('i')}${sb('Tel.')}${sb('SMS')}${sb('AML?')}</div>
-      <label>Způsob ohlášení</label><div class="ki-in"><select id="ctf-zpusob"><option value=""></option>${KI_ZPUSOB.map(z => `<option>${kiTxt(z)}</option>`).join('')}</select></div>
+      <label>Způsob ohlášení</label><div class="ki-in"><select id="ctf-zpusob" disabled title="Vyplňuje systém podle způsobu přijetí hovoru"><option value=""></option>${KI_ZPUSOB.map(z => `<option>${kiTxt(z)}</option>`).join('')}</select></div>
       <label>Kontakt na místo:</label><div class="ki-in"><input id="ctf-kontaktMisto" autocomplete="off"></div>
     </div></fieldset>
     <fieldset class="ki-g ki-side ki-portal"><legend>Mobile App Portál</legend><div class="ki-sc"><span class="ki-logo">✚</span>${sb('Portál')}${sb('Video přenos')}</div></fieldset>
@@ -38,7 +38,7 @@ function kiHtml() {
   <fieldset class="ki-g ki-adr"><legend>Adresa případu</legend>
     <div class="ki-tabbar"><span class="ki-tab on">Hlavní adresa případu (Primární) - Jihočeský</span></div>
     <div class="ki-adrbody">
-      <div class="ki-modes">${['zakl:Základní', 'poi:POI', 'nis:NIS', 'sour:Souřadnice'].map(x => `<button class="ki-b ki-mode${x.startsWith('zakl') ? ' on' : ''}" type="button" data-act="ct-ki-mode" data-m="${x.split(':')[0]}">${x.split(':')[1]}</button>`).join('')}<div class="ki-gap"></div>${sb('AML', 'data-act="ct-use-aml" title="Použít střed polohy z telefonu"')}${sb('i')}${sb('vše')}</div>
+      <div class="ki-modes">${['zakl:Základní', 'poi:POI', 'nis:NIS', 'sour:Souřadnice'].map(x => `<button class="ki-b ki-mode${x.startsWith('zakl') ? ' on' : ''}" type="button" ${x.startsWith('zakl') ? '' : 'disabled title="Terén a body zájmu se vybírají v mapě (klikni do mapy)."'}>${x.split(':')[1]}</button>`).join('')}<div class="ki-gap"></div>${sb('AML', 'data-act="ct-use-aml" title="Použít střed polohy z telefonu"')}${sb('i')}${sb('vše')}</div>
       <div class="ki-adrmain">
         <div class="ki-srch"><span class="ki-flag">🇨🇿 ▾</span><span class="ki-kraj">Kraj: Jihočeský</span><input id="ki-search" autocomplete="off" placeholder="hledej obec, ulici nebo číslo (např. tabor pra 15)"></div>
         <div class="ct-addr ki-fields"><div class="ac"><label>Obec / město<input id="ctf-obec" autocomplete="off" placeholder="začni psát název…"></label><div class="ct-sug" id="ct-sug-obec" hidden></div></div><div class="ac"><label>Ulice<input id="ctf-ulice" autocomplete="off" placeholder="začni psát ulici…"></label><div class="ct-sug" id="ct-sug-ulice" hidden></div></div><div class="ac sm"><label>Číslo popisné<input id="ctf-cp" autocomplete="off" placeholder="č. p."></label><div class="ct-sug" id="ct-sug-cp" hidden></div></div><button class="ki-b" type="button" data-act="ct-find" title="Najde bod podle obce, ulice a čísla a posune mapu">Najít na mapě</button></div><input id="ctf-adresa" type="hidden"><input id="ctf-cast" type="hidden">
@@ -219,7 +219,7 @@ function kiReset(f) {
   kf = kiNew();
   for (const id of ['volajici', 'telMisto', 'kontaktMisto', 'pPozn', 'byt', 'patro', 'ohrozeno', 'osVoz', 'naklVoz', 'charakter', 'zpusob']) ctSet('ctf-' + id, '');
   for (const id of ['hovor3', 'vyprosteni']) { const e = $('ctf-' + id); if (e) e.checked = false; }
-  ctSet('ctf-pocet', '1'); ctSet('ki-klasif', ''); ctSet('ki-search', '');
+  ctSet('ctf-pocet', '1'); ctSet('ctf-zpusob', 'telefonicky na 155'); ctSet('ki-klasif', ''); ctSet('ki-search', '');
   for (const k of KI_POS) ctSet('ki-pos-' + k, '0');
   document.querySelectorAll('#ki-n .ki-b').forEach(b => b.classList.toggle('on', b.dataset.n === '0'));
   document.querySelectorAll('.ki-lok,[data-act="ct-ki-sex"]').forEach(b => b.classList.remove('on'));
@@ -265,7 +265,6 @@ function kiAct(a, el) {
     case 'ct-ki-chip': kiToggleChip(d.id); break;
     case 'ct-ki-n': kf.n = Number(d.n); document.querySelectorAll('#ki-n .ki-b').forEach(b => b.classList.toggle('on', Number(b.dataset.n) === kf.n)); break;
     case 'ct-ki-vyber': { const s = $('ki-klasif'); s.focus(); try { s.showPicker(); } catch (_) { /* ignore */ } break; }
-    case 'ct-ki-mode': kf.mode = d.m; document.querySelectorAll('.ki-mode').forEach(b => b.classList.toggle('on', b.dataset.m === d.m)); if (d.m !== 'zakl') toast(d.m === 'sour' ? 'Souřadnice: klikni do mapy a bod se vybere.' : 'Hledání ' + (d.m === 'poi' ? 'míst (POI)' : 'v NIS') + ' není v cvičení k dispozici, použij Základní.', ''); break;
     case 'ct-ki-row': kiPickRow(Number(d.i)); break;
     case 'ct-ki-ptab': kiPtab(d.t); break;
     case 'ct-ki-ctab': kiCtab(d.t); break;
