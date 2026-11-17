@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.34.0 – rozpracováno
+## v0.34.0 – 2026-11-17
 Nové:
 - **Náběr případu jako ve skutečném systému.** Nová obrazovka nabírání věrně kopíruje reálnou: Volající, Adresa případu (tabulka prvků, obec / ulice / číslo s našeptávačem), Klasifikace případu s **cihličkami** (jednotlivá kritéria v barvách naléhavosti), Detail pacienta, Požadavek na posádku, Spolupráce a spodní tlačítka. Označené cihly mají šikmé pruhování a jen doporučí N a typ posádky (vyšší barva vyhrává), naléhavost a požadavek na posádku zadáváš vždy ručně. Bez nich „Případ nelze založit“.
 - Univerzální cihly (TANR, DÍTĚ, +PČR, +HZS, SUSP_MU, TRANSPORT_PAC a další) jsou u každé klasifikace a jdou jen do poznámky. Složky se přivolávají ve Spolupráci (HJHC, PJHC).
@@ -21,7 +21,7 @@ Nové:
 Interní:
 - `src/ui-intake.js`, `CT_CIHLY.createIntake`, `tools/build_cihly.py` generuje kritéria s kódy; Požadavek na posádku řídí potřebu lékaře v enginu.
 
-## v0.33.0 – rozpracováno
+## v0.33.0 – 2026-11-17
 Nové:
 - **Pavouk z cihliček podle skutečné klasifikace.** Dvě volby: nejdřív stav nebo děj (29 dlaždic ve třech skupinách), potom cihla s kritérii. Barva cihly = naléhavost: červená N1, modrá N2, růžová N2 dynamická indikace, zelená N3, fialová N4; u každé je klasifikace a posádka (RLP, RZP, RV, LZS, DI). Bez pravděpodobností, na telefonu i na počítači. Výsledek předvyplní nabírání.
 - **Adresa ve třech polích: obec, ulice, číslo popisné.** Po napsání části názvu se postupně nabízejí obce, ulice vybrané obce a čísla na ulici; po výběru čísla se bod najde na mapě. Klik do mapy a AML vyplní všechna pole.
@@ -33,7 +33,7 @@ Opravy:
 Interní:
 - `tools/build_cihly.py` převádí excel s cihličkami na `src/cihly.json`; modul `calltaker/cihly.js`; test `tests/cihly_test.js`.
 
-## v0.32.1 – rozpracováno
+## v0.32.1 – 2026-11-17
 Opravy:
 - **Režim calltaker:** vysílačky (hlas i pípnutí) se v režimu calltaker nikdy neozývají, ani při zapnutých dispečerských oknech.
 
