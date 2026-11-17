@@ -10,7 +10,7 @@ Otevři soubor `calltaker/web/index.html` v prohlížeči (dvojklik, funguje na 
 
 **Hlasový režim (výchozí):** OpenAI **GPT-Live** (`gpt-live-1`, `POST /v1/live/sessions`, WebRTC). Mluvíš do mikrofonu (nejlépe sluchátka s mikrofonem), volající odpovídá hlasem přes telefonní filtr (pásmo 320–3300 Hz, zkreslení, šum linky; lze vypnout). Přepis obou stran se skládá z `session.input_transcript.delta` a `session.output_transcript.delta`. Cena hlasu 0,05 $ za minutu. Čeština a český hlas nejsou v dokumentaci výslovně uvedené, je to potřeba vyzkoušet; hlas volajícího se volí podle pohlaví (výchozí `marin` / `cedar`, lze přepsat). Režim „Jen text“ zůstává pro srovnání.
 
-**Nahrávka (WAV):** po ukončení hovoru se ve formuláři objeví „Stáhnout WAV“. Stereo 24 kHz, 16 bit: levý kanál calltaker (mikrofon), pravý volající tak, jak ho slyšíš (po telefonním filtru). Zhruba 6 MB na minutu. Nahrává se jen lokálně v prohlížeči; vypnout jde zaškrtávátkem v nastavení.
+**Nahrávka (WAV):** po ukončení hovoru se ve formuláři objeví „Stáhnout WAV“. Stereo 24 kHz, 16 bit: oba hlasy (calltaker i volající) jsou smíchané dohromady a stejně v levém i pravém kanálu, oba po telefonním filtru (pokud je zapnutý). Zhruba 6 MB na minutu. Nahrává se jen lokálně v prohlížeči; vypnout jde zaškrtávátkem v nastavení.
 
 Přegenerování: `node calltaker/build_cases.js 200 && node calltaker/build_web.js` (případy z generátoru → `web/cases.js` → samostatný `web/index.html`).
 
