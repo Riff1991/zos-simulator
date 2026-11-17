@@ -2,7 +2,7 @@
   const $ = id => document.getElementById(id);
   const P = window.CT_PROMPTS, CHK = window.CT_CHECK, CASES = window.CT_CASES;
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
-  let cur = null, msgs = [], transcript = [], busy = false, ended = false, mode = 'voice', vc = null;
+  let cur = null, msgs = [], transcript = [], busy = false, ended = false, mode = 'voice', vc = null, lastWav = null;
 
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const key = () => $('key').value.trim();
@@ -39,7 +39,7 @@
   function newCall() {
     if (!key() || !model()) { status('Vlož klíč a vyber model (tlačítko Načíst modely).', true); return; }
     if ($('remember').checked) { store.set('ct_key', key()); store.set('ct_model', model()); } else store.del('ct_key');
-    stopVoice();
+    stopVoice(); lastWav = null; $('wavrow').hidden = true;
     cur = CASES[Math.floor(Math.random() * CASES.length)];
     msgs = []; transcript = []; ended = false;
     $('log').innerHTML = ''; $('form').hidden = true; $('result').hidden = true; $('call').hidden = false; $('setup').open = false;
@@ -86,7 +86,7 @@
   }
   // telefonní linka: pásmo 320–3300 Hz, jemné zkreslení, komprese a tichý šum
   function phoneChain(c, stream) {
-    const AC = window.AudioContext || window.webkitAudioContext, ctx = c.ctx = new AC(); ctx.resume();
+    const ctx = c.ctx; ctx.resume();
     const src = ctx.createMediaStreamSource(stream);
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 320; hp.Q.value = 0.8;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3300; lp.Q.value = 0.9;
@@ -96,17 +96,19 @@
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -28; comp.ratio.value = 6;
     const out = ctx.createGain(); out.gain.value = 1.3;
     src.connect(hp); hp.connect(lp); lp.connect(ws); ws.connect(comp); comp.connect(out); out.connect(ctx.destination);
+    if (c.rx) out.connect(c.rx);
     const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     const ns = ctx.createBufferSource(); ns.buffer = buf; ns.loop = true;
     const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1500; nf.Q.value = 0.4;
     const ng = ctx.createGain(); ng.gain.value = 0.012;
-    ns.connect(nf); nf.connect(ng); ng.connect(ctx.destination); ns.start();
+    ns.connect(nf); nf.connect(ng); ng.connect(ctx.destination); if (c.rx) ng.connect(c.rx); ns.start();
   }
   function attachAudio(c, ev) {
     const stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
     c.audio = new Audio(); c.audio.srcObject = stream;
-    if ($('filt').checked) { c.audio.muted = true; phoneChain(c, stream); }   // element musí hrát (ztlumený), aby proud šel do Web Audio
+    if ($('filt').checked) { c.audio.muted = true; phoneChain(c, stream); }
+    else if (c.rx) c.ctx.createMediaStreamSource(stream).connect(c.rx);   // element musí hrát (ztlumený), aby proud šel do Web Audio
     c.audio.play().catch(() => status('Klikni kamkoli na stránku, aby se přehrál zvuk.', true));
   }
   function addDelta(c, role, cls, text) {
@@ -133,6 +135,7 @@
     try {
       c.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       if (vc !== c) { c.mic.getTracks().forEach(t => t.stop()); return; }
+      const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); c.ctx.resume(); setupRec(c);
       c.pc = new RTCPeerConnection();
       c.pc.addEventListener('track', ev => attachAudio(c, ev));
       c.mic.getAudioTracks().forEach(t => c.pc.addTrack(t, c.mic));
@@ -149,6 +152,36 @@
       await c.pc.setRemoteDescription({ type: 'answer', sdp: res.transport.sdp });
     } catch (e) { status('Hlas se nepodařilo spojit: ' + e.message, true); stopVoice(c); }
   }
+  // záznam: levý kanál = calltaker (mikrofon), pravý = volající tak, jak ho slyšíš (po filtru)
+  function setupRec(c) {
+    if (!$('rec').checked || !window.MediaRecorder) return;
+    const ctx = c.ctx, merger = ctx.createChannelMerger(2), dst = ctx.createMediaStreamDestination(); merger.connect(dst);
+    const ml = ctx.createGain(); ctx.createMediaStreamSource(c.mic).connect(ml); ml.connect(merger, 0, 0);
+    c.rx = ctx.createGain(); c.rx.connect(merger, 0, 1);
+    const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported(t));
+    c.chunks = []; c.rec = new MediaRecorder(dst.stream, mt ? { mimeType: mt } : undefined);
+    c.rec.ondataavailable = e => { if (e.data && e.data.size) c.chunks.push(e.data); };
+    c.rec.start(1000);
+  }
+  function toWav(buf) {
+    const ch = buf.numberOfChannels, n = buf.length, sr = buf.sampleRate, data = new DataView(new ArrayBuffer(44 + n * ch * 2));
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) data.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); data.setUint32(4, 36 + n * ch * 2, true); str(8, 'WAVE'); str(12, 'fmt '); data.setUint32(16, 16, true); data.setUint16(20, 1, true); data.setUint16(22, ch, true);
+    data.setUint32(24, sr, true); data.setUint32(28, sr * ch * 2, true); data.setUint16(32, ch * 2, true); data.setUint16(34, 16, true); str(36, 'data'); data.setUint32(40, n * ch * 2, true);
+    const chans = []; for (let k = 0; k < ch; k++) chans.push(buf.getChannelData(k));
+    let o = 44; for (let i = 0; i < n; i++) for (let k = 0; k < ch; k++) { const v = Math.max(-1, Math.min(1, chans[k][i])); data.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2; }
+    return new Blob([data], { type: 'audio/wav' });
+  }
+  async function finishRec(c) {
+    if (!c.rec || c.rec.state === 'inactive') return;
+    try {
+      await new Promise(r => { c.rec.onstop = r; c.rec.stop(); });
+      const buf = await c.ctx.decodeAudioData(await new Blob(c.chunks).arrayBuffer());
+      lastWav = { blob: toWav(buf), sec: buf.duration, name: 'hovor-' + cur.view.seed + '.wav' };
+      const m = Math.floor(lastWav.sec / 60), sec = Math.round(lastWav.sec % 60);
+      $('wavinfo').textContent = 'Nahrávka ' + m + ':' + String(sec).padStart(2, '0') + ', ' + (lastWav.blob.size / 1048576).toFixed(1) + ' MB.'; $('wavrow').hidden = false;
+    } catch (e) { status('Nahrávku se nepodařilo zpracovat: ' + e.message, true); }
+  }
   function stopVoice(c) {
     c = c || vc; if (!c) return;
     try { c.mic && c.mic.getTracks().forEach(t => t.stop()); } catch (e) { /* ignore */ }
@@ -161,7 +194,8 @@
   function closeVoice() {
     const c = vc; if (!c) return Promise.resolve();
     return new Promise(res => {
-      const fin = () => { const u = c.usage; stopVoice(c); $('live').textContent = ''; if (u) status('Hovor trval ' + Math.round(u) + ' s, hlas ≈ ' + (u / 60 * 0.05).toFixed(3) + ' $.'); else status(''); res(); };
+      let done = false;
+      const fin = async () => { if (done) return; done = true; const u = c.usage; await finishRec(c); stopVoice(c); $('live').textContent = ''; if (u) status('Hovor trval ' + Math.round(u) + ' s, hlas ≈ ' + (u / 60 * 0.05).toFixed(3) + ' $.'); else status(''); res(); };
       if (!c.ready || c.closed || !c.dc || c.dc.readyState !== 'open') return fin();
       c.onClosed = fin; setTimeout(fin, 6000);
       try { c.dc.send(JSON.stringify({ type: 'session.close' })); } catch (e) { fin(); }
@@ -201,6 +235,7 @@
   $('mute').onclick = () => { if (!vc || !vc.mic) return; const t = vc.mic.getAudioTracks()[0]; if (!t) return; t.enabled = !t.enabled; $('mute').textContent = t.enabled ? 'Ztlumit mikrofon' : 'Zapnout mikrofon'; };
   for (const r of document.querySelectorAll('input[name=mode]')) r.onchange = () => { $('voiceOpts').hidden = document.querySelector('input[name=mode]:checked').value !== 'voice'; };
   window.addEventListener('beforeunload', () => stopVoice());
+  $('wavdl').onclick = () => { if (!lastWav) return; const a = document.createElement('a'); a.href = URL.createObjectURL(lastWav.blob); a.download = lastWav.name; a.click(); };
   $('load').onclick = loadModels; $('start').onclick = newCall; $('send').onclick = send; $('end').onclick = endCall; $('judge').onclick = judgeCall;
   $('say').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   const k = store.get('ct_key'); if (k) { $('key').value = k; $('remember').checked = true; $('model').value = store.get('ct_model') || ''; }
