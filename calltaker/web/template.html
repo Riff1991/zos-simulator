@@ -25,8 +25,7 @@ ul{margin:.3em 0;padding-left:1.2em}
 <label><input type="radio" name="mode" value="voice" checked> Hlas (OpenAI GPT-Live, mikrofon + sluchátka)</label>
 <label><input type="radio" name="mode" value="text"> Jen text</label>
 <div id="voiceOpts"><label for="vModel">Hlasový model (hovor)</label><input id="vModel" type="text" value="gpt-live-1"><div class="row"><div style="flex:1"><label for="vF">Hlas: volající žena</label><input id="vF" type="text" value="marin"></div><div style="flex:1"><label for="vM">Hlas: volající muž</label><input id="vM" type="text" value="cedar"></div></div>
-<label><input type="checkbox" id="filt" checked> telefonní filtr a šum linky (na hlas volajícího i na tvůj v nahrávce)</label>
-<label><input type="checkbox" id="micf"> filtr i na hlas, který slyší volající (realističtější, ale AI hůř rozumí)</label>
+<label><input type="checkbox" id="filt" checked> telefonní filtr a šum linky (volající ve sluchátkách; v nahrávce oba hlasy)</label>
 <label><input type="checkbox" id="rec" checked> nahrávat hovor do WAV (oba hlasy dohromady, stereo)</label>
 <small>Doporučuju sluchátka s mikrofonem, jinak volající slyší sám sebe z reproduktorů. Hlas se účtuje 0,05 $ za minutu hovoru.</small></div>
 <label for="model">Textový model (vyhodnocení hovoru po skončení a textový režim)</label>

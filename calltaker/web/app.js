@@ -108,11 +108,10 @@
     const ng = ctx.createGain(); ng.gain.value = 0.012;
     ns.connect(nf); nf.connect(ng); ng.connect(ctx.destination); if (c.rx) ng.connect(c.rx); ns.start();
   }
-  // mikrofon: volitelně přes telefonní filtr (tap pro záznam a pro odchozí hovor)
+  // mikrofon: pro záznam (volitelně přes telefonní filtr); volajícímu jde vždy čistý
   function setupMic(c) {
     const ctx = c.ctx, src = ctx.createMediaStreamSource(c.mic);
     if ($('filt').checked) { const f = phoneFilter(ctx); src.connect(f.input); c.micTap = f.output; } else c.micTap = src;
-    if ($('filt').checked && $('micf').checked) { const md = ctx.createMediaStreamDestination(); c.micTap.connect(md); c.micOut = md.stream; }
   }
   function attachAudio(c, ev) {
     const stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
@@ -148,7 +147,7 @@
       const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); c.ctx.resume(); setupMic(c); setupRec(c);
       c.pc = new RTCPeerConnection();
       c.pc.addEventListener('track', ev => attachAudio(c, ev));
-      (c.micOut || c.mic).getAudioTracks().forEach(t => c.pc.addTrack(t, c.micOut || c.mic));
+      c.mic.getAudioTracks().forEach(t => c.pc.addTrack(t, c.mic));   // volající vždy slyší čistý hlas
       c.dc = c.pc.createDataChannel('oai-events');
       c.dc.addEventListener('message', ev => onVoiceEvent(c, ev.data));
       c.dc.addEventListener('close', () => { if (!c.closed && !ended && vc === c) status('Spojení se přerušilo.', true); });
