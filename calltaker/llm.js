@@ -1,5 +1,5 @@
 // Minimální klient Anthropic Messages API (bez závislostí). Klíč jen z prostředí, nikdy do repa.
-const URL = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com/v1/messages';
+const URL = (process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/+$/, '') + '/v1/messages';
 async function ask({ system, messages, model, maxTokens = 300, temperature = 1 }) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('Chybí ANTHROPIC_API_KEY (viz calltaker/README.md).');

@@ -12,14 +12,18 @@ const { view, key } = makeCase(seed);
 const system = callerSystem(view);
 if (dry) { console.log(system + '\n\n--- KEY ---\n' + JSON.stringify(key, null, 1)); process.exit(0); }
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const q = t => new Promise(r => rl.question(t, r));
+// fronta řádků: funguje i při vstupu z roury (readline.question po EOF padá)
+const lines = [], waiters = []; let closed = false;
+rl.on('line', l => { if (waiters.length) waiters.shift()(l); else lines.push(l); });
+rl.on('close', () => { closed = true; while (waiters.length) waiters.shift()(''); });
+const q = t => { process.stdout.write(t); return lines.length ? Promise.resolve(lines.shift()) : closed ? Promise.resolve('') : new Promise(r => waiters.push(r)); };
 const transcript = [], msgs = [];
 (async () => {
   console.log(`\nHovor č. ${seed}. Volající zvedl telefon, ty zvedáš linku 155. Pozdrav a veď hovor (/konec = ukončit a vyplnit formulář).\n`);
   for (;;) {
     const line = (await q('calltaker> ')).trim();
+    if (line === '/konec' || (!line && closed)) break;
     if (!line) continue;
-    if (line === '/konec') break;
     transcript.push({ role: 'calltaker', text: line }); msgs.push({ role: 'user', content: line });
     let reply;
     try { reply = await ask({ system, messages: msgs, maxTokens: 250 }); } catch (e) { console.error(e.message); process.exit(1); }
