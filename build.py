@@ -5,7 +5,7 @@ rd = lambda p: open(p, encoding='utf8').read()
 strip = lambda s: re.sub(r'(?m)^if \(typeof module.*\n?', '', s)  # řádky určené jen pro Node (require/exports)
 d = strip(rd('src/data.js')) + strip(rd('src/people.js'))
 symptoms = 'const ZOS_SYMPTOMS = ' + rd('src/symptoms.json').strip() + ';\n'
-ENGINE_PARTS = ['engine-base', 'sim-radio', 'sim-neighbors', 'sim-cases', 'sim-mu', 'sim-loop', 'sim-score', 'engine']  # engine.js poslední (přimíchá části do Sim)
+ENGINE_PARTS = ['engine-base', 'sim-radio', 'sim-neighbors', 'sim-cases', 'sim-mu', 'sim-loop', 'sim-score', 'sim-calltaker', 'engine']  # engine.js poslední (přimíchá části do Sim)
 e = strip(rd('src/messages.js')) + strip(rd('src/weather.js')) + ''.join(strip(rd('src/%s.js' % n)) for n in ENGINE_PARTS)
 m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src/mask.geojson') + ';\n')
 UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-events']  # jedna IIFE, části v tomto pořadí

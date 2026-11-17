@@ -9,6 +9,7 @@ if (typeof module !== 'undefined') var SimCases = require('./sim-cases.js');
 if (typeof module !== 'undefined') var SimMU = require('./sim-mu.js');
 if (typeof module !== 'undefined') var SimLoop = require('./sim-loop.js');
 if (typeof module !== 'undefined') var SimScore = require('./sim-score.js');
+if (typeof module !== 'undefined') var SimCalltaker = require('./sim-calltaker.js');
 
 class Sim {
   constructor(opts, restored) {
@@ -780,7 +781,7 @@ class Sim {
 }
 
 // přimíchání metod z částí do třídy Sim (metody i statické členy, zachová se nevýčetnost)
-for (const Part of [SimRadio, SimNeighbors, SimCases, SimMU, SimLoop, SimScore]) {
+for (const Part of [SimRadio, SimNeighbors, SimCases, SimMU, SimLoop, SimScore, SimCalltaker]) {
   for (const [dst, src] of [[Sim.prototype, Part.prototype], [Sim, Part]]) {
     for (const k of Object.getOwnPropertyNames(src)) {
       if (k === 'constructor' || k === 'length' || k === 'name' || k === 'prototype') continue;

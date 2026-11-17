@@ -338,6 +338,18 @@ class SimLoop {
           this.L('crew', `${c.name}: čeká na LZS na heliportu (${(this._heliportForCase(cs) || {}).name || 'heliport'})`, cs.id, c.id);
           break;
         }
+        const missAt = c.mv && c.mv.b ? c.mv.b : [cs.lat, cs.lon];
+        if (cs.addrMiss && !c.addrFound && !c.caseRole && c.type !== 'LZS' && hav(missAt[0], missAt[1], cs.addrMiss.lat, cs.addrMiss.lon) * 1000 > 250) {
+          // dojeli na zadanou adresu, ale pacient je jinde (calltaker zadal špatnou adresu): hledání a přejezd
+          c.addrFound = true; c.parked = false;
+          c.lat = missAt[0]; c.lon = missAt[1]; c.mv = null;
+          const d2 = this._go(c, cs.addrMiss.lat, cs.addrMiss.lon, 'N' + Math.min(4, Math.max(1, c.driveN || cs.n || 3))) + this.rr(60, 150);
+          c.until = t + d2; c.state = 'enroute';
+          cs.addrMissLost = (cs.addrMissLost || 0) + d2;
+          this.L('crew', `${c.name}: na zadané adrese pacient není, hledáme (skutečně o ${Math.round(cs.addrMiss.m)} m dál)`, cs.id, c.id);
+          if (!cs.addrFixed) { cs.addrFixed = true; cs.lat = cs.addrMiss.lat; cs.lon = cs.addrMiss.lon; cs.addr = cs.addrMiss.addr; }
+          break;
+        }
         if (c.parked && c.mv) { c.lat = c.mv.b[0]; c.lon = c.mv.b[1]; } else { c.lat = cs.lat; c.lon = cs.lon; }
         c.parked = false; c.mv = null; c.state = 'onscene'; c.arrivedAt = t;
         cs.arrived = true;
