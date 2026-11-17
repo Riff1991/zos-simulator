@@ -5,7 +5,7 @@ const readline = require('readline'), fs = require('fs'), path = require('path')
 const { makeCase } = require('./factsheet.js');
 const { callerSystem } = require('./prompts.js');
 const { ask } = require('./llm.js');
-const { judge } = require('./judge.js');
+const { analyza } = require('./analyza.js');
 const args = process.argv.slice(2), dry = args.includes('--dry');
 const seed = Number(args.find(a => /^\d+$/.test(a)) || Math.floor(Math.random() * 1e6));
 const { view, key } = makeCase(seed);
@@ -37,10 +37,10 @@ const transcript = [], msgs = [];
   const form = { adresa: await q('Adresa (ulice č., obec): '), n: await q('Naléhavost (1/2/3): '), poznamka: await q('Poznámka: ') };
   rl.close();
   let result = null;
-  try { result = await judge({ view, key, transcript, form }); } catch (e) { console.error('Hodnocení selhalo: ' + e.message); }
+  try { result = await analyza({ view, key, transcript, form }); } catch (e) { console.error('Hodnocení selhalo: ' + e.message); }
   const dir = path.join(__dirname, 'out'); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `hovor-${seed}-${Date.now()}.json`);
   fs.writeFileSync(file, JSON.stringify({ seed, view, key, transcript, form, result }, null, 1));
-  if (result) { console.log('\n--- Kontrola pravidly ---\n' + JSON.stringify(result.pravidla, null, 1) + '\n\n--- Soudce ---\n' + JSON.stringify(result.soudce, null, 1)); }
+  if (result) { console.log('\n--- Kontrola pravidly ---\n' + JSON.stringify(result.pravidla, null, 1) + '\n\n--- Analýza hovoru ---\n' + JSON.stringify(result.analyza, null, 1)); }
   console.log('\nUloženo: ' + file);
 })();

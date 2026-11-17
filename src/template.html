@@ -121,6 +121,8 @@ nav .badge{background:var(--n1);color:#fff;border-radius:9px;padding:0 6px;margi
   #clock{font-size:18px}
 }
 /* režim calltaker */
+body.ct-mode:not(.ct-disp) #alerts-live{display:none!important}
+body.ct-mode:not(.ct-disp) .tabs button.waiting-alert{animation:none!important}
 #w-intake,#w-spider{display:none}
 body.ct-mode #w-intake,body.ct-mode #w-spider{display:flex}
 body.ct-mode:not(.ct-disp) :is(#w-cases,#w-detail,#w-rcom,#w-radio,#w-crews){display:none!important}

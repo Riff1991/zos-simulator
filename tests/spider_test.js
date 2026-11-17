@@ -47,4 +47,13 @@ ok(wN / wTot > 0.6, 'navržené N se shoduje s pozorovaným u ' + (wN / wTot * 1
 ok(JSON.stringify(sp.page(['Dušnost', 'A'])) === JSON.stringify(sp.page(['Dušnost', 'A'])) && JSON.stringify(sp.result(['Dušnost', 'A'])) === JSON.stringify(sp.result(['Dušnost', 'A'])), 'pavouk je deterministický');
 // zpětný krok = kratší seznam odpovědí dává předchozí stránku
 ok(sp.page(['Dušnost']).canBack && sp.page([]).canBack === false, 'zpět je dostupné až po první odpovědi');
+{ // skutečný pavouk ze souboru (formát zos-spider/1)
+  const T = S.createFromTree(require(path.join(R, 'tests/spider_sample.json')));
+  ok(T.page([]).step === 'uzel' && T.page([]).tiles.length === 2, 'pavouk ze souboru: první stránka má dlaždice');
+  const p2 = T.page(['dn']); ok(p2.title === 'Je pacient při vědomí?' && p2.crumbs[0] === 'Dopravní nehoda', 'pavouk ze souboru: po kliknutí další stránka a drobečky');
+  ok(T.page(['dn', 'ne']).step === 'vysledek', 'pavouk ze souboru: výsledek po poslední otázce');
+  const r = T.result(['dn', 'ne']); ok(r.n === 1 && r.klasif === 'Dopravní nehoda' && r.symptoms.includes('bezvědomí'), 'pavouk ze souboru: výsledek (N1, příznaky z dlaždic)');
+  const r2 = T.result(['dn', 'ano']); ok(r2.n === 2 && r2.dyn && r2.symptoms.includes('DYNAMICKÁ INDIKACE') && Math.abs(r2.nDist[2] - 0.7) < 1e-9, 'pavouk ze souboru: dynamická indikace a rozložení N');
+  let bad = false; try { S.createFromTree({ format: 'x' }); } catch (e) { bad = true; } ok(bad, 'pavouk ze souboru: neplatný soubor se odmítne');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'spider test OK'); process.exit(fail ? 1 : 0);

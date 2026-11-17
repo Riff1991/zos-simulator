@@ -7,7 +7,7 @@ const ZOS_LIVE = (function () {
     if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
     return j;
   }
-  // textový model (soudce, textový režim hovoru)
+  // textový model (analyza, textový režim hovoru)
   async function chat(key, model, system, history, opts) {
     const j = await oa(key, '/chat/completions', Object.assign({ model, messages: [{ role: 'system', content: system }].concat(history), max_completion_tokens: 1500 }, opts || {}));
     return ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();

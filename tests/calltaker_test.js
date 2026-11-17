@@ -82,7 +82,7 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   ok(c && c.call && cl.caseId === c.id, 'po zavěšení jde případ poprvé odeslat');
   sim.sendCall(cl.id, { adresa: f.key.adresa, n: String(f.key['naléhavost']).replace('N', ''), poznamka: 'doplněno' });
   ok(/doplněno/.test(c.poznamka), 'po zavěšení jde případ aktualizovat');
-  ok(sim.finishCall(cl.id).state === 'done' && sim.s.agg.opsPoints === before, 'finishCall: odeslaný případ bez trestu');
+  ok(sim.finishCall(cl.id).state === 'done' && c.call.skore && c.call.skore.total > 0 && c.call.skore.total <= c.call.skore.max, 'finishCall: odeslaný případ dostane body (' + (c.call.skore && c.call.skore.total) + '/' + (c.call.skore && c.call.skore.max) + ')');
   const sim2 = new Sim({ seed: 52, mode: 'free', startHour: 10 }); sim2.enableLiveCalls({ mode: 'training', gapSec: 90 });
   let c2 = null; for (let i = 0; i < 2000 && !c2; i++) { step(sim2); c2 = sim2.s.calls.find(c => c.state === 'ringing'); }
   sim2.pickupCall(c2.id); const b2 = sim2.s.agg.opsPoints; sim2.endCall(c2.id); sim2.finishCall(c2.id);
@@ -151,7 +151,7 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
     typ[p.typ] = (typ[p.typ] || 0) + 1; band[p.pasmo] = (band[p.pasmo] || 0) + 1;
     if (!Number.isFinite(v.volajici.vek) || v.volajici.vek < 3 || v.volajici.vek > 105) noAge++;
     if (p.vekVolajiciho !== v.volajici.vek || !p.hlas || !p.slovnik || !p.prostredi) bad = true;
-    if (v.volajici.vek >= 70) { sen++; if (/^senior_|pacient_|profesional|ustarany|vecny|vagni|panika|plac|soc|hovorny|flegmatik|rozcileny|nespolupracujici|opily|cizinec/.test(p.typ) && !/^(dite|teen|mlady_spech|dospely_rodic_seniora|turista)/.test(p.typ)) senOk++; }
+    if (v.volajici.vek >= 70) { sen++; if (/^senior_|pacient_|profesional|ustarany|vecny|vagni|panika|plac|soc|hovorny|flegmatik|rozcileny|nespolupracujici|opily|cizinec|mensina/.test(p.typ) && !/^(dite|teen|mlady_spech|dospely_rodic_seniora|turista)/.test(p.typ)) senOk++; }
     if (p.typ === 'cizinec') { cizi++; if (p.jazyk) ciziJ++; }
     if (sd % 300 === 0) { const t = PR.callerSystem(v, true); if (!t.includes(p.hlas) || !t.includes(String(v.volajici.vek))) bad = true; }
   }
@@ -163,5 +163,102 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   const a = sim.callFacts(77), b = sim.callFacts(77); ok(JSON.stringify(a.view.persona) === JSON.stringify(b.view.persona), 'persona je deterministická');
   const sn = {}; for (let sd = 1; sd <= 1500; sd++) { const f = sim.callFacts(sd); if (f.view.volajici.vek >= 75) sn[f.view.persona.typ] = (sn[f.view.persona.typ] || 0) + 1; }
   console.log('typy u 75+:', JSON.stringify(sn)); console.log('všechny typy:', JSON.stringify(typ));
+}
+
+const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.s.calls[sim.s.calls.length - 1]; };
+{ // N1 předpoplach, lékař podle zadaného N, přesměrování, PČR a HZS, hovory bez výjezdu, opakované a duplicitní, zpětné volání
+  const mkSim = sd => { const sm = new Sim({ seed: sd, mode: 'free', startHour: 10 }); sm.enableLiveCalls({ mode: 'training', gapSec: 600, level: 'bezne' }); return sm; };
+  // předpoplach: jen adresa a N1, bot vyšle do 20 s RZP i RV
+  { const sm = mkSim(61), cl = ringKind(sm, 'vyjezd'); sm.pickupCall(cl.id); const f = sm.callFacts(cl.seed, cl);
+    const c = sm.sendCall(cl.id, { adresa: f.key.adresa, n: '1', predpoplach: true, zdroj: 'adresa' });
+    ok(c.call.predpoplach && c.n === 1 && c.rvNeed, 'předpoplach N1: případ vznikl jen z adresy a N1, RV se očekává');
+    let t0 = sm.s.t, got = false; for (let i = 0; i < 90 && !got; i++) { step(sm); got = c.asg.length > 0; }
+    ok(got && sm.s.t - t0 <= 70, 'předpoplach: bot vyslal posádky do ' + Math.round(sm.s.t - t0) + ' s'); }
+  // lékař: N3 zadané při pravdě s lékařem → RV se nevyšle a posádka ho později žádá; N1 → vždy RV
+  { let seedRv = null; for (let sd = 1; sd < 800 && !seedRv; sd++) { const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if (t.rvNeed && t.n <= 2 && /\d/.test(t.addr) && !/okolí|\(/.test(t.addr)) seedRv = { sd, t }; }
+    ok(!!seedRv, 'nalezen případ s potřebou lékaře'); const sm = mkSim(62);
+    const bad = sm.addCallCase({ v: 1, seed: seedRv.sd, form: { adresa: seedRv.t.addr, n: '3', klasif: 'Bolest', priznaky: [] }, sec: 60 });
+    ok(!bad.rvNeed && bad.rvLater && bad.initialDispatchRequired.length === 1, 'špatná klasifikace a N3: RV se nevysílá, lékaře si posádka vyžádá později');
+    const good = sm.addCallCase({ v: 1, seed: seedRv.sd, form: { adresa: seedRv.t.addr, n: String(seedRv.t.n), klasif: seedRv.t.klasif, priznaky: seedRv.t.symptoms.slice() }, sec: 60 });
+    ok(good.rvNeed && good.initialDispatchRequired.includes('RV'), 'správná klasifikace: lékař se vysílá'); }
+  // přesměrování po změně adresy
+  { const sm = mkSim(63), tc = new Sim({ seed: 63, mode: 'free' })._spawn(); void tc;
+    let seedA = null; for (let sd = 1; sd < 300 && !seedA; sd++) { const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if (/\d/.test(t.addr) && !/okolí|\(/.test(t.addr) && t.addr.includes(',')) seedA = { sd, t }; }
+    const c = sm.addCallCase({ v: 1, seed: seedA.sd, form: { adresa: seedA.t.addr, n: '2', zdroj: 'adresa' }, sec: 40 });
+    for (let i = 0; i < 400 && !c.asg.length; i++) step(sm);
+    const k = sm.crewOf(c.crews[0]); const before = k && k.until;
+    const d = 0.02, tr = seedA.t, nl = { lat: tr.lat + d, lon: tr.lon };
+    sm.updateCallCase(c, { adresa: seedA.t.addr, bod: nl, zdroj: 'mapa', n: '2' });
+    ok(k && (c.addrChanges || 0) >= 1 && k.until !== before, 'změna místa po vyslání přesměruje jedoucí posádku (' + (c.addrChanges || 0) + ')'); }
+  // PČR/HZS: chybějící označení → posádka žádá na místě
+  { let seedAg = null; for (let sd = 1; sd < 4000 && !seedAg; sd++) { const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if ((t.agNeed || []).length && /\d/.test(t.addr) && !/okolí|\(/.test(t.addr)) seedAg = { sd, t }; }
+    if (seedAg) { const sm = mkSim(64); const c1 = sm.addCallCase({ v: 1, seed: seedAg.sd, form: { adresa: seedAg.t.addr, n: String(seedAg.t.n), agPcr: seedAg.t.agNeed.includes('pcr'), agHzs: seedAg.t.agNeed.includes('hzs') }, sec: 50 });
+      ok(Object.keys(c1.agencies || {}).length === seedAg.t.agNeed.length && !(c1.agLate || []).length, 'PČR/HZS označené v hovoru jdou hned dispečerovi');
+      const c2 = sm.addCallCase({ v: 1, seed: seedAg.sd, form: { adresa: seedAg.t.addr, n: String(seedAg.t.n) }, sec: 50 });
+      ok((c2.agLate || []).length === seedAg.t.agNeed.length, 'PČR/HZS neoznačené v hovoru se vyžádají až na místě'); } else console.log('(žádný seed s PČR/HZS)'); }
+  // hovor bez výjezdu: odeslání se trestá, správné vyřízení se odměňuje
+  { const sm = mkSim(65), cl = ringKind(sm, 'bez'); const f = sm.pickupCall(cl.id);
+    ok(f.kind === 'bez' && f.key.vyjezd === false && f.view.situace && /NEVYŽADUJE/.test(f.view.situace), 'hovor bez výjezdu má scénář (' + f.key.scenar + ')');
+    const b = sm.s.agg.opsPoints; sm.endCall(cl.id); sm.finishCall(cl.id); ok(sm.s.agg.opsPoints > b, 'hovor bez výjezdu správně nevyslaný: body navíc');
+    const cl2 = ringKind(sm, 'bez'); sm.pickupCall(cl2.id); const b2 = sm.s.agg.opsPoints; const r = sm.sendCall(cl2.id, { adresa: 'x', n: '3' }); sm.endCall(cl2.id); sm.finishCall(cl2.id);
+    ok(r.noDispatch && sm.s.cases.length === 0 && sm.s.agg.opsPoints < b2, 'zbytečné odeslání hovoru bez výjezdu: žádný případ a ztráta bodů'); }
+  // opakovaný hovor navazuje na případ; duplicita se sloučí, jinak je případ duplicitní a bot ho sloučí
+  { const sm = mkSim(66), cl = ringKind(sm, 'vyjezd'); const f0 = sm.pickupCall(cl.id); const c = sm.sendCall(cl.id, { adresa: f0.key.adresa, n: String(f0.key['naléhavost']).replace('N', '') }); sm.endCall(cl.id); sm.finishCall(cl.id);
+    const op = ringKind(sm, 'opak', { seed: cl.seed, caseId: c.id }); const fo = sm.pickupCall(op.id);
+    ok(op.caseId === c.id && fo.view.opakovane && /podruhé/.test(fo.view.situace), 'opakovaný hovor navazuje na případ a volající přináší novou informaci');
+    const c3 = sm.sendCall(op.id, { adresa: f0.key.adresa, n: '1', poznamka: 'zhoršení' }); ok(c3 === c && /zhoršení/.test(c.poznamka), 'opakovaný hovor případ jen aktualizuje'); sm.endCall(op.id); sm.finishCall(op.id);
+    const dp = ringKind(sm, 'dup', { seed: cl.seed, caseId: c.id }); const fd = sm.pickupCall(dp.id);
+    ok(fd.view.volajici.jmeno !== f0.view.volajici.jmeno && fd.key.duplicita, 'duplicitní hovor: jiný volající k téže události');
+    const b = sm.s.agg.opsPoints; const m = sm.sendCall(dp.id, { slucitS: c.id }); ok(m === c && sm.s.agg.opsPoints > b && sm.s.cases.length === 1, 'duplicitní hovor sloučený s případem: body navíc, žádný nový případ'); sm.endCall(dp.id); sm.finishCall(dp.id);
+    const dp2 = ringKind(sm, 'dup', { seed: cl.seed, caseId: c.id }); sm.pickupCall(dp2.id); const nd = sm.sendCall(dp2.id, { adresa: f0.key.adresa, n: '2' });
+    ok(nd.dupOf === c.id && sm.s.cases.length === 2, 'nesloučený duplicitní hovor vytvoří duplicitní případ'); for (let i = 0; i < 160; i++) step(sm);
+    ok(sm.s.cases.length === 1, 'bot duplicitní případ sloučí (zbyde jeden)'); }
+  // přerušení spojení: volající zavolá zpět, případ zůstává
+  { const sm = mkSim(67), cl = ringKind(sm, 'vyjezd'); const f = sm.pickupCall(cl.id); const c = sm.sendCall(cl.id, { adresa: f.key.adresa, n: '2' });
+    sm.dropCall(cl.id); ok(cl.state === 'dropped', 'spojení přerušeno');
+    for (let i = 0; i < 60 && cl.state !== 'ringing'; i++) step(sm);
+    ok(cl.state === 'ringing' && cl.cb, 'volající zavolal zpět'); const f2 = sm.pickupCall(cl.id);
+    ok(cl.state === 'taken' && cl.caseId === c.id && f2.view.situace && /přerušilo/.test(f2.view.situace) && cl.resumes === 1, 'zpětný hovor navazuje, případ zůstal'); }
+  // úrovně: začátečník bez agresivních a cizinců, těžké s nimi
+  { const cnt = lv => { const sm = mkSim(68); sm.s.liveCalls.level = lv; const o = {}; for (let sd = 1; sd <= 800; sd++) { const t = sm.callFacts(sd).view.persona.typ; o[t] = (o[t] || 0) + 1; } return o; };
+    const z = cnt('zacatecnik'), t = cnt('tezke');
+    ok(!(z.agresivni > 0) && !(z.nespolupracujici > 0) && (t.agresivni || 0) > (z.agresivni || 0) && (t.cizinec || 0) > 2 * (z.cizinec || 0), 'úrovně: začátečník bez agresivních, těžké s více cizinci a agresivními (' + (z.cizinec || 0) + ' → ' + (t.cizinec || 0) + ' cizinců, ' + (t.agresivni || 0) + ' agresivních)'); }
+}
+{ // realistický tok: přesně každá 4. výzva jde přes hráče
+  const sm = new Sim({ seed: 9, mode: 'free', startHour: 10 }); sm.enableLiveCalls({ mode: 'realistic' });
+  for (let i = 0; i < 4 * 3600; i++) step(sm);
+  const L = sm.s.liveCalls, rung = sm.s.calls.filter(c => !c.ref).length;
+  ok(L.cnt >= 40 && rung === Math.floor(L.cnt / 4), 'realistický tok: ze ' + L.cnt + ' výzev jde přes hráče přesně každá 4. (' + rung + ')');
+}
+{ // bot posílá PČR/HZS podle příznaků v hovoru (+PČR, +HZS) a podle zaškrtnutí
+  let seedAg = null; for (let sd = 1; sd < 4000 && !seedAg; sd++) { const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if ((t.agNeed || []).includes('pcr') && /\d/.test(t.addr) && !/okolí|\(/.test(t.addr)) seedAg = { sd, t }; }
+  if (seedAg) {
+    const sm = new Sim({ seed: 70, mode: 'free', startHour: 10 }); sm.enableLiveCalls({ mode: 'training', gapSec: 900 });
+    const c = sm.addCallCase({ v: 1, seed: seedAg.sd, form: { adresa: seedAg.t.addr, n: String(seedAg.t.n), klasif: seedAg.t.klasif, priznaky: seedAg.t.symptoms.slice() }, sec: 40 });
+    ok(c.agencies && c.agencies.pcr && c.agencies.pcr.state === 'requested', 'příznak PČR v hovoru: PČR je vyžádána');
+    for (let i = 0; i < 200 && !(c.agencies.pcr.state === 'sent' || c.agencies.pcr.state === 'onscene'); i++) step(sm);
+    ok(c.agencies.pcr.state === 'sent' || c.agencies.pcr.state === 'onscene', 'bot PČR skutečně vyslal (' + c.agencies.pcr.state + ')');
+  } else console.log('(žádný seed s PČR)');
+}
+{ // cizinci a menšiny: jméno odpovídá původu, přízvuk, místo ovlivňuje výskyt
+  const CZ = require(path.join(R, 'calltaker/cizinci.js')), sim = new Sim({ seed: 5, mode: 'free' });
+  const byDesc = {}; for (const [id, g] of Object.entries(CZ.GROUPS)) byDesc[g.popis] = id;
+  const cnt = {}; let tot = 0, foreign = 0, badName = 0, noAccent = 0, checkOk = 0, checkN = 0;
+  for (let sd = 1; sd <= 3000; sd++) {
+    const f = sim.callFacts(sd), p = f.view.persona; tot++;
+    if (p.typ !== 'cizinec' && p.typ !== 'mensina') continue;
+    foreign++; const id = byDesc[p.jazyk]; if (!id) { noAccent++; continue; } cnt[id] = (cnt[id] || 0) + 1;
+    const g = CZ.GROUPS[id], nm = f.view.volajici.jmeno.split(' '), first = nm[0], last = nm.slice(1).join(' ');
+    const all = a => [].concat(g.M[a], g.F[a]);
+    if (!all('f').includes(first) || !all('l').includes(last)) badName++;
+    if (checkN < 25 && /\d/.test(f.key.adresa) && !/okolí|\(/.test(f.key.adresa)) { checkN++; const c = new Sim({ seed: 3, mode: 'free' }).addCallCase({ v: 1, seed: sd, form: { adresa: f.key.adresa, n: '3', vJmeno: first, vPrijmeni: last }, sec: 30 }); if (c.call.check.jmena.volajici === true && c.ozn === f.view.volajici.jmeno) checkOk++; }
+  }
+  ok(foreign / tot > 0.03 && foreign / tot < 0.15 && noAccent === 0, 'cizinci a menšiny: podíl ' + (foreign / tot * 100).toFixed(1) + ' % (bez přízvuku ' + noAccent + ')');
+  ok(badName === 0, 'jména cizinců odpovídají skupině (ne česká jména)');
+  ok(['ukrajinsky', 'vietnamsky', 'nemecky', 'rakousky', 'anglicky', 'slovensky', 'polsky', 'romsky'].every(k => cnt[k] > 0), 'všechny skupiny se vyskytují: ' + JSON.stringify(cnt));
+  ok(checkN > 0 && checkOk === checkN, 'jméno cizince v případu a kontrole klasifikace sedí (' + checkOk + '/' + checkN + ')');
+  const m = (id, extra) => CZ.ctxMul(id, Object.assign({ place: '', addr: '', town: 'Tábor', where: 'rd' }, extra));
+  ok(m('vietnamsky', { place: 'večerka u nádraží' }) >= 8 && m('ukrajinsky', { place: 'stavba, ubytovna dělníků' }) >= 4 && m('rakousky', { town: 'Kaplice' }) >= 8 && m('nemecky', { town: 'Horní Planá', place: 'penzion' }) >= 4, 'místo ovlivňuje výskyt (večerka, ubytovna, pohraničí, penzion)');
+  ok(m('vietnamsky') === 1 && m('rakousky') === 1, 'bez kontextu žádné zvýhodnění (není to pravidlo)');
 }
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

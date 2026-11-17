@@ -12,13 +12,14 @@ Zadání: `docs/ZADANI_PAVOUK.md` (platí jen jeho nová verze). Rozhodnutí: `d
 - **UI:** `src/ui-calltaker.js` (telefon, formulář, Moje případy, AML kruhy a banner, klik na mapu s předvyplněním adresy, výsledek hovoru s mini mapou), `src/live-voice.js` (WebRTC GPT-Live, filtr, šum, WAV, přepis; bez DOM). `calltaker/{personas,check,prompts,spider}.js` jsou v buildu hlavní aplikace.
 - **Testy:** `node tests/calltaker_test.js`, `node tests/spider_test.js`, `python tests/ct_browser.py` (Playwright, atrapa WebRTC a falešné API; zvonění → zvednutí → AML → klik do mapy → pavouk → formulář → odeslání → bot → ukončení → výsledek; desktop, mobil, ruční režim bez bota), `tests/test.js`, `tests/tutorial.js`, `tests/content_audit.js`, `tests/browser_smoke.py`.
 
+**Přidáno podle ankety (17. 11. 2026, večer):** N1 „okamžitě“ (předpoplach), přesměrování posádek při změně místa, následky zadaného N a klasifikace (lékař, PČR/HZS z příznaků +PČR/+HZS), hovory bez výjezdu, opakované a duplicitní hovory, zpětné volání po přerušení, tři úrovně náročnosti (agresivní volající), TANR s kontrolními hovory, body za hovor, Rozbor hovoru (Analýza hovoru, bez slova „soudce“) a Přehled směny jen na vyžádání, klávesové zkratky, adresa účastníka u pevné linky, každá 4. výzva přes hráče, tichý režim (bez vysílaček a červených lišt), cizinci a menšiny se jmény, přízvuky a výskytem podle místa, import pavouka ze souboru (`docs/SPIDER_FORMAT.md`). Testy: `tests/calltaker_test.js`, `tests/spider_test.js`, `tests/ct_browser.py`.
+
 **Neověřeno / zbývá**
-- **Skutečný hlas** (GPT-Live, mikrofon, nahrávka WAV) nikdo neslyšel; v prohlížeči je ověřena jen atrapa.
-- **Skutečný pavouk** dodá uživatel (stejné rozhraní `create → page/result`); stávající je náhrada z dat.
-- Změna polohy po vyslání posádky se jen loguje; následky podhodnocené naléhavosti (lékař pozdě) a skóre calltakera zatím nejsou.
-- Pevná linka: adresa účastníka jako volitelné rozšíření není.
-- Kolega jako živý dispečer (přenosový server) a živé AML jsou mimo rozsah.
-- Samostatná stránka `calltaker/web/` zůstává jako záloha (neshodí se, dokud nebude přesměrována).
+- **Skutečný hlas** (GPT-Live, mikrofon, nahrávka WAV, hlasy podle věku `coral/ash/sage/echo`, kontrolní hovory TANR) nikdo neslyšel; v prohlížeči je ověřena jen atrapa.
+- **Skutečný pavouk** dodá uživatel jako `spider.json`; stávající je náhrada z dat.
+- **Kolega živě jako dispečer:** jen návrh (`docs/KOLEGA_ZIVE.md`), vyžaduje server a živý test.
+- Děti jako volající generátor případů nevytváří (nejmladší volající 15 let).
+- Nácvikové režimy, přehrání nahrávky a živé AML nejsou.
 
 **Jak vyzkoušet:** `python build.py`, `python -m http.server -d site 8765`, otevřít http://localhost:8765, ☎ Calltaker, vložit klíč OpenAI (nebo zvolit „Jen text“), Spustit; trénink s intervalem 1 min. Bez klíče hovor běží bez hlasu (jen simulace a formulář).
 
@@ -41,7 +42,7 @@ Druhá varianta hry: hráč je **calltaker**. Zazvoní telefon, zvedne ho, hlase
   - `addCallCase(h)` / `updateCallCase(c, f)`: z formuláře vznikne případ (zadaná adresa a naléhavost, ne pravda). Adresa se hledá v `ZOS_ADDR` (`_ctGeocode`: exact/street/town; nezná-li ji, `call.unlocatable`). Špatná adresa (>250 m) = `c.addrMiss`; posádka dojede na zadané místo, nenajde pacienta, přejede (hook v `src/sim-loop.js`, stav `enroute`). Změna adresy po vyslání se jen zaloguje.
   - `enableLiveCalls`, `_liveSpawn`, `_ringCall`, `_callsTick` (zmeškaný hovor po 30 s), `pickupCall`, `sendCall` (poprvé vytvoří, dál aktualizuje), `hangupCall` (bez odeslání = trest), `botTick` (bot dispečer s reakční dobou; neznámá adresa +2–4 min).
   - Hook ve smyčce: `if (s.liveCalls)` v `_tick` (běžné hry se nedotkne).
-- **Stránka** `calltaker/web/`: `template.html`, `app.js`, výstup `index.html` (samostatný soubor, engine a data vložené) sestavuje `node calltaker/build_web.js`; `python3 build.py` ho spouští a kopíruje do `site/calltaker/index.html`. Velká data (`graph.wasm`, `addr.json`, `poi.json`, `rail.json`) se načítají z `../` (nasazeno) nebo z `https://riff1991.github.io/zos-simulator/` (lokální soubor); lze přepsat `?data=URL` nebo polem v nastavení. Hlas: WebRTC přímo na `api.openai.com` s klíčem uživatele (jen v prohlížeči). Textové hodnocení po hovoru (soudce) běží přes Chat Completions s vybraným textovým modelem.
+- **Stránka** `calltaker/web/`: `template.html`, `app.js`, výstup `index.html` (samostatný soubor, engine a data vložené) sestavuje `node calltaker/build_web.js`; `python3 build.py` ho spouští a kopíruje do `site/calltaker/index.html`. Velká data (`graph.wasm`, `addr.json`, `poi.json`, `rail.json`) se načítají z `../` (nasazeno) nebo z `https://riff1991.github.io/zos-simulator/` (lokální soubor); lze přepsat `?data=URL` nebo polem v nastavení. Hlas: WebRTC přímo na `api.openai.com` s klíčem uživatele (jen v prohlížeči). Textové hodnocení po hovoru (analyza) běží přes Chat Completions s vybraným textovým modelem.
 - `calltaker/cases.js` (předgenerovaných 200 případů) se používá jen pro „Rychlý hovor (bez směny)“; přegeneruje `node calltaker/build_cases.js`.
 - Příkazová řádka (Anthropic, textová): `calltaker/chat.js`.
 
@@ -55,7 +56,7 @@ Druhá varianta hry: hráč je **calltaker**. Zazvoní telefon, zvedne ho, hlase
 1. **Ověřit na skutečném hovoru** (klíč OpenAI, sluchátka s mikrofonem, Chrome nebo Edge): spojení, kvalita češtiny a hlasů (`marin` ženy, `cedar` muži, `cedar` v GPT-Live neověřen, padá na `marin`), zpoždění, filtr a šum, WAV, přepis (`session.input_transcript.delta` / `session.output_transcript.delta`). Opravit, co se ukáže.
 2. **Strukturovaný formulář podle pavouka**, až ho uživatel dodá (datový soubor: klasifikace, otázky, příznaky, naléhavost). Dnes se jen zaznamená.
 3. **Následky podhodnocené naléhavosti** (lékař pozdě) a **změna adresy po vyslání** (přesměrování posádek).
-4. **Skóre calltakera** (čas do odeslání, správnost adresy a N, vedení hovoru) sloučené s hodnocením soudce.
+4. **Skóre calltakera** (čas do odeslání, správnost adresy a N, vedení hovoru) sloučené s hodnocením analýza hovoru.
 5. **Kolega jako živý dispečer** přes malý přenosový server; import případů do hlavní hry (`Sim.addCallCase` už existuje).
 6. Ladění typů volajících a promptů podle skutečných hovorů; telefonicky asistovaná resuscitace (volající reaguje na pokyny).
 7. Mapa a zoom na místo zásahu (dřívější nápad), až bude základ hotový.

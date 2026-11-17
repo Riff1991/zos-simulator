@@ -361,6 +361,7 @@ class SimLoop {
         c.parked = false; c.mv = null; c.state = 'onscene'; c.arrivedAt = t;
         cs.arrived = true;
         if (cs.firstArrive == null) cs.firstArrive = t;
+        if (cs.agLate && cs.agLate.length && !cs.agLateDone) this._ctAgLate(cs);
         if (cs.mu && !cs.mu.sceneReportSent) this._muFirstSceneReport(cs, c, t);
         if (cs.typ === 'sekundární' && Number.isFinite(cs.scheduledAt)) {
           cs.scheduleDelta = t - cs.scheduledAt;

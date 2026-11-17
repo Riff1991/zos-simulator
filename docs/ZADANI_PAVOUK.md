@@ -52,12 +52,12 @@ Pole: **volající** (jméno, příjmení, telefon předvyplněný z ANI, vztah 
 - Menu úvodní obrazovky (`homeModal`/nová směna v `src/ui-modal.js`): volba **Calltaker** a jeho nastavení (hovory: realistický tok / trénink s intervalem; rychlost mezi hovory; bot zapnout/vypnout; hlas, filtr, nahrávka; OpenAI klíč a modely uložit v nastavení aplikace, klíč jen v prohlížeči).
 - Z `calltaker/web/app.js` vyčlenit **hlasovou část** (WebRTC GPT-Live, telefonní filtr a šum přes hlas, nahrávka WAV, přepis) do `src/live-voice.js` (globální objekt jako `src/voice.js`) a **UI část** do nového `src/ui-calltaker.js` (přidat do `UI_PARTS` v `build.py` a do lintu). `calltaker/prompts.js`, `personas.js`, `check.js`, `spider.js` zahrnout do buildu hlavní aplikace. Samostatná stránka `calltaker/web/` zůstane jako záloha, dokud integrace nefunguje, poté ji lze přesměrovat na hlavní aplikaci.
 - Herní režim v enginu spojený s `enableLiveCalls`; uložení a obnova směny (`sim.s` čistý JSON; stav hovoru a hlasu se neukládá). Hlavní aplikace už načítá `ZOS_ADDR`, `ZOS_POI`, `ZOS_RAIL`, `ROUTER`.
-- Po hovoru **modální okno výsledku** ve stylu `modal(...)`: kontrola klasifikace, následky v simulaci, mini mapa zadaného a skutečného bodu, hodnocení soudce, stažení WAV a JSON.
+- Po hovoru **modální okno výsledku** ve stylu `modal(...)`: kontrola klasifikace, následky v simulaci, mini mapa zadaného a skutečného bodu, hodnocení analyza, stažení WAV a JSON.
 - Vzhled sjednotit s UI (CSS proměnné a třídy z `src/template.html`, bez cizího stylu), světlý/tmavý motiv, telefon i počítač, srozumitelné stavy (zvoní, v hovoru, odesláno, ukončeno), krátká nápověda k režimu.
 
 ## Co už existuje (nezačínej od nuly)
 - Engine `src/sim-calltaker.js` (zvonění, zvednutí, odeslání/aktualizace, bot, hledání adresy `_ctGeocode`, následky špatné adresy) + `tests/calltaker_test.js`.
-- Samostatná stránka `calltaker/web/` (`template.html`, `app.js`, `index.html`, `site/calltaker/index.html`): hlas, filtr, šum, WAV, formulář, přehled případů, soudce.
+- Samostatná stránka `calltaker/web/` (`template.html`, `app.js`, `index.html`, `site/calltaker/index.html`): hlas, filtr, šum, WAV, formulář, přehled případů, analýza hovoru.
 - Hlavní UI: `src/ui-*.js` (jedna IIFE skládaná v `build.py` z `UI_PARTS`), `src/template.html` (okna `w-cases`, `w-detail`, `w-rcom`, `w-map`, `w-radio`, `w-crews`), rozložení v `src/ui-layout.js`, úvodní obrazovka a nastavení v `src/ui-modal.js`, příklad speciálního režimu: MU (`muModeOn`, `applyMuMode`, `body.mu-mode`, layout `mu`).
 
 ## Pravidla (stabilní simulátor se nesmí rozbít)

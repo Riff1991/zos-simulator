@@ -52,6 +52,7 @@ const ARCH = [
   { id: 'vagni', w: 2, s: [1, 2], sp: [2, 2], po: [0, 1], popis: 'nejistý a vágní, odpovídá „no… asi… nevím“, nesděluje podstatné samo od sebe', styl: 'váhavě, s pauzami a „no…“, tišeji' },
   { id: 'plac', w: 1, s: [3, 3], sp: [1, 2], po: [1, 2], when: x => !x.pro, popis: 'v slzách, těžko se uklidňuje, odpovídá s odstupem', styl: 'přerývaně, vzlykavě, dusíš pláč' },
   { id: 'opily', w: 1, s: [1, 2], sp: [1, 2], po: [2, 3], when: x => !x.pro && x.vek >= 18 && x.vek < 75 && ['domov', 'rd', 'byt', 'ulice', 'prov'].includes(x.where), popis: 'podnapilý, zmatený, mluví nesouvisle, adresu zná jen přibližně', styl: 'rozmazaně, pomalu, zadrháváš se' },
+  { id: 'agresivni', w: 1, s: [2, 3], sp: [0, 1], po: [2, 3], when: x => !x.pro && x.vek >= 20 && x.vek < 70, popis: 'agresivní a vulgární: křičí, nadává (běžné hovorové nadávky, bez nenávistných výrazů a bez výhrůžek násilím), obviňuje calltakera, vyhrožuje stížností; informace dá, když ho calltaker klidně a pevně vede', styl: 'křikem, ostře, vulgárně, skáče do řeči' },
   { id: 'nespolupracujici', w: 1, s: [1, 3], sp: [0, 1], po: [0, 1], when: x => x.vek >= 16, popis: 'odmítá odpovídat na část otázek („to vám nepovím“, „už jedou?“), zavěsí, když se ptá moc', styl: 'odmítavě a podrážděně' },
   { id: 'hovorny', w: 2, s: [0, 2], sp: [2, 3], po: [3, 3], when: x => x.vek >= 30 && !x.pro, popis: 'povídavý, odbíhá k vedlejším věcem (co kdo dělal včera, kdo je kdo v rodině), calltaker ho musí vracet k věci', styl: 'plynule a ukecaně, bez pauz, odbočky' },
   { id: 'flegmatik', w: 1, s: [0, 0], sp: [2, 3], po: [0, 1], when: x => x.vek >= 25, popis: 'podivně klidný, bere to s nadhledem, bagatelizuje vážnost', styl: 'ploše a pomalu, bez emocí' },
@@ -59,7 +60,8 @@ const ARCH = [
   { id: 'soc', w: 2, s: [3, 3], sp: [1, 2], po: [0, 1], when: x => x.tezky, popis: 'v šoku, ztuhlý, odpovídá se zpožděním, opakuje poslední slova calltakera', styl: 'plochým, zadrhávajícím hlasem, dlouhé pauzy' },
   { id: 'svedek_nezna', w: 3, s: [1, 3], sp: [2, 3], po: [1, 2], when: x => x.venku && x.svedek, popis: 'náhodný svědek, nezná místo, popisuje okolí (cedule, kostel, pole, benzínka) a neví číslo domu ani obec jistě', styl: 'zadýchaně, rozhlíží se, odpovídá „počkejte, kouknu“' },
   { id: 'turista', w: 1, s: [1, 2], sp: [2, 3], po: [1, 2], when: x => x.venku && x.svedek && x.vek < 70, popis: 'turista, neorientuje se, čte údaje z mapy v mobilu nebo z tabule a plete pořadí názvů', styl: 'rozhlíží se, nejistě čte názvy' },
-  { id: 'cizinec', w: 1.5, s: [1, 3], sp: [2, 3], po: [1, 2], when: x => x.vek >= 14 && !x.pro, popis: 'cizinec, česky mluví lámaně a jednoduše, adresu hláskuje špatně', styl: 'lámanou češtinou s cizím přízvukem, jednoduchými slovy', cizi: true },
+  { id: 'cizinec', w: 0, excl: true, s: [1, 3], sp: [2, 3], po: [1, 2], popis: 'cizinec, česky mluví lámaně a jednoduše, adresu hláskuje špatně', styl: 'lámanou češtinou s cizím přízvukem, jednoduchými slovy', cizi: true },
+  { id: 'mensina', w: 0, excl: true, s: [1, 3], sp: [2, 3], po: [1, 3], popis: 'příslušník romské komunity, mluví českým etnolektem, často s rodinou kolem sebe', styl: 'melodicky, citově, rychleji při stresu' },
   { id: 'profesional', w: 5, s: [0, 1], sp: [3, 3], po: [0, 1], when: x => x.pro, popis: 'profesionál (zdravotník, policista, hasič, personál zařízení): stručný, používá odborné pojmy a ví přesné údaje, odpovídá na jednu otázku jednou větou', styl: 'rychle, věcně, odborně a stručně' },
   { id: 'dite', w: 6, s: [2, 3], sp: [2, 3], po: [1, 2], when: x => x.vek < 13, popis: 'dítě, bojí se, říká jen to, co vidí, neví adresu přesně a nerozumí odborným otázkám', styl: 'vysokým dětským hlasem, vystrašeně, jednoduchými slovy' },
   { id: 'teen', w: 4, s: [1, 3], sp: [2, 3], po: [1, 2], when: x => x.vek >= 13 && x.vek <= 19, popis: 'dospívající, nejistý, bojí se zodpovědnosti, mluví rychle, adresu zná jen přibližně, hned se ptá, jestli se někdo zlobí', styl: 'rychle a nejistě, občas se hlas zlomí' },
@@ -78,7 +80,12 @@ const ARCH = [
   { id: 'senior_vylekany', w: 2, s: [2, 3], sp: [2, 3], po: [0, 1], when: x => x.vek >= 65, popis: 'vylekaný senior, mluví tiše a roztřeseně, krátce, bojí se, že obtěžuje', styl: 'tiše a roztřeseně' },
   { id: 'dospely_rodic_seniora', w: 3, s: [2, 3], sp: [2, 3], po: [2, 3], when: x => x.vek >= 45 && x.vek < 70 && x.dospelyDite, popis: 'dospělé dítě volající za rodiče: unavené, ustaraně vyptávající, pracuje a volá na dálku, nezná přesný stav rodiče', styl: 'ustaraně a spěšně' },
 ];
-function pickPersona(rnd, c) {
+// úroveň náročnosti: násobky vah archetypů (začátečník méně chaosu, těžké více)
+const LV = {
+  zacatecnik: { panika: 0.3, rozcileny: 0.3, nespolupracujici: 0, agresivni: 0, cizinec: 0.2, opily: 0.3, senior_zmateny: 0.3, senior_nahluchly: 0.5, hovorny: 0.5, soc: 0.5, vecny: 2, profesional: 1.5 },
+  tezke: { panika: 1.8, cizinec: 2.5, agresivni: 3, senior_zmateny: 2, senior_nahluchly: 2, vagni: 1.5, hovorny: 1.5, opily: 2, nespolupracujici: 2, vecny: 0.5, soc: 1.5 },
+};
+function pickPersona(rnd, c, level, fo) {
   const rel = String(c.oznRel || ''), self = /pacient sám/.test(rel), vek = Number.isFinite(c.oznAge) ? c.oznAge : (self ? c.age : 40);
   const sex = c.oznSex === 'M' ? 'M' : c.oznSex === 'Ž' ? 'Ž' : (/á$/.test(String(c.ozn || '').trim().split(/\s+/).pop()) ? 'Ž' : 'M');
   const up = String(c.up || ''), where = c.where;
@@ -94,18 +101,19 @@ function pickPersona(rnd, c) {
     dusnost: /dušnost|nemůže mluvit|říci pouze|nedostatek vzduchu/i.test(up),
     neuro: /řeč|CMP|afázie|dysartrie|asymetrie obličeje|pokles koutku/i.test(up),
   };
-  const pool = ARCH.filter(a => !a.when || a.when(x));
-  const tot = pool.reduce((s, a) => s + a.w, 0); let r = rnd() * tot, ch = pool[0];
-  for (const a of pool) { r -= a.w; if (r <= 0) { ch = a; break; } }
+  const pool = ARCH.filter(a => !a.excl && (!a.when || a.when(x))), mul = LV[level] || {}, wt = a => a.w * (mul[a.id] != null ? mul[a.id] : 1);
+  const tot = pool.reduce((s, a) => s + wt(a), 0); let r = rnd() * tot, ch = pool[0];
+  for (const a of pool) { r -= wt(a); if (r <= 0) { ch = a; break; } }
+  if (fo) ch = ARCH.find(a => a.id === fo.typ) || ch;   // cizinec nebo příslušník menšiny (vybráno podle místa a jména)
   const lvl = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
   const adresa = x.venku ? lvl(1, 2) : ['opily', 'dite', 'cizinec', 'teen', 'turista', 'svedek_nezna', 'senior_zmateny'].includes(ch.id) ? lvl(1, 2) : lvl(2, 3);
   const band = bandOf(vek);
   const jaz = ch.cizi ? (() => { let t = rnd() * JAZYKY.reduce((s, j) => s + j.w, 0); for (const j of JAZYKY) { t -= j.w; if (t <= 0) return j; } return JAZYKY[0]; })() : null;
   return {
-    typ: ch.id, popis: ch.popis, styl: ch.styl, stres: lvl(ch.s[0], ch.s[1]), spoluprace: lvl(ch.sp[0], ch.sp[1]), znalostAdresy: adresa,
+    typ: ch.id, popis: ch.popis, styl: ch.styl, stres: Math.min(3, Math.max(level === 'tezke' ? 1 : 0, lvl(ch.s[0], ch.s[1]) - (level === 'zacatecnik' ? 1 : 0))), spoluprace: Math.max(level === 'zacatecnik' ? 2 : 0, lvl(ch.sp[0], ch.sp[1])), znalostAdresy: adresa,
     povidavost: lvl(ch.po[0], ch.po[1]), sluch: ch.su ? lvl(ch.su[0], ch.su[1]) : 0,
     vekVolajiciho: vek, pasmo: band.id, pasmoNazev: band.nazev, pohlaviVolajiciho: sex === 'M' ? 'muž' : 'žena',
-    hlas: HLAS[band.id][sex], slovnik: SLOVNIK[band.id], prostredi: (list => list[lvl(0, list.length - 1)])(PROSTREDI[x.venku ? 'venku' : where === 'prov' ? 'prace' : where === 'skola' ? 'skola' : ['domov', 'ordinace', 'zz'].includes(where) ? 'zarizeni' : 'doma']), jazyk: jaz ? jaz.popis : '',
+    hlas: HLAS[band.id][sex], slovnik: SLOVNIK[band.id], prostredi: (list => list[lvl(0, list.length - 1)])(PROSTREDI[x.venku ? 'venku' : where === 'prov' ? 'prace' : where === 'skola' ? 'skola' : ['domov', 'ordinace', 'zz'].includes(where) ? 'zarizeni' : 'doma']), jazyk: fo ? fo.popis : '',
   };
 }
 if (typeof module !== 'undefined') module.exports = { pickPersona, ARCH, BANDS, bandOf, HLAS, JAZYKY }; else window.CT_PERSONAS = { pickPersona, ARCH, BANDS, bandOf, HLAS, JAZYKY };

@@ -247,18 +247,18 @@
       try { c.dc.send(JSON.stringify({ type: 'session.close' })); } catch (e) { fin(); }
     });
   }
-  async function judgeCall() {
+  async function analyzujHovor() {
     const form = { adresa: $('fAdr').value.trim(), n: $('fN').value, indikace: $('fInd').value.trim(), poznamka: $('fNote').value.trim() };
     const rules = CHK.checkForm(form, cur.key);
-    $('result').hidden = false; $('result').innerHTML = '<p>Vyhodnocuji…</p>'; $('judge').disabled = true;
+    $('result').hidden = false; $('result').innerHTML = '<p>Vyhodnocuji…</p>'; $('analyza').disabled = true;
     const txt = transcript.map(t => (t.role === 'calltaker' ? 'CALLTAKER: ' : 'VOLAJÍCÍ: ') + t.text).join('\n');
     const user = 'LIST FAKTŮ:\n' + JSON.stringify(cur.view, null, 1) + '\n\nKEY:\n' + JSON.stringify(cur.key, null, 1) + '\n\nFORMULÁŘ OD CALLTAKERA:\n' + JSON.stringify(form) + '\n\nPŘEPIS:\n' + txt;
-    let soudce = null;
+    let analyza = null;
     try {
-      const out = await chat(P.judgeSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } });
-      const m = out.match(/\{[\s\S]*\}/); soudce = JSON.parse(m ? m[0] : out);
-    } catch (e) { soudce = { chyba: e.message }; }
-    render(rules, soudce, form);
+      const out = await chat(P.analyzaSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } });
+      const m = out.match(/\{[\s\S]*\}/); analyza = JSON.parse(m ? m[0] : out);
+    } catch (e) { analyza = { chyba: e.message }; }
+    render(rules, analyza, form);
   }
   const yn = v => (v === true ? '✔' : v === false ? '✘' : esc(v));
   function render(r, s, form) {
@@ -267,16 +267,16 @@
     h += '<h3>Správná odpověď</h3><p>' + esc(k.adresa) + ' · ' + esc(k.klasifikace) + ' · ' + esc(k.priznaky) + ' · pacient ' + esc(k.vek) + ' let' + (k.dynamicka ? ' · dynamická indikace' : '') + (k.lekar ? ' · lékař' : '') + '</p>';
     const sc = cur && cur.caseId && sim ? sim.caseOf(cur.caseId) : null;
     if (sc && sc.call) h += '<h3>Následky v simulaci</h3><ul><li>Adresa: zadáno „' + esc(sc.call.typed) + '“, kvalita ' + esc(sc.call.quality) + (sc.call.miss ? ', <b>posádka jela jinam o ' + sc.call.errM + ' m</b>' : ', sedí') + '</li><li>Naléhavost: zadáno N' + sc.call.typedN + ', skutečně N' + sc.call.truthN + (sc.call.typedN === sc.call.truthN ? ' ✔' : ' ✘') + '</li><li>Doplnění hovoru po odeslání: ' + sc.call.updates + 'x' + (sc.call.sec != null ? ', hovor ' + sc.call.sec + ' s' : '') + '</li></ul>';
-    if (c) h += '<h3>Soudce: calltaker</h3><ul>' + Object.keys(c).filter(x => x !== 'komentar').map(x => '<li>' + esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' ')) + ': ' + (Array.isArray(c[x]) ? esc(c[x].join('; ') || '–') : yn(c[x])) + '</li>').join('') + '</ul><p>' + esc(c.komentar || '') + '</p>';
-    if (v) h += '<h3>Soudce: realismus volajícího</h3><ul>' + Object.keys(v).filter(x => x !== 'komentar').map(x => '<li>' + esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' ')) + ': ' + (Array.isArray(v[x]) ? esc(v[x].join('; ') || '–') : yn(v[x])) + '</li>').join('') + '</ul><p>' + esc(v.komentar || '') + '</p>';
-    if (s && s.chyba) h += '<p class="bad">Soudce selhal: ' + esc(s.chyba) + '</p>';
+    if (c) h += '<h3>Analýza: calltaker</h3><ul>' + Object.keys(c).filter(x => x !== 'komentar').map(x => '<li>' + esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' ')) + ': ' + (Array.isArray(c[x]) ? esc(c[x].join('; ') || '–') : yn(c[x])) + '</li>').join('') + '</ul><p>' + esc(c.komentar || '') + '</p>';
+    if (v) h += '<h3>Analýza: realismus volajícího</h3><ul>' + Object.keys(v).filter(x => x !== 'komentar').map(x => '<li>' + esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' ')) + ': ' + (Array.isArray(v[x]) ? esc(v[x].join('; ') || '–') : yn(v[x])) + '</li>').join('') + '</ul><p>' + esc(v.komentar || '') + '</p>';
+    if (s && s.chyba) h += '<p class="bad">Analýza selhala: ' + esc(s.chyba) + '</p>';
     h += '<h3>Tvoje hodnocení realismu (1–5)</h3><p><select id="myScore"><option>–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select> <input id="myNote" placeholder="Co bylo nereálné?" style="width:60%"></p>';
     h += '<p><button id="dl">Stáhnout hovor (JSON)</button>' + (sim ? '' : ' <button id="again" class="pri">Další hovor</button>') + '</p>';
     $('result').innerHTML = h;
     if ($('again')) $('again').onclick = quick;
-    $('judge').disabled = false;
+    $('analyza').disabled = false;
     $('dl').onclick = () => {
-      const data = { seed: cur.view.seed, view: cur.view, key: cur.key, transcript, form, rules: r, soudce: s, mojeHodnoceni: { skore: $('myScore').value, poznamka: $('myNote').value }, model: model() };
+      const data = { seed: cur.view.seed, view: cur.view, key: cur.key, transcript, form, rules: r, analyza: s, mojeHodnoceni: { skore: $('myScore').value, poznamka: $('myNote').value }, model: model() };
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' })); a.download = 'hovor-' + cur.view.seed + '.json'; a.click();
     };
   }
@@ -388,7 +388,7 @@
   }
 
   $('startShift').onclick = startShift; $('pickup').onclick = pickup; $('sendCase').onclick = sendCase;
-  $('load').onclick = loadModels; $('start').onclick = quick; $('send').onclick = send; $('end').onclick = endCall; $('judge').onclick = judgeCall;
+  $('load').onclick = loadModels; $('start').onclick = quick; $('send').onclick = send; $('end').onclick = endCall; $('analyza').onclick = analyzujHovor;
   $('say').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   const k = store.get('ct_key'); if (k) { $('key').value = k; $('remember').checked = true; $('model').value = store.get('ct_model') || ''; }
 })();

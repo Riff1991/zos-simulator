@@ -139,6 +139,37 @@
     }
     return { indikace, page, result, run, klasifikace: () => Object.keys(byK), strip, group };
   }
-  const api = { create, strip, STEP_TITLE, VED_LAB };
+  // Skutečný pavouk ze souboru (JSON, formát „zos-spider/1“, viz docs/SPIDER_FORMAT.md): uzly s dlaždicemi a výsledky; stejné rozhraní jako datový pavouk.
+  function createFromTree(tree) {
+    if (!tree || tree.format !== 'zos-spider/1' || !tree.nodes || !tree.nodes[tree.start]) throw new Error('Neplatný soubor pavouka (formát zos-spider/1).');
+    const N = tree.nodes;
+    const walk = answers => {
+      let id = tree.start, node = N[id]; const path = [], pr = [];
+      for (const a of answers) {
+        if (!node || node.result) break;
+        const t = (node.tiles || []).find(x => x.id === a); if (!t) break;
+        path.push(t); if (t.priznak) pr.push(...[].concat(t.priznak));
+        id = t.next; node = N[id];
+      }
+      return { id, node, path, pr };
+    };
+    const run = answers => { const w = walk(answers); return { step: w.node && w.node.result ? 'vysledek' : 'uzel', klasif: (w.path[0] && w.path[0].label) || null, node: w.node }; };
+    function page(answers) {
+      const w = walk(answers), n = w.node;
+      if (!n) return { step: 'vysledek', title: 'Konec', crumbs: [], tiles: [], canBack: answers.length > 0 };
+      const crumbs = w.path.map(t => t.label);
+      if (n.result) return { step: 'vysledek', title: 'Výsledek', crumbs, tiles: [], canBack: answers.length > 0, canFinish: false, canSkip: false };
+      return { step: 'uzel', title: n.title || 'Vyber', crumbs, tiles: (n.tiles || []).map(t => ({ id: t.id, label: t.label, hint: t.hint || '', group: t.group || '', weight: t.weight || 1 })), canFinish: false, canSkip: false, canBack: answers.length > 0, klasif: crumbs[0] || null, auto: [] };
+    }
+    function result(answers) {
+      const w = walk(answers), r = w.node && w.node.result; if (!r) return null;
+      const n = Number(r.n) || 3, d = r.nDist || { 1: n === 1 ? 1 : 0, 2: n === 2 ? 1 : 0, 3: n === 3 ? 1 : 0 };
+      const names = [...new Set((r.priznaky || []).concat(w.pr))];
+      return { klasif: r.klasif || (w.path[0] && w.path[0].label) || '', n, nDist: { 1: d[1] || 0, 2: d[2] || 0, 3: d[3] || 0 }, confidence: r.confidence != null ? r.confidence : 1, dyn: !!r.dyn, pDyn: r.dyn ? 1 : 0, vek: null, vedomi: null, dychani: null, symptoms: names.concat(r.dyn ? ['DYNAMICKÁ INDIKACE'] : []), picked: names, added: [], apneic: false, combos: 1 };
+    }
+    const indikace = () => (N[tree.start].tiles || []).map(t => ({ klasif: t.label, count: t.weight || 1, hint: t.hint || '' }));
+    return { indikace, page, result, run, klasifikace: () => indikace().map(x => x.klasif), strip, group, vlastni: true };
+  }
+  const api = { create, createFromTree, strip, STEP_TITLE, VED_LAB };
   if (typeof module !== 'undefined') module.exports = api; else window.CT_SPIDER = api;
 })();

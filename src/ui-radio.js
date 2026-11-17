@@ -199,6 +199,7 @@ function vstricnaTone() { beep(740, 0, 0.12); beep(988, 0.15, 0.12); beep(1318, 
 const logDueAt = new Map(); let radioLastAt = 0;
 const radioFeed = [];   // rádiové hlášky s časem vyslovení (skutečný čas); zdroj živého přepisu v panelu Rádio
 function pollLog() {
+  if (typeof ctQuiet === 'function' && ctQuiet()) { for (const e of sim.s.log) if (e.id > seenLog) seenLog = e.id; return; }
   let vstricnaIncoming = false;
   for (const e of sim.s.log) {
     if (e.id <= seenLog) continue;

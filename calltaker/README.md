@@ -28,7 +28,7 @@ node calltaker/chat.js 42 --dry     # jen vypíše prompt volajícího a správn
 node calltaker/factsheet.js 42      # jen list faktů
 ```
 
-Vyžaduje Node 18+. Volitelně `CALLTAKER_MODEL` (volající) a `CALLTAKER_JUDGE_MODEL` (soudce).
+Vyžaduje Node 18+. Volitelně `CALLTAKER_MODEL` (volající) a `CALLTAKER_ANALYZA_MODEL` (analýza hovoru).
 
 Konec hovoru: napiš `/konec` nebo ho ukončí volající (`[KONEC]`). Přepis, formulář a hodnocení se uloží do `calltaker/out/`.
 
@@ -37,7 +37,7 @@ Konec hovoru: napiš `/konec` nebo ho ukončí volající (`[KONEC]`). Přepis, 
 - `factsheet.js` – z `Sim._spawn()` vyrobí `view` (co ví volající) a `key` (správná odpověď).
 - `personas.js` – 10 typů volajících a ovladače stres / spolupráce / znalost adresy.
 - `prompts.js` – prompt volajícího a soudce.
-- `llm.js` – klient API; `judge.js` – kontrola formuláře pravidly + soudce.
+- `llm.js` – klient API; `analyza.js` – kontrola formuláře pravidly + analýza hovoru.
 - `chat.js` – příkazová řádka.
 
 ## Co se má ověřit (cíl spiku)

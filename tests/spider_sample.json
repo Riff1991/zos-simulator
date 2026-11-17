@@ -1,0 +1,17 @@
+{
+  "format": "zos-spider/1",
+  "start": "uvod",
+  "nodes": {
+    "uvod": { "title": "Co se stalo?", "tiles": [
+      { "id": "dn", "label": "Dopravní nehoda", "hint": "auto, motorka, chodec", "next": "dn_vedomi" },
+      { "id": "dusnost", "label": "Dušnost", "next": "vysl_dusnost" }
+    ] },
+    "dn_vedomi": { "title": "Je pacient při vědomí?", "tiles": [
+      { "id": "ano", "label": "Při vědomí", "priznak": ["při vědomí"], "next": "vysl_dn_n2" },
+      { "id": "ne", "label": "Bezvědomí", "priznak": ["bezvědomí"], "next": "vysl_dn_n1" }
+    ] },
+    "vysl_dn_n1": { "result": { "klasif": "Dopravní nehoda", "n": 1, "dyn": false, "priznaky": ["Dopravní nehoda"], "confidence": 1 } },
+    "vysl_dn_n2": { "result": { "klasif": "Dopravní nehoda", "n": 2, "dyn": true, "priznaky": ["Dopravní nehoda"], "nDist": { "1": 0.1, "2": 0.7, "3": 0.2 } } },
+    "vysl_dusnost": { "result": { "klasif": "Dušnost", "n": 2, "dyn": true, "priznaky": ["Dušnost"] } }
+  }
+}

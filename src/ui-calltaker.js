@@ -1,17 +1,27 @@
 // UI – Režim calltaker: telefon, okno Nabírání (+ Moje případy), Pavouk, AML a výběr místa na mapě, výsledek hovoru (části se v build.py skládají do jedné IIFE).
 // Hlas je v src/live-voice.js (ZOS_LIVE), pavouk v calltaker/spider.js (CT_SPIDER), engine v src/sim-calltaker.js (za s.liveCalls).
 const CTS_KEY = 'zos_ct_settings_v1';
-const CTS_DEF = { key: '', remember: true, textModel: '', vModel: 'gpt-live-1', vF: 'marin', vM: 'cedar', vFy: 'coral', vMy: 'ash', vFs: 'sage', vMs: 'echo', voiceAge: true, mode: 'voice', filt: true, rec: true, flow: 'realistic', gapMin: 3, fast: 5, bot: true, disp: false, crewsOnMap: false };
+const CTS_DEF = { key: '', remember: true, textModel: '', vModel: 'gpt-live-1', vF: 'marin', vM: 'cedar', vFy: 'coral', vMy: 'ash', vFs: 'sage', vMs: 'echo', voiceAge: true, level: 'bezne', mode: 'voice', filt: true, rec: true, flow: 'realistic', gapMin: 3, fast: 10, bot: true, disp: false, crewsOnMap: false };
 let cts = Object.assign({}, CTS_DEF);
 try { cts = Object.assign(cts, JSON.parse(localStorage.getItem(CTS_KEY) || '{}')); } catch (_) {}
 const ctSaveSettings = () => { try { localStorage.setItem(CTS_KEY, JSON.stringify(cts.remember ? cts : Object.assign({}, cts, { key: '' }))); } catch (_) {} };
 const CT_STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 'Výjezd', onscene: 'Na místě', transport: 'Transport', handover: 'U ZZ', off: 'Nepřihlášena', activating: 'Aktivace', second: 'Sekundár', attached: 'Ve voze RZP' };
-let ct = { was: false, call: null, facts: {}, tab: 'intake', ringId: null, ringCtx: null, ringT: null, voice: null, vstatus: '', vbad: false, muted: false, transcript: [], curRole: null, curEl: null, pt: null, addrAuto: false, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, hash: '', mapHash: '', built: false, lastCases: 0, spider: null, msgs: [], busy: false, wav: null, spiderOpen: false, phoneKey: '', layersSaved: null };
+let ct = { spiderDrawn: false, was: false, call: null, facts: {}, tab: 'intake', ringId: null, ringCtx: null, ringT: null, voice: null, vstatus: '', vbad: false, muted: false, transcript: [], curRole: null, curEl: null, pt: null, addrAuto: false, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, tanr: null, dropAt: null, kindNote: '', lastRes: null, wavs: [], usage: 0, hash: '', mapHash: '', built: false, lastCases: 0, spider: null, msgs: [], busy: false, wav: null, spiderOpen: false, phoneKey: '', layersSaved: null };
 
+// calltaker bez dispečerských oken neslyší vysílačky a nevidí červené lišty, toasty ani blikání čekajících
+function ctQuiet() { return !!(ctModeOn() && !cts.disp); }
 function ctModeOn() { return !!(sim && sim.s && sim.s.liveCalls); }
-function ctSpeed(sp) { return sp > 0 && (ct.call || (sim && sim.s.calls.some(c => c.state === 'ringing'))) ? 1 : sp; }
+function ctSpeed(sp) {
+  if (ct.tanr && ct.call && !ct.voice && !ct.ended) return sp > 0 ? Math.max(sp, 10) : 0;   // TANR běží, čas se zrychlí
+  if (sp > 0 && (ct.call || (sim && sim.s.calls.some(c => c.state === 'ringing')))) return 1;
+  return sp > 0 && sim && sim.s.liveCalls && sim.s.liveCalls.mode !== 'training' ? Math.max(sp, 10) : sp;   // mezi hovory se čeká zrychleně
+}
 function ctNavItems() { return [['intake', 'Nabírání'], ['map', 'Mapa'], ['spider', 'Pavouk']].concat(cts.disp ? [['cases', 'Případy'], ['detail', 'Případ'], ['crews', 'Posádky']] : []); }
 const ctSpiderInst = () => ct.spider || (ct.spider = CT_SPIDER.create({ symptoms: ZOS_SYMPTOMS, indications: ZOS_DATA.indications }));
+// skutečný pavouk ze souboru spider.json (formát zos-spider/1) nahradí datový, pokud je vedle aplikace
+function ctSpiderLoad() {
+  fetch('spider.json', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { if (!j) return; try { ct.spider = CT_SPIDER.createFromTree(j); ct.sp = { ans: [], n: null, dyn: null }; ctSpiderRender(); toast('Načten vlastní pavouk ze souboru spider.json.', ''); } catch (e) { toast('spider.json: ' + e.message, 'warn'); } }).catch(() => {});
+}
 const ctFmtM = m => (m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m) + ' m');
 const ctMMSS = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 const ctVal = id => { const e = $(id); return e ? e.value.trim() : ''; };
@@ -24,6 +34,7 @@ function ctMenu() {
   modal(`<div class="card home ct-form ct-card" style="max-width:600px"><h2 style="margin:0">☎ Calltaker – příjem hovorů</h2>
     <p class="ct-note">Ty jsi calltaker: zazvoní telefon, zvedneš ho a vyslechneš AI volajícího (hlas OpenAI GPT-Live). Vidíš polohu z AML, vybereš místo na mapě, klasifikuješ pavoukem a odešleš případ dispečerovi (zatím bot). Osoby, adresy a telefony jsou generované.</p>
     <fieldset><legend>Hovory</legend>
+      <div>Úroveň náročnosti: ${rb('level', 'zacatecnik', 'začátečník')}${rb('level', 'bezne', 'běžné')}${rb('level', 'tezke', 'těžké (více paniky, cizinců, agresivních, ztráta spojení)')}</div>
       <div>${rb('flow', 'realistic', 'Realistický tok (zvoní asi čtvrtina hovorů)')}${rb('flow', 'training', 'Trénink (jen moje hovory)')}</div>
       <div class="ct-g" style="margin-top:6px"><label>Interval mezi hovory v tréninku (min)<input id="ctm-gapMin" type="number" min="1" max="30" value="${c.gapMin}"></label>
       <label>Rychlost mezi hovory<select id="ctm-fast">${[1, 5, 10, 20].map(v => `<option value="${v}"${Number(c.fast) === v ? ' selected' : ''}>${v}×</option>`).join('')}</select></label></div>
@@ -34,14 +45,14 @@ function ctMenu() {
       <div>${rb('mode', 'voice', 'Hlas (mikrofon + sluchátka)')}${rb('mode', 'text', 'Jen text')}</div>
       <div class="ct-g"><label>Hlasový model<input id="ctm-vModel" value="${esc(c.vModel)}"></label><label>Hlas: volající žena<input id="ctm-vF" value="${esc(c.vF)}"></label><label>Hlas: volající muž<input id="ctm-vM" value="${esc(c.vM)}"></label>
       <label>Hlas: mladá žena / dítě<input id="ctm-vFy" value="${esc(c.vFy)}"></label><label>Hlas: mladý muž / chlapec<input id="ctm-vMy" value="${esc(c.vMy)}"></label><label>Hlas: seniorka<input id="ctm-vFs" value="${esc(c.vFs)}"></label><label>Hlas: senior<input id="ctm-vMs" value="${esc(c.vMs)}"></label>
-      <label>Textový model (soudce, textový režim)<input id="ctm-textModel" list="ctm-models" value="${esc(c.textModel)}"><datalist id="ctm-models"></datalist></label></div>
+      <label>Textový model (analýza hovoru, textový režim)<input id="ctm-textModel" list="ctm-models" value="${esc(c.textModel)}"><datalist id="ctm-models"></datalist></label></div>
       <button class="btn" data-act="ct-models">Načíst modely</button> <span id="ctm-status" class="ct-note"></span>
       ${cb('voiceAge', 'volit hlas podle věku volajícího (senioři, mladí; nedostupný hlas se nahradí jiným)')}${cb('filt', 'telefonní filtr a šum linky přes hlas (volající ve sluchátkách; v nahrávce oba hlasy)')}${cb('rec', 'nahrávat hovor (WAV ke stažení po hovoru)')}</fieldset>
     <div class="foot"><button class="btn" data-act="home">‹ Zpět</button><button class="btn pri" data-act="ct-start">▶ Spustit směnu calltakera</button></div></div>`);
 }
 function ctReadMenu() {
   const g = k => document.querySelector(`input[name=ctm-${k}]:checked`);
-  for (const k of ['flow', 'mode']) if (g(k)) cts[k] = g(k).value;
+  for (const k of ['flow', 'mode', 'level']) if (g(k)) cts[k] = g(k).value;
   for (const k of ['bot', 'disp', 'crewsOnMap', 'remember', 'filt', 'rec', 'voiceAge']) if ($('ctm-' + k)) cts[k] = $('ctm-' + k).checked;
   for (const k of ['key', 'vModel', 'vF', 'vM', 'vFy', 'vMy', 'vFs', 'vMs', 'textModel']) if ($('ctm-' + k)) cts[k] = ctVal('ctm-' + k);
   cts.gapMin = Math.max(1, Number(ctVal('ctm-gapMin')) || 3); cts.fast = Number(ctVal('ctm-fast')) || 5;
@@ -59,14 +70,14 @@ function ctStart() {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { /* zvuk není nutný */ }
   const seed = (Math.random() * 1e9) | 0, now = new Date();
   sim = new Sim({ date: now.toISOString().slice(0, 10), weather: null, mode: 'free', startHour: now.getHours(), seed, radio: 'auto', secondaryEnabled: false, muEnabled: false });
-  sim.enableLiveCalls({ mode: cts.flow, gapSec: cts.gapMin * 60, bot: cts.bot });
-  applyVoice(); afterLoad(); speed = Number(cts.fast); savedSpeed = speed; ctReset(); view = 'intake';
+  sim.enableLiveCalls({ mode: cts.flow, gapSec: cts.gapMin * 60, bot: cts.bot, level: cts.level });
+  applyVoice(); afterLoad(); ctSpiderLoad(); speed = Number(cts.fast); savedSpeed = speed; ctReset(); view = 'intake';
   closeModal(); toast('Směna calltakera začala. Čekej na zazvonění telefonu.', '');
 }
 function ctReset() {
   if (ct.voice) { try { ct.voice.stop(); } catch (e) { /* ignore */ } }
   ctStopRing();
-  ct = Object.assign(ct, { was: false, call: null, facts: {}, tab: 'intake', ringId: null, voice: null, transcript: [], pt: null, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, hash: '', mapHash: '', built: false, phoneKey: '', msgs: [], wav: null });
+  ct = Object.assign(ct, { tanr: null, dropAt: null, kindNote: '', lastRes: null, wavs: [], usage: 0, was: false, call: null, facts: {}, tab: 'intake', ringId: null, voice: null, transcript: [], pt: null, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, hash: '', mapHash: '', built: false, phoneKey: '', msgs: [], wav: null });
   const b = $('ct-body'); if (b) b.innerHTML = '';
   document.body.classList.add('ct-spider-off');
 }
@@ -108,9 +119,9 @@ function ctStopRing() { if (ct.ringT) { clearInterval(ct.ringT); ct.ringT = null
 function ctBuild() {
   if (ct.built) return; ct.built = true;
   const f = (id, l, ph, extra) => `<label>${l}<input id="${id}" autocomplete="off" placeholder="${ph || ''}"${extra || ''}></label>`;
+  const ck = (id, l) => `<label style="flex-direction:row;display:flex;gap:5px;align-items:center;color:var(--ink);font-size:12.5px"><input type="checkbox" id="${id}" style="width:auto"> ${l}</label>`;
   $('ct-tabs').innerHTML = '<button data-act="ct-tab" data-t="intake" class="on">Nabírání</button><button data-act="ct-tab" data-t="mine">Moje případy</button>';
-  const kl = [...new Set(D.indications.map(x => x.klasif))].sort();
-  $('ct-body').innerHTML = `<div id="ct-pane-intake" class="ct-form"><div id="ct-idle" class="ct-note" style="padding:10px">Čekáš na hovor. Telefon zazvoní sám; čas mezi hovory běží zrychleně.</div>
+  $('ct-body').innerHTML = `<div id="ct-pane-intake" class="ct-form"><div id="ct-idle" class="ct-note" style="padding:10px">Čekáš na hovor. Telefon zazvoní sám; čas mezi hovory běží zrychleně.<br><small>Zkratky: Alt+Z zvednout · Alt+1 N1 okamžitě · Alt+O odeslat · Alt+P pavouk · Alt+U ukončit · Alt+D dokončit · Alt+M ztlumit</small></div>
     <div id="ct-formwrap" hidden>
     <div id="ct-aml"></div>
     <fieldset><legend>Volající</legend><div class="ct-g">${f('ctf-vJmeno', 'Jméno')}${f('ctf-vPrijmeni', 'Příjmení')}${f('ctf-vTel', 'Telefon (ANI)')}${f('ctf-vVztah', 'Vztah k pacientovi', 'např. manžel, soused')}</div></fieldset>
@@ -121,25 +132,35 @@ function ctBuild() {
       <div id="ct-ptinfo" class="ct-note" style="margin-top:4px">Poloha zatím nezadána.</div></fieldset>
     <fieldset><legend>Událost</legend><label style="display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px">Popis události<textarea id="ctf-popis" rows="2" placeholder="Co se stalo (vlastními slovy volajícího)"></textarea></label>
       <label style="display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px;margin-top:6px">Poznámka pro dispečera<textarea id="ctf-poznamka" rows="2"></textarea></label></fieldset>
+    <fieldset><legend>Okolnosti a počet osob</legend>
+      <div class="ct-g">${f('ctf-pocet', 'Počet postižených osob', '1', ' type="number" min="1" max="40"')}<label>Sloučit s případem (jiný volající k téže události)<select id="ctf-sluc"><option value="">– nový případ –</option></select></label></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">${ck('ctf-agPcr', 'Přivolat PČR')}${ck('ctf-agHzs', 'Přivolat HZS')}${ck('ctf-nebezpeci', 'Nebezpečí na místě (zbraň, agresivní osoba, plyn)')}</div></fieldset>
     <fieldset><legend>Klasifikace z pavouka</legend><div id="ct-cls" class="ct-cls"></div><div style="margin-top:6px"><button class="btn" data-act="ct-spider-open" style="margin:0">Otevřít pavouka</button></div></fieldset>
-    <div class="ct-send"><button class="btn pri" id="ct-sendbtn" data-act="ct-send">Odeslat dispečerovi</button><span id="ct-sendinfo" class="ct-note"></span></div>
+    <div class="ct-send"><button class="btn red" id="ct-n1btn" data-act="ct-n1" title="Alt+1: adresa a N1, případ jde hned dispečerovi, zbytek doplníš">N1 – okamžitě</button><button class="btn pri" id="ct-sendbtn" data-act="ct-send">Odeslat dispečerovi</button><span id="ct-sendinfo" class="ct-note"></span></div>
     <details id="ct-trwrap"><summary class="ct-note">Přepis hovoru</summary><div id="ct-tr" class="ct-tr"></div><div id="ct-textrow" style="display:none;gap:6px"><input id="ct-say" placeholder="Co řekneš volajícímu…"><button class="btn" data-act="ct-say" style="margin:0">Poslat</button></div></details>
     </div></div><div id="ct-pane-mine" hidden style="padding:6px 8px"></div>`;
-  void kl;
 }
 function ctPhoneHtml() {
   const s = sim.s, rg = s.calls.find(c => c.state === 'ringing'), call = ct.call;
   const btnMenu = '<button class="btn" data-act="ct-home" title="Nabídka" style="margin:0 0 0 auto">☰</button>';
+  if (call && rg && rg.id === call.id) { const f = ct.facts[rg.id]; return { cls: 'ring', html: `<div class="ph-st">☎ VOLAJÍCÍ ZAVOLAL ZPĚT <span class="dy">${Math.max(0, Math.round(s.liveCalls.ring - (s.t - rg.ringAt)))} s</span><small>${f ? esc(ctPhoneShown(f)) : ''}</small></div><button class="btn pri" data-act="ct-pickup">☎ Zvednout</button>${!call && ct.lastRes ? '<button class="btn" data-act="ct-rozbor">Rozbor hovoru</button>' : ''}${btnMenu}` }; }
+  if (call && call.state === 'dropped') return { cls: 'call', html: `<div class="ph-st">Spojení přerušeno<small>čekej, volající se pokusí zavolat zpět</small></div>${btnMenu}` };
   if (call && ct.ended) {
-    return { cls: 'call', html: `<div class="ph-st">Hovor ukončen<small>Dovyplň formulář a odešli nebo aktualizuj případ, pak klikni Dokončit${call.caseId ? '' : ' (případ zatím není odeslán!)'}</small></div><button class="btn pri" data-act="ct-finish">Dokončit a vyhodnotit</button>${btnMenu}` };
+    return { cls: 'call', html: `<div class="ph-st">Hovor ukončen<small>Dovyplň formulář a odešli nebo aktualizuj případ, pak klikni Dokončit${call.caseId ? '' : ' (případ zatím není odeslán!)'}</small></div><button class="btn pri" data-act="ct-finish">Dokončit hovor</button>${btnMenu}` };
+  }
+  if (call && ct.tanr) {
+    const c = call.caseId ? sim.caseOf(call.caseId) : null, etas = c ? (c.crews || []).map(id => sim.crewOf(id)).filter(k => k && k.until != null && ['call', 'enroute'].includes(k.state)).map(k => k.until - s.t) : [];
+    const eta = etas.length ? Math.max(0, Math.round(Math.min(...etas) / 60)) + ' min' : '–', min = Math.round((s.t - ct.tanr.since) / 60), nx = Math.max(0, Math.round(ct.tanr.nextCheck - s.t));
+    return { cls: 'call', html: `<div class="ph-st">TANR běží <span class="dy">${min} min</span><small>posádka dojede za ~<span class="dy">${eta}</span> · ${ct.voice ? 'kontrolní hovor' : 'další kontrola za <span class="dy">' + nx + ' s</span>'}${ct.vstatus ? ' · ' + esc(ct.vstatus) : ''}</small></div>${ct.voice ? '<button class="btn" data-act="ct-tanr-endcheck">Ukončit kontrolu</button>' : '<button class="btn" data-act="ct-tanr-check">Kontrola teď</button>'}<button class="btn red" data-act="ct-hangup">Ukončit hovor</button>${btnMenu}` };
   }
   if (call) {
     const v = ct.facts[call.id] ? ct.facts[call.id].view.volajici : null, el = s.t - call.pickedAt, vs = ct.vstatus ? ` · <span style="color:${ct.vbad ? '#ff9b94' : '#9fd9b0'}">${esc(ct.vstatus)}</span>` : '';
-    return { cls: 'call', html: `<div class="ph-st">V hovoru ${ctMMSS(el)}<small>${v ? esc(ctPhoneShown()) + ' · ' + esc(v.linka) : ''}${vs}</small></div>${ct.voice ? `<button class="btn" data-act="ct-mute">${ct.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>` : ''}<button class="btn red" data-act="ct-hangup">Ukončit hovor</button>${btnMenu}` };
+    const tanr = call.caseId && (call.kind || 'vyjezd') === 'vyjezd' ? '<button class="btn" data-act="ct-tanr" title="Po pokynech zavřeš hlas (bez nákladů), čas se zrychlí a v pevných bodech jsou kontrolní hovory">Předat do TANR</button>' : '';
+    return { cls: 'call', html: `<div class="ph-st">V hovoru <span class="dy">${ctMMSS(el)}</span><small>${v ? esc(ctPhoneShown()) + ' · ' + esc(v.linka) : ''}${vs}</small></div>${ct.voice ? `<button class="btn" data-act="ct-mute">${ct.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>` : ''}${tanr}<button class="btn red" data-act="ct-hangup">Ukončit hovor</button>${btnMenu}` };
   }
-  if (rg) { const f = ct.facts[rg.id]; return { cls: 'ring', html: `<div class="ph-st">☎ ZVONÍ ${Math.max(0, Math.round(sim.s.liveCalls.ring - (s.t - rg.ringAt)))} s<small>${f ? esc(ctPhoneShown(f)) + ' · ' + esc(f.view.volajici.linka) : ''}</small></div><button class="btn pri" data-act="ct-pickup">☎ Zvednout</button>${btnMenu}` }; }
-  const missed = s.calls.filter(c => c.state === 'missed').length;
-  return { cls: '', html: `<div class="ph-st">Čekáš na hovor<small>${missed ? 'zmeškáno: ' + missed + ' · ' : ''}${sim.clock()} · ${s.liveCalls.mode === 'training' ? 'trénink' : 'realistický tok'}${s.liveCalls.bot ? '' : ' · bot dispečer vypnut'}</small></div><button class="btn" data-act="ct-disp-toggle">${cts.disp ? 'Skrýt dispečerská okna' : 'Dispečerská okna'}</button>${btnMenu}` };
+  if (rg) { const f = ct.facts[rg.id]; return { cls: 'ring', html: `<div class="ph-st">☎ ZVONÍ <span class="dy">${Math.max(0, Math.round(s.liveCalls.ring - (s.t - rg.ringAt)))} s</span><small>${f ? esc(ctPhoneShown(f)) + ' · ' + esc(f.view.volajici.linka) : ''}</small></div><button class="btn pri" data-act="ct-pickup">☎ Zvednout</button>${!call && ct.lastRes ? '<button class="btn" data-act="ct-rozbor">Rozbor hovoru</button>' : ''}${btnMenu}` }; }
+  const missed = s.calls.filter(c => c.state === 'missed').length, lv = { zacatecnik: 'začátečník', bezne: 'běžné', tezke: 'těžké' }[s.liveCalls.level] || '';
+  return { cls: '', html: `<div class="ph-st">Čekáš na hovor<small>${missed ? 'zmeškáno: ' + missed + ' · ' : ''}<span class="dy">${sim.clock()}</span> · ${s.liveCalls.mode === 'training' ? 'trénink' : 'realistický tok'} · ${lv}${s.liveCalls.bot ? '' : ' · bot dispečer vypnut'}</small></div>${ct.lastRes ? '<button class="btn" data-act="ct-rozbor">Rozbor hovoru</button>' : ''}<button class="btn" data-act="ct-spider-open">Pavouk</button><button class="btn" data-act="ct-prehled">Přehled směny</button><button class="btn" data-act="ct-disp-toggle">${cts.disp ? 'Skrýt dispečerská okna' : 'Dispečerská okna'}</button>${btnMenu}` };
 }
 function ctPhoneShown(f) { f = f || ct.facts[ct.call.id]; return f.aml && f.aml.typ === 'skryté' ? 'číslo skryto' : f.view.volajici.telefon; }
 
@@ -147,14 +168,22 @@ function ctPhoneShown(f) { f = f || ct.facts[ct.call.id]; return f.aml && f.aml.
 function ctRender() {
   if (!ctModeOn()) return;
   ctBuild();
+  if (!ct.spiderDrawn) { ct.spiderDrawn = true; ctSpiderRender(); }   // pavouk je použitelný i před prvním hovorem
   const s = sim.s, rg = s.calls.find(c => c.state === 'ringing');
-  if (rg && ct.ringId !== rg.id) { ct.ringId = rg.id; ct.facts[rg.id] = sim.callFacts(rg.seed); ctStartRing(); toast('☎ Zvoní telefon', 'warn'); }
+  if (rg && ct.ringId !== rg.id) { ct.ringId = rg.id; ct.facts[rg.id] = sim.callFacts(rg.seed, rg); ctStartRing(); toast(rg.cb ? '☎ Volající zavolal zpět' : '☎ Zvoní telefon', 'warn'); }
   else if (!rg && ct.ringId) { ctStopRing(); ct.ringId = null; }
-  const ph = ctPhoneHtml(), pe = $('ct-phone'), key = ph.cls + ph.html;
-  if (key !== ct.phoneKey) { ct.phoneKey = key; pe.className = ph.cls; pe.innerHTML = ph.html; }
+  const ph = ctPhoneHtml(), pe = $('ct-phone'), DY = /<span class="dy">([^<]*)<\/span>/g, key = ph.cls + ph.html.replace(DY, '<span class="dy"></span>');
+  if (key !== ct.phoneKey) { ct.phoneKey = key; pe.className = ph.cls; pe.innerHTML = ph.html; }   // celá lišta se překreslí jen při změně stavu
+  else { const vals = [...ph.html.matchAll(DY)].map(m => m[1]), els = pe.querySelectorAll('.dy'); els.forEach((e, i) => { if (vals[i] != null && e.innerHTML !== vals[i]) e.innerHTML = vals[i]; }); }   // běžící čas jen přepíše text, tlačítka zůstanou na místě
   const inCall = !!ct.call;
   $('ct-idle').hidden = inCall; $('ct-formwrap').hidden = !inCall;
-  if (inCall) ctAmlTick();
+  if (inCall) {
+    ctAmlTick();
+    if (!ct.ended && ct.call.state === 'taken') {
+      if (ct.dropAt != null && s.t >= ct.dropAt) ctDrop();
+      if (ct.tanr) ctTanrTick();
+    }
+  }
   ctMapSync();
   if (ct.tab === 'mine' && performance.now() - ct.lastCases > 900) { ct.lastCases = performance.now(); ctCasesHtml(); }
 }
@@ -187,10 +216,11 @@ function ctAmlTick() {
     toast(p.zdroj === 'buňka' ? 'Poloha z buňky: ±' + ctFmtM(p.radiusM) : 'Přišlo zpřesnění: ' + ctAmlLabel(p), '');
     ctFitCircle(p);
   }
-  const last = ph[ph.length - 1];
-  const html = f.aml.typ !== 'mobil' ? `<div class="ct-aml">${f.aml.typ === 'pevná' ? 'Pevná linka – poloha z telefonu není k dispozici (zjisti adresu od volajícího).' : 'Číslo je skryto – poloha z telefonu není k dispozici.'}</div>`
+  const last = ph[ph.length - 1], ab = f.aml.abonent;
+  const note = ct.kindNote ? `<div class="ct-aml">${esc(ct.kindNote)}</div>` : '';
+  const html = note + (f.aml.typ !== 'mobil' ? `<div class="ct-aml">${f.aml.typ === 'pevná' ? 'Pevná linka – poloha z telefonu není k dispozici (zjisti adresu od volajícího).' + (ab ? `<br>Adresa účastníka: <b>${esc(ab.adresa)}</b> <button class="btn" data-act="ct-use-abonent" style="margin:4px 0 0">Použít adresu účastníka</button> <span class="ct-note">Účastník nemusí být na místě události.</span>` : '') : 'Číslo je skryto – poloha z telefonu není k dispozici.'}</div>`
     : !last ? '<div class="ct-aml">Zjišťuji polohu telefonu…</div>'
-      : `<div class="ct-aml${last.zdroj !== 'buňka' && last.radiusM <= 150 ? ' g' : ''}"><b>${esc(ctAmlLabel(last))}</b>${ph.length > 1 ? ' · zpřesněno (starší kruh šedě)' : last.zdroj === 'buňka' && f.aml.phases.length > 1 ? ' · čeká se na zpřesnění z telefonu' : ' · zpřesnění z telefonu nedorazilo'}<br><button class="btn" data-act="ct-use-aml" style="margin:4px 0 0">Použít střed AML</button> <span class="ct-note">Poloha z telefonu může být nepřesná – ověř ji s volajícím.</span></div>`;
+      : `<div class="ct-aml${last.zdroj !== 'buňka' && last.radiusM <= 150 ? ' g' : ''}"><b>${esc(ctAmlLabel(last))}</b>${ph.length > 1 ? ' · zpřesněno (starší kruh šedě)' : last.zdroj === 'buňka' && f.aml.phases.length > 1 ? ' · čeká se na zpřesnění z telefonu' : ' · zpřesnění z telefonu nedorazilo'}<br><button class="btn" data-act="ct-use-aml" style="margin:4px 0 0">Použít střed AML</button> <span class="ct-note">Poloha z telefonu může být nepřesná – ověř ji s volajícím.</span></div>`);
   if (box.dataset.h !== html) { box.dataset.h = html; box.innerHTML = html; }
 }
 function ctCircle(lat, lon, rM, n) {
@@ -272,23 +302,53 @@ function ctFind() {
 
 // ---------- hovor: zvednutí, hlas, ukončení ----------
 function ctFormReset(f) {
-  for (const id of ['vJmeno', 'vPrijmeni', 'vTel', 'vVztah', 'pJmeno', 'pPrijmeni', 'pVek', 'adresa', 'cast', 'upresneni', 'popis', 'poznamka']) ctSet('ctf-' + id, '');
+  for (const id of ['vJmeno', 'vPrijmeni', 'vTel', 'vVztah', 'pJmeno', 'pPrijmeni', 'pVek', 'adresa', 'cast', 'upresneni', 'popis', 'poznamka', 'pocet']) ctSet('ctf-' + id, '');
   ctSet('ctf-pPohlavi', ''); ctSet('ctf-vTel', f.aml.typ === 'skryté' ? '' : f.view.volajici.telefon);
-  ct.pt = null; ct.cls = null; ct.sp = { ans: [], n: null, dyn: null }; ct.addrAuto = false; ct.ptInfo = ''; ct.amlN = 0; ct.mapHash = '';
+  for (const id of ['agPcr', 'agHzs', 'nebezpeci']) { const e = $('ctf-' + id); if (e) e.checked = false; }
+  const sel = $('ctf-sluc'); if (sel) sel.innerHTML = '<option value="">– nový případ –</option>' + sim.s.cases.filter(c => c.call && c.status !== 'closed').map(c => `<option value="${c.id}">${esc(c.num)} · ${esc(c.addr)} · ${esc(c.klasif)}</option>`).join('');
+  ct.pt = null; ct.cls = null; ct.sp = { ans: [], n: null, dyn: null }; ct.addrAuto = false; ct.ptInfo = ''; ct.amlN = 0; ct.mapHash = ''; ct.kindNote = ''; ct.tanr = null; ct.dropAt = null;
   $('ct-sendbtn').textContent = 'Odeslat dispečerovi'; $('ct-sendinfo').textContent = ''; $('ct-tr').innerHTML = ''; ct.transcript = []; ct.curRole = null;
   ctPtInfo(); ctClsHtml(); ctSpiderRender();
 }
+// naplní formulář z dříve odeslaného případu (opakovaný hovor)
+function ctFillForm(fm) {
+  const m = { vJmeno: 'vJmeno', vPrijmeni: 'vPrijmeni', vTelefon: 'vTel', vVztah: 'vVztah', pJmeno: 'pJmeno', pPrijmeni: 'pPrijmeni', pPohlavi: 'pPohlavi', adresa: 'adresa', cast: 'cast', upresneni: 'upresneni', popis: 'popis', poznamka: 'poznamka', pocet: 'pocet' };
+  for (const k of Object.keys(m)) if (fm[k] != null && fm[k] !== '') ctSet('ctf-' + m[k], fm[k]);
+  if (fm.pVek !== '' && fm.pVek != null) ctSet('ctf-pVek', fm.pVek); else if (fm.pRok) ctSet('ctf-pVek', fm.pRok);
+  for (const id of ['agPcr', 'agHzs', 'nebezpeci']) { const e = $('ctf-' + id); if (e) e.checked = !!fm[id]; }
+  if (fm.bod) ct.pt = { lat: fm.bod.lat, lon: fm.bod.lon, src: fm.zdroj || 'mapa' };
+  if (fm.klasif) ct.cls = { klasif: fm.klasif, n: Number(fm.n) || 2, dyn: !!fm.dyn, priznaky: (fm.priznaky || []).slice() };
+  ctPtInfo(); ctClsHtml();
+}
 function ctPickup() {
-  const rg = sim.s.calls.find(c => c.state === 'ringing'); if (!rg || ct.call) return;
-  const facts = ct.facts[rg.id] || sim.callFacts(rg.seed);
-  if (!sim.pickupCall(rg.id)) return;
-  ctStopRing(); ct.ringId = null; ct.facts[rg.id] = facts; ct.call = rg; ct.ended = false; ct.vstatus = ''; ct.vbad = false; ct.muted = false; ct.wav = null; ct.msgs = [];
-  ctBuild(); ctFormReset(facts); ct.tab = 'intake'; ctTab('intake');
+  const rg = sim.s.calls.find(c => c.state === 'ringing'); if (!rg) return;
+  const resume = !!(ct.call && ct.call.id === rg.id);
+  if (ct.call && !resume) return;
+  const facts = sim.pickupCall(rg.id); if (!facts) return;
+  ctStopRing(); ct.ringId = null; ct.facts[rg.id] = facts; ct.call = rg; ct.ended = false; ct.vstatus = ''; ct.vbad = false; ct.muted = false;
+  if (!resume) {
+    ct.wavs = []; ct.msgs = []; ct.tanr = null; ct.dropAt = null;
+    ctBuild(); ctFormReset(facts); ct.tab = 'intake'; ctTab('intake');
+    if (rg.kind === 'opak' && rg.caseId) {
+      const c0 = sim.caseOf(rg.caseId);
+      if (c0 && c0.call && c0.call.form) { ctFillForm(c0.call.form); $('ct-sendbtn').textContent = 'Aktualizovat případ'; ct.kindNote = `Opakovaný hovor: telefon už je veden u případu ${c0.num}.`; }
+    }
+    if (sim.s.liveCalls.level === 'tezke' && rg.kind !== 'bez' && Math.random() < 0.35) ct.dropAt = sim.s.t + 45 + Math.random() * 75;
+  }
   document.body.classList.remove('ct-spider-off'); layoutApply(true);
   if (view !== 'intake' && !layoutDesktop()) view = 'intake';
-  ctVoiceStart(facts);
+  ctVoiceStart(facts, resume ? { resume: true } : {});
   render();
 }
+function ctDrop() {
+  const call = ct.call; if (!call || call.state !== 'taken') return;
+  ct.dropAt = null;
+  const v = ct.voice; ct.voice = null; if (v) { v.close().then(r => { if (r && r.wav) (ct.wavs = ct.wavs || []).push(r.wav); }).catch(() => {}); }
+  sim.dropCall(call.id); ct.vstatus = ''; ct.phoneKey = '';
+  toast('Spojení se přerušilo. Volající se pokusí zavolat zpět.', 'warn');
+}
+// shrnutí dosavadního hovoru pro návrat po přerušení a pro kontrolní hovory
+function ctTrSummary() { return ct.transcript.slice(-14).map(t => (t.role === 'calltaker' ? 'Calltaker: ' : 'Ty: ') + t.text).join('\n').slice(-1800) || '(zatím nic)'; }
 function ctVoiceChain(facts) {
   const v = facts.view, f = facts.view.volajici.pohlavi ? facts.view.volajici.pohlavi === 'žena' : ctFemale(v), band = (v.persona && v.persona.pasmo) || 'stredni';
   const base = f ? cts.vF : cts.vM;
@@ -297,19 +357,53 @@ function ctVoiceChain(facts) {
   return [aged, base];
 }
 const ctFemale = v => /á$/.test(String(v.volajici.jmeno).trim().split(/\s+/).pop());
-async function ctVoiceStart(facts) {
+async function ctVoiceStart(facts, opts) {
+  opts = opts || {};
   const P = window.CT_PROMPTS, v = facts.view, tr = $('ct-textrow');
-  tr.style.display = cts.mode === 'text' ? 'flex' : 'none'; $('ct-trwrap').open = cts.mode === 'text';
+  tr.style.display = cts.mode === 'text' ? 'flex' : 'none'; if (!opts.resume && !opts.tanr) $('ct-trwrap').open = cts.mode === 'text';
   if (!cts.key) { ct.vstatus = 'bez klíče OpenAI – hovor bez hlasu (nastavení v menu Calltaker)'; ct.vbad = true; return; }
-  if (cts.mode === 'text') { ct.vstatus = 'textový režim'; ctTrAdd('sys', 'Hovor spojen. Pozdrav a nabírej (píšeš do pole níže).'); return; }
+  if (cts.mode === 'text') { ct.vstatus = 'textový režim'; if (!opts.tanr) ctTrAdd('sys', opts.resume ? 'Spojení obnoveno.' : 'Hovor spojen. Pozdrav a nabírej (píšeš do pole níže).'); return; }
+  let instr = P.callerSystem(v, true);
+  if (opts.resume) instr += '\n\nPOKRAČOVÁNÍ HOVORU\n- Spojení se přerušilo a voláš zpět. Dosavadní hovor:\n' + ctTrSummary() + '\n- Navaž na to, nezačínej od začátku.';
+  if (opts.tanr) {
+    const st = ['pořád dělá masáž a bolí ho ruce', 'pacient pořád nereaguje a nedýchá', 'asi se mu zlepšila barva, ale pořád nereaguje', 'pochybuješ, jestli masáž děláš dobře', 'jsi unavený a ptáš se, jestli můžeš na chvilku přestat', 'něco se změnilo: pacient teď slabě dýchá'][Math.floor(Math.random() * 6)];
+    instr += `\n\nKONTROLNÍ HOVOR (TANR)\n- Od posledních pokynů uplynulo ${opts.tanr.min} minut a calltaker ti volá zpět zkontrolovat stav. Aktuální stav: ${st}. Stručně to řekneš a ptáš se, kdy už dojedou.\n- Dosavadní hovor:\n${ctTrSummary()}`;
+  }
   const call = ct.call, h = await ZOS_LIVE.connect({
-    key: cts.key, model: cts.vModel, voices: ctVoiceChain(facts), instructions: P.callerSystem(v, true), filter: cts.filt, record: cts.rec,
+    key: cts.key, model: cts.vModel, voices: ctVoiceChain(facts), instructions: instr, filter: cts.filt, record: cts.rec,
     onStatus: (t, bad) => { if (ct.call === call) { ct.vstatus = t; ct.vbad = !!bad; } },
     onReady: () => { if (ct.call === call) { ct.vstatus = '● spojeno'; ct.vbad = false; } },
     onTranscript: (role, d) => { if (ct.call === call) ctTrDelta(role, d); },
     onLost: () => { if (ct.call === call) { ct.vstatus = 'spojení se přerušilo'; ct.vbad = true; } },
   });
-  if (ct.call === call) ct.voice = h; else if (h) h.stop();
+  if (ct.call === call && !ct.ended) ct.voice = h; else if (h) h.stop();
+}
+// ---------- TANR: předání s kontrolními hovory ----------
+function ctTanrStart() {
+  const call = ct.call; if (!call || !call.caseId || ct.tanr || ct.ended) return;
+  const v = ct.voice; ct.voice = null;
+  if (v) v.close().then(r => { if (r && r.wav) (ct.wavs = ct.wavs || []).push(r.wav); }).catch(() => {});
+  ct.tanr = { since: sim.s.t, nextCheck: sim.s.t + 180, checkUntil: 0 }; ct.vstatus = 'hlas zavřen'; ct.phoneKey = '';
+  ctTrAdd('sys', 'TANR: volající pokračuje podle pokynů, hlas je zavřený.');
+  toast('TANR běží, čas se zrychlí. Kontrola za 3 minuty hry.', '');
+}
+function ctTanrCheck() {
+  const call = ct.call; if (!call || !ct.tanr || ct.voice || ct.ended) return;
+  const facts = ct.facts[call.id], min = Math.max(1, Math.round((sim.s.t - ct.tanr.since) / 60));
+  ct.tanr.nextCheck = sim.s.t + 180; ct.tanr.checkUntil = performance.now() + 50000; ct.vstatus = 'kontrolní hovor…'; ct.phoneKey = '';
+  ctTrAdd('sys', `Kontrolní hovor po ${min} min.`);
+  ctVoiceStart(facts, { tanr: { min } });
+  if (cts.mode === 'text' || !cts.key) ct.tanr.checkUntil = 0;
+}
+function ctTanrEndCheck() {
+  const v = ct.voice; ct.voice = null; ct.vstatus = 'hlas zavřen'; ct.phoneKey = '';
+  if (v) v.close().then(r => { if (r && r.wav) (ct.wavs = ct.wavs || []).push(r.wav); }).catch(() => {});
+}
+function ctTanrTick() {
+  const call = ct.call, c = call.caseId ? sim.caseOf(call.caseId) : null;
+  if (c && (c.arrived || c.status === 'closed')) { ct.tanr = null; toast('Posádka dorazila k pacientovi, hovor předán.', ''); ctHangup(); return; }
+  if (ct.voice && ct.tanr.checkUntil && performance.now() > ct.tanr.checkUntil) ctTanrEndCheck();
+  if (!ct.voice && sim.s.t >= ct.tanr.nextCheck && !ct.tanr.busy) ctTanrCheck();
 }
 function ctTrAdd(who, text) { const d = document.createElement('div'); d.className = who; d.textContent = text; $('ct-tr').appendChild(d); d.scrollIntoView({ block: 'end' }); return d; }
 function ctTrDelta(role, text) {
@@ -331,46 +425,76 @@ async function ctSay() {
 function ctMute() { if (ct.voice && !ct.ended) { ct.muted = !ct.voice.mute(); ct.phoneKey = ''; } }
 async function ctHangup() {
   const call = ct.call; if (!call || ct.ended) return;
-  const voice = ct.voice; ct.voice = null; ct.ended = true; ct.phoneKey = '';
-  sim.endCall(call.id); ct.rec = { usage: 0, wav: null };
+  const voice = ct.voice; ct.voice = null; ct.ended = true; ct.tanr = null; ct.dropAt = null; ct.phoneKey = '';
+  if (call.state === 'dropped') { sim.s.calls.forEach(x => { if (x.id === call.id) { x.state = 'taken'; } }); }
+  sim.endCall(call.id);
   ct.vstatus = ''; $('ct-textrow').style.display = 'none';
   $('ct-sendinfo').textContent = call.caseId ? 'Hovor ukončen. Případ můžeš ještě doplnit a znovu odeslat (Aktualizovat případ).' : 'Hovor ukončen. Případ ještě odešli dispečerovi.';
-  if (voice) { try { ct.rec = await voice.close(); } catch (e) { /* ignore */ } }
+  if (voice) { try { const r = await voice.close(); ct.usage = (ct.usage || 0) + (r.usage || 0); if (r.wav) (ct.wavs = ct.wavs || []).push(r.wav); } catch (e) { /* ignore */ } }
   render();
 }
 function ctFinish() {
   const call = ct.call; if (!call) return;
-  const facts = ct.facts[call.id], form = ctReadForm(), transcript = ct.transcript.slice(), rec = ct.rec || { usage: 0, wav: null };
+  const facts = ct.facts[call.id], form = ctReadForm(), transcript = ct.transcript.slice();
   if (!ct.ended) { ct.ended = true; sim.endCall(call.id); }
   const hc = sim.finishCall(call.id);
-  ct.call = null; ct.ended = false; ct.phoneKey = ''; ct.rec = null;
+  const rec = { call: hc || call, facts, form, transcript, wavs: (ct.wavs || []).slice(), usage: ct.usage || 0, cls: ct.cls };
+  ct.call = null; ct.ended = false; ct.phoneKey = ''; ct.wavs = []; ct.usage = 0; ct.tanr = null;
+  ct.lastRes = rec; window._ctRes = rec;
   document.body.classList.add('ct-spider-off'); layoutApply(true);
-  ctResultModal({ call: hc || call, facts, form, transcript, wav: rec.wav, usage: rec.usage, cls: ct.cls });
+  toast('Hovor dokončen. Rozbor najdeš v telefonním pruhu (tlačítko Rozbor hovoru).', '');
   render();
 }
 
 // ---------- formulář ↔ engine ----------
 function ctReadForm() {
-  const p = ct.pt, cls = ct.cls, v = ctVal('ctf-pVek'), num = Number(v);
-  const zdroj = p ? p.src : ctVal('ctf-adresa') ? 'adresa' : '';
+  const p = ct.pt, cls = ct.cls, v = ctVal('ctf-pVek'), num = Number(v), ch = id => { const e = $(id); return !!(e && e.checked); };
+  const zdroj = p ? p.src : ctVal('ctf-adresa') ? 'adresa' : '', pc = Number(ctVal('ctf-pocet'));
   return {
     adresa: ctVal('ctf-adresa'), bod: p && p.src !== 'adresa' ? { lat: p.lat, lon: p.lon } : null, zdroj, cast: ctVal('ctf-cast'), upresneni: ctVal('ctf-upresneni'),
     vJmeno: ctVal('ctf-vJmeno'), vPrijmeni: ctVal('ctf-vPrijmeni'), vTelefon: ctVal('ctf-vTel'), vVztah: ctVal('ctf-vVztah'),
     pJmeno: ctVal('ctf-pJmeno'), pPrijmeni: ctVal('ctf-pPrijmeni'), pPohlavi: ctVal('ctf-pPohlavi'), pRok: num > 1900 ? num : '', pVek: v && num <= 130 ? num : '',
     klasif: cls ? cls.klasif : '', priznaky: cls ? cls.priznaky.slice() : [], n: cls ? String(cls.n) : '', dyn: cls ? cls.dyn : null, popis: ctVal('ctf-popis'), poznamka: ctVal('ctf-poznamka'),
+    agPcr: ch('ctf-agPcr'), agHzs: ch('ctf-agHzs'), nebezpeci: ch('ctf-nebezpeci'), pocet: pc > 0 ? pc : '', slucitS: ctVal('ctf-sluc'),
   };
 }
-function ctSend() {
+function ctSend(pre) {
   const call = ct.call; if (!call) return;
   const form = ctReadForm(), info = $('ct-sendinfo');
   if (!form.adresa && !form.bod) { info.textContent = 'Zadej místo: adresu nebo bod na mapě.'; return; }
-  if (!form.n) { info.textContent = 'Nejdřív klasifikuj pavoukem (naléhavost N1–N3).'; ctSpiderOpen(); return; }
+  if (pre) { form.n = '1'; form.predpoplach = true; }
+  else if (!form.n) { info.textContent = 'Nejdřív klasifikuj pavoukem (naléhavost N1–N3) nebo použij „N1 – okamžitě“.'; ctSpiderOpen(); return; }
   const first = !call.caseId, c = sim.sendCall(call.id, form);
   if (!c) { info.textContent = 'Odeslání se nepodařilo.'; return; }
+  if (c.noDispatch) { info.textContent = 'Dispečer: z hovoru nevzniká případ, výjezd není indikován.'; toast('Dispečer nevidí důvod k výjezdu.', 'warn'); return; }
   $('ct-sendbtn').textContent = 'Aktualizovat případ';
-  info.textContent = (first ? 'Odesláno dispečerovi (' + c.num + ')' : 'Případ aktualizován') + ' v ' + sim.clock() + (cts.bot ? '' : ' – bot je vypnutý, obsluž případ v dispečerských oknech');
-  toast(first ? 'Případ ' + c.num + ' odeslán dispečerovi.' : 'Případ ' + c.num + ' aktualizován.', '');
+  if (form.slucitS && call.merged) { info.textContent = 'Hovor sloučen s případem ' + c.num + '.'; toast('Hovor sloučen s případem ' + c.num + '.', ''); return; }
+  info.textContent = (first ? (pre ? 'Předpoplach odeslán (' + c.num + '): doplň údaje a pošli aktualizaci' : 'Odesláno dispečerovi (' + c.num + ')') : 'Případ aktualizován') + ' v ' + sim.clock() + (cts.bot ? '' : ' – bot je vypnutý, obsluž případ v dispečerských oknech');
+  toast(first ? (pre ? 'N1 předpoplach ' + c.num + ' odeslán.' : 'Případ ' + c.num + ' odeslán dispečerovi.') : 'Případ ' + c.num + ' aktualizován.', '');
   if (!cts.bot && !cts.disp) { cts.disp = true; ctSaveSettings(); ctSync(); layoutApply(true); }
+}
+function ctUseAbonent() {
+  const f = ct.call && ct.facts[ct.call.id], ab = f && f.aml.abonent; if (!ab) return;
+  ctSet('ctf-adresa', ab.adresa); ct.addrAuto = false; ctFind();
+}
+// rozbor hovoru na vyžádání (okno výsledku)
+function ctRozbor() { if (ct.lastRes) ctResultModal(ct.lastRes); }
+function ctPrehled() {
+  const s = sim.s, calls = s.calls.filter(c => ['done', 'wrap', 'taken'].includes(c.state)), mine = s.cases.filter(c => c.call), pct = (a, b) => (b ? Math.round(a / b * 100) + ' %' : '–');
+  const sec = calls.filter(c => c.sentAt != null && c.pickedAt != null).map(c => c.sentAt - c.pickedAt), avg = sec.length ? Math.round(sec.reduce((a, b) => a + b, 0) / sec.length) : null;
+  const ck = mine.map(c => c.call.check).filter(Boolean), sk = mine.map(c => c.call.skore).filter(Boolean);
+  const nOk = ck.filter(x => x.n.ok).length, kOk = ck.filter(x => x.klasif.ok).length, pOk = mine.filter(c => !c.call.miss && !c.call.searchDelay).length;
+  const under = mine.filter(c => c.call.typedN > c.call.truthN).length, over = mine.filter(c => c.call.typedN < c.call.truthN).length;
+  const miss = s.calls.filter(c => c.state === 'missed').length, bez = calls.filter(c => c.kind === 'bez'), bezOk = bez.filter(c => !c.wrongSend).length, dup = calls.filter(c => c.kind === 'dup'), dupOk = dup.filter(c => c.merged).length;
+  const agMiss = mine.filter(c => (c.agLate || []).length).length, rvLate = mine.filter(c => c.rvLater && !c.rvNeed && c.call.truth.rvNeed).length;
+  const avgSc = sk.length ? Math.round(sk.reduce((a, x) => a + x.total, 0) / sk.length) : null;
+  const row = (l, v) => `<tr><td>${l}</td><td><b>${v}</b></td></tr>`;
+  modal(`<div class="card home ct-form ct-card" style="max-width:560px"><h2 style="margin:0">Přehled směny</h2><div class="ct-note">${sim.clock()} · úroveň ${{ zacatecnik: 'začátečník', bezne: 'běžné', tezke: 'těžké' }[s.liveCalls.level]}</div>
+    <table class="ct-t">${row('Odeslané případy', mine.length)}${row('Zmeškané hovory', miss)}${row('Průměrný čas do odeslání', avg == null ? '–' : avg + ' s')}${row('Průměrné body za hovor', avgSc == null ? '–' : avgSc + ' z 100')}
+    ${row('Správná naléhavost', pct(nOk, ck.length))}${row('Správná klasifikace', pct(kOk, ck.length))}${row('Poloha do tolerance', pct(pOk, mine.length))}
+    ${row('Podhodnocená N / nadhodnocená N', under + ' / ' + over)}${row('Chybějící PČR/HZS v hovoru', agMiss)}${row('Lékař vyžádán až na místě', rvLate)}
+    ${row('Hovory bez výjezdu správně vyřízené', bez.length ? bezOk + ' z ' + bez.length : '–')}${row('Duplicitní hovory sloučené', dup.length ? dupOk + ' z ' + dup.length : '–')}</table>
+    <div class="foot"><button class="btn pri" data-act="close">Zavřít</button></div></div>`);
 }
 function ctClsHtml() {
   const e = $('ct-cls'); if (!e) return; const c = ct.cls;
@@ -417,6 +541,7 @@ function ctSpUse() {
   const r = ctSpiderInst().result(ct.sp.ans); if (!r || !ct.call) return;
   const n = ct.sp.n || r.n, dyn = ct.sp.dyn == null ? r.dyn : ct.sp.dyn;
   ct.cls = { klasif: r.klasif, n, dyn, priznaky: r.symptoms.filter(s => !/DYNAMICKÁ INDIKACE/i.test(s)).concat(dyn ? ['DYNAMICKÁ INDIKACE'] : []), nSuggested: r.n };
+  for (const [k, id] of [['PČR', 'ctf-agPcr'], ['HZS', 'ctf-agHzs']]) { const e = $(id); if (e && ct.cls.priznaky.some(x => new RegExp(k, 'i').test(x))) e.checked = true; }
   ctClsHtml(); toast('Klasifikace předána do nabírání: ' + r.klasif + ', N' + n, '');
   if (layoutDesktop()) { document.body.classList.add('ct-spider-off'); layoutApply(true); } else { view = 'intake'; }
   render();
@@ -452,23 +577,29 @@ function ctResultModal(rec) {
   const typedPt = c ? (cc.bod ? { lat: cc.bod.lat, lon: cc.bod.lon, tol: cc.tol } : (() => { const g = sim._ctGeocode(cc.typed); return g.quality ? { lat: g.lat, lon: g.lon, tol: cc.tol } : null; })()) : null;
   const ph = f.aml.phases, aml = ph.length > 1 ? ph[ph.length - 1] : null;
   window._ctRes = rec;
-  modal(`<div class="card home ct-form ct-card" style="max-width:640px"><h2 style="margin:0">Hovor ukončen</h2><div class="ct-note">${esc(f.view.volajici.jmeno)} · ${esc(k.klasifikace)}, N${String(k['naléhavost']).replace('N', '')} · ${esc(k.adresa)}</div>
+  const sk = cc && cc.skore, kindTxt = (rec.call.kind || 'vyjezd') === 'bez' ? `<p class="ct-note"><b>Hovor nevyžadoval výjezd</b> (${esc(k.spravne || '')}). ${rec.call.wrongSend ? 'Případ byl zbytečně odeslán.' : 'Správně nevysláno.'}</p>`
+    : rec.call.kind === 'dup' ? `<p class="ct-note"><b>Další volající k téže události.</b> ${rec.call.merged ? 'Správně sloučeno s případem.' : 'Nebyl sloučen, vznikl duplicitní případ.'}</p>`
+      : rec.call.kind === 'opak' ? '<p class="ct-note"><b>Opakovaný hovor</b> k již odeslanému případu.</p>' : '';
+  const scoreHtml = sk ? `<h3 style="margin:8px 0 2px;font-size:13px">Body za hovor: ${sk.total} z ${sk.max}</h3><table class="ct-t"><tr><td>Čas do odeslání (${sk.sec} s, cíl ${sk.lim} s)</td><td>${sk.cas} / 20</td></tr><tr><td>Naléhavost</td><td>${sk.n} / 20</td></tr><tr><td>Klasifikace</td><td>${sk.kl} / 15</td></tr><tr><td>Příznaky</td><td>${sk.pr} / 15</td></tr><tr><td>Poloha</td><td>${sk.pol} / 15</td></tr><tr><td>Věk, dynamická, PČR/HZS</td><td>${sk.vek + sk.dyn + sk.ag} / 15</td></tr></table><p class="ct-note">Kompletnost dotazů, instrukce a empatie hodnotí Analýza hovoru (AI).</p>` : '';
+  const wavBtns = (rec.wavs || []).map((w, i) => `<button class="btn" data-act="ct-dl-wav" data-i="${i}">Nahrávka WAV${rec.wavs.length > 1 ? ' ' + (i + 1) : ''}</button>`).join('');
+  modal(`<div class="card home ct-form ct-card" style="max-width:640px"><h2 style="margin:0">Rozbor hovoru</h2><div class="ct-note">${esc(f.view.volajici.jmeno)} · ${esc(k.klasifikace)}, N${String(k['naléhavost']).replace('N', '')} · ${esc(k.adresa)}</div>
+    ${kindTxt}${scoreHtml}
     ${tb ? `<h3 style="margin:6px 0 2px;font-size:13px">Kontrola klasifikace</h3><table class="ct-t">${tb}</table>` : ''}
     <h3 style="margin:8px 0 2px;font-size:13px">Následky v simulaci</h3>${cons}
     <h3 style="margin:8px 0 2px;font-size:13px">Zadaný a skutečný bod</h3>${ctMiniMap({ lat: k.lat, lon: k.lon }, typedPt, aml)}
-    <div id="ct-judge" style="margin-top:8px"></div>
-    <div class="foot" style="margin-top:10px;flex-wrap:wrap"><button class="btn" data-act="ct-judge"${cts.key && cts.textModel ? '' : ' disabled title="Potřebuje klíč a textový model v menu Calltaker"'}>Vyhodnotit soudcem (AI)</button><button class="btn" data-act="ct-dl-json">Stáhnout hovor (JSON)</button>${rec.wav ? '<button class="btn" data-act="ct-dl-wav">Stáhnout nahrávku (WAV)</button>' : ''}<button class="btn pri" data-act="close">Pokračovat ve směně</button></div></div>`);
+    <div id="ct-analyza" style="margin-top:8px"></div>
+    <div class="foot" style="margin-top:10px;flex-wrap:wrap"><button class="btn" data-act="ct-analyza"${cts.key && cts.textModel ? '' : ' disabled title="Potřebuje klíč a textový model v menu Calltaker"'}>Analýza hovoru (AI)</button><button class="btn" data-act="ct-dl-json">Stáhnout hovor (JSON)</button>${wavBtns}<button class="btn pri" data-act="close">Zavřít</button></div></div>`);
 }
-async function ctJudge() {
-  const rec = window._ctRes, out = $('ct-judge'); if (!rec) return;
+async function ctAnalyza() {
+  const rec = window._ctRes, out = $('ct-analyza'); if (!rec) return;
   out.innerHTML = '<p class="ct-note">Vyhodnocuji…</p>';
   const P = window.CT_PROMPTS, f = rec.facts, txt = rec.transcript.map(t => (t.role === 'calltaker' ? 'CALLTAKER: ' : 'VOLAJÍCÍ: ') + t.text).join('\n');
   const user = 'LIST FAKTŮ:\n' + JSON.stringify(f.view, null, 1) + '\n\nKEY:\n' + JSON.stringify(f.key, null, 1) + '\n\nFORMULÁŘ OD CALLTAKERA:\n' + JSON.stringify(rec.form) + '\n\nPŘEPIS:\n' + txt;
   let s;
-  try { const o = await ZOS_LIVE.chat(cts.key, cts.textModel, P.judgeSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } }); const m = o.match(/\{[\s\S]*\}/); s = JSON.parse(m ? m[0] : o); } catch (e) { s = { chyba: e.message }; }
-  rec.judge = s;
+  try { const o = await ZOS_LIVE.chat(cts.key, cts.textModel, P.analyzaSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } }); const m = o.match(/\{[\s\S]*\}/); s = JSON.parse(m ? m[0] : o); } catch (e) { s = { chyba: e.message }; }
+  rec.analyza = s;
   const list = o => '<ul style="margin:2px 0;padding-left:18px">' + Object.keys(o).filter(x => x !== 'komentar').map(x => `<li>${esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' '))}: ${Array.isArray(o[x]) ? esc(o[x].join('; ') || '–') : o[x] === true ? '✔' : o[x] === false ? '✘' : esc(o[x])}</li>`).join('') + '</ul>';
-  out.innerHTML = s.chyba ? `<p class="ct-note bad">Soudce selhal: ${esc(s.chyba)}</p>` : (s.calltaker ? `<h3 style="font-size:13px;margin:4px 0">Soudce: calltaker</h3>${list(s.calltaker)}<p class="ct-note">${esc(s.calltaker.komentar || '')}</p>` : '') + (s.realismus_volajiciho ? `<h3 style="font-size:13px;margin:4px 0">Soudce: realismus volajícího</h3>${list(s.realismus_volajiciho)}<p class="ct-note">${esc(s.realismus_volajiciho.komentar || '')}</p>` : '');
+  out.innerHTML = s.chyba ? `<p class="ct-note bad">Analýza selhala: ${esc(s.chyba)}</p>` : (s.calltaker ? `<h3 style="font-size:13px;margin:4px 0">Analýza: calltaker</h3>${list(s.calltaker)}<p class="ct-note">${esc(s.calltaker.komentar || '')}</p>` : '') + (s.realismus_volajiciho ? `<h3 style="font-size:13px;margin:4px 0">Analýza: realismus volajícího</h3>${list(s.realismus_volajiciho)}<p class="ct-note">${esc(s.realismus_volajiciho.komentar || '')}</p>` : '');
 }
 function ctDownload(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); }
 
@@ -488,6 +619,13 @@ function ctAct(a, el) {
     case 'ct-home': homeModal(); break;
     case 'ct-pickup': ctPickup(); break;
     case 'ct-hangup': ctHangup(); break;
+    case 'ct-tanr': ctTanrStart(); break;
+    case 'ct-tanr-check': ctTanrCheck(); break;
+    case 'ct-tanr-endcheck': ctTanrEndCheck(); break;
+    case 'ct-n1': ctSend(true); break;
+    case 'ct-use-abonent': ctUseAbonent(); break;
+    case 'ct-rozbor': ctRozbor(); break;
+    case 'ct-prehled': ctPrehled(); break;
     case 'ct-finish': ctFinish(); break;
     case 'ct-mute': ctMute(); break;
     case 'ct-tab': ctTab(d.t); break;
@@ -507,12 +645,18 @@ function ctAct(a, el) {
     case 'ct-sp-crumb': ct.sp.ans = ct.sp.ans.slice(0, Number(d.i) + 1); ct.sp.n = null; ct.sp.dyn = null; ctSpiderRender(); break;
     case 'ct-sp-n': ct.sp.n = Number(d.n); ctSpiderRender(); break;
     case 'ct-sp-use': ctSpUse(); break;
-    case 'ct-judge': ctJudge(); break;
-    case 'ct-dl-json': { const r = window._ctRes; if (r) ctDownload(new Blob([JSON.stringify({ seed: r.facts.view.seed, view: r.facts.view, key: r.facts.key, aml: r.facts.aml, transcript: r.transcript, form: r.form, soudce: r.judge || null, kontrola: (r.call.caseId && sim.caseOf(r.call.caseId) && sim.caseOf(r.call.caseId).call) ? sim.caseOf(r.call.caseId).call.check : null }, null, 1)], { type: 'application/json' }), 'hovor-' + r.facts.view.seed + '.json'); break; }
-    case 'ct-dl-wav': { const r = window._ctRes; if (r && r.wav) ctDownload(r.wav.blob, 'hovor-' + r.facts.view.seed + '.wav'); break; }
+    case 'ct-analyza': ctAnalyza(); break;
+    case 'ct-dl-json': { const r = window._ctRes; if (r) ctDownload(new Blob([JSON.stringify({ seed: r.facts.view.seed, view: r.facts.view, key: r.facts.key, aml: r.facts.aml, transcript: r.transcript, form: r.form, analyza: r.analyza || null, kontrola: (r.call.caseId && sim.caseOf(r.call.caseId) && sim.caseOf(r.call.caseId).call) ? sim.caseOf(r.call.caseId).call.check : null }, null, 1)], { type: 'application/json' }), 'hovor-' + r.facts.view.seed + '.json'); break; }
+    case 'ct-dl-wav': { const r = window._ctRes, i = Number(d.i || 0); if (r && r.wavs && r.wavs[i]) ctDownload(r.wavs[i].blob, 'hovor-' + r.facts.view.seed + (r.wavs.length > 1 ? '-' + (i + 1) : '') + '.wav'); break; }
   }
 }
 document.addEventListener('change', ev => { const t = ev.target; if (t && t.id === 'ct-sp-dyn') { ct.sp.dyn = t.checked; ctSpiderRender(); } });
 document.addEventListener('input', ev => { const t = ev.target; if (t && t.id === 'ctf-adresa') ct.addrAuto = false; });
 document.addEventListener('keydown', ev => { const t = ev.target; if (ev.key === 'Enter' && t) { if (t.id === 'ctf-adresa') { ev.preventDefault(); ctFind(); } else if (t.id === 'ct-say') { ev.preventDefault(); ctSay(); } } });
+document.addEventListener('keydown', ev => {
+  if (!ctModeOn() || !ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  const m = { KeyZ: 'ct-pickup', Digit1: 'ct-n1', KeyO: 'ct-send', KeyP: 'ct-spider-open', KeyU: 'ct-hangup', KeyD: 'ct-finish', KeyM: 'ct-mute' }[ev.code];
+  if (!m) return;
+  ev.preventDefault(); if (modalOpen && m !== 'ct-pickup') return; ctAct(m, { dataset: {} });
+});
 window.addEventListener('beforeunload', () => { if (ct.voice) ct.voice.stop(); });
