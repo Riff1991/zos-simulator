@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.35.0 – rozpracováno
+## v0.35.0 – 2026-11-17
 Nové:
 - **Calltaker: nabídka nastavení přeskupená** do čtyř částí: kdy směna začíná, hovory, dispečer a mapa, hlas a AI (sbalené). Začátek směny jde zvolit jako **datum a hodina** (nebo „teď“), s rychlými volbami denní doby a se stažením počasí podle data, stejně jako u dispečera.
 Opravy:
