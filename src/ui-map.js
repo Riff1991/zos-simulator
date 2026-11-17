@@ -353,6 +353,7 @@ function glInit() {
       GL.getSource('hosp').setData({ type: 'FeatureCollection', features: D.hospitals.map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lon, h.lat] }, properties: { name: h.short } })) });
       GL.getSource('heliport').setData({ type: 'FeatureCollection', features: [D.lzs.heliport, ...D.hospitals.filter(h => h.heliport)].map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lon, h.lat] }, properties: { name: h.name } })) });
       const pick = e => {
+        if (ctMapClick(e)) return;
         const f = GL.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['cases', 'crews', 'crews-base'].concat(GL.getLayer('crews-ico') ? ['crews-ico'] : []) });
         if (!f.length) return;
         const c = f.find(x => x.layer.id === 'cases');
@@ -360,6 +361,7 @@ function glInit() {
         syncSelectionToMain();
         render();
       };
+      ctGlInit();
       GL.on('click', pick);
       for (const l of ['cases', 'crews', 'crews-base']) { GL.on('mouseenter', l, () => GL.getCanvas().style.cursor = 'pointer'); GL.on('mouseleave', l, () => GL.getCanvas().style.cursor = ''); }
       GL.on('dragstart', () => { followK = null; }); glReady = true; mapThemeApplied = null; applyMapTheme(); glApplyLayers(); glUpdate(true);

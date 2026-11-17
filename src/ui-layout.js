@@ -1,8 +1,8 @@
 // UI – Rozložení panelů (části se v build.py skládají v tomto pořadí do jednoho skriptu).
 // ---------- rozložení panelů (stolní zobrazení): dělicí lišty, plovoucí okna, předvolby; zvlášť pro běžný provoz a MU ----------
 const LAYOUT_KEY = 'zos_layout_v2';
-const LAYOUT_WIN = { cases: 'w-cases', detail: 'w-detail', rcom: 'w-rcom', map: 'w-map', radio: 'w-radio', crews: 'w-crews' };
-const LAYOUT_NAMES = { cases: 'Případy', detail: 'Panel případu', rcom: 'Rádio', map: 'Mapa', radio: 'Přehled transportů', crews: 'Posádky' };
+const LAYOUT_WIN = { cases: 'w-cases', detail: 'w-detail', rcom: 'w-rcom', map: 'w-map', radio: 'w-radio', crews: 'w-crews', intake: 'w-intake', spider: 'w-spider' };
+const LAYOUT_NAMES = { cases: 'Případy', detail: 'Panel případu', rcom: 'Rádio', map: 'Mapa', radio: 'Přehled transportů', crews: 'Posádky', intake: 'Nabírání', spider: 'Pavouk' };
 // sloupce v %, v každém sloupci zásobník panelů [id, výška v %]
 const LAYOUT_PRESETS = {
   normal: {
@@ -15,17 +15,23 @@ const LAYOUT_PRESETS = {
     widemap: { cols: [30, 46, 24], stacks: [[['detail', 70], ['cases', 30]], [['map', 58], ['rcom', 22], ['radio', 20]], [['crews', 100]]] },
     biglist: { cols: [50, 24, 26], stacks: [[['detail', 66], ['cases', 34]], [['map', 40], ['rcom', 30], ['radio', 30]], [['crews', 100]]] },
   },
+  // calltaker: Nabírání a Mapa; Pavouk plovoucí; dispečerská okna (třetí sloupec) jen na požádání
+  ct: {
+    default: { cols: [42, 36, 22], stacks: [[['intake', 100]], [['map', 100]], [['cases', 20], ['detail', 20], ['rcom', 15], ['radio', 20], ['crews', 20], ['spider', 5]]] },
+    widemap: { cols: [30, 48, 22], stacks: [[['intake', 100]], [['map', 100]], [['cases', 20], ['detail', 20], ['rcom', 15], ['radio', 20], ['crews', 20], ['spider', 5]]] },
+  },
 };
-let layoutStore = { normal: null, mu: null }, layoutZ = 60, layoutSplits = [];
+const layoutFloatsFor = key => (key === 'ct' ? { spider: { x: Math.max(20, innerWidth - 440), y: 96, w: 420, h: Math.max(320, Math.min(600, innerHeight - 130)) } } : {});
+let layoutStore = { normal: null, mu: null, ct: null }, layoutZ = 60, layoutSplits = [];
 try { layoutStore = Object.assign(layoutStore, JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}')); } catch (_) {}
-const layoutKey = () => (muModeOn() ? 'mu' : 'normal');
+const layoutKey = () => (ctModeOn() ? 'ct' : muModeOn() ? 'mu' : 'normal');
 const layoutClone = o => JSON.parse(JSON.stringify(o));
-const layoutHidden = id => (id === 'map' && mainPanelHidden.map) || (id === 'radio' && mainPanelHidden.radio);
+const layoutHidden = id => (id === 'map' && mainPanelHidden.map) || (id === 'radio' && mainPanelHidden.radio) || (ctModeOn() && ((id === 'spider' && document.body.classList.contains('ct-spider-off')) || (!document.body.classList.contains('ct-disp') && ['cases', 'detail', 'rcom', 'radio', 'crews'].includes(id))));
 const layoutDesktop = () => !satellitePanel && matchMedia('(min-width: 1100px)').matches && !document.body.classList.contains('map-fullscreen');
 function layoutGet(key) {
   let L = layoutStore[key];
-  const ok = L && Array.isArray(L.cols) && L.cols.length === 3 && Array.isArray(L.stacks) && L.stacks.length === 3 && new Set(L.stacks.flat().map(x => x[0])).size === 6;
-  if (!ok) L = layoutStore[key] = Object.assign(layoutClone(LAYOUT_PRESETS[key].default), { floats: {} });
+  const ok = L && Array.isArray(L.cols) && L.cols.length === 3 && Array.isArray(L.stacks) && L.stacks.length === 3 && new Set(L.stacks.flat().map(x => x[0])).size === new Set(LAYOUT_PRESETS[key].default.stacks.flat().map(x => x[0])).size;
+  if (!ok) L = layoutStore[key] = Object.assign(layoutClone(LAYOUT_PRESETS[key].default), { floats: layoutFloatsFor(key) });
   if (!L.floats) L.floats = {};
   return L;
 }
@@ -63,7 +69,7 @@ function layoutApply(full) {
     const el = $(wid); if (!el) continue;
     const r = L.floats[id], pin = el.querySelector('.pin-btn');
     if (pin) { pin.textContent = r ? '⤓' : '⧉'; pin.title = r ? 'Připnout zpět do rozložení' : 'Odepnout do plovoucího okna'; }
-    if (!r) continue;
+    if (!r || layoutHidden(id)) continue;
     const w = Math.min(Math.max(280, r.w), innerWidth - 16), h = Math.min(Math.max(160, r.h), innerHeight - 16);
     el.classList.add('floating'); el.style.gridColumn = ''; el.style.gridRow = '';
     el.style.width = w + 'px'; el.style.height = h + 'px'; el.style.left = Math.max(0, Math.min(r.x, innerWidth - w)) + 'px'; el.style.top = Math.max(0, Math.min(r.y, innerHeight - 60)) + 'px';
@@ -124,7 +130,7 @@ function layoutToggleFloat(id) {
 }
 function layoutPreset(name) {
   const key = layoutKey();
-  layoutStore[key] = Object.assign(layoutClone(LAYOUT_PRESETS[key][name] || LAYOUT_PRESETS[key].default), { floats: {} });
+  layoutStore[key] = Object.assign(layoutClone(LAYOUT_PRESETS[key][name] || LAYOUT_PRESETS[key].default), { floats: layoutFloatsFor(key) });
   layoutSave(); layoutApply(true);
 }
 function layoutDockAll() { const L = layoutGet(layoutKey()); L.floats = {}; layoutSave(); layoutApply(true); }
@@ -132,7 +138,7 @@ function layoutMenu(btn) {
   const old = $('layout-menu'); if (old) { old.remove(); return; }
   const key = layoutKey(), L = layoutGet(key), m = document.createElement('div'); m.id = 'layout-menu';
   const floating = Object.keys(L.floats);
-  m.innerHTML = `<b>Rozložení · ${key === 'mu' ? 'režim MU' : 'běžný provoz'}</b><button class="btn" data-act="layout-preset" data-preset="default">Výchozí</button><button class="btn" data-act="layout-preset" data-preset="widemap">Široká mapa</button><button class="btn" data-act="layout-preset" data-preset="biglist">Velký seznam a detail</button>${floating.length ? `<button class="btn" data-act="layout-dock-all">Připnout zpět okna (${floating.length})</button>` : ''}<small>Velikost panelů měníš tažením lišt mezi nimi. Tlačítko ⧉ v záhlaví odepne panel do plovoucího okna (tažením za záhlaví, velikost za pravý dolní roh).</small>`;
+  m.innerHTML = `<b>Rozložení · ${key === 'mu' ? 'režim MU' : key === 'ct' ? 'režim calltaker' : 'běžný provoz'}</b><button class="btn" data-act="layout-preset" data-preset="default">Výchozí</button><button class="btn" data-act="layout-preset" data-preset="widemap">Široká mapa</button><button class="btn" data-act="layout-preset" data-preset="biglist">Velký seznam a detail</button>${floating.length ? `<button class="btn" data-act="layout-dock-all">Připnout zpět okna (${floating.length})</button>` : ''}<small>Velikost panelů měníš tažením lišt mezi nimi. Tlačítko ⧉ v záhlaví odepne panel do plovoucího okna (tažením za záhlaví, velikost za pravý dolní roh).</small>`;
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(r.left, innerWidth - 280)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
   document.body.appendChild(m);
   setTimeout(() => document.addEventListener('click', function close(e) { if (!m.contains(e.target) || e.target.closest('[data-act]')) { m.remove(); document.removeEventListener('click', close); } }), 0);
@@ -227,7 +233,7 @@ function frame() {
     }
   }
   if (!modalOpen && speed > 0 && !sim.s.ended) {
-    sim.step(dt * (radioSlowActive() ? Math.min(speed, 1) : speed));
+    sim.step(dt * (ctModeOn() ? ctSpeed(speed) : radioSlowActive() ? Math.min(speed, 1) : speed));
     pollLog();
     if (sim.s.ended) { speed = 0; render(); try { localStorage.removeItem(SAVE_KEY); } catch (e) {} endModal(); return; }
     if (now - saveAt > 15000) { saveAt = now; doSave(); }

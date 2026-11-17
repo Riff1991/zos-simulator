@@ -120,6 +120,44 @@ nav .badge{background:var(--n1);color:#fff;border-radius:9px;padding:0 6px;margi
   .kpi{margin-left:0;width:100%;justify-content:space-between}
   #clock{font-size:18px}
 }
+/* režim calltaker */
+#w-intake,#w-spider{display:none}
+body.ct-mode #w-intake,body.ct-mode #w-spider{display:flex}
+body.ct-mode:not(.ct-disp) :is(#w-cases,#w-detail,#w-rcom,#w-radio,#w-crews){display:none!important}
+@media (min-width:1100px){body.ct-mode.ct-spider-off #w-spider{display:none!important}}
+@media (max-width:1099px){body.ct-mode #w-intake,body.ct-mode #w-spider{display:none}body.ct-mode #w-intake.active,body.ct-mode #w-spider.active{display:flex}}
+.win>h2 .spider-x{margin-left:auto;background:#344b5e;border:1px solid #60778a;border-radius:3px;color:#fff;padding:0 6px;font-size:12px;line-height:18px}
+.win>h2 .spider-x+.pin-btn{margin-left:6px}
+#ct-phone{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 9px;background:#14202b;color:#dbe7f1;border-bottom:1px solid #000}
+#ct-phone .ph-st{font:600 13px var(--mono);flex:1 1 150px}#ct-phone .ph-st small{display:block;font:400 11px var(--sans);color:#9fb4c7}
+#ct-phone.ring{background:#7a1b15;animation:alert-flash .75s steps(2,end) infinite}#ct-phone.call{background:#0f3a24}
+#ct-phone .btn{margin:0;padding:6px 12px;font-size:13px}
+.ct-form{padding:8px 10px;display:flex;flex-direction:column;gap:8px}
+.ct-form fieldset{border:1px solid var(--line);border-radius:5px;margin:0;padding:6px 8px 8px;min-width:0}.ct-form legend{font:600 11px var(--sans);color:var(--mut);padding:0 4px;text-transform:uppercase;letter-spacing:.04em}
+.ct-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}.ct-g label{display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px}
+.ct-form input,.ct-form select,.ct-form textarea{font:13px var(--sans);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:4px;padding:5px 7px;min-width:0;width:100%}
+.ct-form textarea{resize:vertical;min-height:44px}
+.ct-form input[readonly]{background:transparent}
+.ct-note{font-size:12px;color:var(--mut)}.ct-note.bad{color:var(--n1)}.ct-note.good{color:#1c8a45}
+.ct-aml{border-left:4px solid #ee8a1b;background:rgba(238,138,27,.12);padding:6px 8px;border-radius:3px;font-size:12.5px}.ct-aml.g{border-color:#1c8a45;background:rgba(28,138,69,.12)}
+.ct-cls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ct-cls b{font-size:14px}.ct-n{font:700 12px var(--mono);border-radius:3px;padding:1px 7px;color:#fff;background:#7b8794}.ct-n.n1{background:var(--n1)}.ct-n.n2{background:var(--n2)}.ct-n.n3{background:#b8960f}
+.ct-tr{max-height:160px;overflow:auto;font-size:12px;display:flex;flex-direction:column;gap:3px;padding:4px}.ct-tr div{padding:3px 8px;border-radius:10px;max-width:90%}.ct-tr .me{align-self:flex-end;background:rgba(47,125,225,.2)}.ct-tr .them{align-self:flex-start;background:rgba(128,140,150,.22)}
+.ct-send{display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;bottom:0;background:var(--panel);padding:6px 0;border-top:1px solid var(--line)}
+.ct-send .btn{padding:7px 14px;font-size:13px}
+table.ct-t{width:100%;border-collapse:collapse;font-size:12px}table.ct-t td,table.ct-t th{padding:4px 6px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.sp-crumbs{display:flex;gap:4px;flex-wrap:wrap;padding:6px 8px;font-size:11px;color:var(--mut)}.sp-crumbs span{background:rgba(128,140,150,.2);border-radius:10px;padding:1px 8px}
+.sp-title{margin:2px 10px 6px;font:600 15px var(--sans)}
+.sp-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px;padding:4px 10px 8px}
+.sp-tile{background:var(--card);border:2px solid var(--line);border-radius:8px;padding:10px 10px;text-align:left;min-height:62px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+.sp-tile:hover,.sp-tile:focus{border-color:var(--acc);outline:none}.sp-tile small{display:block;font-weight:400;font-size:11px;color:var(--mut);margin-top:3px}
+.sp-grp{grid-column:1/-1;font:600 11px var(--sans);color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+.sp-tile.alt{background:transparent;border-style:dashed;font-weight:500}
+.sp-act{display:flex;gap:6px;flex-wrap:wrap;padding:6px 10px 10px}.sp-act .btn{padding:7px 12px;font-size:13px}
+.sp-res{padding:6px 12px}.sp-res .big{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:16px;font-weight:700}
+.sp-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:6px 0;background:var(--line)}.sp-bar i{display:block}
+.sp-sym{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.sp-sym span{background:rgba(47,125,225,.16);border-radius:10px;padding:2px 9px;font-size:12px}.sp-sym span.add{background:rgba(128,140,150,.2)}
+#ct-pick{position:absolute;left:8px;bottom:8px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:4px 8px;font-size:12px;max-width:60%;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.ct-mini{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:6px}
 /* tabs */
 .tabs{display:flex;gap:2px;padding:4px 6px 0;background:#d3dbe3;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .tabs button{background:#e9edf1;border:1px solid var(--line);border-bottom:0;border-radius:4px 4px 0 0;padding:3px 9px;font-size:12px;color:var(--mut)}
@@ -431,6 +469,8 @@ html[data-theme=dark] .st-transport,html[data-theme=dark] .st-handover{backgroun
     <section class="win" id="w-map"><h2>Mapa <small>OpenStreetMap</small><button class="map-full-btn" id="map-full-btn" data-act="fullscreen-map">⛶ Celá obrazovka</button></h2>
       <div id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"></svg><div id="maptools"></div><div id="covbar"></div></div></section>
     <section class="win" id="w-radio"><h2>Přehled transportů <small>nemocnice · předání · návrat k dispozici</small></h2><div id="transport-board" class="transport-board"></div><div class="section-cap">Provozní zprávy</div><div class="body log" id="log"></div></section>
+    <section class="win" id="w-intake"><h2>Nabírání <small>telefon · formulář</small></h2><div id="ct-phone"></div><div class="tabs" id="ct-tabs"></div><div class="body" id="ct-body"></div></section>
+    <section class="win" id="w-spider"><h2>Pavouk <small>podle dat z výjezdů</small><button class="spider-x" data-act="ct-spider-close" title="Zavřít pavouka">✕</button></h2><div class="body" id="ct-spider"></div></section>
     <section class="win" id="w-crews"><h2>Přehledový panel posádek</h2><div class="body" id="crews"></div><div class="legend" id="legend"></div><div id="crewpanel" class="panel"></div></section>
   </main>
   <nav id="nav"></nav>

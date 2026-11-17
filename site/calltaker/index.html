@@ -3607,7 +3607,7 @@ class SimLoop {
           break;
         }
         const missAt = c.mv && c.mv.b ? c.mv.b : [cs.lat, cs.lon];
-        if (cs.addrMiss && !c.addrFound && !c.caseRole && c.type !== 'LZS' && hav(missAt[0], missAt[1], cs.addrMiss.lat, cs.addrMiss.lon) * 1000 > 250) {
+        if (cs.addrMiss && !c.addrFound && !c.caseRole && c.type !== 'LZS' && hav(missAt[0], missAt[1], cs.addrMiss.lat, cs.addrMiss.lon) * 1000 > (cs.addrMiss.thr || 250)) {
           // dojeli na zadanou adresu, ale pacient je jinde (calltaker zadal špatnou adresu): hledání a přejezd
           c.addrFound = true; c.parked = false;
           c.lat = missAt[0]; c.lon = missAt[1]; c.mv = null;
@@ -3616,6 +3616,12 @@ class SimLoop {
           cs.addrMissLost = (cs.addrMissLost || 0) + d2;
           this.L('crew', `${c.name}: na zadané adrese pacient není, hledáme (skutečně o ${Math.round(cs.addrMiss.m)} m dál)`, cs.id, c.id);
           if (!cs.addrFixed) { cs.addrFixed = true; cs.lat = cs.addrMiss.lat; cs.lon = cs.addrMiss.lon; cs.addr = cs.addrMiss.addr; }
+          break;
+        }
+        if (cs.call && cs.call.searchDelay && !c.searchDone && !c.caseRole && c.type !== 'LZS') {
+          // zadaný bod je mimo toleranci, ale blízko: posádka chvíli hledá pacienta (calltaker)
+          c.searchDone = true; c.parked = false; c.lat = missAt[0]; c.lon = missAt[1]; c.mv = null; c.state = 'enroute'; c.until = t + cs.call.searchDelay;
+          this.L('crew', `${c.name}: pacienta hledáme, bod je o ${cs.call.errM} m vedle`, cs.id, c.id);
           break;
         }
         if (c.parked && c.mv) { c.lat = c.mv.b[0]; c.lon = c.mv.b[1]; } else { c.lat = cs.lat; c.lon = cs.lon; }
@@ -4279,6 +4285,13 @@ class SimScore {
 // Následky: špatná adresa (posádka dojede jinam a hledá pacienta), zadaná naléhavost se liší od skutečné (skóre).
 const CT_RUNTIME = ['id', 'num', 'nOrig', 'createdAt', 'readyAt', 'status', 'crews', 'asg', 'firstAssign', 'firstArrive', 'arrived', 'docAssigned', 'docArrived', 'initialDispatchSent', 'docAssignT', 'rvReq', 'rvReqAt', 'closedAt', 'score', 'pen', 'effRatio', 'waitSince', 'escAt', 'transported', 'zzumOk', 'members', 'mu', 'unserved', 'phase', 'dzUntil', 'intake'];
 const ctNorm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/ /g, ' ').replace(/[^a-z0-9/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+// tolerance polohy (m): adresní bod (dům), bod z POI, silnice/terén; do 3× tolerance malé zdržení, nad 3× chybná poloha
+const CT_TOL = { dum: 60, poi: 120, silnice: 200 };
+const ctRng = seed => { let a = (Number(seed) >>> 0) ^ 0x9e3779b9; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+const ctShift = (lat, lon, d, ang) => ({ lat: lat + d * Math.cos(ang) / 111320, lon: lon + d * Math.sin(ang) / (111320 * Math.cos(lat * Math.PI / 180)) });
+const ctJaccard = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size && !B.size) return 1; let i = 0; for (const x of A) if (B.has(x)) i++; return i / (A.size + B.size - i); };
+const ctSymNorm = x => ctNorm(String(x).replace(/^[^A-Za-zÀ-ž0-9]+/, ''));
+const ctNoDyn = a => (a || []).filter(x => !/DYNAMICKÁ INDIKACE/i.test(x));
 class SimCalltaker {
   // rozbor zadané adresy: „Bezdrevská 1113/31, České Budějovice“ → { street, num, city }
   _ctParse(text) {
@@ -4323,16 +4336,63 @@ class SimCalltaker {
     let la = 0, lo = 0; for (const i of list) { la += a[i]; lo += a[i + 1]; }
     return { quality: 'town', p, lat: la / list.length / 1e5, lon: lo / list.length / 1e5 };
   }
-  // zadaná adresa proti pravdě: standardní adresa z databáze se kontroluje, silnice a místa (bez čísla) calltaker najde na mapě a berou se jako správná
-  _ctLocate(adresa, tc) {
-    const standard = /\d/.test(tc.addr) && !/okolí obce/i.test(tc.addr) && !/\(/.test(tc.addr);
-    if (!adresa || !standard) return { standard, typed: tc.addr, geo: null, errM: 0, miss: null };
+  // druh místa podle pravdy: dum (standardní adresa), poi (místo v závorce), silnice (okolí obce, silnice, terén)
+  _ctKind(tc) { const a = String(tc.addr || ''); return /okolí obce/i.test(a) || !/\d/.test(a) ? 'silnice' : /\(/.test(a) ? 'poi' : 'dum'; }
+  _ctTol(tc) { return CT_TOL[this._ctKind(tc)]; }
+  // zadaná poloha proti pravdě. Bod z mapy má přednost před textem adresy; bez bodu se kontroluje standardní adresa z databáze (silnice a místa bez čísla calltaker najde na mapě a berou se jako správná)
+  _ctLocate(adresa, tc, bod) {
+    const standard = this._ctKind(tc) === 'dum', tol = this._ctTol(tc);
+    if (bod && Number.isFinite(Number(bod.lat)) && Number.isFinite(Number(bod.lon))) {
+      const lat = Number(bod.lat), lon = Number(bod.lon), errM = Math.round(hav(lat, lon, tc.lat, tc.lon) * 1000);
+      const miss = errM > 3 * tol ? { lat: tc.lat, lon: tc.lon, m: errM, addr: tc.addr, thr: 3 * tol } : null;
+      const searchDelay = !miss && errM > tol ? Math.round(60 + 90 * (errM - tol) / (2 * tol)) : 0;
+      let conflict = false;
+      if (adresa && standard) { const g = this._ctGeocode(adresa); conflict = !!(g.quality && hav(g.lat, g.lon, lat, lon) * 1000 > 3 * tol); }
+      return { standard, typed: String(adresa || '').trim() || 'bod z mapy', geo: { quality: 'point', lat, lon }, errM, miss, tol, searchDelay, byPoint: true, conflict };
+    }
+    if (!adresa || !standard) return { standard, typed: String(adresa || tc.addr || '').trim(), geo: null, errM: 0, miss: null, tol, searchDelay: 0 };
     const geo = this._ctGeocode(adresa);
     const errM = geo.quality ? Math.round(hav(geo.lat, geo.lon, tc.lat, tc.lon) * 1000) : 0;
-    const miss = geo.quality && errM > 250 ? { lat: tc.lat, lon: tc.lon, m: errM, addr: tc.addr } : null;
-    return { standard, typed: String(adresa).trim(), geo, errM, miss };
+    const miss = geo.quality && errM > 250 ? { lat: tc.lat, lon: tc.lon, m: errM, addr: tc.addr, thr: 250 } : null;
+    return { standard, typed: String(adresa).trim(), geo, errM, miss, tol, searchDelay: 0 };
   }
   _ctN(v, dflt) { const n = Number(String(v == null ? '' : v).replace(/\D/g, '')); return [1, 2, 3].includes(n) ? n : dflt; }
+  // AML (Advanced Mobile Location): fáze polohy volajícího podle seedu; pravda se nikdy nevrací (jen kruhy)
+  _ctAml(seed, tc) {
+    const R = ctRng(seed * 7 + 13), ri = (a, b) => Math.round(a + R() * (b - a));
+    const r = R(), typ = r < 0.8 ? 'mobil' : r < 0.93 ? 'pevná' : 'skryté';
+    const out = { typ, phases: [] };
+    if (typ !== 'mobil') return out;
+    const idx = this._ctIndex(), list = idx.byCity && idx.byCity.get(ctNorm(tc.town)), n = list ? list.length / 8 : 300;
+    const cellR = n > 3000 ? ri(600, 1200) : n > 500 ? ri(1000, 2200) : ri(1800, 3500);
+    const shift = (rad, wrong) => { const d = wrong ? rad * (1.3 + R() * 1.7) : rad * Math.sqrt(R()) * 0.95; return ctShift(tc.lat, tc.lon, d, R() * Math.PI * 2); };
+    const c0 = shift(cellR, false);
+    out.phases.push({ atSec: 0, radiusM: cellR, lat: +c0.lat.toFixed(6), lon: +c0.lon.toFixed(6), zdroj: 'buňka' });
+    if (R() < 0.75) {   // AML dorazí (u zbytku zůstane jen buňka; zahrnuje i ~10 % mobilů, kde nedorazí)
+      const outdoor = ['ulice', 'priroda', 'prov'].includes(tc.where), gnss = outdoor ? R() < 0.75 : R() < 0.35;
+      const rad = gnss ? (outdoor ? ri(5, 40) : ri(20, 150)) : ri(20, 90), wrong = R() < 0.05, p = shift(rad, wrong);
+      out.phases.push({ atSec: ri(8, 40), radiusM: rad, lat: +p.lat.toFixed(6), lon: +p.lon.toFixed(6), zdroj: gnss ? 'GNSS' : 'Wi-Fi' });
+    }
+    return out;
+  }
+  // kontrola klasifikace: zadané proti pravdě
+  _ctCheck(f, truth, call) {
+    f = f || {};
+    const same = (a, b) => !a || ctNorm(a) === ctNorm(b), split = full => { const t = String(full || '').trim().split(/\s+/); return { j: t[0] || '', p: t.length > 1 ? t[t.length - 1] : '' }; };
+    const tp = split(truth.patient), tcl = split(truth.caller), year = Number(String(this.s.date || '').slice(0, 4)) || 2026;
+    const age = f.pVek !== '' && f.pVek != null && Number.isFinite(Number(f.pVek)) ? Number(f.pVek) : (Number(f.pRok) > 1900 ? year - Number(f.pRok) : null);
+    const tolAge = truth.age < 15 ? 1 : Math.max(3, Math.round(truth.age * 0.1));
+    const typedSym = ctNoDyn(f.priznaky).map(ctSymNorm).filter(Boolean), trueSym = ctNoDyn(truth.symptoms).map(ctSymNorm);
+    return {
+      klasif: { ok: !f.klasif || f.klasif === truth.klasif, typed: f.klasif || '', truth: truth.klasif },
+      n: { ok: call.typedN === truth.n, typed: call.typedN, truth: truth.n },
+      dyn: { ok: f.dyn == null || !!f.dyn === !!truth.dyn, typed: f.dyn == null ? null : !!f.dyn, truth: !!truth.dyn },
+      priznaky: { jaccard: +ctJaccard(typedSym, trueSym).toFixed(2), typed: (f.priznaky || []).length, truth: trueSym.length },
+      vek: { ok: age == null ? null : Math.abs(age - truth.age) <= tolAge, typed: age, truth: truth.age },
+      jmena: { pacient: f.pJmeno || f.pPrijmeni ? same(f.pJmeno, tp.j) && same(f.pPrijmeni, tp.p) : null, volajici: f.vJmeno || f.vPrijmeni ? same(f.vJmeno, tcl.j) && same(f.vPrijmeni, tcl.p) : null },
+      bodM: call.errM, tol: call.tol, aml: f.zdroj === 'AML', zdroj: f.zdroj || (f.bod ? 'mapa' : 'adresa'),
+    };
+  }
   // skrytá pravda a kontext hovoru podle seedu (stejné jako calltaker/factsheet.js): view = co ví volající, key = správná odpověď
   callFacts(seed) {
     const temp = new this.constructor({ seed, mode: 'free' }), c = temp._spawn();
@@ -4346,10 +4406,14 @@ class SimCalltaker {
       misto: { adresa: c.addr, obec: c.town, okres: c.okres, castObce: c.cast || '', druh: c.where, popis: c.place || '', budova: bld.code === 3 ? 'bytový dům' : bld.code === 1 ? 'dům' : bld.code === 2 ? 'obytná budova' : '', podlazi: bld.levels || 0 },
       klinickyObraz: c.up, poznamka: c.poznamka || '', persona,
     };
-    const key = { seed, 'naléhavost': 'N' + c.n, dynamicka: !!c.dyn, lekar: !!c.rvNeed, klasifikace: c.klasif, indikace: c.ind, adresa: c.addr, obec: c.town, pacient: c.patientName, vek: c.age, priznaky: c.up, telefon: c.phone };
-    return { view, key, tc: c };
+    const key = { seed, 'naléhavost': 'N' + c.n, dynamicka: !!c.dyn, lekar: !!c.rvNeed, klasifikace: c.klasif, indikace: c.ind, adresa: c.addr, obec: c.town, pacient: c.patientName, vek: c.age, priznaky: c.up, priznakyList: (c.symptoms || []).slice(), telefon: c.phone, lat: c.lat, lon: c.lon };
+    return { view, key, tc: c, aml: this._ctAml(seed, c) };
   }
+  _ctStr(v) { return String(v == null ? '' : v).trim(); }
+  // poznámka pro dispečera z nových polí formuláře
+  _ctNote(f) { return [f.upresneni && 'Upřesnění místa: ' + f.upresneni, f.popis, f.poznamka].map(x => this._ctStr(x)).filter(Boolean).join('; '); }
   // vytvoří případ z hovoru calltakera (viz formát nahoře); vrací případ
+  // form: adresa, bod {lat,lon}, zdroj (mapa/adresa/AML), cast, upresneni, vJmeno, vPrijmeni, vTelefon, vVztah, pJmeno, pPrijmeni, pRok, pVek, pPohlavi, klasif, priznaky[], n, dyn, popis, poznamka
   addCallCase(h) {
     const f = h.form || {}, s = this.s, t = s.t;
     const temp = new this.constructor({ seed: h.seed, mode: 'free' }), tc = temp._spawn(), dt = t - temp.s.t;
@@ -4357,37 +4421,45 @@ class SimCalltaker {
     for (const k of CT_RUNTIME) delete o[k];
     if (Array.isArray(o.radioReports)) for (const r of o.radioReports) if (r.at != null) r.at += dt;
     if (o.wakeAt != null) o.wakeAt += dt;
-    const truth = { addr: tc.addr, lat: tc.lat, lon: tc.lon, n: tc.n, klasif: tc.klasif };
-    const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc), baseNote = o.poznamka || '';
+    const truth = { addr: tc.addr, lat: tc.lat, lon: tc.lon, n: tc.n, klasif: tc.klasif, dyn: !!tc.dyn, age: tc.age, sex: tc.sex, symptoms: (tc.symptoms || []).slice(), patient: tc.patientName, caller: tc.ozn };
+    const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc, f.bod), baseNote = o.poznamka || '', note = this._ctNote(f);
     o.n = typedN; o.intake = 0; o.addr = loc.typed;
     if (loc.geo && loc.miss) { o.lat = loc.geo.lat; o.lon = loc.geo.lon; }
     if (f.klasif && f.klasif !== tc.klasif) o.klasifZadana = String(f.klasif);
-    if (f.poznamka) o.poznamka = (baseNote ? baseNote + '; ' : '') + String(f.poznamka);
+    if (note) o.poznamka = (baseNote ? baseNote + '; ' : '') + note;
     const c = this._newCase(o);
     c.src = c.src || 'Linka 155';
-    c.call = { seed: h.seed, sec: h.sec || null, truth, typed: loc.typed, standard: loc.standard, quality: loc.geo ? loc.geo.quality : 'n/a', errM: loc.errM, miss: !!loc.miss, truthN: tc.n, typedN, klasifOk: !f.klasif || f.klasif === tc.klasif, baseNote, note: f.poznamka || '', updates: 0, unlocatable: !!(f.adresa && loc.standard && loc.geo && !loc.geo.quality) };
+    c.call = { seed: h.seed, sec: h.sec || null, truth, typed: loc.typed, standard: loc.standard, quality: loc.geo ? loc.geo.quality : 'n/a', errM: loc.errM, miss: !!loc.miss, tol: loc.tol, searchDelay: loc.searchDelay || 0, conflict: !!loc.conflict, bod: loc.byPoint ? { lat: loc.geo.lat, lon: loc.geo.lon } : null, zdroj: f.zdroj || (loc.byPoint ? 'mapa' : 'adresa'), truthN: tc.n, typedN, klasifOk: !f.klasif || f.klasif === tc.klasif, baseNote, note, updates: 0, unlocatable: !!(f.adresa && loc.standard && !loc.byPoint && loc.geo && !loc.geo.quality), form: JSON.parse(JSON.stringify(f)) };
+    c.call.check = this._ctCheck(f, truth, c.call);
     if (c.call.unlocatable) this.L('warn', `${c.num}: zadanou adresu se nepodařilo najít (${c.addr}), dispečer ji dohledává`, c.id);
+    if (loc.conflict) this.L('warn', `${c.num}: adresa a bod z mapy se rozcházejí, přednost má bod`, c.id);
     if (loc.miss) c.addrMiss = loc.miss;
     this.L('case', `Hovor od calltakera ${c.num}: N${typedN} – ${c.klasif}, ${c.addr}${loc.miss ? ' (adresa nesedí)' : ''}`, c.id);
     return c;
   }
-  // doplnění případu během pokračujícího hovoru (naléhavost, poznámka; adresa jen dokud nejede posádka)
+  // doplnění případu během pokračujícího hovoru (naléhavost, poznámka, klasifikace, osoby; poloha jen dokud nejede posádka)
   updateCallCase(c, f) {
     if (!c || !c.call || c.status === 'closed') return c;
     f = f || {};
     const n = this._ctN(f.n, c.n);
     if (n !== c.n) { this.L('case', `${c.num}: calltaker mění naléhavost N${c.n} → N${n}`, c.id); c.n = n; c.call.typedN = n; c.call.updates++; }
-    if (f.poznamka != null && f.poznamka !== c.call.note) { c.call.note = f.poznamka; c.poznamka = (c.call.baseNote ? c.call.baseNote + '; ' : '') + f.poznamka; this.L('case', `${c.num}: doplněna poznámka od calltakera`, c.id); c.call.updates++; }
+    const note = this._ctNote(f);
+    if (f.poznamka != null || f.popis != null || f.upresneni != null) if (note !== c.call.note) { c.call.note = note; c.poznamka = (c.call.baseNote ? c.call.baseNote + '; ' : '') + note; this.L('case', `${c.num}: doplněna poznámka od calltakera`, c.id); c.call.updates++; }
     if (f.klasif) { c.klasifZadana = f.klasif === c.call.truth.klasif ? null : String(f.klasif); c.call.klasifOk = f.klasif === c.call.truth.klasif; }
-    if (f.adresa && String(f.adresa).trim() !== c.call.typed) {
-      if (c.asg && c.asg.length) this.L('warn', `${c.num}: změna adresy po vyslání posádky se zatím nepřebírá (${String(f.adresa).trim()})`, c.id);
+    const sig = JSON.stringify([this._ctStr(f.adresa), f.bod ? [f.bod.lat, f.bod.lon] : null]);
+    if (c.call.sig == null) c.call.sig = JSON.stringify([c.call.form && this._ctStr(c.call.form.adresa), c.call.form && c.call.form.bod ? [c.call.form.bod.lat, c.call.form.bod.lon] : null]);
+    if ((f.adresa || f.bod) && sig !== c.call.sig) {
+      if (c.asg && c.asg.length) this.L('warn', `${c.num}: změna polohy po vyslání posádky se zatím nepřebírá (${this._ctStr(f.adresa) || 'bod z mapy'})`, c.id);
       else {
-        const loc = this._ctLocate(f.adresa, { addr: c.call.truth.addr, lat: c.call.truth.lat, lon: c.call.truth.lon });
+        const tr = c.call.truth, loc = this._ctLocate(f.adresa, { addr: tr.addr, lat: tr.lat, lon: tr.lon }, f.bod);
         c.addr = loc.typed; c.call.typed = loc.typed; c.call.quality = loc.geo ? loc.geo.quality : 'n/a'; c.call.errM = loc.errM; c.call.miss = !!loc.miss; c.addrMiss = loc.miss || null;
-        c.lat = loc.geo && loc.miss ? loc.geo.lat : c.call.truth.lat; c.lon = loc.geo && loc.miss ? loc.geo.lon : c.call.truth.lon;
-        this.L('case', `${c.num}: calltaker opravil adresu: ${c.addr}`, c.id); c.call.updates++;
+        c.call.tol = loc.tol; c.call.searchDelay = loc.searchDelay || 0; c.call.conflict = !!loc.conflict; c.call.bod = loc.byPoint ? { lat: loc.geo.lat, lon: loc.geo.lon } : null; c.call.zdroj = f.zdroj || (loc.byPoint ? 'mapa' : 'adresa');
+        c.lat = loc.geo && loc.miss ? loc.geo.lat : tr.lat; c.lon = loc.geo && loc.miss ? loc.geo.lon : tr.lon;
+        c.call.sig = sig; this.L('case', `${c.num}: calltaker opravil polohu: ${c.addr}`, c.id); c.call.updates++;
       }
     }
+    c.call.form = Object.assign(c.call.form || {}, JSON.parse(JSON.stringify(f)));
+    c.call.check = this._ctCheck(c.call.form, c.call.truth, c.call);
     return c;
   }
 

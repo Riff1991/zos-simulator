@@ -2,6 +2,7 @@
 // ---------- události ----------
 function act(a, el) {
   const d = el.dataset;
+  if (a.startsWith('ct-')) { ctAct(a, el); return; }
   switch (a) {
     case 'dismiss-alert':
       alertHidden.add(d.key);
@@ -257,7 +258,7 @@ $('btn-end').addEventListener('click', () => { if (sim) { sim.s.ended = true; sp
   svg.addEventListener('wheel', ev => { ev.preventDefault(); const p = svgPt(svg, ev); zoom(ev.deltaY > 0 ? 1.15 : 0.87, p.x, p.y); }, { passive: false });
 })();
 window.addEventListener('keydown', ev => {
-  if (ev.key === ' ' && sim && !modalOpen) { ev.preventDefault(); speed = speed ? 0 : savedSpeed; }
+  if (ev.key === ' ' && sim && !modalOpen && !/INPUT|TEXTAREA|SELECT/.test((ev.target && ev.target.tagName) || '')) { ev.preventDefault(); speed = speed ? 0 : savedSpeed; }
   if ((ev.key === 'p' || ev.key === 'P') && sim && !modalOpen && !/INPUT|TEXTAREA|SELECT/.test((ev.target && ev.target.tagName) || '')) { const e = radioOpen().find(x => x.state === 'calling'); if (e) { sim.radioAnswer(e.id); pollLog(); render(); } }
 });
 window.__zos = { get sim() { return sim; }, step: s => sim && sim.step(s), feed: () => radioFeed.slice() }; Object.defineProperty(window, '__zosMap', { get: () => GL });

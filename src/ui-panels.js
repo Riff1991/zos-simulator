@@ -20,7 +20,7 @@ function renderTop() {
     $('toggle-radio-main').textContent = mainPanelHidden.radio ? 'Zobrazit přehled zde' : 'Skrýt přehled zde';
   }
   $('btn-end').style.display = s.mode === 'free' ? '' : 'none';
-  const nb = $('nav'); setHTML(nb, [['cases', 'Případy'], ['detail', 'Případ'], ['crews', 'Posádky'], ['map', 'Mapa'], ['radio', 'Transporty']].map(([k, l]) =>
+  const nb = $('nav'); setHTML(nb, (ctModeOn() ? ctNavItems() : [['cases', 'Případy'], ['detail', 'Případ'], ['crews', 'Posádky'], ['map', 'Mapa'], ['radio', 'Transporty']]).map(([k, l]) =>
     `<button data-view="${k}" class="${view === k ? 'on' : ''}">${l}${k === 'cases' && waiting ? `<span class="badge">${waiting}</span>` : ''}</button>`).join(''));
   document.querySelectorAll('.win').forEach(w => w.classList.toggle('active', w.id === 'w-' + view));
   renderLiveAlerts();

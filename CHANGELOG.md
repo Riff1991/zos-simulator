@@ -8,6 +8,16 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.32.0 – rozpracováno
+Nové:
+- **Režim Calltaker v hlavní aplikaci** (úvodní obrazovka → ☎ Calltaker): hráč zvedá telefon, nabírá výzvu od AI volajícího (hlas OpenAI GPT-Live, volitelně text), klasifikuje ji a odesílá dispečerovi (bot, jde vypnout). Okna: **Nabírání** (telefonní pruh, záložky Nabírání a Moje případy), **Pavouk** a **Mapa**; dispečerská okna jdou zapnout přepínačem.
+- **AML:** u mobilních hovorů se hned objeví kruh z buňky (±0,6–3,5 km) a po 8–40 s zpřesnění (Wi-Fi, GNSS) s různou přesností; starší kruh zšedne, tlačítko „Použít střed AML“. U pevné linky a skrytého čísla poloha není, ~5 % AML fixů je chybných.
+- **Výběr místa na mapě:** klik vybere bod a předvyplní nejbližší adresu (do 100 m), adresu lze napsat a najít. Bod má přednost před textem. Tolerance proti skutečné poloze: dům 60 m, POI 120 m, silnice/terén 200 m; do 3× tolerance posádka pacienta chvíli hledá, nad tím jede na špatné místo.
+- **Pavouk** (náhrada řízená daty z výjezdů, skutečný dodá uživatel): indikace → vědomí → dýchání → věk → upřesnění → výsledek s indikací, N1–N3 (rozložení a jistota), dynamickou indikací a příznaky; „Použít do výzvy“ předvyplní nabírání.
+- **Okno nabírání:** volající, pacient, místo (část obce, upřesnění, zdroj polohy), událost, klasifikace; po hovoru okno výsledku s kontrolou klasifikace, následky v simulaci, mini mapou zadaného a skutečného bodu, soudcem (AI) a stažením JSON/WAV.
+Interní:
+- Engine za `s.liveCalls`: `callFacts().aml`, nová pole formuláře, `c.call.check`, tolerance polohy (`CT_TOL`), zdržení při hledání pacienta. Hlas vyčleněn do `src/live-voice.js`, UI do `src/ui-calltaker.js`, moduly `calltaker/{personas,check,prompts,spider}.js` jsou v hlavním buildu. Nové testy `tests/spider_test.js`, `tests/ct_browser.py`, rozšířený `tests/calltaker_test.js`. Samostatná stránka `calltaker/web/` zůstává jako záloha.
+
 ## v0.31.0 – 2026-11-16
 
 > Rychlost posádek podle reálných výjezdů: od výzvy po „Na místě“.

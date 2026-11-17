@@ -2,6 +2,26 @@
 
 Stav k 17. 11. 2026, větev `claude/brave-bell-k9qkuy` (vychází z `main` v0.31.0, na `main` zatím nic nejde). Vlastník: MUDr. Vojtěch Míra. Komunikuj česky a stručně, čte často z mobilu. Řiď se `CLAUDE.md` a `AGENTS.md` (žádná reálná data, nic na `main` bez schválení, před commitem lint, testy, audit, build).
 
+## Stav práce (integrace do hlavní aplikace, 17. 11. 2026, v0.32.0-dev, větev `claude/brave-bell-k9qkuy`)
+Zadání: `docs/ZADANI_PAVOUK.md` (platí jen jeho nová verze). Rozhodnutí: `docs/OTAZKY.md` (blok „Calltaker v hlavní aplikaci, AML, mapa, pavouk“).
+
+**Hotovo**
+- **Menu a režim:** úvodní obrazovka → „☎ Calltaker“ (nastavení: tok hovorů, rychlost, bot zap/vyp, dispečerská okna, posádky na mapě, OpenAI klíč a modely, hlasy, filtr, nahrávka; klíč jen v localStorage). `body.ct-mode`, layout `ct` v `src/ui-layout.js` (Nabírání, Mapa, Pavouk plovoucí; dispečerská okna skrytá, přepínač je zapne). Mobil: spodní navigace Nabírání / Mapa / Pavouk.
+- **Engine** (`src/sim-calltaker.js`, za `s.liveCalls`): `callFacts().aml` (mobil/pevná/skryté, buňka + zpřesnění Wi-Fi/GNSS, pravda uvnitř kruhu ~95 %), nová pole formuláře, bod z mapy s tolerancí (dům 60, POI 120, silnice 200 m; do 3× malé zdržení `searchDelay` v `sim-loop.js`, nad 3× `addrMiss`), kontrola klasifikace `c.call.check`. Testy v `tests/calltaker_test.js`.
+- **Pavouk** `calltaker/spider.js` (UMD, deterministický): indikace → vědomí → dýchání → věk → upřesnění (≤ 12 dlaždic, skupiny podle prefixů) → výsledek (N s rozdělením a jistotou, dynamická indikace, příznaky). `tests/spider_test.js` (všech 5 679 pozorovaných kombinací dojde na správnou indikaci; shoda N 80 % vážené četností). Okno pavouka v UI včetně drobečkové navigace a ručního přepisu N a dynamiky.
+- **UI:** `src/ui-calltaker.js` (telefon, formulář, Moje případy, AML kruhy a banner, klik na mapu s předvyplněním adresy, výsledek hovoru s mini mapou), `src/live-voice.js` (WebRTC GPT-Live, filtr, šum, WAV, přepis; bez DOM). `calltaker/{personas,check,prompts,spider}.js` jsou v buildu hlavní aplikace.
+- **Testy:** `node tests/calltaker_test.js`, `node tests/spider_test.js`, `python tests/ct_browser.py` (Playwright, atrapa WebRTC a falešné API; zvonění → zvednutí → AML → klik do mapy → pavouk → formulář → odeslání → bot → ukončení → výsledek; desktop, mobil, ruční režim bez bota), `tests/test.js`, `tests/tutorial.js`, `tests/content_audit.js`, `tests/browser_smoke.py`.
+
+**Neověřeno / zbývá**
+- **Skutečný hlas** (GPT-Live, mikrofon, nahrávka WAV) nikdo neslyšel; v prohlížeči je ověřena jen atrapa.
+- **Skutečný pavouk** dodá uživatel (stejné rozhraní `create → page/result`); stávající je náhrada z dat.
+- Změna polohy po vyslání posádky se jen loguje; následky podhodnocené naléhavosti (lékař pozdě) a skóre calltakera zatím nejsou.
+- Pevná linka: adresa účastníka jako volitelné rozšíření není.
+- Kolega jako živý dispečer (přenosový server) a živé AML jsou mimo rozsah.
+- Samostatná stránka `calltaker/web/` zůstává jako záloha (neshodí se, dokud nebude přesměrována).
+
+**Jak vyzkoušet:** `python build.py`, `python -m http.server -d site 8765`, otevřít http://localhost:8765, ☎ Calltaker, vložit klíč OpenAI (nebo zvolit „Jen text“), Spustit; trénink s intervalem 1 min. Bez klíče hovor běží bez hlasu (jen simulace a formulář).
+
 ## Cíl
 Druhá varianta hry: hráč je **calltaker**. Zazvoní telefon, zvedne ho, hlasem nabírá výzvu od AI volajícího, klasifikuje ji a **odešle dispečerovi** (hovor mezitím může pokračovat, např. telefonicky asistovaná resuscitace). Případ pak obsluhuje dispečer: zatím **bot**, později kolega živě. Cílová publikace: open-source demo + odborný článek (hlasový trenažér 112 v češtině je nezaplněná mezera; DispatchMAS a VicSim jsou jen textové).
 

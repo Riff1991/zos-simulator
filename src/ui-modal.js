@@ -15,6 +15,7 @@ function homeModal() {
     <div class="menu">
       ${saved ? `<button class="mbtn pri" data-act="resume">▶ Pokračovat ve směně<small>Uložená rozehraná směna${esc(when)}</small></button>` : ''}
       <button class="mbtn${saved ? '' : ' pri'}" data-act="newshift">＋ Nová směna<small>Obtížnost, LIBERO, nastavení směny</small></button>
+      <button class="mbtn" data-act="ct-menu">☎ Calltaker – příjem hovorů<small>Telefon, AML, mapa, pavouk, nabírání; volající je AI (hlas)</small></button>
       <button class="mbtn" data-act="tutorial">🎓 Výcvik – 10 lekcí s návodem<small>Připravené případy, všechny mechaniky krok za krokem</small></button>
       <div class="mrow"><button class="mbtn" data-act="settings">⚙ Nastavení<small>Vzhled, zvuk, hra</small></button><button class="mbtn" data-act="rules">☰ Pravidla<small>Co se hodnotí</small></button><button class="mbtn" data-act="changelog">✦ Co je nového<small>Verze ${esc(ZOS_VERSION)}</small></button></div>
     </div>
@@ -172,7 +173,7 @@ async function newGame(noWx) {
 }
 function afterLoad() { radioFeed.length = 0; sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
 function doSave() { if (sim.s.scripted) return; try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }
-function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} applyVoice(); try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); } catch (e) { homeModal(); } }
+function resume() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} applyVoice(); try { sim = Sim.restore(localStorage.getItem(SAVE_KEY)); afterLoad(); speed = settings.speed; savedSpeed = settings.speed; closeModal(); ctAfterLoad(); } catch (e) { homeModal(); } }
 // layout pro dispečera MU: panel MU vlevo na výšku, mapa, rádio s odsunem, posádky; seznam případů a protokol menší
 let muModeWas = false;
 function muModeOn() { return !!(sim && sim.s.muPlayerRole === 'mu' && sim.s.cases.some(c => c.mu && c.status !== 'closed')); }
@@ -186,7 +187,11 @@ function applyMuMode() {
 function render() {
   if (!sim) return;
   applyMuMode();
-  renderTop(); renderCases(); renderDetail(); renderCrews(); renderMap(); renderRadio();
+  ctSync();
+  renderTop();
+  if (ctModeOn() && !document.body.classList.contains('ct-disp')) { renderMap(); ctRender(); return; }
+  renderCases(); renderDetail(); renderCrews(); renderMap(); renderRadio();
+  if (ctModeOn()) ctRender();
 }
 function openPanelWindow(panel) {
   if (!panelChannel) { toast('Prohlížeč nepodporuje synchronizaci panelů.', 'warn'); return; }

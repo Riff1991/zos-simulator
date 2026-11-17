@@ -8,12 +8,13 @@ symptoms = 'const ZOS_SYMPTOMS = ' + rd('src/symptoms.json').strip() + ';\n'
 ENGINE_PARTS = ['engine-base', 'sim-radio', 'sim-neighbors', 'sim-cases', 'sim-mu', 'sim-loop', 'sim-score', 'sim-calltaker', 'engine']  # engine.js poslední (přimíchá části do Sim)
 e = strip(rd('src/messages.js')) + strip(rd('src/weather.js')) + ''.join(strip(rd('src/%s.js' % n)) for n in ENGINE_PARTS)
 m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src/mask.geojson') + ';\n')
-UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-events']  # jedna IIFE, části v tomto pořadí
+UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-calltaker', 'ui-events']  # jedna IIFE, části v tomto pořadí
 ui = "(function () {\n'use strict';\n" + ''.join(rd('src/%s.js' % n) for n in UI_PARTS) + '})();\n'
 os.makedirs('work', exist_ok=True)
 open('work/ui.bundle.js', 'w', encoding='utf8').write(ui)  # jen pro lint (npm run lint)
 open('work/engine.bundle.js', 'w', encoding='utf8').write(d + symptoms + e + strip(rd('src/router.js')))  # engine + data pro stránku calltakera (calltaker/build_web.js)
-u = strip(rd('src/voice.js')) + strip(rd('src/tutorial.js')) + ui
+ctmods = ''.join('(function () {' + chr(10) + rd('calltaker/%s.js' % n) + chr(10) + '})();' + chr(10) for n in ['personas', 'check', 'prompts', 'spider'])  # moduly calltakera (UMD, v prohlížeči nastaví window.CT_*)
+u = strip(rd('src/voice.js')) + strip(rd('src/live-voice.js')) + ctmods + strip(rd('src/tutorial.js')) + ui
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
 t = t.replace('ZOS JčK · DISPEČER', 'ZOS JčK · DISPEČER · v' + ver, 1)

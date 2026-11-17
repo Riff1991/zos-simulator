@@ -126,7 +126,14 @@
       for (const nm of best.names) if (isAvpu(nm) && c.vedomi && c.vedomi !== '?' && strip(nm).slice(-1).toUpperCase() === c.vedomi) add(nm);
       for (const nm of c.picked) add(nm);
       for (const nm of implied) add(nm);
-      const added = []; for (const nm of best.names) if (!names.includes(nm) && !isDyn(nm)) { add(nm); added.push(nm); }
+      const added = [];
+      for (const nm of best.names) {
+        if (names.includes(nm) || isDyn(nm)) continue;
+        const cl = classify(nm), av = isAvpu(nm) ? strip(nm).slice(-1).toUpperCase() : null;
+        if (cl && c[cl[0]] && c[cl[0]] !== '?' && c[cl[0]] !== cl[1]) continue;   // protiřečí zvolenému věku, vědomí či dýchání
+        if (av && c.vedomi && c.vedomi !== '?' && av !== c.vedomi) continue;
+        add(nm); added.push(nm);
+      }
       if (dyn) names.push('DYNAMICKÁ INDIKACE');
       return { klasif: c.klasif, n, nDist: { 1: dist[1] / W, 2: dist[2] / W, 3: dist[3] / W }, confidence: conf, dyn, pDyn, vek: c.vek === '?' ? null : c.vek, vedomi: c.vedomi === '?' ? null : c.vedomi, dychani: c.dychani === '?' ? null : c.dychani, symptoms: names, picked: c.picked.slice(), added, apneic, combos: list.length };
     }
