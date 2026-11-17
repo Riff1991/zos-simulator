@@ -55,4 +55,20 @@ ok(noNear / tot > 0.995, 'bez polohy se adresa najde také (' + noNear + ' z ' +
   ok(t2 > 300 && noErr / t2 > 0.995, 'správně zadaná adresa nemá chybu polohy ani zdržení v enginu: ' + noErr + ' z ' + t2);
   ok(tot > 800 && hit / tot > 0.995, 'adresy generovaných případů se najdou do tolerance 60 m: ' + hit + ' z ' + tot + (bad.length ? ' – např. ' + bad.join('; ') : ''));
   console.log('  (bez znalosti polohy, tedy jen z textu: ' + hitNoNear + ' z ' + tot + ')'); }
+// 5) čísla „popisné/orientační“: volající říká opačné pořadí nebo jen jedno číslo (Mánesova 70/401 ↔ 401/70)
+{ let rev = 0, revOk = 0, one = 0, oneOk = 0, first = 0, firstOk = 0;
+  const key = i => S[a[i + 3]] + '|' + S[a[i + 2]];
+  const cnt2 = new Map(), cnt1 = new Map();
+  for (let i = 0; i < a.length; i += 8) { const m = /^(\d+)\/(\d+)$/.exec(S[a[i + 4]]); if (m) { cnt2.set(key(i) + '|' + m[2], (cnt2.get(key(i) + '|' + m[2]) || 0) + 1); cnt1.set(key(i) + '|' + m[1], (cnt1.get(key(i) + '|' + m[1]) || 0) + 1); } }
+  for (let k = 0; k < 6000; k++) {
+    const i = Math.floor(rnd() * n) * 8, city = S[a[i + 3]], st = S[a[i + 2]], m = /^(\d+)\/(\d+)$/.exec(S[a[i + 4]]); if (!m || !st || st === city) continue;
+    const lat = a[i] / 1e5, lon = a[i + 1] / 1e5, near = { lat, lon }, at = t => { const g = sim._ctGeocode(t + ', ' + city, near); return g.quality === 'exact' && Math.hypot((g.lat - lat) * 111320, (g.lon - lon) * 72000) < 30; };
+    rev++; if (at(st + ' ' + m[2] + '/' + m[1])) revOk++;
+    if (cnt2.get(key(i) + '|' + m[2]) === 1) { one++; if (at(st + ' ' + m[2])) oneOk++; }
+    if (cnt1.get(key(i) + '|' + m[1]) === 1) { first++; if (at(st + ' ' + m[1])) firstOk++; }
+  }
+  ok(rev > 300 && revOk / rev > 0.97, 'opačné pořadí čísla (70/401 místo 401/70) se najde: ' + revOk + ' z ' + rev);
+  ok(one > 300 && oneOk / one > 0.97, 'jen orientační číslo (70) najde dům, je-li jednoznačné: ' + oneOk + ' z ' + one);
+  ok(first > 300 && firstOk / first > 0.97, 'jen popisné číslo (401) najde dům: ' + firstOk + ' z ' + first);
+  const g = sim._ctGeocode('Mánesova 70/401, České Budějovice'); ok(g.quality === 'exact', 'Mánesova 70/401 v Českých Budějovicích se najde (' + g.quality + ')'); }
 console.log(fail ? 'SELHALO: ' + fail : 'addr test OK'); process.exit(fail ? 1 : 0);

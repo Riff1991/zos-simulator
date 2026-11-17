@@ -671,7 +671,9 @@ function ctSugList(field) {
     }
   } else if (town) {
     const un = ctNk(ctVal('ctf-ulice')), st = un ? [...town.streets.values()].find(x => x.nk === un) : town.streets.get('');
-    if (st) for (const nm of st.nums) { if (!q || ctNk(nm).startsWith(q)) out.push({ r: 0, c: 0, label: nm, v: nm }); }
+    // číslo se nabízí podle začátku celého čísla, kterékoli jeho části nebo opačného pořadí (70/401 ↔ 401/70)
+    const numOk = nm => { if (!q) return true; const n = ctNk(nm), parts = n.split('/'); return n.startsWith(q) || parts.some(x => x.startsWith(q)) || parts.slice().reverse().join('/').startsWith(q); };
+    if (st) for (const nm of st.nums) { if (numOk(nm)) out.push({ r: 0, c: 0, label: nm, v: nm }); }
     out.sort((x, y) => (parseInt(x.label, 10) || 0) - (parseInt(y.label, 10) || 0) || x.label.localeCompare(y.label, 'cs'));
     return out;
   }

@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.36.2 – rozpracováno
+Opravy:
+- **Čísla domů „popisné/orientační“:** volající často řekne opačné pořadí nebo jen jedno z čísel (například „Mánesova 70/401“, v datech je 401/70). Hra to dřív nenašla a hlásila „poloha nesedí“. Teď se najde i opačné pořadí, i samotné orientační či popisné číslo; našeptávač nabízí čísla podle kterékoli části.
+
 ## v0.36.1 – 2026-11-17
 Opravy:
 - **Našeptávač adres:** v Českých Budějovicích se nenabízely ulice (například Matice školské). Příčinou byly varianty zápisu obcí v datech („Ceske Budejovice“ bez diakritiky, „VIMPERK“ velkými písmeny), které přepsaly skutečnou obec. Varianty se teď slučují; index se testuje na všech 227 tisících adres.

@@ -7100,14 +7100,25 @@ class SimCalltaker {
     let list = idx.byCity.get(p.city); if (!list) return { quality: null, p };
     const a = idx.A.a, N = idx.N, S = idx.A.s, hasNear = !!near && Number.isFinite(near.lat) && Number.isFinite(near.lon), dist = i => hav(a[i] / 1e5, a[i + 1] / 1e5, near.lat, near.lon);
     if (hasNear) { const close = list.filter(i => dist(i) < 15); if (close.length) list = close; }
-    const num0 = p.num.split('/')[0], same = [];
-    let exact = null, exactD = Infinity;
+    // číslo v databázi je „popisné/orientační“ (401/70); volající říká i opačné pořadí (70/401) nebo jen jedno z čísel: nejlepší shoda vyhrává, při shodě nejbližší k poloze
+    const tp = p.num ? p.num.split('/') : [], same = [];
+    const score = num => {
+      if (!tp.length) return 0;
+      if (num === p.num) return 3;
+      const dp = num.split('/');
+      if (tp.length === 2 && dp.length === 2 && dp[0] === tp[1] && dp[1] === tp[0]) return 2.5;
+      if (tp.length === 1) return dp[0] === tp[0] ? 2 : dp[1] === tp[0] ? 1.5 : 0;
+      if (dp.length === 1) return dp[0] === tp[0] || dp[0] === tp[1] ? 1 : 0;
+      return dp[0] === tp[0] ? 0.5 : 0;
+    };
+    let exact = null, exactD = Infinity, best = 0;
     for (const i of list) {
       const street = N(a[i + 2]), city = N(a[i + 3]), num = N(a[i + 4]);
       const st = street && street !== city ? street : '';
       if (st === p.street || (!p.street && !st)) {
         same.push(i);
-        if (num === p.num || (num0 && num.split('/')[0] === num0)) { if (!hasNear) { exact = i; break; } const dd = dist(i); if (dd < exactD) { exactD = dd; exact = i; } }
+        const sc = score(num);
+        if (sc > 0) { const dd = hasNear ? dist(i) : 0; if (sc > best || (sc === best && dd < exactD)) { best = sc; exact = i; exactD = dd; } if (sc === 3 && !hasNear) break; }
       }
     }
     const at = i => ({ lat: a[i] / 1e5, lon: a[i + 1] / 1e5, label: S[a[i + 3]] });
