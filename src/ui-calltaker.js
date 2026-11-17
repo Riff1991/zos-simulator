@@ -21,7 +21,7 @@ const ctSet = (id, v) => { const e = $(id); if (e) e.value = v == null ? '' : v;
 function ctMenu() {
   const c = cts, rb = (k, v, l) => `<label style="display:inline-flex;gap:4px;margin-right:12px;align-items:center"><input type="radio" name="ctm-${k}" value="${v}"${String(c[k]) === String(v) ? ' checked' : ''} style="width:auto"> ${l}</label>`;
   const cb = (k, l) => `<label style="display:flex;gap:6px;align-items:center;margin:3px 0"><input type="checkbox" id="ctm-${k}"${c[k] ? ' checked' : ''} style="width:auto"> ${l}</label>`;
-  modal(`<div class="card home ct-form" style="max-width:600px;max-height:92dvh"><h2 style="margin:0">☎ Calltaker – příjem hovorů</h2>
+  modal(`<div class="card home ct-form ct-card" style="max-width:600px"><h2 style="margin:0">☎ Calltaker – příjem hovorů</h2>
     <p class="ct-note">Ty jsi calltaker: zazvoní telefon, zvedneš ho a vyslechneš AI volajícího (hlas OpenAI GPT-Live). Vidíš polohu z AML, vybereš místo na mapě, klasifikuješ pavoukem a odešleš případ dispečerovi (zatím bot). Osoby, adresy a telefony jsou generované.</p>
     <fieldset><legend>Hovory</legend>
       <div>${rb('flow', 'realistic', 'Realistický tok (zvoní asi čtvrtina hovorů)')}${rb('flow', 'training', 'Trénink (jen moje hovory)')}</div>
@@ -433,7 +433,7 @@ function ctResultModal(rec) {
   const typedPt = c ? (cc.bod ? { lat: cc.bod.lat, lon: cc.bod.lon, tol: cc.tol } : (() => { const g = sim._ctGeocode(cc.typed); return g.quality ? { lat: g.lat, lon: g.lon, tol: cc.tol } : null; })()) : null;
   const ph = f.aml.phases, aml = ph.length > 1 ? ph[ph.length - 1] : null;
   window._ctRes = rec;
-  modal(`<div class="card home ct-form" style="max-width:640px;max-height:92dvh"><h2 style="margin:0">Hovor ukončen</h2><div class="ct-note">${esc(f.view.volajici.jmeno)} · ${esc(k.klasifikace)}, N${String(k['naléhavost']).replace('N', '')} · ${esc(k.adresa)}</div>
+  modal(`<div class="card home ct-form ct-card" style="max-width:640px"><h2 style="margin:0">Hovor ukončen</h2><div class="ct-note">${esc(f.view.volajici.jmeno)} · ${esc(k.klasifikace)}, N${String(k['naléhavost']).replace('N', '')} · ${esc(k.adresa)}</div>
     ${tb ? `<h3 style="margin:6px 0 2px;font-size:13px">Kontrola klasifikace</h3><table class="ct-t">${tb}</table>` : ''}
     <h3 style="margin:8px 0 2px;font-size:13px">Následky v simulaci</h3>${cons}
     <h3 style="margin:8px 0 2px;font-size:13px">Zadaný a skutečný bod</h3>${ctMiniMap({ lat: k.lat, lon: k.lon }, typedPt, aml)}
