@@ -378,6 +378,12 @@
    "kind": "n1",
    "lines": [
     "Spatřený kolaps, nereaguje na oslovení, bolest, nedýchá normálně (gasping), zahájení TANR"
+   ],
+   "chips": [
+    {
+     "c": "SPATŘENÝ_KOLAPS",
+     "t": "Spatřený kolaps, nereaguje na oslovení, bolest, nedýchá normálně (gasping), zahájení TANR"
+    }
    ]
   },
   {
@@ -392,6 +398,16 @@
    "lines": [
     "Nalezen nereagující na bolest, oslovení, nejde o nález těla zemřelého, nedýchá normálně, AVPU-U nedýchá",
     "TANR indikován či TANR nelze"
+   ],
+   "chips": [
+    {
+     "c": "NALEZEN_NEREAGUJÍCÍ",
+     "t": "Nalezen nereagující na bolest, oslovení, nejde o nález těla zemřelého, nedýchá normálně, AVPU-U nedýchá"
+    },
+    {
+     "c": "TANR_INDIKOVÁN_ČI",
+     "t": "TANR indikován či TANR nelze"
+    }
    ]
   },
   {
@@ -405,6 +421,16 @@
    "kind": "n2",
    "lines": [
     "Nereaguje na oslovení a bolest, nebo pouze grimasuje, dýchá normálně, pravidelně, opakovaně kolabuje (probere se, následně ihned kolaps), AVPU-U dýchá"
+   ],
+   "chips": [
+    {
+     "c": "NEREAGUJE_OSLOVENÍ",
+     "t": "Nereaguje na oslovení a bolest"
+    },
+    {
+     "c": "POUZE_GRIMASUJE",
+     "t": "Pouze grimasuje, dýchá normálně, pravidelně, opakovaně kolabuje (probere se, následně ihned kolaps), AVPU-U dýchá"
+    }
    ]
   },
   {
@@ -418,6 +444,12 @@
    "kind": "n2di",
    "lines": [
     "Nereaguje na oslovení, ale reaguje na bolestivý podnět slovní reakcí, zachovalé spontánní dýchání, AVPU-P"
+   ],
+   "chips": [
+    {
+     "c": "NEREAGUJE_OSLOVENÍ_2",
+     "t": "Nereaguje na oslovení, ale reaguje na bolestivý podnět slovní reakcí, zachovalé spontánní dýchání, AVPU-P"
+    }
    ]
   },
   {
@@ -434,6 +466,24 @@
     "AVPU-V",
     "Stav po kolapsu/prekolaps, nyní při vědomí, bez obtíží, AVPU-A",
     "Ležící osoba, nelze ověřit stav životních funkcí"
+   ],
+   "chips": [
+    {
+     "c": "REAGUJE_OSLOVENÍ",
+     "t": "Reaguje na oslovení, reaguje na bolestivý podnět slovní reakcí"
+    },
+    {
+     "c": "AVPU-V",
+     "t": "AVPU-V"
+    },
+    {
+     "c": "STAV",
+     "t": "Stav po kolapsu/prekolaps, nyní při vědomí, bez obtíží, AVPU-A"
+    },
+    {
+     "c": "LEŽÍCÍ_OSOBA_NELZE",
+     "t": "Ležící osoba, nelze ověřit stav životních funkcí"
+    }
    ]
   },
   {
@@ -447,6 +497,12 @@
    "kind": "n3",
    "lines": [
     "Nález těla zemřelého a koroner nedostupný"
+   ],
+   "chips": [
+    {
+     "c": "NÁLEZ_TĚLA_ZEMŘELÉHO",
+     "t": "Nález těla zemřelého a koroner nedostupný"
+    }
    ]
   },
   {
@@ -460,6 +516,12 @@
    "kind": "n4",
    "lines": [
     "NZO v prokazatelné době více jak 30 min bez podmínek hypotermie terminální stádium nevyléčit.nemoci bez zn.aktivity vitálních fcí jisté známky smrti (posrmtná ztuhlost, hnilobný rozklad) zranění neslučitelné se životem, nález kosterních ostatků oznámení o nálezu těla zemřelého nahláš.lékařem / vedoucím VS"
+   ],
+   "chips": [
+    {
+     "c": "NZO_PROKAZATELNÉ",
+     "t": "NZO v prokazatelné době více jak 30 min bez podmínek hypotermie terminální stádium nevyléčit.nemoci bez zn.aktivity vitálních fcí jisté známky smrti (posrmtná ztuhlost, hnilobný rozklad) zranění neslučitelné se životem, nález kosterních ostatků oznámení o nálezu těla zemřelého nahláš.lékařem / vedoucím VS"
+    }
    ]
   },
   {
@@ -473,6 +535,16 @@
    "kind": "n1",
    "lines": [
     "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%"
+   ],
+   "chips": [
+    {
+     "c": "OBJ_DUŠ_NEMŮŽE_MLUVIT",
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo"
+    },
+    {
+     "c": "SpO2_<74%",
+     "t": "Zjištěná SpO2 pod 74%"
+    }
    ]
   },
   {
@@ -487,6 +559,24 @@
    "lines": [
     "Anginosní bolest = stenokardie (bolest klidová, svíravá, pálivá, neohraničená) s propagací nebo přítomný (pre)kolaps",
     "Objektivizovaná dušnost - schopen říci pouze větu, nebo zjištěná SpO2 75 - 81%"
+   ],
+   "chips": [
+    {
+     "c": "ANGINOSNÍ_BOLEST",
+     "t": "Anginosní bolest = stenokardie (bolest klidová, svíravá, pálivá, neohraničená) s propagací"
+    },
+    {
+     "c": "PŘÍTOMNÝ_PRE)KOLAPS",
+     "t": "Přítomný (pre)kolaps"
+    },
+    {
+     "c": "OBJ_DUŠ_SCHOPEN",
+     "t": "Objektivizovaná dušnost - schopen říci pouze větu"
+    },
+    {
+     "c": "SpO2_75-81%",
+     "t": "Zjištěná SpO2 75 - 81%"
+    }
    ]
   },
   {
@@ -502,6 +592,24 @@
     "Stenokardie bez propagace",
     "Stenokardie trvající 0-6 hodin",
     "Objektiviz. dušnost - udrží konverzaci, nebo SpO2 82 - 93%"
+   ],
+   "chips": [
+    {
+     "c": "STENOKARDIE_PROPAGACE",
+     "t": "Stenokardie bez propagace"
+    },
+    {
+     "c": "STENOKARDIE_TRVAJÍCÍ",
+     "t": "Stenokardie trvající 0-6 hodin"
+    },
+    {
+     "c": "OBJEKTIVIZ_DUŠ_UDRŽÍ",
+     "t": "Objektiviz. dušnost - udrží konverzaci"
+    },
+    {
+     "c": "SpO2_82-93%",
+     "t": "SpO2 82 - 93%"
+    }
    ]
   },
   {
@@ -517,6 +625,28 @@
     "Bolest různé intenzity, kolísavá, nebo přesně lokalizovatelná",
     "Stenokardie trvající nad 6 hodin",
     "Subjektivní dušnost - dušnost pocitová, trvající několik hodin, nebo zjištěná SpO2 nad 94%"
+   ],
+   "chips": [
+    {
+     "c": "BOLEST_RŮZNÉ",
+     "t": "Bolest různé intenzity, kolísavá"
+    },
+    {
+     "c": "PŘESNĚ",
+     "t": "Přesně lokalizovatelná"
+    },
+    {
+     "c": "STENOKARDIE_TRVAJÍCÍ_2",
+     "t": "Stenokardie trvající nad 6 hodin"
+    },
+    {
+     "c": "SUBJEKTIVNÍ_DUŠ",
+     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin"
+    },
+    {
+     "c": "SpO2_>94%",
+     "t": "Zjištěná SpO2 nad 94%"
+    }
    ]
   },
   {
@@ -532,6 +662,24 @@
     "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%",
     "Náhlý vznik",
     "Zapojuje pomocné dýchácí svaly, neklid, apatie"
+   ],
+   "chips": [
+    {
+     "c": "OBJ_DUŠ_NEMŮŽE_MLUVIT",
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo"
+    },
+    {
+     "c": "SpO2_<74%",
+     "t": "Zjištěná SpO2 pod 74%"
+    },
+    {
+     "c": "NÁHLÝ_VZNIK",
+     "t": "Náhlý vznik"
+    },
+    {
+     "c": "ZAPOJUJE_POMOCNÉ",
+     "t": "Zapojuje pomocné dýchácí svaly, neklid, apatie"
+    }
    ]
   },
   {
@@ -546,6 +694,20 @@
    "lines": [
     "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech,",
     "Progrese dušnosti v poslední hodině nebo zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)"
+   ],
+   "chips": [
+    {
+     "c": "OBJ_DUŠ_SCHOPEN",
+     "t": "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech"
+    },
+    {
+     "c": "PROGRESE_DUŠ_POSLEDNÍ",
+     "t": "Progrese dušnosti v poslední hodině"
+    },
+    {
+     "c": "SpO2_75-81%",
+     "t": "Zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)"
+    }
    ]
   },
   {
@@ -561,6 +723,28 @@
     "Objektiviz. dušnost - udrží konverzaci, nebo SpO2 82 - 93%",
     "Dušnost trvající déle než 1 hodinu, nebo dušnost volání z 3.ruky",
     "Nebo výrazné zhoršení chronického stavu (zejm. CHOPN, ICHS)"
+   ],
+   "chips": [
+    {
+     "c": "OBJEKTIVIZ_DUŠ_UDRŽÍ",
+     "t": "Objektiviz. dušnost - udrží konverzaci"
+    },
+    {
+     "c": "SpO2_82-93%",
+     "t": "SpO2 82 - 93%"
+    },
+    {
+     "c": "DUŠ_TRVAJÍCÍ_DÉLE",
+     "t": "Dušnost trvající déle než 1 hodinu"
+    },
+    {
+     "c": "DUŠ_VOLÁNÍ_3.RUKY",
+     "t": "Dušnost volání z 3.ruky"
+    },
+    {
+     "c": "VÝRAZNÉ_ZHORŠENÍ",
+     "t": "Výrazné zhoršení chronického stavu (zejm. CHOPN, ICHS)"
+    }
    ]
   },
   {
@@ -575,6 +759,20 @@
    "lines": [
     "Subjektivní dušnost - dušnost pocitová, trvající několik hodin,",
     "Hyperventilace, celkový stav dobrý, nebo zjištěná SpO2 nad 94%"
+   ],
+   "chips": [
+    {
+     "c": "SUBJEKTIVNÍ_DUŠ",
+     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin"
+    },
+    {
+     "c": "HYPERVENTILACE",
+     "t": "Hyperventilace, celkový stav dobrý"
+    },
+    {
+     "c": "SpO2_>94%",
+     "t": "Zjištěná SpO2 nad 94%"
+    }
    ]
   },
   {
@@ -591,6 +789,32 @@
     "Nejde o léčeného epileptika nebo toto nelze zjistit",
     "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty, nebo po křečích několik minut a neprobírá se (hrozící status epil.)",
     "Febrilní křeče / křeče v těhotenství / neznámá příčina"
+   ],
+   "chips": [
+    {
+     "c": "KŘEČE_NEZNÁMÉHO",
+     "t": "Křeče neznámého původu, celotělové s poruchou vědomí"
+    },
+    {
+     "c": "NEJDE_LÉČENÉHO",
+     "t": "Nejde o léčeného epileptika"
+    },
+    {
+     "c": "TOTO_NELZE_ZJISTIT",
+     "t": "Toto nelze zjistit"
+    },
+    {
+     "c": "OPAKOVANÝ_KŘEČOVÝ",
+     "t": "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty"
+    },
+    {
+     "c": "KŘEČÍCH_NĚKOL_MIN",
+     "t": "Po křečích několik minut a neprobírá se (hrozící status epil.)"
+    },
+    {
+     "c": "FEBRILNÍ_KŘEČE_KŘEČE",
+     "t": "Febrilní křeče / křeče v těhotenství / neznámá příčina"
+    }
    ]
   },
   {
@@ -605,6 +829,20 @@
    "lines": [
     "Křeče probíhající u léčeného nebo známého epileptika",
     "Křeče s typickým průběhem svědčící pro epileptický záchvat"
+   ],
+   "chips": [
+    {
+     "c": "KŘEČE_PROBÍHAJÍCÍ",
+     "t": "Křeče probíhající u léčeného"
+    },
+    {
+     "c": "ZNÁMÉHO_EPILEPTIKA",
+     "t": "Známého epileptika"
+    },
+    {
+     "c": "KŘEČE_TYPICKÝM",
+     "t": "Křeče s typickým průběhem svědčící pro epileptický záchvat"
+    }
    ]
   },
   {
@@ -619,6 +857,20 @@
    "lines": [
     "Stav po epileptickém záchvatu u známého epileptika",
     "Probírá se, začíná komunikovat nebo hyperventilační tetanie"
+   ],
+   "chips": [
+    {
+     "c": "STAV_EPILEPTICKÉM",
+     "t": "Stav po epileptickém záchvatu u známého epileptika"
+    },
+    {
+     "c": "PROBÍRÁ_ZAČÍNÁ",
+     "t": "Probírá se, začíná komunikovat"
+    },
+    {
+     "c": "HYPERVENTILAČNÍ",
+     "t": "Hyperventilační tetanie"
+    }
    ]
   },
   {
@@ -633,6 +885,20 @@
    "lines": [
     "Opakovaný výboj ICD (kardioverter)",
     "Zjištěná TF < 30/min nebo TF > 200/min"
+   ],
+   "chips": [
+    {
+     "c": "OPAKOVANÝ_VÝBOJ",
+     "t": "Opakovaný výboj ICD (kardioverter)"
+    },
+    {
+     "c": "TF_<_30/MIN",
+     "t": "Zjištěná TF < 30/min"
+    },
+    {
+     "c": "TF_>_200/MIN",
+     "t": "TF > 200/min"
+    }
    ]
   },
   {
@@ -648,6 +914,28 @@
     "Zjištěná TF 30-45/min nebo TF 150-200/min",
     "Náhle nově vzniklé palpitace nebo palpitace spojené s klidovou dušností či kolapsem či BNH",
     "Izolovaný výboj ICD (kardioverter)"
+   ],
+   "chips": [
+    {
+     "c": "TF_30-45/MIN",
+     "t": "Zjištěná TF 30-45/min"
+    },
+    {
+     "c": "TF_150-200/MIN",
+     "t": "TF 150-200/min"
+    },
+    {
+     "c": "NÁHLE_NOVĚ_VZNIKLÉ",
+     "t": "Náhle nově vzniklé palpitace"
+    },
+    {
+     "c": "PALPITACE_SPOJENÉ",
+     "t": "Palpitace spojené s klidovou dušností či kolapsem či BNH"
+    },
+    {
+     "c": "IZOLOVANÝ_VÝBOJ",
+     "t": "Izolovaný výboj ICD (kardioverter)"
+    }
    ]
   },
   {
@@ -661,6 +949,12 @@
    "kind": "n3",
    "lines": [
     "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů"
+   ],
+   "chips": [
+    {
+     "c": "BUŠENÍ_SRDCE",
+     "t": "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů"
+    }
    ]
   },
   {
@@ -674,6 +968,16 @@
    "kind": "n3",
    "lines": [
     "Objektivizovaná hypertenze, bez dalších závažných příznaků; hyperteze nereagjící na terapii"
+   ],
+   "chips": [
+    {
+     "c": "OBJ_HYPERTENZE",
+     "t": "Objektivizovaná hypertenze, bez dalších závažných příznaků"
+    },
+    {
+     "c": "HYPERTEZE_NEREAGJÍCÍ",
+     "t": "Hyperteze nereagjící na terapii"
+    }
    ]
   },
   {
@@ -687,6 +991,12 @@
    "kind": "n2",
    "lines": [
     "Příznaky CMP s poruchou vědomí AVPU-U, bezvědomí, dýchá"
+   ],
+   "chips": [
+    {
+     "c": "PŘÍZNAKY_CMP_PORUCHOU",
+     "t": "Příznaky CMP s poruchou vědomí AVPU-U, bezvědomí, dýchá"
+    }
    ]
   },
   {
@@ -701,6 +1011,20 @@
    "lines": [
     "Příznaky CMP s poruchou vědomí AVPU-P, reaguje na bolest",
     "FAST: asymetrie obličeje, pokles koutku, poruchy řeči (afázie, dysratrie), hemiparéza či monoparéza končetin, plegie konč., nebo 2 a více vedlejší kritéria"
+   ],
+   "chips": [
+    {
+     "c": "PŘÍZNAKY_CMP_PORUCHOU_2",
+     "t": "Příznaky CMP s poruchou vědomí AVPU-P, reaguje na bolest"
+    },
+    {
+     "c": "FAST_ASYMETRIE",
+     "t": "FAST: asymetrie obličeje, pokles koutku, poruchy řeči (afázie, dysratrie), hemiparéza či monoparéza končetin, plegie konč"
+    },
+    {
+     "c": "2_VÍCE_VEDLEJŠÍ",
+     "t": "2 a více vedlejší kritéria"
+    }
    ]
   },
   {
@@ -714,6 +1038,12 @@
    "kind": "n2",
    "lines": [
     "FAST pozitivní kritérium se vznikem do 4,5 hodiny"
+   ],
+   "chips": [
+    {
+     "c": "FAST_POZITIVNÍ",
+     "t": "FAST pozitivní kritérium se vznikem do 4,5 hodiny"
+    }
    ]
   },
   {
@@ -728,6 +1058,12 @@
    "lines": [
     "Vedlejší kritérium:",
     "AVPU-V, náhle vzniklé - poruchy čití 1/2 těla, vertigo s nauzeou, výpadek 1/2 zorného pole, dvojité vidění, opozice šíje, prudká / atypická cefalea"
+   ],
+   "chips": [
+    {
+     "c": "AVPU-V_NÁHLE_VZNIKLÉ",
+     "t": "AVPU-V, náhle vzniklé - poruchy čití 1/2 těla, vertigo s nauzeou, výpadek 1/2 zorného pole, dvojité vidění, opozice šíje, prudká / atypická cefalea"
+    }
    ]
   },
   {
@@ -741,6 +1077,12 @@
    "kind": "n3",
    "lines": [
     "Hyperventilace, parestezie nespecifické, prokolaps, třes těla, vertigo bez náhlého vzniku, zmatenost bez známé anamnézy"
+   ],
+   "chips": [
+    {
+     "c": "HYPERVENTILACE",
+     "t": "Hyperventilace, parestezie nespecifické, prokolaps, třes těla, vertigo bez náhlého vzniku, zmatenost bez známé anamnézy"
+    }
    ]
   },
   {
@@ -755,6 +1097,20 @@
    "lines": [
     "Halucinace nebo bludy + agrese vůči sobě či jiné osobě",
     "NEBO: závažný pokus o sebevraždu"
+   ],
+   "chips": [
+    {
+     "c": "HALUCINACE",
+     "t": "Halucinace"
+    },
+    {
+     "c": "BLUDY_+_AGRESE_VŮČI",
+     "t": "Bludy + agrese vůči sobě či jiné osobě"
+    },
+    {
+     "c": "ZÁVAŽ_POKUS",
+     "t": "Závažný pokus o sebevraždu"
+    }
    ]
   },
   {
@@ -769,6 +1125,20 @@
    "lines": [
     "Halucinace nebo bludy bez agrese vůči sobě či jiné osobě",
     "(NEBO: psychotické jednání s pouze verbální agresí)"
+   ],
+   "chips": [
+    {
+     "c": "HALUCINACE_2",
+     "t": "Halucinace"
+    },
+    {
+     "c": "BLUDY_AGRESE_VŮČI",
+     "t": "Bludy bez agrese vůči sobě či jiné osobě"
+    },
+    {
+     "c": "PSYCHOTICKÉ_JEDNÁNÍ",
+     "t": "Psychotické jednání s pouze verbální agresí)"
+    }
    ]
   },
   {
@@ -783,6 +1153,16 @@
    "lines": [
     "Zmatenost bez anamnézy, deprese, poruchy chování nezávažného stupně, izolovaná agrese BEZ bludů/halucinací",
     "NEBO: stresová reakce na psychickou zátěž, hyperventilace"
+   ],
+   "chips": [
+    {
+     "c": "ZMATENOST_ANAMNÉZY",
+     "t": "Zmatenost bez anamnézy, deprese, poruchy chování nezávažného stupně, izolovaná agrese BEZ bludů/halucinací"
+    },
+    {
+     "c": "STRESOVÁ_REAKCE",
+     "t": "Stresová reakce na psychickou zátěž, hyperventilace"
+    }
    ]
   },
   {
@@ -796,6 +1176,12 @@
    "kind": "n2di",
    "lines": [
     "Ověřená hypoglykémie, potvrzený a léčený diabetik, porucha vědomí, nereaguje, neudrží hrnek v ruce s pitím"
+   ],
+   "chips": [
+    {
+     "c": "OVĚŘENÁ_HYPOGLYKÉMIE",
+     "t": "Ověřená hypoglykémie, potvrzený a léčený diabetik, porucha vědomí, nereaguje, neudrží hrnek v ruce s pitím"
+    }
    ]
   },
   {
@@ -810,6 +1196,16 @@
    "lines": [
     "Ověřená hypoglykémie, potvrzený a léčený diabetik, při vědomí, reaguje na oslovení, udrží hrnek s pitím v ruce",
     "NEBO: jiné obtíže v souvislosti DM, hyperglykémie"
+   ],
+   "chips": [
+    {
+     "c": "OVĚŘENÁ_HYPOGLYKÉMIE_2",
+     "t": "Ověřená hypoglykémie, potvrzený a léčený diabetik, při vědomí, reaguje na oslovení, udrží hrnek s pitím v ruce"
+    },
+    {
+     "c": "JINÉ_OBTÍŽE",
+     "t": "Jiné obtíže v souvislosti DM, hyperglykémie"
+    }
    ]
   },
   {
@@ -824,6 +1220,16 @@
    "lines": [
     "Porod v chodu, je vidět část dítěte v porodních cestách,",
     "NEBO: bezprostředně porozené dítě"
+   ],
+   "chips": [
+    {
+     "c": "POROD_CHODU_VIDĚT",
+     "t": "Porod v chodu, je vidět část dítěte v porodních cestách"
+    },
+    {
+     "c": "BEZPROSTŘEDNĚ",
+     "t": "Bezprostředně porozené dítě"
+    }
    ]
   },
   {
@@ -837,6 +1243,12 @@
    "kind": "n2",
    "lines": [
     "Závažné komplikace v těhotenství - dušnost, obj. hypertenze křeče, prudká cefalea (NE krvácení--> klasif. KRVÁCENÍ)"
+   ],
+   "chips": [
+    {
+     "c": "ZÁVAŽ_KOMPLIKACE",
+     "t": "Závažné komplikace v těhotenství - dušnost, obj. hypertenze křeče, prudká cefalea (NE krvácení--> klasif. KRVÁCENÍ)"
+    }
    ]
   },
   {
@@ -850,6 +1262,12 @@
    "kind": "n2di",
    "lines": [
     "Hrozící porod, trvalý tlak na konečník, kontrakce < 5 minut bez ohledu na odtok plodové vody"
+   ],
+   "chips": [
+    {
+     "c": "HROZÍCÍ_POROD_TRVALÝ",
+     "t": "Hrozící porod, trvalý tlak na konečník, kontrakce < 5 minut bez ohledu na odtok plodové vody"
+    }
    ]
   },
   {
@@ -864,6 +1282,16 @@
    "lines": [
     "Všeobecné komplikace v těhotenství, zejm. bolesti zad, břicha, nezávažného průběhu, bez krvácení, bez křečí",
     "NEBO: hrozící porod, kontrakce > 5 minut či pouze odteklá PV"
+   ],
+   "chips": [
+    {
+     "c": "VŠEOBECNÉ_KOMPLIKACE",
+     "t": "Všeobecné komplikace v těhotenství, zejm. bolesti zad, břicha, nezávažného průběhu, bez krvácení, bez křečí"
+    },
+    {
+     "c": "HROZÍCÍ_POROD",
+     "t": "Hrozící porod, kontrakce > 5 minut či pouze odteklá PV"
+    }
    ]
   },
   {
@@ -877,6 +1305,20 @@
    "kind": "n1",
    "lines": [
     "Anafylaxe s AVPU-U (nedýchá), nebo dušnost - nemůže vůbec mluvit / mluvit / schopen říci pouze slovo; masivní rychlý otok DC, dusí se"
+   ],
+   "chips": [
+    {
+     "c": "ANAFYLAXE_AVPU-U",
+     "t": "Anafylaxe s AVPU-U (nedýchá)"
+    },
+    {
+     "c": "DUŠ_NEMŮŽE_MLUVIT",
+     "t": "Dušnost - nemůže vůbec mluvit / mluvit / schopen říci pouze slovo"
+    },
+    {
+     "c": "MAS_RYCHLÝ_OTOK",
+     "t": "Masivní rychlý otok DC, dusí se"
+    }
    ]
   },
   {
@@ -890,6 +1332,12 @@
    "kind": "n2",
    "lines": [
     "Alergická reakce s AVPU-U (dýchá), dušnost - schopen řici pouze větu, kolabuje, patrný vzdálený (generalizovaný) otok na těle"
+   ],
+   "chips": [
+    {
+     "c": "ALERGICKÁ_REAKCE",
+     "t": "Alergická reakce s AVPU-U (dýchá), dušnost - schopen řici pouze větu, kolabuje, patrný vzdálený (generalizovaný) otok na těle"
+    }
    ]
   },
   {
@@ -904,6 +1352,16 @@
    "lines": [
     "Alergická reakce s AVPU-P, dušnost - schopen udržet konverzaci,",
     "RIZIKA! - rychlý rozvoj, alergie na noxu v anamnéze, nereaguje na podanou medikamentosní terapii"
+   ],
+   "chips": [
+    {
+     "c": "ALERGICKÁ_REAKCE_2",
+     "t": "Alergická reakce s AVPU-P, dušnost - schopen udržet konverzaci"
+    },
+    {
+     "c": "RIZIKA!_RYCHLÝ_ROZVOJ",
+     "t": "RIZIKA! - rychlý rozvoj, alergie na noxu v anamnéze, nereaguje na podanou medikamentosní terapii"
+    }
    ]
   },
   {
@@ -917,6 +1375,12 @@
    "kind": "n3",
    "lines": [
     "Alergická reakce pouze s kožními příznaky, bez vývoje, AVPU A/V, otok lokálního charakteru, celkový stav dobrý"
+   ],
+   "chips": [
+    {
+     "c": "ALERGICKÁ_REAKCE_3",
+     "t": "Alergická reakce pouze s kožními příznaky, bez vývoje, AVPU A/V, otok lokálního charakteru, celkový stav dobrý"
+    }
    ]
   },
   {
@@ -930,6 +1394,12 @@
    "kind": "n1",
    "lines": [
     "Bledost, kolaps a MASIVNÍ krvácení z nezastavitelné oblasti (zejm. GIT, URO, GYN, DC)., AVPU - U (nedýchá)"
+   ],
+   "chips": [
+    {
+     "c": "BLEDOST_KOLAPS_MAS",
+     "t": "Bledost, kolaps a MASIVNÍ krvácení z nezastavitelné oblasti (zejm. GIT, URO, GYN, DC)., AVPU - U (nedýchá)"
+    }
    ]
   },
   {
@@ -943,6 +1413,12 @@
    "kind": "n2",
    "lines": [
     "KONTINUÁLNÍ krvác. většího char. z nezastavitelné oblasti (GIT, URO, GYN, DC), ekviv. 150 ml/min, AVPU-U (dýchá)"
+   ],
+   "chips": [
+    {
+     "c": "KONTINUÁLNÍ_KRVÁC",
+     "t": "KONTINUÁLNÍ krvác. většího char. z nezastavitelné oblasti (GIT, URO, GYN, DC), ekviv. 150 ml/min, AVPU-U (dýchá)"
+    }
    ]
   },
   {
@@ -957,6 +1433,16 @@
    "lines": [
     "ZÁVAŽNÉ krvácení z končetin (varixy),",
     "AVPU- P"
+   ],
+   "chips": [
+    {
+     "c": "ZÁVAŽ_KRV_KONČ_VARIXY",
+     "t": "ZÁVAŽNÉ krvácení z končetin (varixy)"
+    },
+    {
+     "c": "AVPU-_P",
+     "t": "AVPU- P"
+    }
    ]
   },
   {
@@ -971,6 +1457,20 @@
    "lines": [
     "Krvácení MENŠÍHO rozsahu nebo jednorázové - uro/gyn., meléna, hemateméza, enterorhagie, epistaxe,",
     "ZASTAVITELNÉ neúr. krvácení z končetin, celkový stav dobrý"
+   ],
+   "chips": [
+    {
+     "c": "KRV_MENŠÍHO_ROZSAHU",
+     "t": "Krvácení MENŠÍHO rozsahu"
+    },
+    {
+     "c": "JEDNORÁZOVÉ_URO/GYN",
+     "t": "Jednorázové - uro/gyn., meléna, hemateméza, enterorhagie, epistaxe"
+    },
+    {
+     "c": "ZASTAVITELNÉ_NEÚR",
+     "t": "ZASTAVITELNÉ neúr. krvácení z končetin, celkový stav dobrý"
+    }
    ]
   },
   {
@@ -985,6 +1485,16 @@
    "lines": [
     "Náhle vzniklá prudká, intenzivní bolest + alterace celkového stavu s celkovými příznaky (kolaps, dušnost)",
     "NEBO: Tlumení bolesti u paliativního pacienta"
+   ],
+   "chips": [
+    {
+     "c": "NÁHLE_VZNIKLÁ_PRUDKÁ",
+     "t": "Náhle vzniklá prudká, intenzivní bolest + alterace celkového stavu s celkovými příznaky (kolaps, dušnost)"
+    },
+    {
+     "c": "TLUMENÍ_BOLEST",
+     "t": "Tlumení bolesti u paliativního pacienta"
+    }
    ]
   },
   {
@@ -999,6 +1509,16 @@
    "lines": [
     "Silná bolest / snesitelná / opakovaná / známá / jiné bolesti (hlava, záda, břicho, končetiny, jiná oblast)",
     "NEBO: retence/neprůchodný/extrahovaný PMK + bol.břicha"
+   ],
+   "chips": [
+    {
+     "c": "SILNÁ_BOLEST",
+     "t": "Silná bolest / snesitelná / opakovaná / známá / jiné bolesti (hlava, záda, břicho, končetiny, jiná oblast)"
+    },
+    {
+     "c": "RETENCE/NEPRŮCHODNÝ/EXTR",
+     "t": "Retence/neprůchodný/extrahovaný PMK + bol.břicha"
+    }
    ]
   },
   {
@@ -1012,6 +1532,12 @@
    "kind": "n2",
    "lines": [
     "Teploty nad 39°C + příznaky pro IMO: světloplachost / váznutí šíje / rozvíjející se kožní skvrny / rychlá progrese stavu"
+   ],
+   "chips": [
+    {
+     "c": "TEPLOTY_NAD_39°C",
+     "t": "Teploty nad 39°C + příznaky pro IMO: světloplachost / váznutí šíje / rozvíjející se kožní skvrny / rychlá progrese stavu"
+    }
    ]
   },
   {
@@ -1025,6 +1551,12 @@
    "kind": "n3",
    "lines": [
     "Teploty ostatní"
+   ],
+   "chips": [
+    {
+     "c": "TEPLOTY_OSTATNÍ",
+     "t": "Teploty ostatní"
+    }
    ]
   },
   {
@@ -1039,6 +1571,16 @@
    "lines": [
     "Zvracení opakované / průjem opakovaný, další doprovodný příznak s alterací stavu = dehydratace, prekolaps, zhor.stavu",
     "NEBO: nereaguje na základní terapii a je alterace stavu"
+   ],
+   "chips": [
+    {
+     "c": "ZVRACENÍ_OPAKOVANÉ",
+     "t": "Zvracení opakované / průjem opakovaný, další doprovodný příznak s alterací stavu = dehydratace, prekolaps, zhor.stavu"
+    },
+    {
+     "c": "NEREAGUJE_ZÁKLADNÍ",
+     "t": "Nereaguje na základní terapii a je alterace stavu"
+    }
    ]
   },
   {
@@ -1053,6 +1595,16 @@
    "lines": [
     "Všeobecné zhoršení stavu, chronické polymorfní obtíže, nespecifikovaná nevolnost, stav nereag. na ordinovanou th.",
     "NEBO: sociální případ, nezvládají péči"
+   ],
+   "chips": [
+    {
+     "c": "VŠEOBECNÉ_ZHORŠENÍ",
+     "t": "Všeobecné zhoršení stavu, chronické polymorfní obtíže, nespecifikovaná nevolnost, stav nereag. na ordinovanou th"
+    },
+    {
+     "c": "SOCIÁLNÍ_PŘÍPAD",
+     "t": "Sociální případ, nezvládají péči"
+    }
    ]
   },
   {
@@ -1067,6 +1619,16 @@
    "lines": [
     "Potíže nezařaditelné do určité klasifikace,",
     "NEBO: neodvádějící/vypadlý urokatetr, výměna PMK, bez celkových příznaků, DRNR nedostupná"
+   ],
+   "chips": [
+    {
+     "c": "POTÍŽE_NEZAŘADITELNÉ",
+     "t": "Potíže nezařaditelné do určité klasifikace"
+    },
+    {
+     "c": "NEODVÁDĚJÍCÍ/VYPADLÝ",
+     "t": "Neodvádějící/vypadlý urokatetr, výměna PMK, bez celkových příznaků, DRNR nedostupná"
+    }
    ]
   },
   {
@@ -1080,6 +1642,12 @@
    "kind": "n2",
    "lines": [
     "Dítě v babyboxu"
+   ],
+   "chips": [
+    {
+     "c": "DÍTĚ_BABYBOXU",
+     "t": "Dítě v babyboxu"
+    }
    ]
   },
   {
@@ -1096,6 +1664,24 @@
     "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
     "Masivní nezastavitelné krvácení, amputace končetiny",
     "Závažné rozsáhlé popáleniny / poleptání"
+   ],
+   "chips": [
+    {
+     "c": "PORUCHY_VĚDOMÍ_AVPU-U",
+     "t": "Poruchy vědomí = AVPU-U nedýchá"
+    },
+    {
+     "c": "OBJ_DUŠ_SOUVISL.S",
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit"
+    },
+    {
+     "c": "MAS_NEZAST_KRV",
+     "t": "Masivní nezastavitelné krvácení, amputace končetiny"
+    },
+    {
+     "c": "ZÁVAŽ_ROZS_POPÁL",
+     "t": "Závažné rozsáhlé popáleniny / poleptání"
+    }
    ]
   },
   {
@@ -1120,6 +1706,60 @@
     "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
     "Pokračující nezastavitelné krvácení většího rozsahu",
     "Dítě - předpoklad potřeby analgezie/sedace"
+   ],
+   "chips": [
+    {
+     "c": "PÁD_VÝŠE_>6_M",
+     "t": "Pád z výše >6 m"
+    },
+    {
+     "c": "TROJNÁSOBEK_SVÉ",
+     "t": "Trojnásobek své výšky (děti)"
+    },
+    {
+     "c": "PŘEJETÍ_VOZ",
+     "t": "Přejetí vozidlem"
+    },
+    {
+     "c": "PORUCHA_VĚDOMÍ_AVPU-U",
+     "t": "Porucha vědomí = AVPU-U dýchá"
+    },
+    {
+     "c": "DUŠ_NEKRITICKÁ_ZNÁMEK",
+     "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu"
+    },
+    {
+     "c": "PARÉZA",
+     "t": "Paréza"
+    },
+    {
+     "c": "BRNĚNÍ_KONČ",
+     "t": "Brnění končetin"
+    },
+    {
+     "c": "OTEVŘ_ZLOM",
+     "t": "Otevřená zlomenina"
+    },
+    {
+     "c": "ZLOM_2_VÍCE_DLOUHÝCH",
+     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)"
+    },
+    {
+     "c": "ZAVALENÍ_TĚŽKÝMI",
+     "t": "Zavalení těžkými předměty"
+    },
+    {
+     "c": "PERFO_PORAN_HLAVY",
+     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve"
+    },
+    {
+     "c": "POKRAČUJÍCÍ_NEZAST",
+     "t": "Pokračující nezastavitelné krvácení většího rozsahu"
+    },
+    {
+     "c": "DÍTĚ_PŘEDPOKLAD",
+     "t": "Dítě - předpoklad potřeby analgezie/sedace"
+    }
    ]
   },
   {
@@ -1134,6 +1774,16 @@
    "lines": [
     "AVPU-P, poúrazová zmatenost",
     "Závažné krvácení z končetin"
+   ],
+   "chips": [
+    {
+     "c": "AVPU-P_POÚRAZOVÁ",
+     "t": "AVPU-P, poúrazová zmatenost"
+    },
+    {
+     "c": "ZÁVAŽ_KRV_KONČ",
+     "t": "Závažné krvácení z končetin"
+    }
    ]
   },
   {
@@ -1153,6 +1803,40 @@
     "Tupé trauma hrudníku, břicha, pánve, zad",
     "Ztrátové poranění prstů",
     "Ošetřitelné poranění bez masivního krvácení"
+   ],
+   "chips": [
+    {
+     "c": "ZÁVAŽ_PORUCHY_VĚDOMÍ",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A"
+    },
+    {
+     "c": "KOMOČNÍ_SYNDROM",
+     "t": "Komoční syndrom"
+    },
+    {
+     "c": "PSYCHICKÝ_OTŘES",
+     "t": "Psychický otřes"
+    },
+    {
+     "c": "OTEVŘ_RÁNY_MENŠÍHO",
+     "t": "Otevřené rány menšího rozsahu"
+    },
+    {
+     "c": "ZAVŘENÁ_ZLOM",
+     "t": "Zavřená zlomenina, vykloubení"
+    },
+    {
+     "c": "TUPÉ_TRAUMA_HRUDNÍKU",
+     "t": "Tupé trauma hrudníku, břicha, pánve, zad"
+    },
+    {
+     "c": "ZTRÁTOVÉ_PORAN_PRSTŮ",
+     "t": "Ztrátové poranění prstů"
+    },
+    {
+     "c": "OŠETŘITELNÉ_PORAN",
+     "t": "Ošetřitelné poranění bez masivního krvácení"
+    }
    ]
   },
   {
@@ -1166,6 +1850,16 @@
    "kind": "n1",
    "lines": [
     "Pacient je ještě ve vodě, nebo po tonutí na břehu, v bezvědomí, bezděší, křeče, kritická dušnost, AVPU-U nedýchá"
+   ],
+   "chips": [
+    {
+     "c": "PAC_JEŠTĚ_VODĚ",
+     "t": "Pacient je ještě ve vodě"
+    },
+    {
+     "c": "TONUTÍ_BŘEHU",
+     "t": "Po tonutí na břehu, v bezvědomí, bezděší, křeče, kritická dušnost, AVPU-U nedýchá"
+    }
    ]
   },
   {
@@ -1179,6 +1873,16 @@
    "kind": "n2",
    "lines": [
     "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-U dýchá, nebo již při vědomí + přítomnost některých závažných okolností: dušnost, vykašlávání, neurol. příznaky (motorické poruchy či poruchy čití končetin)"
+   ],
+   "chips": [
+    {
+     "c": "PAC_TONUTÍ_JIŽ",
+     "t": "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-U dýchá"
+    },
+    {
+     "c": "JIŽ_VĚDOMÍ_+",
+     "t": "Již při vědomí + přítomnost některých závažných okolností: dušnost, vykašlávání, neurol. příznaky (motorické poruchy či poruchy čití končetin)"
+    }
    ]
   },
   {
@@ -1192,6 +1896,12 @@
    "kind": "n2di",
    "lines": [
     "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-P není přítomná další závažná okolnost"
+   ],
+   "chips": [
+    {
+     "c": "PAC_TONUTÍ_JIŽ_2",
+     "t": "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-P není přítomná další závažná okolnost"
+    }
    ]
   },
   {
@@ -1205,6 +1915,12 @@
    "kind": "n3",
    "lines": [
     "Pacient po tonutí, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+   ],
+   "chips": [
+    {
+     "c": "PAC_TONUTÍ_AVPU-V",
+     "t": "Pacient po tonutí, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+    }
    ]
   },
   {
@@ -1221,6 +1937,24 @@
     "Masivní popáleniny ORL oblasti či očí",
     "NEBO: Výbuch",
     "NEBO: popáleniny + dušnost (nemůže mluvit, schopen říci max slovo)"
+   ],
+   "chips": [
+    {
+     "c": "HLUBOKÉ_POPÁL_ROZS",
+     "t": "Hluboké popáleniny / rozsáhlé popáleniny"
+    },
+    {
+     "c": "MAS_POPÁL_ORL_OBLASTI",
+     "t": "Masivní popáleniny ORL oblasti či očí"
+    },
+    {
+     "c": "VÝBUCH",
+     "t": "Výbuch"
+    },
+    {
+     "c": "POPÁL_+_DUŠ_NEMŮŽE",
+     "t": "Popáleniny + dušnost (nemůže mluvit, schopen říci max slovo)"
+    }
    ]
   },
   {
@@ -1237,6 +1971,28 @@
     "NEBO: popáleniny El.proudem",
     "NEBO: pop. v predikovatelné oblasti = obličej, krk, genitál",
     "NEBO: závažné popáleniny ORL oblasti či očí"
+   ],
+   "chips": [
+    {
+     "c": "POPÁL_DĚTÍ",
+     "t": "Popáleniny dětí jakéhokoliv rozsahu"
+    },
+    {
+     "c": "DOSPĚLÝ_CCA_9%_VÝŠE",
+     "t": "Dospělý cca 9% a výše v nepredikované oblasti"
+    },
+    {
+     "c": "POPÁL_EL.PROUDEM",
+     "t": "Popáleniny El.proudem"
+    },
+    {
+     "c": "POP_PREDIKOVATELNÉ",
+     "t": "Pop. v predikovatelné oblasti = obličej, krk, genitál"
+    },
+    {
+     "c": "ZÁVAŽ_POPÁL_ORL",
+     "t": "Závažné popáleniny ORL oblasti či očí"
+    }
    ]
   },
   {
@@ -1250,6 +2006,12 @@
    "kind": "n3",
    "lines": [
     "Povrchové popáleniny menšího rozsahu a hloubky, nepatřící do skupiny výše, popáleniny dospělého < 9%"
+   ],
+   "chips": [
+    {
+     "c": "POVRCHOVÉ_POPÁL",
+     "t": "Povrchové popáleniny menšího rozsahu a hloubky, nepatřící do skupiny výše, popáleniny dospělého < 9%"
+    }
    ]
   },
   {
@@ -1266,6 +2028,24 @@
     "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
     "Masivní nezastavitelné krvácení, amputace končetiny",
     "Závažné rozsáhlé popáleniny / poleptání"
+   ],
+   "chips": [
+    {
+     "c": "PORUCHY_VĚDOMÍ_AVPU-U",
+     "t": "Poruchy vědomí = AVPU-U nedýchá"
+    },
+    {
+     "c": "OBJ_DUŠ_SOUVISL.S",
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit"
+    },
+    {
+     "c": "MAS_NEZAST_KRV",
+     "t": "Masivní nezastavitelné krvácení, amputace končetiny"
+    },
+    {
+     "c": "ZÁVAŽ_ROZS_POPÁL",
+     "t": "Závažné rozsáhlé popáleniny / poleptání"
+    }
    ]
   },
   {
@@ -1293,6 +2073,68 @@
     "Otevřená zlomenina",
     "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
     "Dítě - předpoklad potřeby analgezie/sedace"
+   ],
+   "chips": [
+    {
+     "c": "ČELNÍ_NÁRAZ_VYSOKÉ",
+     "t": "Čelní náraz ve vysoké rychlosti bez zn stavu"
+    },
+    {
+     "c": "PŘEJETÍ_VOZ",
+     "t": "Přejetí vozidlem"
+    },
+    {
+     "c": "SRAŽENÍ_VOZ_RYCHLOSTÍ",
+     "t": "Sražení vozidlem rychlostí >35 km/hod (chodec,cyklista,moto)"
+    },
+    {
+     "c": "KATAPULTÁŽ_VOZ",
+     "t": "Katapultáž z vozidla"
+    },
+    {
+     "c": "ZAKLÍNĚNÍ_VOZIDLE",
+     "t": "Zaklínění ve vozidle"
+    },
+    {
+     "c": "ZAVALENÍ_TĚŽKÝMI",
+     "t": "Zavalení těžkými předměty"
+    },
+    {
+     "c": "PARÉZA",
+     "t": "Paréza"
+    },
+    {
+     "c": "BRNĚNÍ_KONČ",
+     "t": "Brnění končetin"
+    },
+    {
+     "c": "PERFO_PORAN_HLAVY",
+     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve"
+    },
+    {
+     "c": "PORUCHA_VĚDOMÍ_AVPU-U",
+     "t": "Porucha vědomí = AVPU-U dýchá"
+    },
+    {
+     "c": "DUŠ_NEKRITICKÁ_ZNÁMEK",
+     "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu"
+    },
+    {
+     "c": "POKRAČUJÍCÍ_NEZAST",
+     "t": "Pokračující nezastavitelné krvácení většího rozsahu"
+    },
+    {
+     "c": "OTEVŘ_ZLOM",
+     "t": "Otevřená zlomenina"
+    },
+    {
+     "c": "ZLOM_2_VÍCE_DLOUHÝCH",
+     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)"
+    },
+    {
+     "c": "DÍTĚ_PŘEDPOKLAD",
+     "t": "Dítě - předpoklad potřeby analgezie/sedace"
+    }
    ]
   },
   {
@@ -1308,6 +2150,20 @@
     "AVPU-P, poúrazová zmatenost",
     "Závažné krvácení z končetin",
     "Rotace vozidla přes střechu"
+   ],
+   "chips": [
+    {
+     "c": "AVPU-P_POÚRAZOVÁ",
+     "t": "AVPU-P, poúrazová zmatenost"
+    },
+    {
+     "c": "ZÁVAŽ_KRV_KONČ",
+     "t": "Závažné krvácení z končetin"
+    },
+    {
+     "c": "ROTACE_VOZ_PŘES",
+     "t": "Rotace vozidla přes střechu"
+    }
    ]
   },
   {
@@ -1328,6 +2184,44 @@
     "Ztrátové poranění prstů",
     "Ošetřitelné poranění bez masivního krvácení",
     "NEBO: Pacient bez viditelného poranění a není triage pozitivní"
+   ],
+   "chips": [
+    {
+     "c": "ZÁVAŽ_PORUCHY_VĚDOMÍ",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A"
+    },
+    {
+     "c": "KOMOČNÍ_SYNDROM",
+     "t": "Komoční syndrom"
+    },
+    {
+     "c": "PSYCHICKÝ_OTŘES",
+     "t": "Psychický otřes"
+    },
+    {
+     "c": "OTEVŘ_RÁNY_MENŠÍHO",
+     "t": "Otevřené rány menšího rozsahu"
+    },
+    {
+     "c": "ZAVŘENÁ_ZLOM",
+     "t": "Zavřená zlomenina, vykloubení"
+    },
+    {
+     "c": "TUPÉ_TRAUMA_HRUDNÍKU",
+     "t": "Tupé trauma hrudníku, břicha, pánve, zad"
+    },
+    {
+     "c": "ZTRÁTOVÉ_PORAN_PRSTŮ",
+     "t": "Ztrátové poranění prstů"
+    },
+    {
+     "c": "OŠETŘITELNÉ_PORAN",
+     "t": "Ošetřitelné poranění bez masivního krvácení"
+    },
+    {
+     "c": "PAC_VIDITELNÉHO",
+     "t": "Pacient bez viditelného poranění a není triage pozitivní"
+    }
    ]
   },
   {
@@ -1342,6 +2236,20 @@
    "lines": [
     "Nalezen oběšený, nebo stále visící, por. vědomí, AVPU-U nedýchá,",
     "NEBO: kritická dušnost, nejsou jisté známky smrti,"
+   ],
+   "chips": [
+    {
+     "c": "NALEZEN_OBĚŠENÝ",
+     "t": "Nalezen oběšený"
+    },
+    {
+     "c": "STÁLE_VISÍCÍ_POR",
+     "t": "Stále visící, por. vědomí, AVPU-U nedýchá"
+    },
+    {
+     "c": "KRITICKÁ_DUŠ_NEJSOU",
+     "t": "Kritická dušnost, nejsou jisté známky smrti"
+    }
    ]
   },
   {
@@ -1355,6 +2263,16 @@
    "kind": "n2",
    "lines": [
     "Stavy po oběšení, porucha vědomí, AVPU-U dýchá, nebo již při vědomí, komunikuje + další závažný příznak (nekritická dušnost, paréza končetin, psychiatrické přízn.),"
+   ],
+   "chips": [
+    {
+     "c": "STAVY_OBĚŠENÍ_PORUCHA",
+     "t": "Stavy po oběšení, porucha vědomí, AVPU-U dýchá"
+    },
+    {
+     "c": "JIŽ_VĚDOMÍ_KOMUNIKUJE",
+     "t": "Již při vědomí, komunikuje + další závažný příznak (nekritická dušnost, paréza končetin, psychiatrické přízn.)"
+    }
    ]
   },
   {
@@ -1368,6 +2286,12 @@
    "kind": "n2di",
    "lines": [
     "Porucha vědomí AVPU-P není přítomná další závažná okolnost"
+   ],
+   "chips": [
+    {
+     "c": "PORUCHA_VĚDOMÍ_AVPU-P",
+     "t": "Porucha vědomí AVPU-P není přítomná další závažná okolnost"
+    }
    ]
   },
   {
@@ -1381,6 +2305,12 @@
    "kind": "n3",
    "lines": [
     "Pacient po oběšení, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+   ],
+   "chips": [
+    {
+     "c": "PAC_OBĚŠENÍ_AVPU-V",
+     "t": "Pacient po oběšení, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+    }
    ]
   },
   {
@@ -1394,6 +2324,16 @@
    "kind": "n1",
    "lines": [
     "Kritický stav - poruchy vědomí, nereaguje na bolest ani oslovení, nedýchá normálně nebo dušnost - nemůže mluvit, schopen říci pouze slovo AVPU-U nedýchá"
+   ],
+   "chips": [
+    {
+     "c": "KRITICKÝ_STAV_PORUCHY",
+     "t": "Kritický stav - poruchy vědomí, nereaguje na bolest ani oslovení, nedýchá normálně"
+    },
+    {
+     "c": "DUŠ_NEMŮŽE_MLUVIT",
+     "t": "Dušnost - nemůže mluvit, schopen říci pouze slovo AVPU-U nedýchá"
+    }
    ]
   },
   {
@@ -1407,6 +2347,12 @@
    "kind": "n2",
    "lines": [
     "Závažný stav - nereaguje na oslovení ani bolest, dýchá normálně, nekritická dušnost, schopen říci pouze větu, AVPU-U dýchá"
+   ],
+   "chips": [
+    {
+     "c": "ZÁVAŽ_STAV_NEREAGUJE",
+     "t": "Závažný stav - nereaguje na oslovení ani bolest, dýchá normálně, nekritická dušnost, schopen říci pouze větu, AVPU-U dýchá"
+    }
    ]
   },
   {
@@ -1420,6 +2366,12 @@
    "kind": "n2di",
    "lines": [
     "Závažný stav - nereaguje na oslovení, ale reaguje na bolest slovní reakcí, AVPU-P, dušnost udrží konverzaci"
+   ],
+   "chips": [
+    {
+     "c": "ZÁVAŽ_STAV_NEREAGUJE_2",
+     "t": "Závažný stav - nereaguje na oslovení, ale reaguje na bolest slovní reakcí, AVPU-P, dušnost udrží konverzaci"
+    }
    ]
   },
   {
@@ -1433,6 +2385,12 @@
    "kind": "n3",
    "lines": [
     "Nezávažný stav - probuditelný, reaguje na oslovení, bez dušnosti, pravděpodobně v souvislosti s alkoholem, AVPU-V, AVPU-A"
+   ],
+   "chips": [
+    {
+     "c": "NEZÁVAŽNÝ_STAV",
+     "t": "Nezávažný stav - probuditelný, reaguje na oslovení, bez dušnosti, pravděpodobně v souvislosti s alkoholem, AVPU-V, AVPU-A"
+    }
    ]
   },
   {
@@ -1446,6 +2404,16 @@
    "kind": "n1",
    "lines": [
     "Postižení více jak 15 osob NEBO: 5 a více vyslaných výjezd.skupin"
+   ],
+   "chips": [
+    {
+     "c": "POSTIŽENÍ_VÍCE_JAK",
+     "t": "Postižení více jak 15 osob"
+    },
+    {
+     "c": "5_VÍCE_VYSLANÝCH",
+     "t": "5 a více vyslaných výjezd.skupin"
+    }
    ]
   },
   {
@@ -1459,6 +2427,12 @@
    "kind": "n1",
    "lines": [
     "VNN + kritický stav (por.vědomí, kritická dušnost)"
+   ],
+   "chips": [
+    {
+     "c": "VNN_+_KRITICKÝ_STAV",
+     "t": "VNN + kritický stav (por.vědomí, kritická dušnost)"
+    }
    ]
   },
   {
@@ -1472,6 +2446,12 @@
    "kind": "n2",
    "lines": [
     "VNN + závažný stav (reaguje na oslovení,nekritická dušnost)"
+   ],
+   "chips": [
+    {
+     "c": "VNN_+_ZÁVAŽ_STAV",
+     "t": "VNN + závažný stav (reaguje na oslovení,nekritická dušnost)"
+    }
    ]
   },
   {
@@ -1485,6 +2465,12 @@
    "kind": "n3",
    "lines": [
     "VNN + nezáv.stav (při vědomí, bez dušnosti, stav dobrý)"
+   ],
+   "chips": [
+    {
+     "c": "VNN_+_NEZÁV.STAV",
+     "t": "VNN + nezáv.stav (při vědomí, bez dušnosti, stav dobrý)"
+    }
    ]
   },
   {
@@ -1499,6 +2485,16 @@
    "lines": [
     "Nebezpečí časového prodlení",
     "Nesnese odkladu (= akutní)"
+   ],
+   "chips": [
+    {
+     "c": "NEBEZPEČÍ_ČASOVÉHO",
+     "t": "Nebezpečí časového prodlení"
+    },
+    {
+     "c": "NESNESE_ODKLADU",
+     "t": "Nesnese odkladu (= akutní)"
+    }
    ]
   },
   {
@@ -1512,6 +2508,12 @@
    "kind": "n2",
    "lines": [
     "Převoz na specializované pracoviště"
+   ],
+   "chips": [
+    {
+     "c": "PŘEVOZ_SPECIALIZOVANÉ",
+     "t": "Převoz na specializované pracoviště"
+    }
    ]
   },
   {
@@ -1525,6 +2527,12 @@
    "kind": "n3",
    "lines": [
     "Bez doplňujícího popisu v tabulce"
+   ],
+   "chips": [
+    {
+     "c": "PŘEVOZ_N3_RZP",
+     "t": "Bez doplňujícího popisu v tabulce"
+    }
    ]
   },
   {
@@ -1540,6 +2548,20 @@
     "Bez nebezpečí časového prodlení",
     "Snese odkladu (= plánovaný)",
     "Převoz z nižšího na vyšší pracoviště"
+   ],
+   "chips": [
+    {
+     "c": "NEBEZPEČÍ_ČASOVÉHO_2",
+     "t": "Bez nebezpečí časového prodlení"
+    },
+    {
+     "c": "SNESE_ODKLADU",
+     "t": "Snese odkladu (= plánovaný)"
+    },
+    {
+     "c": "PŘEVOZ_NIŽŠÍHO_VYŠŠÍ",
+     "t": "Převoz z nižšího na vyšší pracoviště"
+    }
    ]
   },
   {
@@ -1553,6 +2575,12 @@
    "kind": "n3",
    "lines": [
     "Převoz z vyššího na nižší pracoviště"
+   ],
+   "chips": [
+    {
+     "c": "PŘEVOZ_VYŠŠÍHO_NIŽŠÍ",
+     "t": "Převoz z vyššího na nižší pracoviště"
+    }
    ]
   },
   {
@@ -1566,6 +2594,12 @@
    "kind": "n4",
    "lines": [
     "Bez doplňujícího popisu v tabulce"
+   ],
+   "chips": [
+    {
+     "c": "PŘEVOZ_N4_RZP",
+     "t": "Bez doplňujícího popisu v tabulce"
+    }
    ]
   },
   {
@@ -1579,6 +2613,12 @@
    "kind": "n1",
    "lines": [
     "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - RESUSCITACE /ANAFYLAXE"
+   ],
+   "chips": [
+    {
+     "c": "POŽADAVEK_RZP_POSÁDKY",
+     "t": "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - RESUSCITACE /ANAFYLAXE"
+    }
    ]
   },
   {
@@ -1592,6 +2632,12 @@
    "kind": "n2",
    "lines": [
     "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - ZHORŠENÍ STAVU"
+   ],
+   "chips": [
+    {
+     "c": "POŽADAVEK_RZP_POSÁDKY_2",
+     "t": "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - ZHORŠENÍ STAVU"
+    }
    ]
   },
   {
@@ -1606,6 +2652,16 @@
    "lines": [
     "Není k dispozici žádná další dostupná RZP posádka na témže výjezdovém stanovišti;",
     "NEBO: Jízda RZP mimo zajišťovanou oblast posádkou o jedné posádce RZP na výjezdovém stanovišti"
+   ],
+   "chips": [
+    {
+     "c": "NENÍ_DISPOZICI_ŽÁDNÁ",
+     "t": "Není k dispozici žádná další dostupná RZP posádka na témže výjezdovém stanovišti"
+    },
+    {
+     "c": "JÍZDA_RZP_MIMO",
+     "t": "Jízda RZP mimo zajišťovanou oblast posádkou o jedné posádce RZP na výjezdovém stanovišti"
+    }
    ]
   },
   {
@@ -1619,6 +2675,16 @@
    "kind": "n3",
    "lines": [
     "Posouzení stavu lékařem ZZS JčK v blízkém dosahu základny na žádost PČR, NEBO: dojezd posádky RZP za lékařem ZZS JčK na základnu k posouzení stavu"
+   ],
+   "chips": [
+    {
+     "c": "POSOUZENÍ_STAVU",
+     "t": "Posouzení stavu lékařem ZZS JčK v blízkém dosahu základny na žádost PČR"
+    },
+    {
+     "c": "DOJEZD_POSÁDKY_RZP",
+     "t": "Dojezd posádky RZP za lékařem ZZS JčK na základnu k posouzení stavu"
+    }
    ]
   },
   {
@@ -1634,6 +2700,28 @@
     "Akutní asistence, otevírání bytu, info uvnitř je osoba, nekomunikuje, NEBO: asistence u policejního či hasičského zásahu, např. rozsáhlý požár; NENÍ ZNÁMÁ INFORMACE",
     "O ZDRAVOTNÍM STAVU;",
     "Reakce ze strany ZOS na tísňové zprávy / volání bez možnosti ověřit zdravotní stav (eCALL, SMS, autom.volání)"
+   ],
+   "chips": [
+    {
+     "c": "AKUTNÍ_ASISTENCE",
+     "t": "Akutní asistence, otevírání bytu, info uvnitř je osoba, nekomunikuje"
+    },
+    {
+     "c": "ASISTENCE_POLICEJNÍHO",
+     "t": "Asistence u policejního či hasičského zásahu, např. rozsáhlý požár"
+    },
+    {
+     "c": "NENÍ_ZNÁMÁ_INFORMACE",
+     "t": "NENÍ ZNÁMÁ INFORMACE"
+    },
+    {
+     "c": "ZDRAVOTNÍM_STAVU",
+     "t": "O ZDRAVOTNÍM STAVU"
+    },
+    {
+     "c": "REAKCE_STRANY_ZOS",
+     "t": "Reakce ze strany ZOS na tísňové zprávy / volání bez možnosti ověřit zdravotní stav (eCALL, SMS, autom.volání)"
+    }
    ]
   },
   {
@@ -1647,6 +2735,12 @@
    "kind": "n4",
    "lines": [
     "Technická jízda"
+   ],
+   "chips": [
+    {
+     "c": "TECHNICKÁ_JÍZDA",
+     "t": "Technická jízda"
+    }
    ]
   }
  ]

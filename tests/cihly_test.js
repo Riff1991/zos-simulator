@@ -32,4 +32,26 @@ const nz = sp.page([first.tiles[0].id]).tiles[0], r1 = sp.result([first.tiles[0]
 ok(JSON.stringify(sp.result([first.tiles[0].id, nz.id])) === JSON.stringify(r1) && r1.cihla === true && r1.symptoms.length === 0, 'deterministické, bez příznaků a bez pravděpodobností');
 const dn = DATA.tiles.find(t => /Dopravní nehoda/.test(t.label)), dnb = sp.page([dn.id]).tiles;
 ok(dnb.length === 4 && dnb.some(b => b.kind === 'n1') && dnb.some(b => b.kind === 'n2') && dnb.some(b => b.kind === 'n2di') && dnb.some(b => b.kind === 'n3'), 'dopravní nehoda: červená, modrá, růžová a zelená cihla');
+
+// obrazovka Náběr případu: klasifikace, cihličky (kritéria) a doporučení podle nejvyšší barvy
+{
+  const it = C.createIntake(DATA, { klasifs: known }), cl = it.classifications();
+  ok(cl.length >= 30, 'klasifikací v rozbalovači: ' + cl.length);
+  let badCode = 0, noChips = 0, ids = 0;
+  for (const c of cl) {
+    const d = it.chipsFor(c.name), codes = [];
+    for (const g of d.groups) for (const x of g.chips) { codes.push(x.c); ids++; if (x.c.length > 24 || !x.t || x.kind !== g.kind) badCode++; }
+    if (new Set(codes).size !== codes.length) badCode++;
+    if (!codes.length) noChips++;
+  }
+  ok(badCode === 0 && noChips === 0 && ids >= 180, 'každá klasifikace má cihličky s jedinečnými kódy do 24 znaků (' + ids + ' cihliček)');
+  const pick = (k, kind) => it.chipsFor(k).groups.find(g => g.kind === kind).chips[0].id;
+  const dn = 'Dopravní nehoda', red = pick(dn, 'n1'), blue = pick(dn, 'n2'), pink = pick(dn, 'n2di'), green = pick(dn, 'n3');
+  ok(it.evaluate([green, blue, red]).n === 1 && it.evaluate([green, blue, red]).kind === 'n1', 'červená vyhrává nad modrou a zelenou (N1)');
+  ok(it.evaluate([green, blue]).n === 2 && it.evaluate([green, pink]).kind === 'n2di' && it.evaluate([green, pink]).dyn === true, 'modrá > růžová DI > zelená; růžová je jen možnost dynamiky');
+  ok(it.evaluate([blue, pink]).kind === 'n2' && !it.evaluate([blue, pink]).dyn, 'modrá N2 vyhrává nad růžovou');
+  ok(it.evaluate([]) === null && it.evaluate(['u:5']) === null && it.evaluate(['u:0']).n === 1, 'bez cihličky žádné doporučení; TANR doporučí N1; poznámkové cihly nic nedoporučí');
+  ok(it.evaluate([red]).crew.length > 0 && it.universal.length === 24, 'doporučení nese typ posádky; univerzálních cihel je 24');
+  ok(it.classifications().find(x => x.name === 'NZO – spatřená').engine === known.find(k => /NZO/.test(k)), 'klasifikace z tabulky se mapuje na klasifikaci generátoru');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'cihly test OK'); process.exit(fail ? 1 : 0);

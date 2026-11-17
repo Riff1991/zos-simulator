@@ -17,7 +17,7 @@ const LAYOUT_PRESETS = {
   },
   // calltaker: Nabírání a Mapa; Pavouk plovoucí; dispečerská okna (třetí sloupec) jen na požádání
   ct: {
-    default: { cols: [42, 36, 22], stacks: [[['intake', 100]], [['map', 100]], [['cases', 20], ['detail', 20], ['rcom', 15], ['radio', 20], ['crews', 20], ['spider', 5]]] },
+    default: { cols: [62, 22, 16], stacks: [[['intake', 100]], [['map', 100]], [['cases', 20], ['detail', 20], ['rcom', 15], ['radio', 20], ['crews', 20], ['spider', 5]]] },
     widemap: { cols: [30, 48, 22], stacks: [[['intake', 100]], [['map', 100]], [['cases', 20], ['detail', 20], ['rcom', 15], ['radio', 20], ['crews', 20], ['spider', 5]]] },
   },
 };

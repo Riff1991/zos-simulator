@@ -102,6 +102,62 @@ def fill_kind(fill, n, crew):
     return 'n4'
 
 
+
+STOP = set('a i nebo je se s v z na do po bez ze že pro při který která které jako u o k ve od ale být byl byla tj'.split())
+WORDS = {'objektivizovaná': 'OBJ', 'objektivizovaný': 'OBJ', 'objektiviz.': 'OBJ', 'dušnost': 'DUŠ', 'dušnosti': 'DUŠ', 'zjištění': '', 'pacient': 'PAC', 'pacienta': 'PAC',
+         'krvácení': 'KRV', 'nezastavitelné': 'NEZAST', 'masivní': 'MAS', 'závažné': 'ZÁVAŽ', 'závažný': 'ZÁVAŽ', 'rozsáhlé': 'ROZS', 'popáleniny': 'POPÁL', 'zlomenina': 'ZLOM',
+         'otevřená': 'OTEVŘ', 'otevřené': 'OTEVŘ', 'poranění': 'PORAN', 'perforační': 'PERFO', 'končetin': 'KONČ', 'končetiny': 'KONČ', 'vozidlem': 'VOZ', 'vozidla': 'VOZ',
+         'porucha': 'PORUCHA', 'poruchy': 'PORUCHY', 'vědomí': 'VĚDOMÍ', 'bolest': 'BOLEST', 'bolesti': 'BOLEST', 'schopen': 'SCHOPEN', 'říci': '', 'pouze': 'POUZE', 'nemůže': 'NEMŮŽE',
+         'vůbec': '', 'mluvit': 'MLUVIT', 'trvající': 'TRVAJÍCÍ', 'hodin': 'HOD', 'hodiny': 'HOD', 'několik': 'NĚKOL', 'minut': 'MIN', 'minuty': 'MIN', 'nezávažného': 'NEZÁVAŽ',
+         'bez': 'BEZ', 'známek': 'ZNÁMEK'}
+
+
+def abbr(t):
+    """Krátký kód cihly ve stylu obrazovky (VELKÁ_PÍSMENA_S_PODTRŽÍTKY). Skutečné názvy lze později přepsat ručně."""
+    t = re.sub(r'^\(?\s*NEBO\s*:?\s*\)?\s*', '', t, flags=re.I)
+    t = re.sub(r'^zji[sš]t\w+\s+', '', t, flags=re.I)  # „Zjištěná SpO2 …“ → „SpO2 …“
+    m = re.match(r'SpO2\s*(pod|nad)?\s*(\d+)(?:\s*-\s*(\d+))?\s*%', t, flags=re.I)
+    if m:
+        return 'SpO2_' + ('<' if (m.group(1) or '').lower() == 'pod' else '>' if (m.group(1) or '').lower() == 'nad' else '') + m.group(2) + ('-' + m.group(3) if m.group(3) else '') + '%'
+    out = []
+    for w in re.findall(r'\S+', t):
+        w = w.strip('.,;:()')
+        lw = w.lower()
+        if not lw or lw in STOP or lw in ('-', '=', '–', '/'):
+            continue
+        w2 = WORDS.get(lw, w.upper())
+        if not w2:
+            continue
+        if out and len('_'.join(out + [w2])) > 21:
+            break
+        out.append(w2)
+        if len('_'.join(out)) >= 15:
+            break
+    return ('_'.join(out) or 'KRITÉRIUM')[:24]
+
+
+def add_chips(bricks):
+    """Každé kritérium (řádek) cihly je jedna cihlička; kódy jsou v rámci klasifikace jedinečné."""
+    seen = {}
+    for b in bricks:
+        chips = []
+        for l in b['lines']:
+            if l.rstrip().endswith(':') or l == 'Bez doplňujícího popisu v tabulce':
+                continue
+            parts = [x.strip(' ,.') for x in re.split(r'\s*;\s*|\s*,?\s*\bnebo\b\s*:?\s*', l, flags=re.I)]
+            for part in [x for x in parts if len(x) > 3] or [l]:
+                code = abbr(part)
+                k = (b['klasif'], code)
+                seen[k] = seen.get(k, 0) + 1
+                if seen[k] > 1:
+                    code = code[:21] + '_' + str(seen[k])
+                chips.append({'c': code, 't': part[:1].upper() + part[1:]})
+        if not chips:
+            code = (b['klasif'].upper().replace(' ', '_') + '_N' + str(b['n']) + '_' + (b['crew'] or '').replace(', ', '_').replace('/', '_'))[:24]
+            chips.append({'c': code, 't': ' '.join(b['lines'])})
+        b['chips'] = chips
+
+
 def build(path):
     sheets = load(path)
     GR = {'dej': 'Děj, mechanismus', 'stav': 'Stav pacienta', 'ostatni': 'Ostatní (převoz, jízdy, asistence)'}
@@ -215,6 +271,7 @@ def build(path):
                 for t in tiles:
                     if t['id'].startswith('ostatni:') and 'prevoz' in t['id']:
                         t['doprovod'] = {'titul': 'Indikace lékařského doprovodu – posádka RLP či RV+RZP', 'polozky': items, 'poznamky': join_lines(notes)}
+    add_chips(bricks)
     for t in tiles:
         t['bricks'] = [b['id'] for b in bricks if b['tile'] == t['id']]
         if not t['poznamky']:

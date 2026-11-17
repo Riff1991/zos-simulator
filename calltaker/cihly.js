@@ -47,6 +47,61 @@
     const run = answers => ({ step: page(answers).step, klasif: answers[0] && T.get(answers[0]) ? T.get(answers[0]).label : null });
     return { indikace, page, result, run, klasifikace: () => data.tiles.map(x => x.label), strip: s => String(s), group: () => '', cihly: true, KIND_LAB, T, B };
   }
-  const api = { create, engineKlasif, norm, KIND_LAB, KIND_ORD };
+  // ---------- obrazovka „Náběr případu“: klasifikace, cihličky (kritéria) a univerzální cihly ----------
+  // Cihlička = jedno kritérium bloku tabulky, nese barvu bloku. Označení cihliček jen doporučí N a posádku (vyšší barva vyhrává), nic nenastaví.
+  const RANK = { n1: 5, n2: 4, n2di: 3, n3: 2, n4: 1 };
+  // univerzální cihly nahoře (vždy stejné). cls: u-red, u-mag, u-pink, u-yel, u-sal, u-gray, u-empty; kind = vliv na doporučení N (jen červené TANR, a DYNAMICKÁ_INDIK = možnost DI)
+  const UNIVERSAL = [
+    { c: 'TANR', cls: 'u-red', kind: 'n1' }, { c: 'TANR_NELZE', cls: 'u-red', kind: 'n1' }, { c: 'DÍTĚ', cls: 'u-gray', grp: 'vek' }, { c: 'DOSPĚLÝ', cls: 'u-gray', grp: 'vek' },
+    { c: 'DYNAMICKÁ_INDIK', cls: 'u-mag', kind: 'n2di' }, { c: 'DR_NA_ŽÁDOST', cls: 'u-pink' }, { c: 'SÁM_ZZUM', cls: 'u-pink' }, { c: 'LZS_NELZE', cls: 'u-pink' },
+    { c: '+ LÉKAŘ_Z_LZS', cls: 'u-pink' }, { c: '+ PČR', cls: 'u-gray' }, { c: '+ HZS', cls: 'u-gray' }, { c: 'SUSP_MU', cls: 'u-yel' },
+    { c: 'DN_BEZ_VYPROŠTĚ', cls: 'u-sal' }, { c: 'OTEVŘENÍ_PROSTO', cls: 'u-sal' }, { c: 'TRANSPORT_PAC', cls: 'u-sal' }, { c: 'ÚKLID_VOZOVKY', cls: 'u-sal' },
+    { c: 'DN_S_VYPROŠTĚNÍ', cls: 'u-sal' }, { c: 'PALIATIVA', cls: 'u-gray' }, { c: 'INFO_RADA_TELEF', cls: 'u-gray' }, { c: 'VIDEOHOVOR', cls: 'u-gray' },
+    { c: 'VOLÁNÍ_3.RUKA', cls: 'u-gray' }, { c: '0', cls: 'u-empty' }, { c: '0', cls: 'u-empty' }, { c: '0', cls: 'u-empty' },
+  ].map((u, i) => Object.assign({ id: 'u:' + i }, u));
+  // šedé cihly (popisy bez vlivu na naléhavost); u některých klasifikací podle screenů, jinak výchozí sada (doplnit podle skutečných názvů)
+  const GRAY_MED = ['ALKOHOL', 'ASTMATIK', 'CHOPN', 'DEMENCE', 'DIABETIK', 'EPILEPTIK', 'HYPERTONIK', 'KARDIAK', 'ONKOLOGICKÝ', 'PALIATIVNÍ_PAC'];
+  const GRAY_TRAUMA = ['ALKOHOL', 'BÉREC', 'BODNÉ_PORANĚNÍ', 'BŘICHO', 'CIZÍ_TĚLESO', 'CYKLISTA', 'DK', 'ELEKTR_PROUD', 'HK', 'HLAVA', 'HRUDNÍK', 'CHODEC', 'KRK', 'PÁNEV', 'STŘELNÉ_PORANĚNÍ', 'ZÁDA', 'ZVÍŘE'];
+  const GRAY_DN = ['ALKOHOL', 'BÉREC', 'BŘICHO', 'BUS', 'CYKLISTA', 'DK', 'HK', 'HLAVA', 'HRUDNÍK', 'CHODEC', 'KAMION', 'KRK', 'MOTOCYKL', 'OSOBNÍ_AUTO', 'PÁNEV', 'TRAKTOR', 'VLAK', 'ZÁDA'];
+  const GRAY_BY = { Arytmie: ['HYPERTONIK', 'KARDIAK'], Dušnost: ['ASPIRACE', 'ASTMATIK', 'DIABETIK', 'HYPERTONIK', 'CHOPN', 'KARDIAK', 'DDOT'], 'Křečové stavy': ['DIABETIK', 'EPILEPTIK'], Trauma: GRAY_TRAUMA, 'Dopravní nehoda': GRAY_DN, 'Popálení, poleptání': ['ALKOHOL', 'ELEKTR_PROUD', 'HLAVA', 'HRUDNÍK', 'DK', 'HK', 'OBLIČEJ'], Tonutí: ['ALKOHOL', 'DÍTĚ_BEZ_DOHLEDU', 'KOUPALIŠTĚ', 'RYBNÍK', 'ŘEKA'], Oběšení: ['ALKOHOL', 'PSYCHIATRIK'] };
+  const NOGRAY = new Set(['Převoz', 'Vstřícná jízda', 'Posouzení stavu', 'Asistence', 'Technická jízda', 'MU – MATRA 722', 'Vysoce nebezpečná nákaza (VNN)', 'Babybox']);
+  const cs = (a, b) => String(a).localeCompare(String(b), 'cs');
+  function createIntake(data, opts) {
+    if (!data || data.format !== 'zos-cihly/1') throw new Error('Neplatná data cihliček (formát zos-cihly/1).');
+    const known = (opts && opts.klasifs) || [], byK = new Map();
+    for (const b of data.bricks) { if (!byK.has(b.klasif)) byK.set(b.klasif, []); byK.get(b.klasif).push(b); }
+    const names = [...byK.keys()].sort(cs);
+    const chipIndex = new Map();
+    const chipsOf = k => {
+      const groups = [];
+      for (const kind of KIND_ORD) {
+        const chips = [];
+        (byK.get(k) || []).filter(b => b.kind === kind).forEach(b => b.chips.forEach((c, i) => { const x = { id: 'k:' + b.id + ':' + i, c: c.c, t: c.t, kind, crew: b.crew, n: b.n, dyn: b.dyn, cmp: b.cmp, brick: b.id }; chipIndex.set(x.id, x); chips.push(x); }));
+        if (chips.length) groups.push({ kind, chips });
+      }
+      return groups;
+    };
+    const cache = new Map();
+    return {
+      classifications: () => names.map(n => ({ name: n, engine: engineKlasif(n, known) })),
+      chipsFor: k => { if (!cache.has(k)) cache.set(k, { groups: chipsOf(k), gray: NOGRAY.has(k) ? [] : (GRAY_BY[k] || GRAY_MED).slice().sort(cs) }); return cache.get(k); },
+      universal: UNIVERSAL,
+      // doporučení z označených cihliček: nejvyšší barva vyhrává; vrací N, barvu a typy posádek z bloků téže barvy
+      evaluate(ids) {
+        let best = null;
+        for (const id of ids) {
+          let x = chipIndex.get(id); if (!x && id.startsWith('u:')) { const u = UNIVERSAL[Number(id.slice(2))]; if (u && u.kind) x = { kind: u.kind, n: u.kind === 'n1' ? 1 : 2, crew: u.kind === 'n1' ? 'RLP' : 'DI', dyn: u.kind === 'n2di', u: true }; }
+          if (x && x.kind && (!best || RANK[x.kind] > RANK[best.kind])) best = x;
+        }
+        if (!best) return null;
+        const crew = new Set();
+        for (const id of ids) { const x = chipIndex.get(id); if (x && x.kind === best.kind) String(x.crew || '').split(/[,+/ ]+/).filter(Boolean).forEach(c => crew.add(c)); }
+        if (!crew.size) String(best.crew || '').split(/[,+/ ]+/).filter(Boolean).forEach(c => crew.add(c));
+        return { kind: best.kind, n: best.n, crew: [...crew], dyn: best.kind === 'n2di', cmp: !!best.cmp };
+      },
+      chip: id => chipIndex.get(id) || null,
+    };
+  }
+  const api = { create, createIntake, engineKlasif, norm, KIND_LAB, KIND_ORD, UNIVERSAL, RANK };
   if (typeof module !== 'undefined') module.exports = api; else window.CT_CIHLY = api;
 })();

@@ -122,25 +122,8 @@ function ctBuild() {
   if (ct.built) return; ct.built = true;
   const f = (id, l, ph, extra) => `<label>${l}<input id="${id}" autocomplete="off" placeholder="${ph || ''}"${extra || ''}></label>`;
   const ck = (id, l) => `<label style="flex-direction:row;display:flex;gap:5px;align-items:center;color:var(--ink);font-size:12.5px"><input type="checkbox" id="${id}" style="width:auto"> ${l}</label>`;
-  $('ct-tabs').innerHTML = '<button data-act="ct-tab" data-t="intake" class="on">Nabírání</button><button data-act="ct-tab" data-t="mine">Moje případy</button>';
-  $('ct-body').innerHTML = `<div id="ct-pane-intake" class="ct-form"><div id="ct-idle" class="ct-note" style="padding:10px">Čekáš na hovor. Telefon zazvoní sám; čas mezi hovory běží zrychleně.<br><small>Zkratky: Alt+Z zvednout · Alt+1 N1 okamžitě · Alt+O odeslat · Alt+P pavouk · Alt+U ukončit · Alt+D dokončit · Alt+M ztlumit</small></div>
-    <div id="ct-formwrap" hidden>
-    <div id="ct-aml"></div>
-    <fieldset><legend>Pacient</legend><div class="ct-g">${f('ctf-pJmeno', 'Jméno')}${f('ctf-pPrijmeni', 'Příjmení')}${f('ctf-pVek', 'Věk nebo rok narození', 'např. 72 nebo 1953')}<label>Pohlaví<select id="ctf-pPohlavi"><option value="">?</option><option>muž</option><option>žena</option></select></label></div></fieldset>
-    <fieldset><legend>Volající</legend><div class="ct-g">${f('ctf-vJmeno', 'Jméno')}${f('ctf-vPrijmeni', 'Příjmení')}${f('ctf-vTel', 'Telefon (ANI)')}${f('ctf-vVztah', 'Vztah k pacientovi', 'např. manžel, soused')}</div></fieldset>
-    <fieldset><legend>Místo události</legend>
-      <div class="ct-addr"><div class="ac"><label>Obec / město<input id="ctf-obec" autocomplete="off" placeholder="začni psát název…"></label><div class="ct-sug" id="ct-sug-obec" hidden></div></div><div class="ac"><label>Ulice<input id="ctf-ulice" autocomplete="off" placeholder="začni psát ulici…"></label><div class="ct-sug" id="ct-sug-ulice" hidden></div></div><div class="ac sm"><label>Číslo popisné<input id="ctf-cp" autocomplete="off" placeholder="č. p."></label><div class="ct-sug" id="ct-sug-cp" hidden></div></div><button class="btn" data-act="ct-find" title="Najde bod podle obce, ulice a čísla a posune mapu">Najít na mapě</button></div><input id="ctf-adresa" type="hidden">
-      <div class="ct-g" style="margin-top:6px">${f('ctf-cast', 'Část obce')}${f('ctf-upresneni', 'Upřesnění (patro, vchod, označení)')}</div>
-      <div id="ct-ptinfo" class="ct-note" style="margin-top:4px">Poloha zatím nezadána.</div></fieldset>
-    <fieldset><legend>Událost</legend><label style="display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px">Popis události<textarea id="ctf-popis" rows="2" placeholder="Co se stalo (vlastními slovy volajícího)"></textarea></label>
-      <label style="display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px;margin-top:6px">Poznámka pro dispečera<textarea id="ctf-poznamka" rows="2"></textarea></label></fieldset>
-    <fieldset><legend>Okolnosti a počet osob</legend>
-      <div class="ct-g">${f('ctf-pocet', 'Počet postižených osob', '1', ' type="number" min="1" max="40"')}<label>Sloučit s případem (jiný volající k téže události)<select id="ctf-sluc"><option value="">– nový případ –</option></select></label></div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">${ck('ctf-agPcr', 'Přivolat PČR')}${ck('ctf-agHzs', 'Přivolat HZS')}${ck('ctf-nebezpeci', 'Nebezpečí na místě (zbraň, agresivní osoba, plyn)')}</div></fieldset>
-    <fieldset><legend>Klasifikace z pavouka</legend><div id="ct-cls" class="ct-cls"></div><div style="margin-top:6px"><button class="btn" data-act="ct-spider-open" style="margin:0">Otevřít pavouka</button></div></fieldset>
-    <div class="ct-send"><button class="btn red" id="ct-n1btn" data-act="ct-n1" title="Alt+1: adresa a N1, případ jde hned dispečerovi, zbytek doplníš">N1 – okamžitě</button><button class="btn pri" id="ct-sendbtn" data-act="ct-send">Odeslat dispečerovi</button><span id="ct-sendinfo" class="ct-note"></span></div>
-    <details id="ct-trwrap"><summary class="ct-note">Přepis hovoru</summary><div id="ct-tr" class="ct-tr"></div><div id="ct-textrow" style="display:none;gap:6px"><input id="ct-say" placeholder="Co řekneš volajícímu…"><button class="btn" data-act="ct-say" style="margin:0">Poslat</button></div></details>
-    </div></div><div id="ct-pane-mine" hidden style="padding:6px 8px"></div>`;
+  $('ct-tabs').innerHTML = '<button data-act="ct-tab" data-t="intake" class="on">Náběr případu</button><button data-act="ct-tab" data-t="mine">Moje případy</button>';
+  $('ct-body').innerHTML = kiHtml();
 }
 function ctPhoneHtml() {
   const s = sim.s, rg = s.calls.find(c => c.state === 'ringing'), call = ct.call;
@@ -180,7 +163,7 @@ function ctRender() {
   const inCall = !!ct.call;
   $('ct-idle').hidden = inCall; $('ct-formwrap').hidden = !inCall;
   if (inCall) {
-    ctAmlTick();
+    ctAmlTick(); kiTick();
     if (!ct.ended && ct.call.state === 'taken') {
       if (ct.dropAt != null && s.t >= ct.dropAt) ctDrop();
       if (ct.tanr) ctTanrTick();
@@ -310,8 +293,8 @@ function ctFormReset(f) {
   for (const id of ['agPcr', 'agHzs', 'nebezpeci']) { const e = $('ctf-' + id); if (e) e.checked = false; }
   const sel = $('ctf-sluc'); if (sel) sel.innerHTML = '<option value="">– nový případ –</option>' + sim.s.cases.filter(c => c.call && c.status !== 'closed').map(c => `<option value="${c.id}">${esc(c.num)} · ${esc(c.addr)} · ${esc(c.klasif)}</option>`).join('');
   ct.pt = null; ct.cls = null; ct.sp = { ans: [], n: null, dyn: null }; ct.addrAuto = false; ct.ptInfo = ''; ct.amlN = 0; ct.mapHash = ''; ct.kindNote = ''; ct.tanr = null; ct.dropAt = null;
-  $('ct-sendbtn').textContent = 'Odeslat dispečerovi'; $('ct-sendinfo').textContent = ''; $('ct-tr').innerHTML = ''; ct.transcript = []; ct.curRole = null;
-  ctPtInfo(); ctClsHtml(); ctSpiderRender();
+  $('ct-sendbtn').textContent = 'Předat dispečerovi'; $('ct-sendinfo').textContent = ''; $('ct-tr').innerHTML = ''; ct.transcript = []; ct.curRole = null;
+  kiReset(f); ctPtInfo(); ctClsHtml();
 }
 // naplní formulář z dříve odeslaného případu (opakovaný hovor)
 function ctFillForm(fm) {
@@ -322,7 +305,7 @@ function ctFillForm(fm) {
   for (const id of ['agPcr', 'agHzs', 'nebezpeci']) { const e = $('ctf-' + id); if (e) e.checked = !!fm[id]; }
   if (fm.bod) ct.pt = { lat: fm.bod.lat, lon: fm.bod.lon, src: fm.zdroj || 'mapa' };
   if (fm.klasif) ct.cls = { klasif: fm.klasif, n: Number(fm.n) || 2, dyn: !!fm.dyn, priznaky: (fm.priznaky || []).slice() };
-  ctPtInfo(); ctClsHtml();
+  kiFill(fm); ctPtInfo(); ctClsHtml();
 }
 function ctPickup() {
   const rg = sim.s.calls.find(c => c.state === 'ringing'); if (!rg) return;
@@ -339,7 +322,7 @@ function ctPickup() {
     }
     if (sim.s.liveCalls.level === 'tezke' && rg.kind !== 'bez' && Math.random() < 0.35) ct.dropAt = sim.s.t + 45 + Math.random() * 75;
   }
-  document.body.classList.remove('ct-spider-off'); layoutApply(true);
+  layoutApply(true);
   if (view !== 'intake' && !layoutDesktop()) view = 'intake';
   ctVoiceStart(facts, resume ? { resume: true } : {});
   render();
@@ -451,7 +434,8 @@ function ctFinish() {
 }
 
 // ---------- formulář ↔ engine ----------
-function ctReadForm() {
+function ctReadForm() { return kiReadForm(); }
+function ctReadFormOld() {
   ctAddrSync();
   const p = ct.pt, cls = ct.cls, v = ctVal('ctf-pVek'), num = Number(v), ch = id => { const e = $(id); return !!(e && e.checked); };
   const zdroj = p ? p.src : ctVal('ctf-adresa') ? 'adresa' : '', pc = Number(ctVal('ctf-pocet'));
@@ -466,15 +450,15 @@ function ctReadForm() {
 function ctSend(pre) {
   const call = ct.call; if (!call) return;
   const form = ctReadForm(), info = $('ct-sendinfo');
-  if (!form.adresa && !form.bod) { info.textContent = 'Zadej místo: adresu nebo bod na mapě.'; return; }
+  const miss = kiMissing(form, pre); if (miss.length) { kiMissingModal(miss); return; }
   if (pre) { form.n = '1'; form.predpoplach = true; }
-  else if (!form.n) { info.textContent = 'Nejdřív klasifikuj pavoukem (naléhavost N1–N3) nebo použij „N1 – okamžitě“.'; ctSpiderOpen(); return; }
+  else if (form.n === '4') { info.textContent = 'N4 (plánované převozy, technické jízdy) se z příjmu hovoru neodesílá.'; toast('N4 se z příjmu hovoru neodesílá.', 'warn'); return; }
   const first = !call.caseId, c = sim.sendCall(call.id, form);
   if (!c) { info.textContent = 'Odeslání se nepodařilo.'; return; }
   if (c.noDispatch) { info.textContent = 'Dispečer: z hovoru nevzniká případ, výjezd není indikován.'; toast('Dispečer nevidí důvod k výjezdu.', 'warn'); return; }
   $('ct-sendbtn').textContent = 'Aktualizovat případ';
   if (form.slucitS && call.merged) { info.textContent = 'Hovor sloučen s případem ' + c.num + '.'; toast('Hovor sloučen s případem ' + c.num + '.', ''); return; }
-  info.textContent = (first ? (pre ? 'Předpoplach odeslán (' + c.num + '): doplň údaje a pošli aktualizaci' : 'Odesláno dispečerovi (' + c.num + ')') : 'Případ aktualizován') + ' v ' + sim.clock() + (cts.bot ? '' : ' – bot je vypnutý, obsluž případ v dispečerských oknech');
+  info.textContent = (first ? (pre ? 'Předpoplach odeslán (' + c.num + '): doplň údaje a pošli aktualizaci' : 'Předáno dispečerovi (' + c.num + ')') : 'Případ aktualizován') + ' v ' + sim.clock() + (cts.bot ? '' : ' – bot je vypnutý, obsluž případ v dispečerských oknech');
   toast(first ? (pre ? 'N1 předpoplach ' + c.num + ' odeslán.' : 'Případ ' + c.num + ' odeslán dispečerovi.') : 'Případ ' + c.num + ' aktualizován.', '');
   if (!cts.bot && !cts.disp) { cts.disp = true; ctSaveSettings(); ctSync(); layoutApply(true); }
 }
@@ -507,10 +491,9 @@ function ctClsHtml() {
 }
 
 // ---------- pavouk (okno) ----------
-function ctSpiderOpen() {
-  document.body.classList.remove('ct-spider-off'); layoutApply(true);
-  if (!layoutDesktop()) { view = 'spider'; }
-  ctSpiderRender(); render();
+function ctSpiderOpen() {   // klasifikace je přímo v obrazovce Náběr případu
+  if (!layoutDesktop()) { view = 'intake'; render(); }
+  const e = $('ki-klasif'); if (e) e.focus();
 }
 function ctSpiderRender() {
   const e = $('ct-spider'); if (!e) return;
@@ -626,8 +609,8 @@ function ctAddrIndex() {
   const a = A.a, S = A.s, towns = new Map();
   for (let i = 0; i < a.length; i += 8) {
     const city = S[a[i + 3]], st = S[a[i + 2]], num = S[a[i + 4]], key = st && st !== city ? st : '';
-    let T = towns.get(city); if (!T) towns.set(city, T = { n: city, nk: ctNk(city), c: 0, streets: new Map() });
-    T.c++; let ss = T.streets.get(key); if (!ss) T.streets.set(key, ss = { n: key, nk: ctNk(key), nums: new Set(), c: 0 });
+    let T = towns.get(city); if (!T) towns.set(city, T = { n: city, nk: ctNk(city), c: 0, okres: (A.okresy || [])[a[i + 6]] || '', streets: new Map() });
+    T.c++; let ss = T.streets.get(key); if (!ss) T.streets.set(key, ss = { n: key, nk: ctNk(key), nums: new Set(), c: 0, cast: S[a[i + 5]] || '' });
     ss.nums.add(num); ss.c++;
   }
   const list = [...towns.values()];
@@ -726,6 +709,7 @@ function ctTab(t) {
   if (t === 'mine') { ct.lastCases = 0; ctCasesHtml(); }
 }
 function ctAct(a, el) {
+  if (a.startsWith('ct-ki-')) { kiAct(a, el); return; }
   const d = el.dataset;
   switch (a) {
     case 'ct-menu': ctMenu(); break;

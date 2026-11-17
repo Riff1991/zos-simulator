@@ -8,7 +8,7 @@ symptoms = 'const ZOS_SYMPTOMS = ' + rd('src/symptoms.json').strip() + ';\nconst
 ENGINE_PARTS = ['engine-base', 'sim-radio', 'sim-neighbors', 'sim-cases', 'sim-mu', 'sim-loop', 'sim-score', 'sim-calltaker', 'engine']  # engine.js poslední (přimíchá části do Sim)
 e = strip(rd('src/messages.js')) + strip(rd('src/weather.js')) + ''.join(strip(rd('src/%s.js' % n)) for n in ENGINE_PARTS)
 m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src/mask.geojson') + ';\n')
-UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-calltaker', 'ui-events']  # jedna IIFE, části v tomto pořadí
+UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-calltaker', 'ui-intake', 'ui-events']  # jedna IIFE, části v tomto pořadí
 ui = "(function () {\n'use strict';\n" + ''.join(rd('src/%s.js' % n) for n in UI_PARTS) + '})();\n'
 os.makedirs('work', exist_ok=True)
 open('work/ui.bundle.js', 'w', encoding='utf8').write(ui)  # jen pro lint (npm run lint)

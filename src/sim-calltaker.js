@@ -237,7 +237,9 @@ class SimCalltaker {
   _ctApplyTyped(c, f, needAg) {
     const t = this.s.t, tr = c.call.truth, ck = c.call.check, typedN = c.call.typedN;
     const knows = !!f.klasif && ck.klasif.ok && ck.priznaky.jaccard >= 0.3;   // klasifikace calltakera je věrohodná
-    const wantRv = typedN === 1 || (typedN === 2 && !!f.dyn) || (!!tr.rvNeed && knows && typedN <= 2);
+    // Požadavek na posádku zadaný ručně (RV nebo RLP > 0) je rozhodující; bez něj platí dřívější odvození z N a klasifikace
+    const px = f.posadky, pn = k => Number(px && px[k]) || 0;
+    const wantRv = px ? (pn('RV') + pn('RLP') > 0 || typedN === 1) : (typedN === 1 || (typedN === 2 && !!f.dyn) || (!!tr.rvNeed && knows && typedN <= 2));
     if (c.status !== 'closed' && !c.docArrived) {
       const hadRv = !!c.rvNeed;
       c.rvNeed = wantRv;
