@@ -12754,9 +12754,15 @@ function kiSelText() {
   const e = $('ki-seltxt'); if (!e) return; const u = kInst();
   e.innerHTML = [...kf.sel].map(id => { const x = u.chip(id); return x ? `<span class="ki-st ${x.kind}">${kiTxt(x.t)}</span>` : ''; }).join('');
 }
+// označené cihly se dělí podle excelu: do Upřesnění jdou cihly klasifikace, šedé a TANR / DÍTĚ / DOSPĚLÝ / DYNAMICKÁ_INDIK; ostatní univerzální (+PČR, +HZS, DR_NA_ŽÁDOST, TRANSPORT_PAC …) jen do Poznámky
+const KI_SYM_U = new Set(['TANR', 'TANR_NELZE', 'DÍTĚ', 'DOSPĚLÝ', 'DYNAMICKÁ_INDIK']);
 const kiCodes = () => {
-  const u = kInst(), out = [];
-  for (const id of kf.sel) { if (id.startsWith('u:')) { const x = CT_CIHLY.UNIVERSAL[Number(id.slice(2))]; if (x && x.cls !== 'u-empty') out.push(x.c.replace(/^\+ /, '+')); } else if (id.startsWith('g:')) out.push(id.split(':').slice(2).join(':')); else { const x = u.chip(id); if (x) out.push(x.c); } }
+  const u = kInst(), out = { sym: [], note: [] };
+  for (const id of kf.sel) {
+    if (id.startsWith('u:')) { const x = CT_CIHLY.UNIVERSAL[Number(id.slice(2))]; if (x && x.cls !== 'u-empty') (KI_SYM_U.has(x.c) ? out.sym : out.note).push(x.c.replace(/^\+ /, '+')); }
+    else if (id.startsWith('g:')) out.sym.push(id.split(':').slice(2).join(':'));
+    else { const x = u.chip(id); if (x) out.sym.push(x.c); }
+  }
   return out;
 };
 function kiToggleChip(id) {
@@ -12824,8 +12830,8 @@ const kiLog = t => { kf.log.push(sim.clock() + ' ' + t); kiRenderCoop(); };
 
 // ---------- čtení a plnění formuláře ----------
 function kiNote() {
-  const codes = kiCodes(), user = ctVal('ctf-poznamka'), lok = [...kf.lok].join(', ');
-  return [codes.length ? '#' + codes.join(', ') : '', lok ? 'zranění: ' + lok : '', ctVal('ctf-pPozn') ? 'pacient: ' + ctVal('ctf-pPozn') : '', user].filter(Boolean).join(' | ');
+  const codes = kiCodes().note, user = ctVal('ctf-poznamka'), lok = [...kf.lok].join(', ');
+  return [user, codes.map(c => '#' + c).join(' '), lok ? 'zranění: ' + lok : '', ctVal('ctf-pPozn') ? 'pacient: ' + ctVal('ctf-pPozn') : ''].filter(Boolean).join(' | ');
 }
 function kiReadForm() {
   ctAddrSync();
@@ -12837,7 +12843,7 @@ function kiReadForm() {
     adresa: ctVal('ctf-adresa'), bod: p && p.src !== 'adresa' ? { lat: p.lat, lon: p.lon } : null, zdroj, cast: ctVal('ctf-cast'), upresneni: pozn,
     vJmeno: vol[0] || '', vPrijmeni: vol.slice(1).join(' '), vTelefon: ctVal('ctf-vTel'), vVztah: ch('ctf-hovor3') ? '3. ruka' : '', telMisto: ctVal('ctf-telMisto'), kontaktMisto: ctVal('ctf-kontaktMisto'), zpusob: ctVal('ctf-zpusob'),
     pJmeno: ctVal('ctf-pJmeno'), pPrijmeni: ctVal('ctf-pPrijmeni'), pPohlavi: kf.sex, pRok: num > 1900 ? num : '', pVek: v && num <= 130 ? num : '',
-    cihla: true, kody: kiCodes(), klasif: kl ? kl.engine : '', klasifTabulka: kf.klasif, priznaky: [], cihly: [...kf.sel], n: kf.n >= 1 && kf.n <= 4 ? String(kf.n) : '', dyn: kf.n ? dyn : null, posadky: Object.assign({}, kf.pos),
+    cihla: true, kody: kiCodes().sym, klasif: kl ? kl.engine : '', klasifTabulka: kf.klasif, priznaky: [], cihly: [...kf.sel], n: kf.n >= 1 && kf.n <= 4 ? String(kf.n) : '', dyn: kf.n ? dyn : null, posadky: Object.assign({}, kf.pos),
     charakter: ctVal('ctf-charakter'), popis: ctVal('ctf-popis'), poznamka: kiNote(), spoluprace: [...kf.coop],
     agPcr: kf.coop.has('PJHC'), agHzs: kf.coop.has('HJHC'), nebezpeci: Number(ctVal('ctf-ohrozeno')) > 0, vyprosteni: ch('ctf-vyprosteni'), ohrozeno: ctVal('ctf-ohrozeno'), osVoz: ctVal('ctf-osVoz'), naklVoz: ctVal('ctf-naklVoz'),
     pocet: pc > 0 ? pc : '', slucitS: ctVal('ctf-sluc'),
