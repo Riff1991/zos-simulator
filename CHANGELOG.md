@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.36.1 – rozpracováno
+## v0.36.1 – 2026-11-17
 Opravy:
 - **Našeptávač adres:** v Českých Budějovicích se nenabízely ulice (například Matice školské). Příčinou byly varianty zápisu obcí v datech („Ceske Budejovice“ bez diakritiky, „VIMPERK“ velkými písmeny), které přepsaly skutečnou obec. Varianty se teď slučují; index se testuje na všech 227 tisících adres.
 - **Stejnojmenné obce** (Bernartice, Lhota a dalších 20) se nabízejí s okresem a při hledání bodu se vybere ta u polohy z AML.
