@@ -180,6 +180,28 @@ def symptoms_of(text):
     return [n for _, n in sorted(found)]
 
 
+def apply_screens(bricks):
+    """Klasifikace, které máme ze screenů skutečné obrazovky, dostanou přesně jejich sadu cihliček (kódy, barvy, pořadí); text je z excelu."""
+    import os, sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from screens_cihly import SCREEN
+    for klasif, kinds in SCREEN.items():
+        bs = [b for b in bricks if b['klasif'] == klasif]
+        if not bs:
+            print('chybí klasifikace', klasif)
+            continue
+        for b in bs:
+            b['chips'] = []
+        for kind, items in kinds.items():
+            tgt = next((b for b in bs if b['kind'] == kind), None)
+            if tgt is None:
+                print('chybí cihla', klasif, kind)
+                continue
+            for code, rx, syms in items:
+                line = next((l for l in tgt['lines'] if rx and re.search(rx, l, re.I)), None) or ' '.join(tgt['lines'])
+                tgt['chips'].append({'c': code, 't': line, 's': [CATALOG[x.lower()] for x in syms if x.lower() in CATALOG]})
+
+
 def add_chips(bricks):
     """Každé kritérium (řádek) cihly je jedna cihlička; kódy jsou v rámci klasifikace jedinečné."""
     seen = {}
@@ -321,12 +343,17 @@ def build(path):
                     if t['id'].startswith('ostatni:') and 'prevoz' in t['id']:
                         t['doprovod'] = {'titul': 'Indikace lékařského doprovodu – posádka RLP či RV+RZP', 'polozky': items, 'poznamky': join_lines(notes)}
     add_chips(bricks)
+    apply_screens(bricks)
     for t in tiles:
         t['bricks'] = [b['id'] for b in bricks if b['tile'] == t['id']]
         if not t['poznamky']:
             del t['poznamky']
     tiles = [t for t in tiles if t['bricks']]
-    return {'format': 'zos-cihly/1', 'skupiny': [{'id': k, 'label': v} for k, v in GR.items()][::-1] if False else [{'id': 'stav', 'label': GR['stav']}, {'id': 'dej', 'label': GR['dej']}, {'id': 'ostatni', 'label': GR['ostatni']}], 'tiles': tiles, 'bricks': bricks}
+    import os, sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from screens_cihly import GRAY_SCREEN
+    gray = {k: {'list': v[0], 'full': v[1]} for k, v in GRAY_SCREEN.items()}
+    return {'format': 'zos-cihly/1', 'gray': gray, 'skupiny': [{'id': k, 'label': v} for k, v in GR.items()][::-1] if False else [{'id': 'stav', 'label': GR['stav']}, {'id': 'dej', 'label': GR['dej']}, {'id': 'ostatni', 'label': GR['ostatni']}], 'tiles': tiles, 'bricks': bricks}
 
 
 if __name__ == '__main__':

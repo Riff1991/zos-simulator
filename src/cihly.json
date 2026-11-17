@@ -1,5 +1,63 @@
 {
  "format": "zos-cihly/1",
+ "gray": {
+  "Křečové stavy": {
+   "list": [
+    "DIABETIK",
+    "EPILEPTIK"
+   ],
+   "full": true
+  },
+  "Arytmie": {
+   "list": [
+    "HYPERTONIK",
+    "KARDIAK"
+   ],
+   "full": true
+  },
+  "Dušnost": {
+   "list": [
+    "ASPIRACE",
+    "ASTMATIK",
+    "DIABETIK",
+    "HYPERTONIK",
+    "CHOPN",
+    "KARDIAK",
+    "DDOT"
+   ],
+   "full": true
+  },
+  "Trauma": {
+   "list": [
+    "ALKOHOL",
+    "BÉREC",
+    "BODNÉ_PORANĚNÍ",
+    "BŘICHO",
+    "CIZÍ_TĚLESO",
+    "CYKLISTA",
+    "DK",
+    "ELEKTR_PROUD",
+    "HK",
+    "HLAVA"
+   ],
+   "full": false
+  },
+  "Dopravní nehoda": {
+   "list": [
+    "ALKOHOL",
+    "BÉREC",
+    "BŘICHO",
+    "BUS",
+    "CYKLISTA",
+    "DK",
+    "HK",
+    "HLAVA",
+    "HRUDNÍK",
+    "CHODEC"
+   ],
+   "full": false
+  }
+ },
  "skupiny": [
   {
    "id": "stav",
@@ -722,25 +780,22 @@
    ],
    "chips": [
     {
-     "c": "OBJ_DUŠ_NEMŮŽE_MLUVIT",
-     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo",
+     "c": "DUŠ_POUZE_SLOVO",
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%",
      "s": [
-      "Dušnost"
+      "Dušnost kritická"
+     ]
+    },
+    {
+     "c": "DUŠ_NEMŮŽ_MLUVI",
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%",
+     "s": [
+      "Dušnost kritická"
      ]
     },
     {
      "c": "SpO2_<74%",
-     "t": "Zjištěná SpO2 pod 74%",
-     "s": []
-    },
-    {
-     "c": "NÁHLÝ_VZNIK",
-     "t": "Náhlý vznik",
-     "s": []
-    },
-    {
-     "c": "ZAPOJUJE_POMOCNÉ",
-     "t": "Zapojuje pomocné dýchácí svaly, neklid, apatie",
+     "t": "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%",
      "s": []
     }
    ]
@@ -760,22 +815,20 @@
    ],
    "chips": [
     {
-     "c": "OBJ_DUŠ_SCHOPEN",
-     "t": "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech",
-     "s": [
-      "Dušnost"
-     ]
-    },
-    {
-     "c": "PROGRESE_DUŠ_POSLEDNÍ",
-     "t": "Progrese dušnosti v poslední hodině",
+     "c": "DUŠ_POUZE_VĚTU",
+     "t": "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech,",
      "s": [
       "Dušnost"
      ]
     },
     {
      "c": "SpO2_75-81%",
-     "t": "Zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)",
+     "t": "Progrese dušnosti v poslední hodině nebo zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)",
+     "s": []
+    },
+    {
+     "c": "LARYNGITIDA",
+     "t": "Progrese dušnosti v poslední hodině nebo zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)",
      "s": []
     }
    ]
@@ -796,35 +849,23 @@
    ],
    "chips": [
     {
-     "c": "OBJEKTIVIZ_DUŠ_UDRŽÍ",
-     "t": "Objektiviz. dušnost - udrží konverzaci",
+     "c": "DUŠ_UDRŽÍ_KONVE",
+     "t": "Objektiviz. dušnost - udrží konverzaci, nebo SpO2 82 - 93%",
      "s": [
       "Dušnost"
      ]
     },
     {
      "c": "SpO2_82-93%",
-     "t": "SpO2 82 - 93%",
+     "t": "Objektiviz. dušnost - udrží konverzaci, nebo SpO2 82 - 93%",
      "s": []
     },
     {
-     "c": "DUŠ_TRVAJÍCÍ_DÉLE",
-     "t": "Dušnost trvající déle než 1 hodinu",
+     "c": "DUŠ_VOL_3.RUKA",
+     "t": "Dušnost trvající déle než 1 hodinu, nebo dušnost volání z 3.ruky",
      "s": [
-      "Dušnost"
+      "Dušnost z volání z 3.ruky"
      ]
-    },
-    {
-     "c": "DUŠ_VOLÁNÍ_3.RUKY",
-     "t": "Dušnost volání z 3.ruky",
-     "s": [
-      "Dušnost"
-     ]
-    },
-    {
-     "c": "VÝRAZNÉ_ZHORŠENÍ",
-     "t": "Výrazné zhoršení chronického stavu (zejm. CHOPN, ICHS)",
-     "s": []
     }
    ]
   },
@@ -843,20 +884,22 @@
    ],
    "chips": [
     {
-     "c": "SUBJEKTIVNÍ_DUŠ",
-     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin",
+     "c": "DUŠ_NĚKOL_HODIN",
+     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin,",
      "s": [
-      "Dušnost"
+      "Dušnost trvající několik hodin"
      ]
     },
     {
-     "c": "HYPERVENTILACE",
-     "t": "Hyperventilace, celkový stav dobrý",
-     "s": []
+     "c": "DUŠ_POCITO/JINÁ",
+     "t": "Subjektivní dušnost - dušnost pocitová, trvající několik hodin,",
+     "s": [
+      "Dušnost pocitová"
+     ]
     },
     {
-     "c": "SpO2_>94%",
-     "t": "Zjištěná SpO2 nad 94%",
+     "c": "HYPERVENTICE",
+     "t": "Hyperventilace, celkový stav dobrý, nebo zjištěná SpO2 nad 94%",
      "s": []
     }
    ]
@@ -878,38 +921,36 @@
    ],
    "chips": [
     {
-     "c": "KŘEČE_NEZNÁMÉHO",
-     "t": "Křeče neznámého původu, celotělové s poruchou vědomí",
-     "s": []
-    },
-    {
-     "c": "NEJDE_LÉČENÉHO",
-     "t": "Nejde o léčeného epileptika",
+     "c": "KŘEČE_FEBRILNÍ",
+     "t": "Febrilní křeče / křeče v těhotenství / neznámá příčina",
      "s": [
-      "Epileptik"
+      "Křeče febrilní"
      ]
     },
     {
-     "c": "TOTO_NELZE_ZJISTIT",
-     "t": "Toto nelze zjistit",
-     "s": []
+     "c": "KŘEČE_NEZNÁMÉ",
+     "t": "Křeče neznámého původu, celotělové s poruchou vědomí",
+     "s": [
+      "Křeče bez známého původu"
+     ]
     },
     {
-     "c": "OPAKOVANÝ_KŘEČOVÝ",
-     "t": "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty",
-     "s": []
-    },
-    {
-     "c": "KŘEČÍCH_NĚKOL_MIN",
-     "t": "Po křečích několik minut a neprobírá se (hrozící status epil.)",
-     "s": []
-    },
-    {
-     "c": "FEBRILNÍ_KŘEČE_KŘEČE",
+     "c": "KŘEČE_V_GRAVIDI",
      "t": "Febrilní křeče / křeče v těhotenství / neznámá příčina",
      "s": [
-      "Křeče febrilní",
       "Křeče v souvislosti s graviditou"
+     ]
+    },
+    {
+     "c": "PO_KŘ_NEPROBÍRÁ",
+     "t": "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty, nebo po křečích několik minut a neprobírá se (hrozící status epil.)",
+     "s": []
+    },
+    {
+     "c": "OPAK_KŘEČ_STAV",
+     "t": "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty, nebo po křečích několik minut a neprobírá se (hrozící status epil.)",
+     "s": [
+      "Opakovaný křečový stav"
      ]
     }
    ]
@@ -929,21 +970,11 @@
    ],
    "chips": [
     {
-     "c": "KŘEČE_PROBÍHAJÍCÍ",
-     "t": "Křeče probíhající u léčeného",
-     "s": []
-    },
-    {
-     "c": "ZNÁMÉHO_EPILEPTIKA",
-     "t": "Známého epileptika",
+     "c": "KŘEČE_EPILEPTIK",
+     "t": "Křeče probíhající u léčeného nebo známého epileptika",
      "s": [
       "Epileptik"
      ]
-    },
-    {
-     "c": "KŘEČE_TYPICKÝM",
-     "t": "Křeče s typickým průběhem svědčící pro epileptický záchvat",
-     "s": []
     }
    ]
   },
@@ -962,20 +993,36 @@
    ],
    "chips": [
     {
-     "c": "STAV_EPILEPTICKÉM",
-     "t": "Stav po epileptickém záchvatu u známého epileptika",
+     "c": "AVPU-A",
+     "t": "Stav po epileptickém záchvatu u známého epileptika Probírá se, začíná komunikovat nebo hyperventilační tetanie",
      "s": [
-      "Epileptik"
+      "AVPU-A"
      ]
     },
     {
-     "c": "PROBÍRÁ_ZAČÍNÁ",
-     "t": "Probírá se, začíná komunikovat",
-     "s": []
+     "c": "AVPU-V",
+     "t": "Stav po epileptickém záchvatu u známého epileptika Probírá se, začíná komunikovat nebo hyperventilační tetanie",
+     "s": [
+      "AVPU-V"
+     ]
     },
     {
-     "c": "HYPERVENTILAČNÍ",
-     "t": "Hyperventilační tetanie",
+     "c": "PO_KŘ_PROBÍRÁ",
+     "t": "Probírá se, začíná komunikovat nebo hyperventilační tetanie",
+     "s": [
+      "Po křečích"
+     ]
+    },
+    {
+     "c": "PO_KŘ_EPILEPTI",
+     "t": "Stav po epileptickém záchvatu u známého epileptika",
+     "s": [
+      "Po epileptickém záchvatu"
+     ]
+    },
+    {
+     "c": "TETANIE",
+     "t": "Probírá se, začíná komunikovat nebo hyperventilační tetanie",
      "s": []
     }
    ]
@@ -995,21 +1042,21 @@
    ],
    "chips": [
     {
-     "c": "OPAKOVANÝ_VÝBOJ",
+     "c": "AS_<_30_MIN",
+     "t": "Zjištěná TF < 30/min nebo TF > 200/min",
+     "s": []
+    },
+    {
+     "c": "AS_>_200_MIN",
+     "t": "Zjištěná TF < 30/min nebo TF > 200/min",
+     "s": []
+    },
+    {
+     "c": "ICD_VÝBOJ_OPAK",
      "t": "Opakovaný výboj ICD (kardioverter)",
      "s": [
-      "ICD výboj (kardioverter)"
+      "Opakovaný ICD výboj (kardioverter)"
      ]
-    },
-    {
-     "c": "TF_<_30/MIN",
-     "t": "Zjištěná TF < 30/min",
-     "s": []
-    },
-    {
-     "c": "TF_>_200/MIN",
-     "t": "TF > 200/min",
-     "s": []
     }
    ]
   },
@@ -1029,33 +1076,33 @@
    ],
    "chips": [
     {
-     "c": "TF_30-45/MIN",
-     "t": "Zjištěná TF 30-45/min",
+     "c": "AS_150-200_MIN",
+     "t": "Zjištěná TF 30-45/min nebo TF 150-200/min",
      "s": []
     },
     {
-     "c": "TF_150-200/MIN",
-     "t": "TF 150-200/min",
+     "c": "AS_30-45_MIN",
+     "t": "Zjištěná TF 30-45/min nebo TF 150-200/min",
      "s": []
     },
     {
-     "c": "NÁHLE_NOVĚ_VZNIKLÉ",
-     "t": "Náhle nově vzniklé palpitace",
-     "s": []
-    },
-    {
-     "c": "PALPITACE_SPOJENÉ",
-     "t": "Palpitace spojené s klidovou dušností či kolapsem či BNH",
+     "c": "DUŠ_POUZE_VĚTU",
+     "t": "Náhle nově vzniklé palpitace nebo palpitace spojené s klidovou dušností či kolapsem či BNH",
      "s": [
       "Dušnost"
      ]
     },
     {
-     "c": "IZOLOVANÝ_VÝBOJ",
+     "c": "ICD_VÝBOJ_JEDEN",
      "t": "Izolovaný výboj ICD (kardioverter)",
      "s": [
       "ICD výboj (kardioverter)"
      ]
+    },
+    {
+     "c": "NÁHL_PALP_ZÁVAŽ",
+     "t": "Náhle nově vzniklé palpitace nebo palpitace spojené s klidovou dušností či kolapsem či BNH",
+     "s": []
     }
    ]
   },
@@ -1073,7 +1120,17 @@
    ],
    "chips": [
     {
-     "c": "BUŠENÍ_SRDCE",
+     "c": "AS_NEPRAV_VNÍMA",
+     "t": "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů",
+     "s": []
+    },
+    {
+     "c": "BEZ_ZÁVAŽ_PŘÍZN",
+     "t": "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů",
+     "s": []
+    },
+    {
+     "c": "PALPIT_NEZÁVAŽN",
      "t": "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů",
      "s": []
     }
@@ -1882,7 +1939,12 @@
    ],
    "chips": [
     {
-     "c": "PORUCHY_VĚDOMÍ_AVPU-U",
+     "c": "AMPUTACE_KONČET",
+     "t": "Masivní nezastavitelné krvácení, amputace končetiny",
+     "s": []
+    },
+    {
+     "c": "AVPU-U_NEDÝCHÁ",
      "t": "Poruchy vědomí = AVPU-U nedýchá",
      "s": [
       "AVPU-U",
@@ -1890,23 +1952,32 @@
      ]
     },
     {
-     "c": "OBJ_DUŠ_SOUVISL.S",
-     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit",
+     "c": "DUŠ_NEMŮŽ_MLUVI",
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
      "s": [
-      "Dušnost"
+      "Dušnost kritická"
      ]
     },
     {
-     "c": "MAS_NEZAST_KRV",
+     "c": "DUŠ_POUZE_SLOVO",
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
+     "s": [
+      "Dušnost kritická"
+     ]
+    },
+    {
+     "c": "MAS_KRVÁ_NEZAST",
      "t": "Masivní nezastavitelné krvácení, amputace končetiny",
      "s": [
       "Masivní krvácení nezastavitelné"
      ]
     },
     {
-     "c": "ZÁVAŽ_ROZS_POPÁL",
+     "c": "POPÁL_ROZS/HLUB",
      "t": "Závažné rozsáhlé popáleniny / poleptání",
-     "s": []
+     "s": [
+      "Popálení/poleptání rozsáhlé/hluboké"
+     ]
     }
    ]
   },
@@ -1935,84 +2006,77 @@
    ],
    "chips": [
     {
-     "c": "PÁD_VÝŠE_>6_M",
-     "t": "Pád z výše >6 m",
-     "s": []
-    },
-    {
-     "c": "TROJNÁSOBEK_SVÉ",
-     "t": "Trojnásobek své výšky (děti)",
-     "s": []
-    },
-    {
-     "c": "PŘEJETÍ_VOZ",
-     "t": "Přejetí vozidlem",
-     "s": []
-    },
-    {
-     "c": "PORUCHA_VĚDOMÍ_AVPU-U",
-     "t": "Porucha vědomí = AVPU-U dýchá",
+     "c": "AVPU-U_DÝCHÁ",
+     "t": "Porucha vědomí = AVPU-U dýchá,",
      "s": [
       "AVPU-U",
       "dýchá"
      ]
     },
     {
-     "c": "DUŠ_NEKRITICKÁ_ZNÁMEK",
+     "c": "DÍTĚ_SUSP_ANALG",
+     "t": "Dítě - předpoklad potřeby analgezie/sedace",
+     "s": []
+    },
+    {
+     "c": "DUŠ_POUZE_VĚTU",
      "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu",
      "s": [
       "Dušnost"
      ]
     },
     {
-     "c": "PARÉZA",
-     "t": "Paréza",
-     "s": [
-      "Paréza/brnění končetin"
-     ]
-    },
-    {
-     "c": "BRNĚNÍ_KONČ",
-     "t": "Brnění končetin",
-     "s": [
-      "Paréza/brnění končetin"
-     ]
-    },
-    {
-     "c": "OTEVŘ_ZLOM",
-     "t": "Otevřená zlomenina",
-     "s": [
-      "Otevřená zlomenina"
-     ]
-    },
-    {
-     "c": "ZLOM_2_VÍCE_DLOUHÝCH",
-     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
-     "s": [
-      "Zlomenina 2 dlouhých kostí (femur, humerus, tibie)"
-     ]
-    },
-    {
-     "c": "ZAVALENÍ_TĚŽKÝMI",
-     "t": "Zavalení těžkými předměty",
+     "c": "PÁD_DÍTĚ_>3xVÝŠ",
+     "t": "Pád z výše >6 m NEBO: trojnásobek své výšky (děti)",
      "s": []
     },
     {
-     "c": "PERFO_PORAN_HLAVY",
+     "c": "PÁD_Z_VÝŠE_>6M",
+     "t": "TRIAGE POZITIVNÍ PACIENT: Pád z výše >6 m NEBO: trojnásobek své výšky (děti) Přejetí vozidlem Porucha vědomí = AVPU-U dýchá, Dušnost nekritická, bez známek dušení, schopen říci pouze větu Paréza nebo brnění končetin Otevřená zlomenina Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže) Zavalení těžkými předměty Perforační poranění hlavy, krku, hrudníku, břicha, pánve Pokračující nezastavitelné krvácení většího rozsahu Dítě - předpoklad potřeby analgezie/sedace",
+     "s": []
+    },
+    {
+     "c": "PARÉZ/BRNĚ_KONČ",
+     "t": "Paréza nebo brnění končetin",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
+    },
+    {
+     "c": "PERFO_DUTIN_POR",
      "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
      "s": []
     },
     {
-     "c": "POKRAČUJÍCÍ_NEZAST",
+     "c": "POK_KRVÁ_NEZAST",
      "t": "Pokračující nezastavitelné krvácení většího rozsahu",
      "s": [
       "Pokračující krvácení většího rozsahu nezastavitelné"
      ]
     },
     {
-     "c": "DÍTĚ_PŘEDPOKLAD",
-     "t": "Dítě - předpoklad potřeby analgezie/sedace",
+     "c": "PŘEJETÍ_VOZIDLE",
+     "t": "Přejetí vozidlem",
      "s": []
+    },
+    {
+     "c": "ZAVAL_TĚŽ_PŘED",
+     "t": "Zavalení těžkými předměty",
+     "s": []
+    },
+    {
+     "c": "ZLOM_2_DL_KOST",
+     "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
+     "s": [
+      "Zlomenina 2 dlouhých kostí (femur, humerus, tibie)"
+     ]
+    },
+    {
+     "c": "ZLOM_OTEVŘ_KOST",
+     "t": "Otevřená zlomenina",
+     "s": [
+      "Otevřená zlomenina"
+     ]
     }
    ]
   },
@@ -2031,15 +2095,21 @@
    ],
    "chips": [
     {
-     "c": "AVPU-P_POÚRAZOVÁ",
+     "c": "AVPU-P",
      "t": "AVPU-P, poúrazová zmatenost",
      "s": [
-      "AVPU-P",
+      "AVPU-P"
+     ]
+    },
+    {
+     "c": "POÚRAZ_ZMATENOS",
+     "t": "AVPU-P, poúrazová zmatenost",
+     "s": [
       "Poúrazová zmatenost"
      ]
     },
     {
-     "c": "ZÁVAŽ_KRV_KONČ",
+     "c": "ZÁVA_KRV_Z_KONČ",
      "t": "Závažné krvácení z končetin",
      "s": [
       "Závažné krvácení z končetin"
@@ -2067,62 +2137,84 @@
    ],
    "chips": [
     {
-     "c": "AVPU-V",
-     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
-     "s": [
-      "AVPU-V"
-     ]
+     "c": "AMPUTACE_PRSTŮ",
+     "t": "Ztrátové poranění prstů",
+     "s": []
     },
     {
      "c": "AVPU-A",
-     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A Komoční syndrom nebo psychický otřes Otevřené rány menšího rozsahu Zavřená zlomenina, vykloubení Tupé trauma hrudníku, břicha, pánve, zad Ztrátové poranění prstů Ošetřitelné poranění bez masivního krvácení",
      "s": [
       "AVPU-A"
      ]
     },
     {
-     "c": "KOMOČNÍ_SYNDROM",
-     "t": "Komoční syndrom",
+     "c": "AVPU-V",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A Komoční syndrom nebo psychický otřes Otevřené rány menšího rozsahu Zavřená zlomenina, vykloubení Tupé trauma hrudníku, břicha, pánve, zad Ztrátové poranění prstů Ošetřitelné poranění bez masivního krvácení",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "BEZ_ZÁVAŽ_PŘÍZN",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "s": []
+    },
+    {
+     "c": "BOLEST_HRUDNÍKU",
+     "t": "Tupé trauma hrudníku, břicha, pánve, zad",
+     "s": [
+      "Bolest hrudníku"
+     ]
+    },
+    {
+     "c": "KOMOCE_MOZKU",
+     "t": "Komoční syndrom nebo psychický otřes",
      "s": [
       "Komoční syndrom"
      ]
     },
     {
-     "c": "PSYCHICKÝ_OTŘES",
-     "t": "Psychický otřes",
+     "c": "KRČEK_STEH_KOST",
+     "t": "Zavřená zlomenina, vykloubení",
+     "s": []
+    },
+    {
+     "c": "LUXACE_KLOUBU",
+     "t": "Zavřená zlomenina, vykloubení",
+     "s": []
+    },
+    {
+     "c": "NEZÁV_KRV_Z_KON",
+     "t": "Ošetřitelné poranění bez masivního krvácení",
      "s": [
-      "Psychický otřes"
+      "Nezávažné krvácení z končetin"
      ]
     },
     {
-     "c": "OTEVŘ_RÁNY_MENŠÍHO",
+     "c": "OTEVŘENÉ_RÁNY",
      "t": "Otevřené rány menšího rozsahu",
      "s": [
       "Otevřené rány"
      ]
     },
     {
-     "c": "ZAVŘENÁ_ZLOM",
-     "t": "Zavřená zlomenina, vykloubení",
+     "c": "PÁD_Z_VÝŠE_<6M",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A Komoční syndrom nebo psychický otřes Otevřené rány menšího rozsahu Zavřená zlomenina, vykloubení Tupé trauma hrudníku, břicha, pánve, zad Ztrátové poranění prstů Ošetřitelné poranění bez masivního krvácení",
+     "s": []
+    },
+    {
+     "c": "PSYCHICKÝ_OTŘES",
+     "t": "Komoční syndrom nebo psychický otřes",
      "s": [
-      "Zavřená zlomenina"
+      "Psychický otřes"
      ]
     },
     {
-     "c": "TUPÉ_TRAUMA_HRUDNÍKU",
-     "t": "Tupé trauma hrudníku, břicha, pánve, zad",
-     "s": []
-    },
-    {
-     "c": "ZTRÁTOVÉ_PORAN_PRSTŮ",
-     "t": "Ztrátové poranění prstů",
-     "s": []
-    },
-    {
-     "c": "OŠETŘITELNÉ_PORAN",
-     "t": "Ošetřitelné poranění bez masivního krvácení",
+     "c": "ZLOM_ZAVŘENÁ",
+     "t": "Zavřená zlomenina, vykloubení",
      "s": [
-      "Nezávažné krvácení z končetin"
+      "Zavřená zlomenina"
      ]
     }
    ]
@@ -2358,7 +2450,12 @@
    ],
    "chips": [
     {
-     "c": "PORUCHY_VĚDOMÍ_AVPU-U",
+     "c": "AMPUTACE_KONČET",
+     "t": "Masivní nezastavitelné krvácení, amputace končetiny",
+     "s": []
+    },
+    {
+     "c": "AVPU-U_NEDÝCHÁ",
      "t": "Poruchy vědomí = AVPU-U nedýchá",
      "s": [
       "AVPU-U",
@@ -2366,23 +2463,32 @@
      ]
     },
     {
-     "c": "OBJ_DUŠ_SOUVISL.S",
-     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit",
+     "c": "DUŠ_NEMŮŽ_MLUVI",
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
      "s": [
-      "Dušnost"
+      "Dušnost kritická"
      ]
     },
     {
-     "c": "MAS_NEZAST_KRV",
+     "c": "DUŠ_POUZE_SLOVO",
+     "t": "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
+     "s": [
+      "Dušnost kritická"
+     ]
+    },
+    {
+     "c": "MAS_KRVÁ_NEZAST",
      "t": "Masivní nezastavitelné krvácení, amputace končetiny",
      "s": [
       "Masivní krvácení nezastavitelné"
      ]
     },
     {
-     "c": "ZÁVAŽ_ROZS_POPÁL",
+     "c": "POPÁL_ROZS/HLUB",
      "t": "Závažné rozsáhlé popáleniny / poleptání",
-     "s": []
+     "s": [
+      "Popálení/poleptání rozsáhlé/hluboké"
+     ]
     }
    ]
   },
@@ -2414,56 +2520,7 @@
    ],
    "chips": [
     {
-     "c": "ČELNÍ_NÁRAZ_VYSOKÉ",
-     "t": "Čelní náraz ve vysoké rychlosti bez zn stavu",
-     "s": []
-    },
-    {
-     "c": "PŘEJETÍ_VOZ",
-     "t": "Přejetí vozidlem",
-     "s": []
-    },
-    {
-     "c": "SRAŽENÍ_VOZ_RYCHLOSTÍ",
-     "t": "Sražení vozidlem rychlostí >35 km/hod (chodec,cyklista,moto)",
-     "s": []
-    },
-    {
-     "c": "KATAPULTÁŽ_VOZ",
-     "t": "Katapultáž z vozidla",
-     "s": []
-    },
-    {
-     "c": "ZAKLÍNĚNÍ_VOZIDLE",
-     "t": "Zaklínění ve vozidle",
-     "s": []
-    },
-    {
-     "c": "ZAVALENÍ_TĚŽKÝMI",
-     "t": "Zavalení těžkými předměty",
-     "s": []
-    },
-    {
-     "c": "PARÉZA",
-     "t": "Paréza",
-     "s": [
-      "Paréza/brnění končetin"
-     ]
-    },
-    {
-     "c": "BRNĚNÍ_KONČ",
-     "t": "Brnění končetin",
-     "s": [
-      "Paréza/brnění končetin"
-     ]
-    },
-    {
-     "c": "PERFO_PORAN_HLAVY",
-     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
-     "s": []
-    },
-    {
-     "c": "PORUCHA_VĚDOMÍ_AVPU-U",
+     "c": "AVPU-U_DÝCHÁ",
      "t": "Porucha vědomí = AVPU-U dýchá",
      "s": [
       "AVPU-U",
@@ -2471,37 +2528,79 @@
      ]
     },
     {
-     "c": "DUŠ_NEKRITICKÁ_ZNÁMEK",
+     "c": "ČEL_NÁR_VYS_RYC",
+     "t": "Čelní náraz ve vysoké rychlosti bez zn stavu",
+     "s": []
+    },
+    {
+     "c": "DÍTĚ_SUSP_ANALG",
+     "t": "Dítě - předpoklad potřeby analgezie/sedace",
+     "s": []
+    },
+    {
+     "c": "DUŠ_POUZE_VĚTU",
      "t": "Dušnost nekritická, bez známek dušení, schopen říci pouze větu",
      "s": [
       "Dušnost"
      ]
     },
     {
-     "c": "POKRAČUJÍCÍ_NEZAST",
+     "c": "KATAPULT_Z_VOZI",
+     "t": "Katapultáž z vozidla",
+     "s": []
+    },
+    {
+     "c": "PARÉZ/BRNĚ_KONČ",
+     "t": "Paréza nebo brnění končetin",
+     "s": [
+      "Paréza/brnění končetin"
+     ]
+    },
+    {
+     "c": "PERFO_DUTIN_POR",
+     "t": "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
+     "s": []
+    },
+    {
+     "c": "POK_KRVÁ_NEZAST",
      "t": "Pokračující nezastavitelné krvácení většího rozsahu",
      "s": [
       "Pokračující krvácení většího rozsahu nezastavitelné"
      ]
     },
     {
-     "c": "OTEVŘ_ZLOM",
-     "t": "Otevřená zlomenina",
-     "s": [
-      "Otevřená zlomenina"
-     ]
+     "c": "PŘEJETÍ_VOZIDLE",
+     "t": "Přejetí vozidlem",
+     "s": []
     },
     {
-     "c": "ZLOM_2_VÍCE_DLOUHÝCH",
+     "c": "SRAŽENÍ_VOZIDLE",
+     "t": "Sražení vozidlem rychlostí >35 km/hod (chodec,cyklista,moto)",
+     "s": []
+    },
+    {
+     "c": "ZAKLÍNĚNÍ_VE_VO",
+     "t": "Zaklínění ve vozidle",
+     "s": []
+    },
+    {
+     "c": "ZAVAL_TĚŽ_PŘED",
+     "t": "Zavalení těžkými předměty",
+     "s": []
+    },
+    {
+     "c": "ZLOM_2_DL_KOST",
      "t": "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
      "s": [
       "Zlomenina 2 dlouhých kostí (femur, humerus, tibie)"
      ]
     },
     {
-     "c": "DÍTĚ_PŘEDPOKLAD",
-     "t": "Dítě - předpoklad potřeby analgezie/sedace",
-     "s": []
+     "c": "ZLOM_OTEVŘ_KOST",
+     "t": "Otevřená zlomenina",
+     "s": [
+      "Otevřená zlomenina"
+     ]
     }
    ]
   },
@@ -2521,24 +2620,30 @@
    ],
    "chips": [
     {
-     "c": "AVPU-P_POÚRAZOVÁ",
+     "c": "AVPU-P",
      "t": "AVPU-P, poúrazová zmatenost",
      "s": [
-      "AVPU-P",
+      "AVPU-P"
+     ]
+    },
+    {
+     "c": "POÚRAZ_ZMATENOS",
+     "t": "AVPU-P, poúrazová zmatenost",
+     "s": [
       "Poúrazová zmatenost"
      ]
     },
     {
-     "c": "ZÁVAŽ_KRV_KONČ",
+     "c": "ROTACE_PŘES_STŘ",
+     "t": "Rotace vozidla přes střechu",
+     "s": []
+    },
+    {
+     "c": "ZÁVA_KRV_Z_KONČ",
      "t": "Závažné krvácení z končetin",
      "s": [
       "Závažné krvácení z končetin"
      ]
-    },
-    {
-     "c": "ROTACE_VOZ_PŘES",
-     "t": "Rotace vozidla přes střechu",
-     "s": []
     }
    ]
   },
@@ -2563,68 +2668,70 @@
    ],
    "chips": [
     {
-     "c": "AVPU-V",
-     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
-     "s": [
-      "AVPU-V"
-     ]
+     "c": "AMPUTACE_PRSTŮ",
+     "t": "Ztrátové poranění prstů",
+     "s": []
     },
     {
      "c": "AVPU-A",
-     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A Komoční syndrom nebo psychický otřes Otevřené rány menšího rozsahu Zavřená zlomenina, vykloubení Tupé trauma hrudníku, břicha, pánve, zad Ztrátové poranění prstů Ošetřitelné poranění bez masivního krvácení NEBO: Pacient bez viditelného poranění a není triage pozitivní",
      "s": [
       "AVPU-A"
      ]
     },
     {
-     "c": "KOMOČNÍ_SYNDROM",
-     "t": "Komoční syndrom",
+     "c": "AVPU-V",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A Komoční syndrom nebo psychický otřes Otevřené rány menšího rozsahu Zavřená zlomenina, vykloubení Tupé trauma hrudníku, břicha, pánve, zad Ztrátové poranění prstů Ošetřitelné poranění bez masivního krvácení NEBO: Pacient bez viditelného poranění a není triage pozitivní",
+     "s": [
+      "AVPU-V"
+     ]
+    },
+    {
+     "c": "BEZ_ZÁVAŽ_PŘÍZN",
+     "t": "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+     "s": []
+    },
+    {
+     "c": "BOLEST_HRUDNÍKU",
+     "t": "Tupé trauma hrudníku, břicha, pánve, zad",
+     "s": [
+      "Bolest hrudníku"
+     ]
+    },
+    {
+     "c": "KOMOCE_MOZKU",
+     "t": "Komoční syndrom nebo psychický otřes",
      "s": [
       "Komoční syndrom"
      ]
     },
     {
-     "c": "PSYCHICKÝ_OTŘES",
-     "t": "Psychický otřes",
-     "s": [
-      "Psychický otřes"
-     ]
-    },
-    {
-     "c": "OTEVŘ_RÁNY_MENŠÍHO",
-     "t": "Otevřené rány menšího rozsahu",
-     "s": [
-      "Otevřené rány"
-     ]
-    },
-    {
-     "c": "ZAVŘENÁ_ZLOM",
-     "t": "Zavřená zlomenina, vykloubení",
-     "s": [
-      "Zavřená zlomenina"
-     ]
-    },
-    {
-     "c": "TUPÉ_TRAUMA_HRUDNÍKU",
-     "t": "Tupé trauma hrudníku, břicha, pánve, zad",
-     "s": []
-    },
-    {
-     "c": "ZTRÁTOVÉ_PORAN_PRSTŮ",
-     "t": "Ztrátové poranění prstů",
-     "s": []
-    },
-    {
-     "c": "OŠETŘITELNÉ_PORAN",
+     "c": "NEZÁV_KRV_Z_KON",
      "t": "Ošetřitelné poranění bez masivního krvácení",
      "s": [
       "Nezávažné krvácení z končetin"
      ]
     },
     {
-     "c": "PAC_VIDITELNÉHO",
-     "t": "Pacient bez viditelného poranění a není triage pozitivní",
-     "s": []
+     "c": "OTEVŘENÉ_RÁNY",
+     "t": "Otevřené rány menšího rozsahu",
+     "s": [
+      "Otevřené rány"
+     ]
+    },
+    {
+     "c": "PSYCHICKÝ_OTŘES",
+     "t": "Komoční syndrom nebo psychický otřes",
+     "s": [
+      "Psychický otřes"
+     ]
+    },
+    {
+     "c": "ZLOM_ZAVŘENÁ",
+     "t": "Zavřená zlomenina, vykloubení",
+     "s": [
+      "Zavřená zlomenina"
+     ]
     }
    ]
   },

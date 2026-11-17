@@ -8,7 +8,13 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.36.2 – rozpracováno
+## v0.37.0 – 2026-11-18
+Nové:
+- **Dlaždice (cihličky) podle skutečných screenů.** Křečové stavy, Arytmie, Dušnost, Trauma a Dopravní nehoda mají přesně ty cihličky, které jsou ve skutečné obrazovce: stejné kódy (například KŘEČE_FEBRILNÍ, AS_<_30_MIN, SpO2_82-93%, ICD_VÝBOJ_OPAK), barvy a pořadí, včetně šedých cihel. Pod myší je plné znění kritéria z excelu. U ostatních indikací se cihličky odvozují z excelu (zatím bez screenů).
+Opravy:
+- **Začátek hovoru:** po zvednutí se ukáže „Spojuji hlas…“ a po spojení krátké dvojité pípnutí, teprve pak mluv. Dřív byl hovor „v hovoru“ hned, ale hlas se ještě navazoval a nebylo tě slyšet. Čas hovoru, doba nabírání a bodování rychlosti se počítají až od spojení. Po spojení stav ukáže, za jak dlouho se hlas spojil.
+
+## v0.36.2 – 2026-11-18
 Opravy:
 - **Dispečer vidí jen to, co calltaker zadal.** U případu z nabírání se dřív přimíchávaly skryté údaje z generátoru: poznámka („zvracení, průjem“), místo („4.p.“, takže patro bylo dvakrát), jméno a telefon volajícího, jméno, věk a pohlaví pacienta a charakter. Teď je tam jen zadané.
 - **Upřesnění tvoří skutečné příznaky z katalogu** (AVPU-A, při vědomí, Poúrazová zmatenost, Otevřené rány, Hlava, Horní končetina …), ne text cihličky. Cihlička bez příznaku v katalogu a univerzální cihly (+PČR, TRANSPORT_PAC …) jdou jako štítek #… do poznámky. Lokalizace zranění je příznak, ne poznámka. „AVPU-V, AVPU-A“ jsou dvě samostatné cihličky.

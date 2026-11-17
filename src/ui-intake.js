@@ -252,7 +252,8 @@ function kiCtab(t) { kf.tab = t; for (const k of ['coop', 'nis', 'zaz']) { const
 const kiHMS = s => { s = Math.max(0, Math.floor(s)); return String(Math.floor(s / 3600)).padStart(2, '0') + ':' + String(Math.floor(s / 60) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 function kiTick() {
   const a = $('ki-tcall'), b = $('ki-tnow'); if (!a || !ct.call) return;
-  const v1 = kiHMS(sim.s.t - ct.call.pickedAt); if (a.textContent !== v1) a.textContent = v1;
+  const t0 = ct.call.talkAt != null ? ct.call.talkAt : ct.vready ? ct.call.pickedAt : sim.s.t;   // doba nabírání se počítá od spojení hlasu
+  const v1 = kiHMS(sim.s.t - t0); if (a.textContent !== v1) a.textContent = v1;
   const v2 = sim.clock(); if (b.textContent !== v2) b.textContent = v2;
   const aml = document.querySelectorAll('[data-act="ct-use-aml"]'), has = ctAmlPhases().length > 0; aml.forEach(x => { x.disabled = !has; });
   kiPrecision();

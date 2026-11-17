@@ -105,6 +105,7 @@ const ZOS_LIVE = (function () {
     if (!navigator.mediaDevices || !window.RTCPeerConnection) { st('Prohlížeč nepodporuje mikrofon/WebRTC (zkus Chrome nebo Edge).', true); return null; }
     st('Připojuji hovor…');
     const c = { ready: false, closed: false, usage: 0, stopped: false, rec: null, chunks: [] };
+    const t0 = performance.now(); c.diag = {}; c.mark = k => { if (c.diag[k] == null) c.diag[k] = Math.round(performance.now() - t0) / 1000; };
     const h = {
       get usage() { return c.usage; },
       get ready() { return c.ready; },
@@ -115,10 +116,11 @@ const ZOS_LIVE = (function () {
     c.h = h;
     try {
       c.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      c.mark('mic');
       if (c.stopped) { c.mic.getTracks().forEach(t => t.stop()); return h; }
       const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); c.ctx.resume();
       const msrc = c.ctx.createMediaStreamSource(c.mic);
-      c.prof = lineProfile(o.line); c.codec = o.filter ? await loadCodec(c.ctx) : false;
+      c.prof = lineProfile(o.line); c.codec = o.filter ? await loadCodec(c.ctx) : false; c.mark('codec');
       c.micTap = o.filter ? phoneLine(c.ctx, msrc, c.prof, c.codec) : msrc;
       if (o.record && window.MediaRecorder) {
         const ctx = c.ctx, merger = ctx.createChannelMerger(2), dst = ctx.createMediaStreamDestination(); merger.connect(dst);
@@ -130,6 +132,7 @@ const ZOS_LIVE = (function () {
         c.rec.start(1000);
       }
       c.pc = new RTCPeerConnection();
+      c.pc.addEventListener('iceconnectionstatechange', () => { if (/connected|completed/.test(c.pc.iceConnectionState)) c.mark('connected'); });
       c.pc.addEventListener('track', ev => {
         const stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
         c.audio = new Audio(); c.audio.srcObject = stream;
@@ -142,7 +145,7 @@ const ZOS_LIVE = (function () {
       c.dc.addEventListener('message', ev => onEvent(c, o, st, ev.data));
       c.dc.addEventListener('close', () => { if (!c.closed && !c.stopped && o.onLost) o.onLost(); });
       await c.pc.setLocalDescription(await c.pc.createOffer());
-      await waitIce(c.pc);
+      await waitIce(c.pc); c.mark('ice');
       const mk = name => oa(o.key, '/live/sessions', { session: { model: o.model || 'gpt-live-1', instructions: o.instructions, audio: { output: { voice: name } } }, transport: { type: 'webrtc', sdp: c.pc.localDescription.sdp } });
       let res;
       const chain = [...new Set((o.voices && o.voices.length ? o.voices : [o.voice]).concat(['marin']).filter(Boolean))];
@@ -152,14 +155,14 @@ const ZOS_LIVE = (function () {
           st('Hlas „' + chain[i] + '“ nelze použít, zkouším „' + chain[i + 1] + '“…');
         }
       }
-      await c.pc.setRemoteDescription({ type: 'answer', sdp: res.transport.sdp });
+      c.mark('api'); await c.pc.setRemoteDescription({ type: 'answer', sdp: res.transport.sdp });
     } catch (e) { st('Hlas se nepodařilo spojit: ' + e.message, true); stopAll(c); }
     return h;
   }
   function onEvent(c, o, st, raw) {
     let ev; try { ev = JSON.parse(raw); } catch (e) { return; }
     switch (ev.type) {
-      case 'session.started': c.ready = true; if (o.onReady) o.onReady(); st('Hovor spojen.'); break;
+      case 'session.started': c.ready = true; c.mark('session'); if (o.onReady) o.onReady(c.diag); st('Hovor spojen.'); break;
       case 'session.input_transcript.delta': if (o.onTranscript) o.onTranscript('calltaker', ev.delta || ''); break;
       case 'session.output_transcript.delta': if (o.onTranscript) o.onTranscript('volajici', ev.delta || ''); break;
       case 'session.usage.updated': if (ev.usage && ev.usage.seconds != null) c.usage = ev.usage.seconds; break;

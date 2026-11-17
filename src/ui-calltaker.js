@@ -170,6 +170,10 @@ function ctPhoneHtml() {
     const eta = etas.length ? Math.max(0, Math.round(Math.min(...etas) / 60)) + ' min' : '–', min = Math.round((s.t - ct.tanr.since) / 60), nx = Math.max(0, Math.round(ct.tanr.nextCheck - s.t));
     return { cls: 'call', html: `<div class="ph-st">TANR běží <span class="dy">${min} min</span><small>posádka dojede za ~<span class="dy">${eta}</span> · ${ct.voice ? 'kontrolní hovor' : 'další kontrola za <span class="dy">' + nx + ' s</span>'}${ct.vstatus ? ' · ' + esc(ct.vstatus) : ''}</small></div>${ct.voice ? '<button class="btn" data-act="ct-tanr-endcheck">Ukončit kontrolu</button>' : '<button class="btn" data-act="ct-tanr-check">Kontrola teď</button>'}<button class="btn red" data-act="ct-hangup">Ukončit hovor</button>${btnMenu}` };
   }
+  if (call && !ct.vready && !ct.ended) {
+    const el = s.t - call.pickedAt;
+    return { cls: 'ring', html: `<div class="ph-st">⏳ Spojuji hlas… <span class="dy">${ctMMSS(el)}</span><small>počkej na pípnutí, než začneš mluvit${ct.vstatus ? ' · ' + esc(ct.vstatus) : ''}</small></div><button class="btn red" data-act="ct-hangup">Ukončit hovor</button>${btnMenu}` };
+  }
   if (call) {
     const v = ct.facts[call.id] ? ct.facts[call.id].view.volajici : null, el = s.t - call.pickedAt, vs = ct.vstatus ? ` · <span style="color:${ct.vbad ? '#ff9b94' : '#9fd9b0'}">${esc(ct.vstatus)}</span>` : '';
     const tanr = call.caseId && (call.kind || 'vyjezd') === 'vyjezd' ? '<button class="btn" data-act="ct-tanr" title="Po pokynech zavřeš hlas (bez nákladů), čas se zrychlí a v pevných bodech jsou kontrolní hovory">Předat do TANR</button>' : '';
@@ -377,10 +381,20 @@ function ctVoiceChain(facts) {
   return [aged, base];
 }
 const ctFemale = v => /á$/.test(String(v.volajici.jmeno).trim().split(/\s+/).pop());
+// krátké dvojité pípnutí: hlas je spojen, můžeš mluvit
+function ctReadyBeep() {
+  if (settings.sound === false) return;
+  try {
+    const ctx = ct.ringCtx = ct.ringCtx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
+    const t = ctx.currentTime;
+    for (const off of [0, 0.16]) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 1000; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, t + off); g.gain.linearRampToValueAtTime(0.09, t + off + 0.01); g.gain.setValueAtTime(0.09, t + off + 0.09); g.gain.linearRampToValueAtTime(0, t + off + 0.11); o.start(t + off); o.stop(t + off + 0.12); }
+  } catch (e) { /* zvuk není nutný */ }
+}
 // druh linky podle hovoru: pevná linka, mobil, u těžké úrovně (a občas i jinak) slabý signál
 const ctLineOf = f => (f && f.aml && f.aml.typ === 'pevná' ? 'pevna' : Math.random() < (sim.s.liveCalls.level === 'tezke' ? 0.4 : 0.08) ? 'slaby' : 'mobil');
 async function ctVoiceStart(facts, opts) {
   opts = opts || {};
+  ct.vready = !!opts.tanr || !cts.key || cts.mode === 'text'; ct.vdiag = null; ct.phoneKey = '';   // do spojení hlasu se čeká („Spojuji hlas“)
   const P = window.CT_PROMPTS, v = facts.view, tr = $('ct-textrow');
   tr.style.display = cts.mode === 'text' ? 'flex' : 'none'; $('ct-trwrap').hidden = cts.mode !== 'text'; if (!opts.resume && !opts.tanr) $('ct-trwrap').open = cts.mode === 'text';
   if (!cts.key) { ct.vstatus = 'bez klíče OpenAI – hovor bez hlasu (nastavení v menu Calltaker)'; ct.vbad = true; return; }
@@ -393,10 +407,10 @@ async function ctVoiceStart(facts, opts) {
   }
   const call = ct.call, h = await ZOS_LIVE.connect({
     key: cts.key, model: cts.vModel, voices: ctVoiceChain(facts), instructions: instr, filter: cts.filt, line: ctLineOf(facts), record: cts.rec,
-    onStatus: (t, bad) => { if (ct.call === call) { ct.vstatus = t; ct.vbad = !!bad; } },
-    onReady: () => { if (ct.call === call) { ct.vstatus = '● spojeno'; ct.vbad = false; } },
+    onStatus: (t, bad) => { if (ct.call === call) { ct.vstatus = t; ct.vbad = !!bad; if (bad) { ct.vready = true; ct.phoneKey = ''; } } },
+    onReady: d => { if (ct.call === call) { ct.vready = true; call.talkAt = sim.s.t; ct.vdiag = d || null; ct.vstatus = '● spojeno za ' + (d && d.session != null ? String(d.session).replace('.', ',') + ' s' : ''); ct.vbad = false; ct.phoneKey = ''; ctReadyBeep(); } },
     onTranscript: (role, d) => { if (ct.call === call) ctTrDelta(role, d); },
-    onLost: () => { if (ct.call === call) { ct.vstatus = 'spojení se přerušilo'; ct.vbad = true; } },
+    onLost: () => { if (ct.call === call) { ct.vstatus = 'spojení se přerušilo'; ct.vbad = true; ct.vready = true; ct.phoneKey = ''; } },
   });
   if (ct.call === call && !ct.ended) ct.voice = h; else if (h) h.stop();
 }

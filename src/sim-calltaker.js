@@ -14,6 +14,8 @@ const ctJaccard = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size 
 // klasifikace zadaná podle pavouka x klasifikace generátoru: stejný název, nebo ekvivalent (v tabulce není Resuscitace, Pediatrické stavy ani Amputace jako samostatná klasifikace)
 const CT_KLASIF_ALIAS = { resuscitace: ['nzo spatrena', 'porucha vedomi'], 'pediatricke stavy': '*', amputace: ['trauma', 'dopravni nehoda'] };
 function ctKlasifOk(typed, truth) { const a = ctNorm(typed), b = ctNorm(truth); if (!a || a === b) return true; const al = CT_KLASIF_ALIAS[b]; return al === '*' || (Array.isArray(al) && al.includes(a)); }
+// začátek hovoru pro měření času: spojení hlasu (talkAt), jinak zvednutí; čekání na spojení nejde na vrub hráče
+const ctT0 = call => (call.talkAt != null ? call.talkAt : call.pickedAt);
 const ctSymNorm = x => ctNorm(String(x).replace(/^[^A-Za-zÀ-ž0-9]+/, ''));
 // hovory, které nevyžadují výjezd: calltaker má poradit nebo ukončit, vyslání posádky je chyba
 const CT_BEZ = [
@@ -305,7 +307,7 @@ class SimCalltaker {
   // body za hovor: čas do odeslání, klasifikace, N, příznaky, věk, poloha, okolnosti (kompletnost dotazů a empatii hodnotí analýza hovoru)
   _ctScore(call, c) {
     const ck = c && c.call && c.call.check, tr = c && c.call && c.call.truth; if (!ck) return null;
-    const sec = Math.max(0, Math.round((c.call.sentAtFirst != null ? c.call.sentAtFirst : this.s.t) - call.pickedAt)), lim = { 1: 60, 2: 120, 3: 180 }[c.call.truthN] || 120;
+    const sec = Math.max(0, Math.round((c.call.sentAtFirst != null ? c.call.sentAtFirst : this.s.t) - ctT0(call))), lim = { 1: 60, 2: 120, 3: 180 }[c.call.truthN] || 120;
     const cas = sec <= lim ? 20 : sec <= lim * 1.5 ? 12 : sec <= lim * 2.5 ? 6 : 0;
     const dn = Math.abs(c.call.typedN - c.call.truthN), n = dn === 0 ? 20 : dn === 1 ? 8 : 0;
     const kl = ck.klasif.ok ? 15 : 0, pr = Math.round(15 * ck.priznaky.jaccard), vek = ck.vek.ok === false ? 0 : 5, dyn = ck.dyn.ok ? 5 : 0;
@@ -408,7 +410,7 @@ class SimCalltaker {
       }
     }
     if (call.caseId) { const c1 = this.caseOf(call.caseId); if (c1) return this.updateCallCase(c1, form); call.caseId = null; }
-    const c = this.addCallCase({ v: 1, seed: call.seed, form, sec: Math.round(s.t - call.pickedAt), callId: call.id, dupOf: kind === 'dup' ? call.ref : null });
+    const c = this.addCallCase({ v: 1, seed: call.seed, form, sec: Math.round(s.t - ctT0(call)), callId: call.id, dupOf: kind === 'dup' ? call.ref : null });
     call.caseId = c.id; call.sentAt = s.t; c.call.sentAtFirst = s.t;
     if (kind === 'dup') this._opsScore(-6, `hovor ${call.id}: duplicitní hovor nebyl sloučen s existujícím případem`, c.id);
     return c;
@@ -424,7 +426,7 @@ class SimCalltaker {
   endCall(id) {
     const s = this.s, call = s.calls.find(x => x.id === id);
     if (!call || call.state !== 'taken') return null;
-    call.state = 'wrap'; call.endedAt = s.t; call.sec = Math.round(s.t - call.pickedAt); this.L('call', `Hovor ${id} ukončen, calltaker dovyplňuje případ`, null);
+    call.state = 'wrap'; call.endedAt = s.t; call.sec = Math.round(s.t - ctT0(call)); this.L('call', `Hovor ${id} ukončen, calltaker dovyplňuje případ`, null);
     return call;
   }
   finishCall(id) {
@@ -445,7 +447,7 @@ class SimCalltaker {
     if (!call || call.state !== 'taken') return null;
     call.state = 'done'; call.endedAt = s.t;
     if (!call.caseId && (call.kind || 'vyjezd') === 'vyjezd') { this.L('warn', `Hovor ${id} ukončen bez odeslání případu dispečerovi`, null); this._opsScore(-20, `hovor ${id} bez odeslání případu`, null); }
-    else if (call.caseId) { const c = this.caseOf(call.caseId); if (c && c.call) c.call.sec = Math.round(s.t - call.pickedAt); }
+    else if (call.caseId) { const c = this.caseOf(call.caseId); if (c && c.call) c.call.sec = Math.round(s.t - ctT0(call)); }
     return call;
   }
   // bot dispečer: vysílá posádky po krátké reakční době (jako kolega u dispečinku)

@@ -70,9 +70,8 @@
   // u Dušnosti, Arytmie a Křečových stavů jsou navíc šedé cihly podle screenů skutečného systému
   const DETECT = [[/epilept/i, 'EPILEPTIK'], [/diabet|hypoglyk|hyperglyk/i, 'DIABETIK'], [/CHOPN/, 'CHOPN'], [/ICHS/, 'ICHS'], [/\bICD\b|kardiovert/i, 'ICD'], [/hypertenz/i, 'HYPERTONIK'], [/astma/i, 'ASTMATIK'], [/alkohol/i, 'ALKOHOL'],
     [/těhotenst|gravid/i, 'TĚHOTNÁ'], [/varix/i, 'VARIXY'], [/epistax/i, 'EPISTAXE'], [/meléna|hematemeza|enterorhag/i, 'GIT_KRVÁCENÍ'], [/\bPMK\b|urokatetr/i, 'PMK'], [/paliativ/i, 'PALIATIVNÍ_PAC'], [/\bGIT\b/, 'GIT'], [/\bURO\b/, 'URO'], [/\bGYN\b/, 'GYN'], [/\bDC\b/, 'DÝCHACÍ_CESTY'],
-    [/hlav[yaě]/i, 'HLAVA'], [/\bkrk/i, 'KRK'], [/hrudník/i, 'HRUDNÍK'], [/břich/i, 'BŘICHO'], [/pánv/i, 'PÁNEV'], [/zad\b|zádech|zad,/i, 'ZÁDA'], [/horn\w* končetin|paž|ruk/i, 'HK'], [/dolní\w* končetin|noh/i, 'DK'], [/končetin/i, 'HK'], [/končetin/i, 'DK'], [/prst/i, 'PRSTY'], [/chodec/i, 'CHODEC'], [/cyklist/i, 'CYKLISTA'], [/moto/i, 'MOTOCYKL'], [/vozidl/i, 'VOZIDLO'],
-    [/popálen/i, 'POPÁLENINY'], [/polepten/i, 'POLEPTÁNÍ'], [/elektr/i, 'ELEKTR_PROUD'], [/výbuch/i, 'VÝBUCH'], [/utonut|tonut/i, 'TONUTÍ'], [/vis[ií]c|oběšen/i, 'OBĚŠENÍ'], [/zlomen/i, 'ZLOMENINA'], [/rán[ay]/i, 'RÁNA'], [/hypotermi/i, 'HYPOTERMIE'], [/agres/i, 'AGRESE'], [/sebevra/i, 'SEBEVRAŽDA'], [/halucin|blud/i, 'PSYCHÓZA']];
-  const GRAY_BY = { Arytmie: ['HYPERTONIK', 'KARDIAK'], Dušnost: ['ASPIRACE', 'ASTMATIK', 'DIABETIK', 'HYPERTONIK', 'CHOPN', 'KARDIAK', 'DDOT'], 'Křečové stavy': ['DIABETIK', 'EPILEPTIK'] };
+    [/hlav[yaě]/i, 'HLAVA'], [/\bkrk/i, 'KRK'], [/hrudník/i, 'HRUDNÍK'], [/břich/i, 'BŘICHO'], [/pánv/i, 'PÁNEV'], [/zad\b|zádech|zad,/i, 'ZÁDA'], [/horn\w* končetin|paž|ruk/i, 'HK'], [/dolní\w* končetin|noh/i, 'DK'], [/končetin/i, 'HK'], [/končetin/i, 'DK'], [/chodec/i, 'CHODEC'], [/cyklist/i, 'CYKLISTA'], [/moto/i, 'MOTOCYKL'], [/polepten/i, 'POLEPTÁNÍ'], [/elektr/i, 'ELEKTR_PROUD'], [/výbuch/i, 'VÝBUCH'], [/utonut|tonut/i, 'TONUTÍ'], [/vis[ií]c|oběšen/i, 'OBĚŠENÍ'], [/hypotermi/i, 'HYPOTERMIE'], [/agres/i, 'AGRESE'], [/sebevra/i, 'SEBEVRAŽDA'], [/halucin|blud/i, 'PSYCHÓZA']];
+  // šedé cihly ze screenů (data.gray): úplný seznam se bere beze změny, neúplný se doplní z textu kritérií
   const NOGRAY = new Set(['Převoz', 'Vstřícná jízda', 'Posouzení stavu', 'Asistence', 'Technická jízda', 'MU – MATRA 722', 'Vysoce nebezpečná nákaza (VNN)', 'Babybox']);
   // příznak ze skutečného katalogu, který cihla zapíše do Upřesnění (cihla bez příznaku jde jako štítek do poznámky)
   const UNIV_SYM = { 'DÍTĚ': 'Dítě', 'DOSPĚLÝ': 'Dospělý', 'TANR': 'TANR', 'TANR_NELZE': 'TANR nelze', 'DYNAMICKÁ_INDIK': 'DYNAMICKÁ INDIKACE' };
@@ -97,7 +96,7 @@
     const cache = new Map();
     return {
       classifications: () => names.map(n => ({ name: n, engine: engineKlasif(n, known) })),
-      chipsFor: k => { if (!cache.has(k)) cache.set(k, { groups: chipsOf(k), gray: NOGRAY.has(k) ? [] : [...new Set((GRAY_BY[k] || []).concat(DETECT.filter(d => d[0].test(textOf(k))).map(d => d[1])))].sort(cs) }); return cache.get(k); },
+      chipsFor: k => { if (!cache.has(k)) cache.set(k, { groups: chipsOf(k), gray: NOGRAY.has(k) ? [] : (() => { const g = (data.gray && data.gray[k]) || { list: [], full: false }; if (g.full) return g.list.slice(); const extra = DETECT.filter(d => d[0].test(textOf(k))).map(d => d[1]).filter(x => !g.list.includes(x)); return g.list.concat([...new Set(extra)].sort(cs)); })() }); return cache.get(k); },
       universal: UNIVERSAL,
       graySym: code => GRAY_SYM[code] || '',
       // doporučení z označených cihliček: nejvyšší barva vyhrává; vrací N, barvu a typy posádek z bloků téže barvy
