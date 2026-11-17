@@ -297,4 +297,10 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   const sim = new Sim({ seed: 777, mode: 'free' }), c = sim.addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: '2', cihla: true, klasifTabulka: 'CMP', kody: ['FAST_ASYMETRIE', 'DOSPĚLÝ'], klasif: 'CMP' }, sec: 100 });
   ok(c.klasif === 'CMP' && c.klasifTruth === truth.klasif && c.sympShown.join() === 'FAST_ASYMETRIE,DOSPĚLÝ' && c.call.truth.klasif === truth.klasif, 'případ nese zadanou klasifikaci a cihly, pravda zůstává v c.call.truth');
 }
+{ // dynamická indikace zadaná calltakerem (DI v požadavku) dojde k dispečerovi jako N2 dynamická, bez lékaře
+  const sim = new Sim({ seed: 777, mode: 'free' }), c = sim.addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: '2', dyn: true, cihla: true, klasifTabulka: 'Trauma', klasif: truth.klasif, kody: [], posadky: { DI: 1, KOR: 0, LZS: 0, RLP: 0, RV: 0, RZP: 0 } }, sec: 100 });
+  ok(c.n === 2 && c.dyn === true && c.initialDispatchRequired.join() === 'RZP' && !c.rvNeed, 'N2 s požadavkem DI: případ je dynamický a vyžaduje jen RZP, ne lékaře');
+  const c2 = new Sim({ seed: 778, mode: 'free' }).addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: '2', dyn: false, cihla: true, klasifTabulka: 'Trauma', klasif: truth.klasif, kody: [], posadky: { DI: 0, KOR: 0, LZS: 0, RLP: 1, RV: 0, RZP: 1 } }, sec: 100 });
+  ok(c2.n === 2 && c2.dyn === false && c2.initialDispatchRequired.includes('RV'), 'N2 s RLP a RZP: statická N2 s lékařem');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

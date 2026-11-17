@@ -216,7 +216,7 @@ class SimCalltaker {
     if (note) o.poznamka = (baseNote ? baseNote + '; ' : '') + note;
     const c = this._newCase(o);
     c.src = c.src || 'Linka 155';
-    if (f.cihla) { c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || 'Neklasifikováno'; c.sympShown = (f.kody || []).slice(); }   // dispečer vidí zadané, ne pravdu
+    if (f.cihla) { c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || 'Neklasifikováno'; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; }   // dispečer vidí zadané (klasifikace, cihly, dynamická indikace), ne pravdu
     c.call = { seed: h.seed, sec: h.sec || null, truth, typed: loc.typed, standard: loc.standard, quality: loc.geo ? loc.geo.quality : 'n/a', errM: loc.errM, miss: !!loc.miss, tol: loc.tol, searchDelay: loc.searchDelay || 0, conflict: !!loc.conflict, bod: loc.byPoint ? { lat: loc.geo.lat, lon: loc.geo.lon } : null, zdroj: f.zdroj || (loc.byPoint ? 'mapa' : 'adresa'), truthN: tc.n, typedN, klasifOk: !f.klasif || f.klasif === tc.klasif, baseNote, note, updates: 0, unlocatable: !!(f.adresa && loc.standard && !loc.byPoint && loc.geo && !loc.geo.quality), form: JSON.parse(JSON.stringify(f)) };
     c.call.check = this._ctCheck(f, truth, c.call);
     c.call.predpoplach = !!f.predpoplach; c.call.callId = h.callId || null; c.call.sentAtT = t;
@@ -292,7 +292,7 @@ class SimCalltaker {
     const note = this._ctNote(f);
     if (f.poznamka != null || f.popis != null || f.upresneni != null) if (note !== c.call.note) { c.call.note = note; c.poznamka = (c.call.baseNote ? c.call.baseNote + '; ' : '') + note; this.L('case', `${c.num}: doplněna poznámka od calltakera`, c.id); c.call.updates++; }
     if (f.klasif) { const kOk = ctKlasifOk(f.klasif, c.call.truth.klasif); c.klasifZadana = kOk ? null : String(f.klasif); c.call.klasifOk = kOk; }
-    if (f.cihla) { if (c.klasifTruth == null) c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || c.klasif; c.sympShown = (f.kody || []).slice(); }
+    if (f.cihla) { if (c.klasifTruth == null) c.klasifTruth = c.klasif; c.klasif = f.klasifTabulka || c.klasif; c.sympShown = (f.kody || []).slice(); c.dyn = c.n === 2 && !!f.dyn; }
     const sig = JSON.stringify([this._ctStr(f.adresa), f.bod ? [f.bod.lat, f.bod.lon] : null]);
     if (c.call.sig == null) c.call.sig = JSON.stringify([c.call.form && this._ctStr(c.call.form.adresa), c.call.form && c.call.form.bod ? [c.call.form.bod.lat, c.call.form.bod.lon] : null]);
     if ((f.adresa || f.bod) && sig !== c.call.sig) {

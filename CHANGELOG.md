@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.34.4 – 2026-11-17
+Opravy:
+- **Dynamická indikace zadaná při nabírání** (DI v požadavku na posádku nebo cihla DYNAMICKÁ_INDIK u N2) dojde k dispečerovi jako N2 dynamická, jen s RZP bez lékaře. Dřív přišla jako obyčejná N2.
+
 ## v0.34.3 – 2026-11-17
 Opravy:
 - **Režim calltaker:** nechodí žádná upozornění z dispečerské části (nový případ, „posádka žádá PČR“, termíny, upozornění na N1), ani pípnutí a automatická pauza při nové N1. Zůstávají jen vlastní hlášky nabírání.
