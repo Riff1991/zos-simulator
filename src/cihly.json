@@ -1,0 +1,1653 @@
+{
+ "format": "zos-cihly/1",
+ "skupiny": [
+  {
+   "id": "stav",
+   "label": "Stav pacienta"
+  },
+  {
+   "id": "dej",
+   "label": "Děj, mechanismus"
+  },
+  {
+   "id": "ostatni",
+   "label": "Ostatní (převoz, jízdy, asistence)"
+  }
+ ],
+ "tiles": [
+  {
+   "id": "stav:porucha-vedomi",
+   "label": "Porucha vědomí",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c001",
+    "c002",
+    "c003",
+    "c004",
+    "c005",
+    "c006",
+    "c007"
+   ]
+  },
+  {
+   "id": "stav:bolesti-na-hrudi",
+   "label": "Bolesti na hrudi",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "poznamky": [
+    "V případě dušnosti je vyžadováno hodnocení stavu pacienta poslechem na telefonu."
+   ],
+   "bricks": [
+    "c008",
+    "c009",
+    "c010",
+    "c011"
+   ]
+  },
+  {
+   "id": "stav:dusnost",
+   "label": "Dušnost",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "poznamky": [
+    "V případě dušnosti je vyžadováno hodnocení stavu pacienta poslechem na telefonu."
+   ],
+   "bricks": [
+    "c012",
+    "c013",
+    "c014",
+    "c015"
+   ]
+  },
+  {
+   "id": "stav:krecove-stavy",
+   "label": "Křečové stavy",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c016",
+    "c017",
+    "c018"
+   ]
+  },
+  {
+   "id": "stav:arytmie",
+   "label": "Arytmie",
+   "sheet": "stav",
+   "skupina": "Kardiologické stavy",
+   "bricks": [
+    "c019",
+    "c020",
+    "c021"
+   ]
+  },
+  {
+   "id": "stav:hypertenze",
+   "label": "Hypertenze",
+   "sheet": "stav",
+   "skupina": "Kardiologické stavy",
+   "bricks": [
+    "c022"
+   ]
+  },
+  {
+   "id": "stav:neurologicke-stavy",
+   "label": "Neurologické stavy",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c023",
+    "c024",
+    "c025",
+    "c026",
+    "c027"
+   ]
+  },
+  {
+   "id": "stav:psychiatricke-stavy",
+   "label": "Psychiatrické stavy",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c028",
+    "c029",
+    "c030"
+   ]
+  },
+  {
+   "id": "stav:diabeticke-stavy",
+   "label": "Diabetické stavy",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c031",
+    "c032"
+   ]
+  },
+  {
+   "id": "stav:gynekologicke-stavy",
+   "label": "Gynekologické stavy",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c033",
+    "c034",
+    "c035",
+    "c036"
+   ]
+  },
+  {
+   "id": "stav:alergicke-reakce",
+   "label": "Alergické reakce",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c037",
+    "c038",
+    "c039",
+    "c040"
+   ]
+  },
+  {
+   "id": "stav:neurazove-krvaceni",
+   "label": "Neúrazové krvácení",
+   "sheet": "stav",
+   "skupina": "Stav pacienta",
+   "bricks": [
+    "c041",
+    "c042",
+    "c043",
+    "c044"
+   ]
+  },
+  {
+   "id": "stav:bolest",
+   "label": "Bolest",
+   "sheet": "stav",
+   "skupina": "Ostatní",
+   "bricks": [
+    "c045",
+    "c046"
+   ]
+  },
+  {
+   "id": "stav:horecka",
+   "label": "Horečka",
+   "sheet": "stav",
+   "skupina": "Ostatní",
+   "bricks": [
+    "c047",
+    "c048"
+   ]
+  },
+  {
+   "id": "stav:zvraceni-prujem",
+   "label": "Zvracení / průjem",
+   "sheet": "stav",
+   "skupina": "Ostatní",
+   "bricks": [
+    "c049"
+   ]
+  },
+  {
+   "id": "stav:czs",
+   "label": "CZS",
+   "sheet": "stav",
+   "skupina": "Ostatní",
+   "bricks": [
+    "c050"
+   ]
+  },
+  {
+   "id": "stav:jine",
+   "label": "Jiné",
+   "sheet": "stav",
+   "skupina": "Ostatní",
+   "bricks": [
+    "c051"
+   ]
+  },
+  {
+   "id": "stav:babybox",
+   "label": "Babybox",
+   "sheet": "stav",
+   "skupina": "Ostatní",
+   "bricks": [
+    "c052"
+   ]
+  },
+  {
+   "id": "dej:trauma",
+   "label": "Trauma",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c053",
+    "c054",
+    "c055",
+    "c056"
+   ]
+  },
+  {
+   "id": "dej:tonuti",
+   "label": "Tonutí",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c057",
+    "c058",
+    "c059",
+    "c060"
+   ]
+  },
+  {
+   "id": "dej:popaleni-poleptani",
+   "label": "Popálení, poleptání",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c061",
+    "c062",
+    "c063"
+   ]
+  },
+  {
+   "id": "dej:dopravni-nehoda",
+   "label": "Dopravní nehoda",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c064",
+    "c065",
+    "c066",
+    "c067"
+   ]
+  },
+  {
+   "id": "dej:obeseni",
+   "label": "Oběšení",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c068",
+    "c069",
+    "c070",
+    "c071"
+   ]
+  },
+  {
+   "id": "dej:intoxikace",
+   "label": "Intoxikace",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c072",
+    "c073",
+    "c074",
+    "c075"
+   ]
+  },
+  {
+   "id": "dej:mu-matra-722",
+   "label": "MU – MATRA 722",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c076"
+   ]
+  },
+  {
+   "id": "dej:vysoce-nebezpecna-nakaza-vnn",
+   "label": "Vysoce nebezpečná nákaza (VNN)",
+   "sheet": "dej",
+   "skupina": "Děj, mechanismus",
+   "bricks": [
+    "c077",
+    "c078",
+    "c079"
+   ]
+  },
+  {
+   "id": "ostatni:sekundarni-prevoz",
+   "label": "Sekundární převoz",
+   "sheet": "ostatni",
+   "skupina": "Ostatní (převoz, jízdy, asistence)",
+   "doprovod": {
+    "titul": "Indikace lékařského doprovodu – posádka RLP či RV+RZP",
+    "polozky": [
+     "Pacient na UPV (NE samotná inhalace O2 polomaskou či nosními brýlemi)",
+     "SpO2 pod 90 % při inhalační kyslíkové léčbě",
+     "Akutní infarkt myokardu do 3 hodin od diagnostiky nebo AIM s kardiogenním šokem",
+     "Známky oběhové nestability s nutností aktivní kontinuální farmakologické podpory",
+     "GCS 12 a méně",
+     "Polytrauma",
+     "Neošetřit. zdroj život ohrož. krvácení (zejm. ruptury velkých cév, neoš. zdroj krvácení z GIT, GYN)",
+     "Krvácení do mozku se sníženou úrovní vědomí (GCS 12 a méně)",
+     "Hrozící porod, kontrakce pod 5 minut nebo kontinuální aplikace tokolýzy (transport in utero)",
+     "Rozsáhlé popáleniny, pac. analgosedovaný se sníženou kvalitou vědomí v důsledku analgosedace",
+     "Patologický novorozenec – převoz inkubátoru neonatologickým týmem",
+     "CMP s GCS 12 a méně v terapeutickém okně, transport na KCC"
+    ],
+    "poznamky": [
+     "Ve sporných případech rozhoduje vedoucí lékař ZOS ZZS JčK (nebo určený jiný lékař v případě jeho nedostupnosti) po konzultaci s lékařem žádajícího zdravotnického zařízení.",
+     "V případě nesplnění kritérií pro lékařský doprovod, bude sekundární převoz realizován v režimu RZP bez ohledu na to, zda se jedná o převoz z vyššího či nižšího pracoviště."
+    ]
+   },
+   "bricks": [
+    "c080",
+    "c081",
+    "c082",
+    "c083",
+    "c084",
+    "c085"
+   ]
+  },
+  {
+   "id": "ostatni:vstricna-jizda",
+   "label": "Vstřícná jízda",
+   "sheet": "ostatni",
+   "skupina": "Ostatní (převoz, jízdy, asistence)",
+   "bricks": [
+    "c086",
+    "c087",
+    "c088"
+   ]
+  },
+  {
+   "id": "ostatni:asistence-technicka-jizda-pcr",
+   "label": "Asistence, technická jízda, PČR",
+   "sheet": "ostatni",
+   "skupina": "Ostatní (převoz, jízdy, asistence)",
+   "bricks": [
+    "c089",
+    "c090",
+    "c091"
+   ]
+  }
+ ],
+ "bricks": [
+  {
+   "id": "c001",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "NZO – spatřená",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Spatřený kolaps, nereaguje na oslovení, bolest, nedýchá normálně (gasping), zahájení TANR"
+   ]
+  },
+  {
+   "id": "c002",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "Porucha vědomí",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Nalezen nereagující na bolest, oslovení, nejde o nález těla zemřelého, nedýchá normálně, AVPU-U nedýchá",
+    "TANR indikován či TANR nelze"
+   ]
+  },
+  {
+   "id": "c003",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "Porucha vědomí",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Nereaguje na oslovení a bolest, nebo pouze grimasuje, dýchá normálně, pravidelně, opakovaně kolabuje (probere se, následně ihned kolaps), AVPU-U dýchá"
+   ]
+  },
+  {
+   "id": "c004",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "Porucha vědomí",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Nereaguje na oslovení, ale reaguje na bolestivý podnět slovní reakcí, zachovalé spontánní dýchání, AVPU-P"
+   ]
+  },
+  {
+   "id": "c005",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "Porucha vědomí",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Reaguje na oslovení, reaguje na bolestivý podnět slovní reakcí,",
+    "AVPU-V",
+    "Stav po kolapsu/prekolaps, nyní při vědomí, bez obtíží, AVPU-A",
+    "Ležící osoba, nelze ověřit stav životních funkcí"
+   ]
+  },
+  {
+   "id": "c006",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "Porucha vědomí",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV",
+   "kind": "n3",
+   "lines": [
+    "Nález těla zemřelého a koroner nedostupný"
+   ]
+  },
+  {
+   "id": "c007",
+   "tile": "stav:porucha-vedomi",
+   "klasif": "Porucha vědomí",
+   "n": 4,
+   "cmp": false,
+   "dyn": false,
+   "crew": "KOR",
+   "kind": "n4",
+   "lines": [
+    "NZO v prokazatelné době více jak 30 min bez podmínek hypotermie terminální stádium nevyléčit.nemoci bez zn.aktivity vitálních fcí jisté známky smrti (posrmtná ztuhlost, hnilobný rozklad) zranění neslučitelné se životem, nález kosterních ostatků oznámení o nálezu těla zemřelého nahláš.lékařem / vedoucím VS"
+   ]
+  },
+  {
+   "id": "c008",
+   "tile": "stav:bolesti-na-hrudi",
+   "klasif": "Bolesti na hrudi",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%"
+   ]
+  },
+  {
+   "id": "c009",
+   "tile": "stav:bolesti-na-hrudi",
+   "klasif": "Bolesti na hrudi",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Anginosní bolest = stenokardie (bolest klidová, svíravá, pálivá, neohraničená) s propagací nebo přítomný (pre)kolaps",
+    "Objektivizovaná dušnost - schopen říci pouze větu, nebo zjištěná SpO2 75 - 81%"
+   ]
+  },
+  {
+   "id": "c010",
+   "tile": "stav:bolesti-na-hrudi",
+   "klasif": "Bolesti na hrudi",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Stenokardie bez propagace",
+    "Stenokardie trvající 0-6 hodin",
+    "Objektiviz. dušnost - udrží konverzaci, nebo SpO2 82 - 93%"
+   ]
+  },
+  {
+   "id": "c011",
+   "tile": "stav:bolesti-na-hrudi",
+   "klasif": "Bolesti na hrudi",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Bolest různé intenzity, kolísavá, nebo přesně lokalizovatelná",
+    "Stenokardie trvající nad 6 hodin",
+    "Subjektivní dušnost - dušnost pocitová, trvající několik hodin, nebo zjištěná SpO2 nad 94%"
+   ]
+  },
+  {
+   "id": "c012",
+   "tile": "stav:dusnost",
+   "klasif": "Dušnost",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Objektivizovaná dušnost - nemůže vůbec mluvit, pro dušnost schopen říci pouze slovo, nebo zjištěná SpO2 pod 74%",
+    "Náhlý vznik",
+    "Zapojuje pomocné dýchácí svaly, neklid, apatie"
+   ]
+  },
+  {
+   "id": "c013",
+   "tile": "stav:dusnost",
+   "klasif": "Dušnost",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Objektivizovaná dušnost - schopen říci pouze větu na 1 nádech,",
+    "Progrese dušnosti v poslední hodině nebo zjištěná SpO2 75 - 81% příznaky LARYNGITIDY (stridor, štěkavý suchý drsný kašel)"
+   ]
+  },
+  {
+   "id": "c014",
+   "tile": "stav:dusnost",
+   "klasif": "Dušnost",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Objektiviz. dušnost - udrží konverzaci, nebo SpO2 82 - 93%",
+    "Dušnost trvající déle než 1 hodinu, nebo dušnost volání z 3.ruky",
+    "Nebo výrazné zhoršení chronického stavu (zejm. CHOPN, ICHS)"
+   ]
+  },
+  {
+   "id": "c015",
+   "tile": "stav:dusnost",
+   "klasif": "Dušnost",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Subjektivní dušnost - dušnost pocitová, trvající několik hodin,",
+    "Hyperventilace, celkový stav dobrý, nebo zjištěná SpO2 nad 94%"
+   ]
+  },
+  {
+   "id": "c016",
+   "tile": "stav:krecove-stavy",
+   "klasif": "Křečové stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Křeče neznámého původu, celotělové s poruchou vědomí",
+    "Nejde o léčeného epileptika nebo toto nelze zjistit",
+    "Opakovaný křečový stav s rozestupy mezi jednotlivými záchvaty, nebo po křečích několik minut a neprobírá se (hrozící status epil.)",
+    "Febrilní křeče / křeče v těhotenství / neznámá příčina"
+   ]
+  },
+  {
+   "id": "c017",
+   "tile": "stav:krecove-stavy",
+   "klasif": "Křečové stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Křeče probíhající u léčeného nebo známého epileptika",
+    "Křeče s typickým průběhem svědčící pro epileptický záchvat"
+   ]
+  },
+  {
+   "id": "c018",
+   "tile": "stav:krecove-stavy",
+   "klasif": "Křečové stavy",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Stav po epileptickém záchvatu u známého epileptika",
+    "Probírá se, začíná komunikovat nebo hyperventilační tetanie"
+   ]
+  },
+  {
+   "id": "c019",
+   "tile": "stav:arytmie",
+   "klasif": "Arytmie",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Opakovaný výboj ICD (kardioverter)",
+    "Zjištěná TF < 30/min nebo TF > 200/min"
+   ]
+  },
+  {
+   "id": "c020",
+   "tile": "stav:arytmie",
+   "klasif": "Arytmie",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Zjištěná TF 30-45/min nebo TF 150-200/min",
+    "Náhle nově vzniklé palpitace nebo palpitace spojené s klidovou dušností či kolapsem či BNH",
+    "Izolovaný výboj ICD (kardioverter)"
+   ]
+  },
+  {
+   "id": "c021",
+   "tile": "stav:arytmie",
+   "klasif": "Arytmie",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Bušení srdce nepříjemně vnímané, nepravidelně vnímaná srdeční akce, bez dalších přidružených závažných projevů"
+   ]
+  },
+  {
+   "id": "c022",
+   "tile": "stav:hypertenze",
+   "klasif": "Hypertenze",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Objektivizovaná hypertenze, bez dalších závažných příznaků; hyperteze nereagjící na terapii"
+   ]
+  },
+  {
+   "id": "c023",
+   "tile": "stav:neurologicke-stavy",
+   "klasif": "CMP",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Příznaky CMP s poruchou vědomí AVPU-U, bezvědomí, dýchá"
+   ]
+  },
+  {
+   "id": "c024",
+   "tile": "stav:neurologicke-stavy",
+   "klasif": "CMP",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n2",
+   "lines": [
+    "Příznaky CMP s poruchou vědomí AVPU-P, reaguje na bolest",
+    "FAST: asymetrie obličeje, pokles koutku, poruchy řeči (afázie, dysratrie), hemiparéza či monoparéza končetin, plegie konč., nebo 2 a více vedlejší kritéria"
+   ]
+  },
+  {
+   "id": "c025",
+   "tile": "stav:neurologicke-stavy",
+   "klasif": "CMP",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "LZS",
+   "kind": "n2",
+   "lines": [
+    "FAST pozitivní kritérium se vznikem do 4,5 hodiny"
+   ]
+  },
+  {
+   "id": "c026",
+   "tile": "stav:neurologicke-stavy",
+   "klasif": "CMP",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Vedlejší kritérium:",
+    "AVPU-V, náhle vzniklé - poruchy čití 1/2 těla, vertigo s nauzeou, výpadek 1/2 zorného pole, dvojité vidění, opozice šíje, prudká / atypická cefalea"
+   ]
+  },
+  {
+   "id": "c027",
+   "tile": "stav:neurologicke-stavy",
+   "klasif": "Neurologické stavy",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Hyperventilace, parestezie nespecifické, prokolaps, třes těla, vertigo bez náhlého vzniku, zmatenost bez známé anamnézy"
+   ]
+  },
+  {
+   "id": "c028",
+   "tile": "stav:psychiatricke-stavy",
+   "klasif": "Psychiatrické stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Halucinace nebo bludy + agrese vůči sobě či jiné osobě",
+    "NEBO: závažný pokus o sebevraždu"
+   ]
+  },
+  {
+   "id": "c029",
+   "tile": "stav:psychiatricke-stavy",
+   "klasif": "Psychiatrické stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Halucinace nebo bludy bez agrese vůči sobě či jiné osobě",
+    "(NEBO: psychotické jednání s pouze verbální agresí)"
+   ]
+  },
+  {
+   "id": "c030",
+   "tile": "stav:psychiatricke-stavy",
+   "klasif": "Psychiatrické stavy",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Zmatenost bez anamnézy, deprese, poruchy chování nezávažného stupně, izolovaná agrese BEZ bludů/halucinací",
+    "NEBO: stresová reakce na psychickou zátěž, hyperventilace"
+   ]
+  },
+  {
+   "id": "c031",
+   "tile": "stav:diabeticke-stavy",
+   "klasif": "Diabetické stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Ověřená hypoglykémie, potvrzený a léčený diabetik, porucha vědomí, nereaguje, neudrží hrnek v ruce s pitím"
+   ]
+  },
+  {
+   "id": "c032",
+   "tile": "stav:diabeticke-stavy",
+   "klasif": "Diabetické stavy",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Ověřená hypoglykémie, potvrzený a léčený diabetik, při vědomí, reaguje na oslovení, udrží hrnek s pitím v ruce",
+    "NEBO: jiné obtíže v souvislosti DM, hyperglykémie"
+   ]
+  },
+  {
+   "id": "c033",
+   "tile": "stav:gynekologicke-stavy",
+   "klasif": "Gynekologické stavy",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Porod v chodu, je vidět část dítěte v porodních cestách,",
+    "NEBO: bezprostředně porozené dítě"
+   ]
+  },
+  {
+   "id": "c034",
+   "tile": "stav:gynekologicke-stavy",
+   "klasif": "Gynekologické stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Závažné komplikace v těhotenství - dušnost, obj. hypertenze křeče, prudká cefalea (NE krvácení--> klasif. KRVÁCENÍ)"
+   ]
+  },
+  {
+   "id": "c035",
+   "tile": "stav:gynekologicke-stavy",
+   "klasif": "Gynekologické stavy",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Hrozící porod, trvalý tlak na konečník, kontrakce < 5 minut bez ohledu na odtok plodové vody"
+   ]
+  },
+  {
+   "id": "c036",
+   "tile": "stav:gynekologicke-stavy",
+   "klasif": "Gynekologické stavy",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Všeobecné komplikace v těhotenství, zejm. bolesti zad, břicha, nezávažného průběhu, bez krvácení, bez křečí",
+    "NEBO: hrozící porod, kontrakce > 5 minut či pouze odteklá PV"
+   ]
+  },
+  {
+   "id": "c037",
+   "tile": "stav:alergicke-reakce",
+   "klasif": "Alergické reakce",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Anafylaxe s AVPU-U (nedýchá), nebo dušnost - nemůže vůbec mluvit / mluvit / schopen říci pouze slovo; masivní rychlý otok DC, dusí se"
+   ]
+  },
+  {
+   "id": "c038",
+   "tile": "stav:alergicke-reakce",
+   "klasif": "Alergické reakce",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Alergická reakce s AVPU-U (dýchá), dušnost - schopen řici pouze větu, kolabuje, patrný vzdálený (generalizovaný) otok na těle"
+   ]
+  },
+  {
+   "id": "c039",
+   "tile": "stav:alergicke-reakce",
+   "klasif": "Alergické reakce",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Alergická reakce s AVPU-P, dušnost - schopen udržet konverzaci,",
+    "RIZIKA! - rychlý rozvoj, alergie na noxu v anamnéze, nereaguje na podanou medikamentosní terapii"
+   ]
+  },
+  {
+   "id": "c040",
+   "tile": "stav:alergicke-reakce",
+   "klasif": "Alergické reakce",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Alergická reakce pouze s kožními příznaky, bez vývoje, AVPU A/V, otok lokálního charakteru, celkový stav dobrý"
+   ]
+  },
+  {
+   "id": "c041",
+   "tile": "stav:neurazove-krvaceni",
+   "klasif": "Neúrazové krvácení",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Bledost, kolaps a MASIVNÍ krvácení z nezastavitelné oblasti (zejm. GIT, URO, GYN, DC)., AVPU - U (nedýchá)"
+   ]
+  },
+  {
+   "id": "c042",
+   "tile": "stav:neurazove-krvaceni",
+   "klasif": "Neúrazové krvácení",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "KONTINUÁLNÍ krvác. většího char. z nezastavitelné oblasti (GIT, URO, GYN, DC), ekviv. 150 ml/min, AVPU-U (dýchá)"
+   ]
+  },
+  {
+   "id": "c043",
+   "tile": "stav:neurazove-krvaceni",
+   "klasif": "Neúrazové krvácení",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "ZÁVAŽNÉ krvácení z končetin (varixy),",
+    "AVPU- P"
+   ]
+  },
+  {
+   "id": "c044",
+   "tile": "stav:neurazove-krvaceni",
+   "klasif": "Neúrazové krvácení",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Krvácení MENŠÍHO rozsahu nebo jednorázové - uro/gyn., meléna, hemateméza, enterorhagie, epistaxe,",
+    "ZASTAVITELNÉ neúr. krvácení z končetin, celkový stav dobrý"
+   ]
+  },
+  {
+   "id": "c045",
+   "tile": "stav:bolest",
+   "klasif": "Bolest",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Náhle vzniklá prudká, intenzivní bolest + alterace celkového stavu s celkovými příznaky (kolaps, dušnost)",
+    "NEBO: Tlumení bolesti u paliativního pacienta"
+   ]
+  },
+  {
+   "id": "c046",
+   "tile": "stav:bolest",
+   "klasif": "Bolest",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Silná bolest / snesitelná / opakovaná / známá / jiné bolesti (hlava, záda, břicho, končetiny, jiná oblast)",
+    "NEBO: retence/neprůchodný/extrahovaný PMK + bol.břicha"
+   ]
+  },
+  {
+   "id": "c047",
+   "tile": "stav:horecka",
+   "klasif": "Horečka",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Teploty nad 39°C + příznaky pro IMO: světloplachost / váznutí šíje / rozvíjející se kožní skvrny / rychlá progrese stavu"
+   ]
+  },
+  {
+   "id": "c048",
+   "tile": "stav:horecka",
+   "klasif": "Horečka",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Teploty ostatní"
+   ]
+  },
+  {
+   "id": "c049",
+   "tile": "stav:zvraceni-prujem",
+   "klasif": "Zvracení / průjem",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Zvracení opakované / průjem opakovaný, další doprovodný příznak s alterací stavu = dehydratace, prekolaps, zhor.stavu",
+    "NEBO: nereaguje na základní terapii a je alterace stavu"
+   ]
+  },
+  {
+   "id": "c050",
+   "tile": "stav:czs",
+   "klasif": "CZS",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Všeobecné zhoršení stavu, chronické polymorfní obtíže, nespecifikovaná nevolnost, stav nereag. na ordinovanou th.",
+    "NEBO: sociální případ, nezvládají péči"
+   ]
+  },
+  {
+   "id": "c051",
+   "tile": "stav:jine",
+   "klasif": "Jiné",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP/DRNR",
+   "kind": "n3",
+   "lines": [
+    "Potíže nezařaditelné do určité klasifikace,",
+    "NEBO: neodvádějící/vypadlý urokatetr, výměna PMK, bez celkových příznaků, DRNR nedostupná"
+   ]
+  },
+  {
+   "id": "c052",
+   "tile": "stav:babybox",
+   "klasif": "Babybox",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Dítě v babyboxu"
+   ]
+  },
+  {
+   "id": "c053",
+   "tile": "dej:trauma",
+   "klasif": "Trauma",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Poruchy vědomí = AVPU-U nedýchá",
+    "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
+    "Masivní nezastavitelné krvácení, amputace končetiny",
+    "Závažné rozsáhlé popáleniny / poleptání"
+   ]
+  },
+  {
+   "id": "c054",
+   "tile": "dej:trauma",
+   "klasif": "Trauma",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n2",
+   "lines": [
+    "TRIAGE POZITIVNÍ PACIENT:",
+    "Pád z výše >6 m NEBO: trojnásobek své výšky (děti)",
+    "Přejetí vozidlem",
+    "Porucha vědomí = AVPU-U dýchá,",
+    "Dušnost nekritická, bez známek dušení, schopen říci pouze větu",
+    "Paréza nebo brnění končetin",
+    "Otevřená zlomenina",
+    "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
+    "Zavalení těžkými předměty",
+    "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
+    "Pokračující nezastavitelné krvácení většího rozsahu",
+    "Dítě - předpoklad potřeby analgezie/sedace"
+   ]
+  },
+  {
+   "id": "c055",
+   "tile": "dej:trauma",
+   "klasif": "Trauma",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "AVPU-P, poúrazová zmatenost",
+    "Závažné krvácení z končetin"
+   ]
+  },
+  {
+   "id": "c056",
+   "tile": "dej:trauma",
+   "klasif": "Trauma",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+    "Komoční syndrom nebo psychický otřes",
+    "Otevřené rány menšího rozsahu",
+    "Zavřená zlomenina, vykloubení",
+    "Tupé trauma hrudníku, břicha, pánve, zad",
+    "Ztrátové poranění prstů",
+    "Ošetřitelné poranění bez masivního krvácení"
+   ]
+  },
+  {
+   "id": "c057",
+   "tile": "dej:tonuti",
+   "klasif": "Tonutí",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Pacient je ještě ve vodě, nebo po tonutí na břehu, v bezvědomí, bezděší, křeče, kritická dušnost, AVPU-U nedýchá"
+   ]
+  },
+  {
+   "id": "c058",
+   "tile": "dej:tonuti",
+   "klasif": "Tonutí",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n2",
+   "lines": [
+    "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-U dýchá, nebo již při vědomí + přítomnost některých závažných okolností: dušnost, vykašlávání, neurol. příznaky (motorické poruchy či poruchy čití končetin)"
+   ]
+  },
+  {
+   "id": "c059",
+   "tile": "dej:tonuti",
+   "klasif": "Tonutí",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Pacient po tonutí, již vytažen z vody, porucha vědomí AVPU-P není přítomná další závažná okolnost"
+   ]
+  },
+  {
+   "id": "c060",
+   "tile": "dej:tonuti",
+   "klasif": "Tonutí",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Pacient po tonutí, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+   ]
+  },
+  {
+   "id": "c061",
+   "tile": "dej:popaleni-poleptani",
+   "klasif": "Popálení, poleptání",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Hluboké popáleniny / rozsáhlé popáleniny",
+    "Masivní popáleniny ORL oblasti či očí",
+    "NEBO: Výbuch",
+    "NEBO: popáleniny + dušnost (nemůže mluvit, schopen říci max slovo)"
+   ]
+  },
+  {
+   "id": "c062",
+   "tile": "dej:popaleni-poleptani",
+   "klasif": "Popálení, poleptání",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n2",
+   "lines": [
+    "Popáleniny dětí jakéhokoliv rozsahu, nebo dospělý cca 9% a výše v nepredikované oblasti,",
+    "NEBO: popáleniny El.proudem",
+    "NEBO: pop. v predikovatelné oblasti = obličej, krk, genitál",
+    "NEBO: závažné popáleniny ORL oblasti či očí"
+   ]
+  },
+  {
+   "id": "c063",
+   "tile": "dej:popaleni-poleptani",
+   "klasif": "Popálení, poleptání",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Povrchové popáleniny menšího rozsahu a hloubky, nepatřící do skupiny výše, popáleniny dospělého < 9%"
+   ]
+  },
+  {
+   "id": "c064",
+   "tile": "dej:dopravni-nehoda",
+   "klasif": "Dopravní nehoda",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Poruchy vědomí = AVPU-U nedýchá",
+    "Objektivizovaná dušnost v souvisl.s úrazem - nemůže vůbec mluvit,",
+    "Masivní nezastavitelné krvácení, amputace končetiny",
+    "Závažné rozsáhlé popáleniny / poleptání"
+   ]
+  },
+  {
+   "id": "c065",
+   "tile": "dej:dopravni-nehoda",
+   "klasif": "Dopravní nehoda",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n2",
+   "lines": [
+    "TRIAGE POZITIVNÍ PACIENT:",
+    "Čelní náraz ve vysoké rychlosti bez zn stavu",
+    "Přejetí vozidlem",
+    "Sražení vozidlem rychlostí >35 km/hod (chodec,cyklista,moto)",
+    "Katapultáž z vozidla",
+    "Zaklínění ve vozidle",
+    "Zavalení těžkými předměty",
+    "Paréza nebo brnění končetin",
+    "Perforační poranění hlavy, krku, hrudníku, břicha, pánve",
+    "Porucha vědomí = AVPU-U dýchá",
+    "Dušnost nekritická, bez známek dušení, schopen říci pouze větu",
+    "Pokračující nezastavitelné krvácení většího rozsahu",
+    "Otevřená zlomenina",
+    "Zlomenina 2 a více dlouhých kostí (bérec/stehno/paže)",
+    "Dítě - předpoklad potřeby analgezie/sedace"
+   ]
+  },
+  {
+   "id": "c066",
+   "tile": "dej:dopravni-nehoda",
+   "klasif": "Dopravní nehoda",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "AVPU-P, poúrazová zmatenost",
+    "Závažné krvácení z končetin",
+    "Rotace vozidla přes střechu"
+   ]
+  },
+  {
+   "id": "c067",
+   "tile": "dej:dopravni-nehoda",
+   "klasif": "Dopravní nehoda",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Bez závažné poruchy vědomí = AVPU-V, AVPU-A",
+    "Komoční syndrom nebo psychický otřes",
+    "Otevřené rány menšího rozsahu",
+    "Zavřená zlomenina, vykloubení",
+    "Tupé trauma hrudníku, břicha, pánve, zad",
+    "Ztrátové poranění prstů",
+    "Ošetřitelné poranění bez masivního krvácení",
+    "NEBO: Pacient bez viditelného poranění a není triage pozitivní"
+   ]
+  },
+  {
+   "id": "c068",
+   "tile": "dej:obeseni",
+   "klasif": "Oběšení",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Nalezen oběšený, nebo stále visící, por. vědomí, AVPU-U nedýchá,",
+    "NEBO: kritická dušnost, nejsou jisté známky smrti,"
+   ]
+  },
+  {
+   "id": "c069",
+   "tile": "dej:obeseni",
+   "klasif": "Oběšení",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Stavy po oběšení, porucha vědomí, AVPU-U dýchá, nebo již při vědomí, komunikuje + další závažný příznak (nekritická dušnost, paréza končetin, psychiatrické přízn.),"
+   ]
+  },
+  {
+   "id": "c070",
+   "tile": "dej:obeseni",
+   "klasif": "Oběšení",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Porucha vědomí AVPU-P není přítomná další závažná okolnost"
+   ]
+  },
+  {
+   "id": "c071",
+   "tile": "dej:obeseni",
+   "klasif": "Oběšení",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Pacient po oběšení, AVPU-V, AVPU-A, není přítomná další závažná okolnost"
+   ]
+  },
+  {
+   "id": "c072",
+   "tile": "dej:intoxikace",
+   "klasif": "Intoxikace",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "Kritický stav - poruchy vědomí, nereaguje na bolest ani oslovení, nedýchá normálně nebo dušnost - nemůže mluvit, schopen říci pouze slovo AVPU-U nedýchá"
+   ]
+  },
+  {
+   "id": "c073",
+   "tile": "dej:intoxikace",
+   "klasif": "Intoxikace",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "Závažný stav - nereaguje na oslovení ani bolest, dýchá normálně, nekritická dušnost, schopen říci pouze větu, AVPU-U dýchá"
+   ]
+  },
+  {
+   "id": "c074",
+   "tile": "dej:intoxikace",
+   "klasif": "Intoxikace",
+   "n": 2,
+   "cmp": false,
+   "dyn": true,
+   "crew": "DI",
+   "kind": "n2di",
+   "lines": [
+    "Závažný stav - nereaguje na oslovení, ale reaguje na bolest slovní reakcí, AVPU-P, dušnost udrží konverzaci"
+   ]
+  },
+  {
+   "id": "c075",
+   "tile": "dej:intoxikace",
+   "klasif": "Intoxikace",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Nezávažný stav - probuditelný, reaguje na oslovení, bez dušnosti, pravděpodobně v souvislosti s alkoholem, AVPU-V, AVPU-A"
+   ]
+  },
+  {
+   "id": "c076",
+   "tile": "dej:mu-matra-722",
+   "klasif": "MU – MATRA 722",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP, LZS",
+   "kind": "n1",
+   "lines": [
+    "Postižení více jak 15 osob NEBO: 5 a více vyslaných výjezd.skupin"
+   ]
+  },
+  {
+   "id": "c077",
+   "tile": "dej:vysoce-nebezpecna-nakaza-vnn",
+   "klasif": "Vysoce nebezpečná nákaza (VNN)",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n1",
+   "lines": [
+    "VNN + kritický stav (por.vědomí, kritická dušnost)"
+   ]
+  },
+  {
+   "id": "c078",
+   "tile": "dej:vysoce-nebezpecna-nakaza-vnn",
+   "klasif": "Vysoce nebezpečná nákaza (VNN)",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n2",
+   "lines": [
+    "VNN + závažný stav (reaguje na oslovení,nekritická dušnost)"
+   ]
+  },
+  {
+   "id": "c079",
+   "tile": "dej:vysoce-nebezpecna-nakaza-vnn",
+   "klasif": "Vysoce nebezpečná nákaza (VNN)",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "VNN + nezáv.stav (při vědomí, bez dušnosti, stav dobrý)"
+   ]
+  },
+  {
+   "id": "c080",
+   "tile": "ostatni:sekundarni-prevoz",
+   "klasif": "Převoz",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV+RZP",
+   "kind": "n2",
+   "lines": [
+    "Nebezpečí časového prodlení",
+    "Nesnese odkladu (= akutní)"
+   ]
+  },
+  {
+   "id": "c081",
+   "tile": "ostatni:sekundarni-prevoz",
+   "klasif": "Převoz",
+   "n": 2,
+   "cmp": true,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n2",
+   "lines": [
+    "Převoz na specializované pracoviště"
+   ]
+  },
+  {
+   "id": "c082",
+   "tile": "ostatni:sekundarni-prevoz",
+   "klasif": "Převoz",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Bez doplňujícího popisu v tabulce"
+   ]
+  },
+  {
+   "id": "c083",
+   "tile": "ostatni:sekundarni-prevoz",
+   "klasif": "Převoz",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV+RZP",
+   "kind": "n3",
+   "lines": [
+    "Bez nebezpečí časového prodlení",
+    "Snese odkladu (= plánovaný)",
+    "Převoz z nižšího na vyšší pracoviště"
+   ]
+  },
+  {
+   "id": "c084",
+   "tile": "ostatni:sekundarni-prevoz",
+   "klasif": "Převoz",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RLP",
+   "kind": "n3",
+   "lines": [
+    "Převoz z vyššího na nižší pracoviště"
+   ]
+  },
+  {
+   "id": "c085",
+   "tile": "ostatni:sekundarni-prevoz",
+   "klasif": "Převoz",
+   "n": 4,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n4",
+   "lines": [
+    "Bez doplňujícího popisu v tabulce"
+   ]
+  },
+  {
+   "id": "c086",
+   "tile": "ostatni:vstricna-jizda",
+   "klasif": "Vstřícná jízda",
+   "n": 1,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV",
+   "kind": "n1",
+   "lines": [
+    "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - RESUSCITACE /ANAFYLAXE"
+   ]
+  },
+  {
+   "id": "c087",
+   "tile": "ostatni:vstricna-jizda",
+   "klasif": "Vstřícná jízda",
+   "n": 2,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV",
+   "kind": "n2",
+   "lines": [
+    "Požadavek od RZP posádky na vyslání lékaře ke vstřícné jízdě po zahájení transportu posádky - ZHORŠENÍ STAVU"
+   ]
+  },
+  {
+   "id": "c088",
+   "tile": "ostatni:vstricna-jizda",
+   "klasif": "Vstřícná jízda",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Není k dispozici žádná další dostupná RZP posádka na témže výjezdovém stanovišti;",
+    "NEBO: Jízda RZP mimo zajišťovanou oblast posádkou o jedné posádce RZP na výjezdovém stanovišti"
+   ]
+  },
+  {
+   "id": "c089",
+   "tile": "ostatni:asistence-technicka-jizda-pcr",
+   "klasif": "Posouzení stavu",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV",
+   "kind": "n3",
+   "lines": [
+    "Posouzení stavu lékařem ZZS JčK v blízkém dosahu základny na žádost PČR, NEBO: dojezd posádky RZP za lékařem ZZS JčK na základnu k posouzení stavu"
+   ]
+  },
+  {
+   "id": "c090",
+   "tile": "ostatni:asistence-technicka-jizda-pcr",
+   "klasif": "Asistence",
+   "n": 3,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RZP",
+   "kind": "n3",
+   "lines": [
+    "Akutní asistence, otevírání bytu, info uvnitř je osoba, nekomunikuje, NEBO: asistence u policejního či hasičského zásahu, např. rozsáhlý požár; NENÍ ZNÁMÁ INFORMACE",
+    "O ZDRAVOTNÍM STAVU;",
+    "Reakce ze strany ZOS na tísňové zprávy / volání bez možnosti ověřit zdravotní stav (eCALL, SMS, autom.volání)"
+   ]
+  },
+  {
+   "id": "c091",
+   "tile": "ostatni:asistence-technicka-jizda-pcr",
+   "klasif": "Technická jízda",
+   "n": 4,
+   "cmp": false,
+   "dyn": false,
+   "crew": "RV/RLP/RZP",
+   "kind": "n4",
+   "lines": [
+    "Technická jízda"
+   ]
+  }
+ ]
+}

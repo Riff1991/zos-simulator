@@ -8,6 +8,18 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.33.0 – rozpracováno
+Nové:
+- **Pavouk z cihliček podle skutečné klasifikace.** Dvě volby: nejdřív stav nebo děj (29 dlaždic ve třech skupinách), potom cihla s kritérii. Barva cihly = naléhavost: červená N1, modrá N2, růžová N2 dynamická indikace, zelená N3, fialová N4; u každé je klasifikace a posádka (RLP, RZP, RV, LZS, DI). Bez pravděpodobností, na telefonu i na počítači. Výsledek předvyplní nabírání.
+- **Adresa ve třech polích: obec, ulice, číslo popisné.** Po napsání části názvu se postupně nabízejí obce, ulice vybrané obce a čísla na ulici; po výběru čísla se bod najde na mapě. Klik do mapy a AML vyplní všechna pole.
+- **V nabírání je nahoře Pacient, pod ním Volající.**
+Opravy:
+- Volající už neříká, že musí ztlumit televizi.
+- Při příjmu hovoru (např. dopravní nehoda) nepřeskakují červené lišty a případ se nevede jako příjem přes 112/150/158. PČR a HZS volá calltaker v nabírání (jinak si je posádka vyžádá na místě).
+- Kontrola klasifikace počítá s názvy z tabulky (NZO – spatřená odpovídá Resuscitaci apod.).
+Interní:
+- `tools/build_cihly.py` převádí excel s cihličkami na `src/cihly.json`; modul `calltaker/cihly.js`; test `tests/cihly_test.js`.
+
 ## v0.32.1 – rozpracováno
 Opravy:
 - **Režim calltaker:** vysílačky (hlas i pípnutí) se v režimu calltaker nikdy neozývají, ani při zapnutých dispečerských oknech.

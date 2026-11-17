@@ -17,7 +17,9 @@ function ctSpeed(sp) {
   return sp > 0 && sim && sim.s.liveCalls && sim.s.liveCalls.mode !== 'training' ? Math.max(sp, 10) : sp;   // mezi hovory se čeká zrychleně
 }
 function ctNavItems() { return [['intake', 'Nabírání'], ['map', 'Mapa'], ['spider', 'Pavouk']].concat(cts.disp ? [['cases', 'Případy'], ['detail', 'Případ'], ['crews', 'Posádky']] : []); }
-const ctSpiderInst = () => ct.spider || (ct.spider = CT_SPIDER.create({ symptoms: ZOS_SYMPTOMS, indications: ZOS_DATA.indications }));
+const ctKlasifs = () => [...new Set(ZOS_DATA.indications.map(i => i.klasif))];
+// výchozí pavouk: skutečné cihličky z klasifikačního systému (src/cihly.json); soubor spider.json ho může nahradit vlastním stromem
+const ctSpiderInst = () => ct.spider || (ct.spider = CT_CIHLY.create(ZOS_CIHLY, { klasifs: ctKlasifs() }));
 // skutečný pavouk ze souboru spider.json (formát zos-spider/1) nahradí datový, pokud je vedle aplikace
 function ctSpiderLoad() {
   fetch('spider.json', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { if (!j) return; try { ct.spider = CT_SPIDER.createFromTree(j); ct.sp = { ans: [], n: null, dyn: null }; ctSpiderRender(); toast('Načten vlastní pavouk ze souboru spider.json.', ''); } catch (e) { toast('spider.json: ' + e.message, 'warn'); } }).catch(() => {});
@@ -124,10 +126,10 @@ function ctBuild() {
   $('ct-body').innerHTML = `<div id="ct-pane-intake" class="ct-form"><div id="ct-idle" class="ct-note" style="padding:10px">Čekáš na hovor. Telefon zazvoní sám; čas mezi hovory běží zrychleně.<br><small>Zkratky: Alt+Z zvednout · Alt+1 N1 okamžitě · Alt+O odeslat · Alt+P pavouk · Alt+U ukončit · Alt+D dokončit · Alt+M ztlumit</small></div>
     <div id="ct-formwrap" hidden>
     <div id="ct-aml"></div>
-    <fieldset><legend>Volající</legend><div class="ct-g">${f('ctf-vJmeno', 'Jméno')}${f('ctf-vPrijmeni', 'Příjmení')}${f('ctf-vTel', 'Telefon (ANI)')}${f('ctf-vVztah', 'Vztah k pacientovi', 'např. manžel, soused')}</div></fieldset>
     <fieldset><legend>Pacient</legend><div class="ct-g">${f('ctf-pJmeno', 'Jméno')}${f('ctf-pPrijmeni', 'Příjmení')}${f('ctf-pVek', 'Věk nebo rok narození', 'např. 72 nebo 1953')}<label>Pohlaví<select id="ctf-pPohlavi"><option value="">?</option><option>muž</option><option>žena</option></select></label></div></fieldset>
+    <fieldset><legend>Volající</legend><div class="ct-g">${f('ctf-vJmeno', 'Jméno')}${f('ctf-vPrijmeni', 'Příjmení')}${f('ctf-vTel', 'Telefon (ANI)')}${f('ctf-vVztah', 'Vztah k pacientovi', 'např. manžel, soused')}</div></fieldset>
     <fieldset><legend>Místo události</legend>
-      <div style="display:flex;gap:6px"><input id="ctf-adresa" autocomplete="off" placeholder="Ulice č., obec (nebo klikni do mapy)"><button class="btn" data-act="ct-find" style="margin:0;white-space:nowrap">Najít na mapě</button></div>
+      <div class="ct-addr"><div class="ac"><label>Obec / město<input id="ctf-obec" autocomplete="off" placeholder="začni psát název…"></label><div class="ct-sug" id="ct-sug-obec" hidden></div></div><div class="ac"><label>Ulice<input id="ctf-ulice" autocomplete="off" placeholder="začni psát ulici…"></label><div class="ct-sug" id="ct-sug-ulice" hidden></div></div><div class="ac sm"><label>Číslo popisné<input id="ctf-cp" autocomplete="off" placeholder="č. p."></label><div class="ct-sug" id="ct-sug-cp" hidden></div></div><button class="btn" data-act="ct-find" title="Najde bod podle obce, ulice a čísla a posune mapu">Najít na mapě</button></div><input id="ctf-adresa" type="hidden">
       <div class="ct-g" style="margin-top:6px">${f('ctf-cast', 'Část obce')}${f('ctf-upresneni', 'Upřesnění (patro, vchod, označení)')}</div>
       <div id="ct-ptinfo" class="ct-note" style="margin-top:4px">Poloha zatím nezadána.</div></fieldset>
     <fieldset><legend>Událost</legend><label style="display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px">Popis události<textarea id="ctf-popis" rows="2" placeholder="Co se stalo (vlastními slovy volajícího)"></textarea></label>
@@ -269,14 +271,15 @@ function ctAddrAt(lat, lon) {
   for (let i = 0; i < a.length; i += 8) { const dy = (a[i] / 1e5 - lat), dx = (a[i + 1] / 1e5 - lon) * k, d = dy * dy + dx * dx; if (d < bd) { bd = d; best = i; } }
   if (best < 0) return { text: '', dM: Infinity, near: false };
   const dM = Math.sqrt(bd) * 111320, city = S[a[best + 3]], st = S[a[best + 2]], num = S[a[best + 4]];
-  if (dM <= 100) return { text: (st && st !== city ? st + ' ' + num : 'čp. ' + num) + ', ' + city, dM, near: true };
-  return { text: 'okolí obce ' + city, dM, near: false };
+  const street = st && st !== city ? st : '';
+  if (dM <= 100) return { text: (street ? st + ' ' + num : 'čp. ' + num) + ', ' + city, city, street, num, dM, near: true };
+  return { text: 'okolí obce ' + city, city, street: '', num: '', dM, near: false };
 }
 function ctSetPoint(lat, lon, src, noFocus) {
   ct.pt = { lat, lon, src }; ct.mapHash = '';
   if (src !== 'adresa') {
     const r = ctAddrAt(lat, lon);
-    if (r.text && (src !== 'AML' || !ctVal('ctf-adresa') || ct.addrAuto)) { ctSet('ctf-adresa', r.text); ct.addrAuto = true; }
+    if (r.text && (src !== 'AML' || !ctVal('ctf-adresa') || ct.addrAuto)) { ctSetAddr(r.near ? { obec: r.city, ulice: r.street, cp: r.num } : { obec: r.city, okoli: true }); ct.addrAuto = true; }
     ct.ptInfo = r.near ? `Nejbližší adresní bod ${Math.round(r.dM)} m.` : `Adresní bod do 100 m nenalezen (nejbližší ${r.dM > 5000 ? '>5 km' : ctFmtM(r.dM)}).`;
   } else ct.ptInfo = 'Poloha podle adresy (kontroluje se podle textu).';
   ctPtInfo(); ctMapSync();
@@ -292,7 +295,7 @@ function ctMapClick(e) {
   ctSetPoint(e.lngLat.lat, e.lngLat.lng, 'mapa', true); return true;
 }
 function ctFind() {
-  const t = ctVal('ctf-adresa'); if (!t) return;
+  ctAddrSync(); const t = ctVal('ctf-adresa'); if (!t) return;
   ct.addrAuto = false;
   const g = sim._ctGeocode(t);
   if (!g.quality) { ct.ptInfo = 'Adresu se nepodařilo najít v databázi adres.'; ct.pt = null; ctPtInfo(); toast('Adresu se nepodařilo najít.', 'warn'); return; }
@@ -302,7 +305,7 @@ function ctFind() {
 
 // ---------- hovor: zvednutí, hlas, ukončení ----------
 function ctFormReset(f) {
-  for (const id of ['vJmeno', 'vPrijmeni', 'vTel', 'vVztah', 'pJmeno', 'pPrijmeni', 'pVek', 'adresa', 'cast', 'upresneni', 'popis', 'poznamka', 'pocet']) ctSet('ctf-' + id, '');
+  for (const id of ['vJmeno', 'vPrijmeni', 'vTel', 'vVztah', 'pJmeno', 'pPrijmeni', 'pVek', 'adresa', 'obec', 'ulice', 'cp', 'cast', 'upresneni', 'popis', 'poznamka', 'pocet']) ctSet('ctf-' + id, '');
   ctSet('ctf-pPohlavi', ''); ctSet('ctf-vTel', f.aml.typ === 'skryté' ? '' : f.view.volajici.telefon);
   for (const id of ['agPcr', 'agHzs', 'nebezpeci']) { const e = $('ctf-' + id); if (e) e.checked = false; }
   const sel = $('ctf-sluc'); if (sel) sel.innerHTML = '<option value="">– nový případ –</option>' + sim.s.cases.filter(c => c.call && c.status !== 'closed').map(c => `<option value="${c.id}">${esc(c.num)} · ${esc(c.addr)} · ${esc(c.klasif)}</option>`).join('');
@@ -314,6 +317,7 @@ function ctFormReset(f) {
 function ctFillForm(fm) {
   const m = { vJmeno: 'vJmeno', vPrijmeni: 'vPrijmeni', vTelefon: 'vTel', vVztah: 'vVztah', pJmeno: 'pJmeno', pPrijmeni: 'pPrijmeni', pPohlavi: 'pPohlavi', adresa: 'adresa', cast: 'cast', upresneni: 'upresneni', popis: 'popis', poznamka: 'poznamka', pocet: 'pocet' };
   for (const k of Object.keys(m)) if (fm[k] != null && fm[k] !== '') ctSet('ctf-' + m[k], fm[k]);
+  if (fm.adresa) ctAddrFromText(fm.adresa);
   if (fm.pVek !== '' && fm.pVek != null) ctSet('ctf-pVek', fm.pVek); else if (fm.pRok) ctSet('ctf-pVek', fm.pRok);
   for (const id of ['agPcr', 'agHzs', 'nebezpeci']) { const e = $('ctf-' + id); if (e) e.checked = !!fm[id]; }
   if (fm.bod) ct.pt = { lat: fm.bod.lat, lon: fm.bod.lon, src: fm.zdroj || 'mapa' };
@@ -448,13 +452,14 @@ function ctFinish() {
 
 // ---------- formulář ↔ engine ----------
 function ctReadForm() {
+  ctAddrSync();
   const p = ct.pt, cls = ct.cls, v = ctVal('ctf-pVek'), num = Number(v), ch = id => { const e = $(id); return !!(e && e.checked); };
   const zdroj = p ? p.src : ctVal('ctf-adresa') ? 'adresa' : '', pc = Number(ctVal('ctf-pocet'));
   return {
     adresa: ctVal('ctf-adresa'), bod: p && p.src !== 'adresa' ? { lat: p.lat, lon: p.lon } : null, zdroj, cast: ctVal('ctf-cast'), upresneni: ctVal('ctf-upresneni'),
     vJmeno: ctVal('ctf-vJmeno'), vPrijmeni: ctVal('ctf-vPrijmeni'), vTelefon: ctVal('ctf-vTel'), vVztah: ctVal('ctf-vVztah'),
     pJmeno: ctVal('ctf-pJmeno'), pPrijmeni: ctVal('ctf-pPrijmeni'), pPohlavi: ctVal('ctf-pPohlavi'), pRok: num > 1900 ? num : '', pVek: v && num <= 130 ? num : '',
-    klasif: cls ? cls.klasif : '', priznaky: cls ? cls.priznaky.slice() : [], n: cls ? String(cls.n) : '', dyn: cls ? cls.dyn : null, popis: ctVal('ctf-popis'), poznamka: ctVal('ctf-poznamka'),
+    cihla: !!(cls && cls.cihla), klasif: cls ? cls.klasif : '', priznaky: cls ? cls.priznaky.slice() : [], n: cls ? String(cls.n) : '', dyn: cls ? cls.dyn : null, popis: ctVal('ctf-popis'), poznamka: ctVal('ctf-poznamka'),
     agPcr: ch('ctf-agPcr'), agHzs: ch('ctf-agHzs'), nebezpeci: ch('ctf-nebezpeci'), pocet: pc > 0 ? pc : '', slucitS: ctVal('ctf-sluc'),
   };
 }
@@ -475,7 +480,7 @@ function ctSend(pre) {
 }
 function ctUseAbonent() {
   const f = ct.call && ct.facts[ct.call.id], ab = f && f.aml.abonent; if (!ab) return;
-  ctSet('ctf-adresa', ab.adresa); ct.addrAuto = false; ctFind();
+  ctAddrFromText(ab.adresa); ct.addrAuto = false; ctFind();
 }
 // rozbor hovoru na vyžádání (okno výsledku)
 function ctRozbor() { if (ct.lastRes) ctResultModal(ct.lastRes); }
@@ -498,7 +503,7 @@ function ctPrehled() {
 }
 function ctClsHtml() {
   const e = $('ct-cls'); if (!e) return; const c = ct.cls;
-  e.innerHTML = c ? `<b>${esc(c.klasif)}</b><span class="ct-n n${c.n}">N${c.n}</span>${c.dyn ? '<span class="ct-n" style="background:#8e5bd6">dynamická indikace</span>' : ''}<span class="ct-note">${esc(c.priznaky.map(CT_SPIDER.strip).slice(0, 8).join(', '))}${c.priznaky.length > 8 ? '…' : ''}</span>` : '<span class="ct-note">Zatím neklasifikováno – otevři pavouka.</span>';
+  e.innerHTML = c ? `<b>${esc(c.klasif)}</b><span class="ct-n n${c.n}">N${c.n}</span>${c.dyn ? '<span class="ct-n" style="background:#e0369f">dynamická indikace</span>' : ''}${c.cihla ? `<span class="ct-note">posádka: <b>${esc(c.crew || '–')}</b></span><span class="ct-note">${esc((c.lines || []).join(' · ').slice(0, 160))}</span>` : `<span class="ct-note">${esc(c.priznaky.map(CT_SPIDER.strip).slice(0, 8).join(', '))}${c.priznaky.length > 8 ? '…' : ''}</span>`}` : '<span class="ct-note">Zatím neklasifikováno – otevři pavouka.</span>';
 }
 
 // ---------- pavouk (okno) ----------
@@ -510,6 +515,7 @@ function ctSpiderOpen() {
 function ctSpiderRender() {
   const e = $('ct-spider'); if (!e) return;
   const sp = ctSpiderInst(), ans = ct.sp.ans, p = sp.page(ans);
+  if (sp.cihly) { e.innerHTML = ctCihlyHtml(sp, ans, p); return; }
   const crumbs = ans.length ? `<div class="sp-crumbs">${ans.map((a, i) => `<span role="button" data-act="ct-sp-crumb" data-i="${i}" style="cursor:pointer">${esc(a === '__skip' ? 'nevím' : a === '__none' ? 'žádné' : CT_SPIDER.strip(a))}</span>`).join('')}</div>` : '';
   let h = crumbs;
   if (p.step === 'vysledek') {
@@ -539,6 +545,13 @@ function ctSpiderRender() {
 function ctSpAnswer(a) { ct.sp.ans.push(a); ct.sp.n = null; ct.sp.dyn = null; ctSpiderRender(); }
 function ctSpUse() {
   const r = ctSpiderInst().result(ct.sp.ans); if (!r || !ct.call) return;
+  if (r.cihla) {
+    if (r.planovane) { toast('N4 (plánované převozy, technické jízdy) se z příjmu hovoru neodesílá.', 'warn'); return; }
+    ct.cls = { klasif: r.klasif, n: r.n, dyn: r.dyn, priznaky: [], cihla: true, crew: r.crew, kind: r.kind, cmp: r.cmp, lines: r.lines, nSuggested: r.n };
+    ctClsHtml(); toast('Klasifikace předána do nabírání: ' + r.klasif + ', N' + r.n + (r.dyn ? ' (dynamická indikace)' : ''), '');
+    if (layoutDesktop()) { document.body.classList.add('ct-spider-off'); layoutApply(true); } else { view = 'intake'; }
+    render(); return;
+  }
   const n = ct.sp.n || r.n, dyn = ct.sp.dyn == null ? r.dyn : ct.sp.dyn;
   ct.cls = { klasif: r.klasif, n, dyn, priznaky: r.symptoms.filter(s => !/DYNAMICKÁ INDIKACE/i.test(s)).concat(dyn ? ['DYNAMICKÁ INDIKACE'] : []), nSuggested: r.n };
   for (const [k, id] of [['PČR', 'ctf-agPcr'], ['HZS', 'ctf-agHzs']]) { const e = $(id); if (e && ct.cls.priznaky.some(x => new RegExp(k, 'i').test(x))) e.checked = true; }
@@ -603,6 +616,108 @@ async function ctAnalyza() {
 }
 function ctDownload(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); }
 
+// ---------- adresa: obec, ulice, číslo popisné s našeptávačem ----------
+const CT_ADDR_F = ['ctf-obec', 'ctf-ulice', 'ctf-cp'];
+const ctNk = x => String(x == null ? '' : x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9/ ]+/g, ' ').replace(/\s+/g, ' ').trim();
+let ctAx = null;
+// index z ZOS_ADDR: obec → ulice → čísla (staví se líně při prvním psaní)
+function ctAddrIndex() {
+  if (ctAx) return ctAx; const A = window.ZOS_ADDR; if (!A) return null;
+  const a = A.a, S = A.s, towns = new Map();
+  for (let i = 0; i < a.length; i += 8) {
+    const city = S[a[i + 3]], st = S[a[i + 2]], num = S[a[i + 4]], key = st && st !== city ? st : '';
+    let T = towns.get(city); if (!T) towns.set(city, T = { n: city, nk: ctNk(city), c: 0, streets: new Map() });
+    T.c++; let ss = T.streets.get(key); if (!ss) T.streets.set(key, ss = { n: key, nk: ctNk(key), nums: new Set(), c: 0 });
+    ss.nums.add(num); ss.c++;
+  }
+  const list = [...towns.values()];
+  return (ctAx = { towns: list, byNk: new Map(list.map(t => [t.nk, t])) });
+}
+function ctAddrSync() {
+  const o = ctVal('ctf-obec'), u = ctVal('ctf-ulice'), n = ctVal('ctf-cp');
+  const left = u ? u + (n ? ' ' + n : '') : n ? 'čp. ' + n : '';
+  ctSet('ctf-adresa', ct.okoli && !u && !n && o ? 'okolí obce ' + o : [left, o].filter(Boolean).join(', '));
+}
+function ctSetAddr(p) { ctSet('ctf-obec', p.obec || ''); ctSet('ctf-ulice', p.ulice || ''); ctSet('ctf-cp', p.cp || ''); ct.okoli = !!p.okoli; ctAddrSync(); }
+// „Ulice 12, Obec“ / „čp. 12, Obec“ / „okolí obce Obec“ → tři pole
+function ctAddrFromText(t) {
+  t = String(t || '').trim(); const ok = t.match(/^okolí obce\s+(.+)$/i); if (ok) { ctSetAddr({ obec: ok[1].trim(), okoli: true }); return; }
+  const parts = t.split(',').map(x => x.trim()).filter(Boolean), city = parts.length > 1 ? parts[parts.length - 1] : '', left = parts[0] || '';
+  const cp = left.match(/^č\.?\s*p\.?\s*(\S+)$/i), m = left.match(/^(.*?)\s*(\d+[A-Za-z]?(?:\/\d+[A-Za-z]?)?)$/);
+  if (!city) { ctSetAddr({ obec: left }); return; }
+  ctSetAddr(cp ? { obec: city, cp: cp[1] } : m ? { obec: city, ulice: m[1].replace(/\s*č\.?\s*p\.?$/i, '').trim(), cp: m[2] } : { obec: city, ulice: left });
+}
+function ctSugList(field) {
+  const ix = ctAddrIndex(); if (!ix) return [];
+  const q = ctNk(ctVal('ctf-' + field)), town = ix.byNk.get(ctNk(ctVal('ctf-obec')));
+  const rank = nk => (nk.startsWith(q) ? 0 : nk.split(' ').some(w => w.startsWith(q)) ? 1 : nk.includes(q) ? 2 : -1);
+  const out = [];
+  if (field === 'obec') {
+    if (q) for (const t of ix.towns) { const r = rank(t.nk); if (r >= 0) out.push({ r, c: t.c, label: t.n, v: t.n }); }
+  } else if (field === 'ulice') {
+    for (const t of town ? [town] : q.length >= 2 ? ix.towns : []) for (const st of t.streets.values()) {
+      if (!st.n) continue; const r = q ? rank(st.nk) : 0; if (r >= 0) out.push({ r, c: st.c, label: st.n, sub: town ? '' : t.n, v: st.n, town: t.n });
+    }
+  } else if (town) {
+    const un = ctNk(ctVal('ctf-ulice')), st = un ? [...town.streets.values()].find(x => x.nk === un) : town.streets.get('');
+    if (st) for (const nm of st.nums) { if (!q || ctNk(nm).startsWith(q)) out.push({ r: 0, c: 0, label: nm, v: nm }); }
+    out.sort((x, y) => (parseInt(x.label, 10) || 0) - (parseInt(y.label, 10) || 0) || x.label.localeCompare(y.label, 'cs'));
+    return out;
+  }
+  return out.sort((x, y) => x.r - y.r || y.c - x.c || x.label.localeCompare(y.label, 'cs'));
+}
+function ctSugMark() { const box = ct.sug && $('ct-sug-' + ct.sug.f); if (box) [...box.children].forEach((e, i) => e.classList.toggle('on', i === ct.sug.i)); }
+function ctSugShow(field) {
+  ctSugHide(); const box = $('ct-sug-' + field); if (!box) return;
+  const list = ctSugList(field).slice(0, 8);
+  ct.sug = { f: field, items: list, i: -1 };
+  box.innerHTML = list.map((x, i) => `<div class="ct-si" data-act="ct-sug" data-f="${field}" data-i="${i}">${esc(x.label)}${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</div>`).join('');
+  box.hidden = !list.length;
+}
+function ctSugHide() { for (const f of ['obec', 'ulice', 'cp']) { const b = $('ct-sug-' + f); if (b) b.hidden = true; } ct.sug = null; }
+function ctSugPick(field, i) {
+  const x = ct.sug && ct.sug.f === field ? ct.sug.items[i] : null; if (!x) return;
+  ctSet('ctf-' + field, x.v); if (field === 'ulice' && x.town) ctSet('ctf-obec', x.town);
+  ct.addrAuto = false; ct.okoli = false; ctSugHide(); ctAddrSync();
+  if (field === 'cp') { ctFind(); return; }
+  const nx = $(field === 'obec' ? 'ctf-ulice' : 'ctf-cp'); if (nx) nx.focus();
+}
+
+// ---------- pavouk z cihliček ----------
+const ctCrumb = (sp, a) => { const t = sp.T.get(a), b = sp.B.get(a); return t ? t.label : b ? b.klasif + ' N' + b.n : String(a); };
+function ctBrickHtml(t, big) {
+  const tag = (t.cmp ? ' CMP' : '') + (t.dyn ? ' · DI' : '');
+  return `<span class="sp-bhead"><b class="sp-nb">N${t.n}${tag}</b><span class="sp-crew">${esc(t.crew || '')}</span><span class="sp-bk">${esc(t.label)}</span></span><span class="sp-lines">${t.lines.map(l => `<span>${esc(l)}</span>`).join('')}</span>`;
+}
+function ctCihlyHtml(sp, ans, p) {
+  const crumbs = ans.length ? `<div class="sp-crumbs">${ans.map((a, i) => `<span role="button" data-act="ct-sp-crumb" data-i="${i}" style="cursor:pointer">${esc(ctCrumb(sp, a))}</span>`).join('')}</div>` : '';
+  const leg = '<div class="sp-leg">' + ['n1', 'n2', 'n2di', 'n3', 'n4'].map(k => `<span class="sp-kind ${k}"><i class="sp-dot"></i>${esc(sp.KIND_LAB[k])}</span>`).join('') + '</div>';
+  const back = '<div class="sp-act"><button class="btn" data-act="ct-sp-back">‹ Zpět</button><button class="btn" data-act="ct-sp-reset">Znovu</button></div>';
+  let h = crumbs;
+  if (p.step === 'indikace') {
+    h += `<div class="sp-title">${esc(p.title)} <small class="ct-note">vyber stav nebo děj, potom cihlu podle toho, co volající říká</small></div>${leg}<div class="sp-tiles">`;
+    let sh = null, g = null;
+    for (const t of p.tiles) {
+      if (t.sheet !== sh) { sh = t.sheet; g = null; h += `<div class="sp-sheet">${esc(t.sheetLabel)}</div>`; }
+      if (t.group !== t.sheetLabel && t.group !== g) { g = t.group; h += `<div class="sp-grp">${esc(g)}</div>`; }
+      h += `<button class="sp-tile" data-act="ct-sp-tile" data-id="${esc(t.id)}">${esc(t.label)}<span class="sp-dots">${t.kinds.map(k => `<span class="sp-kind ${k}"><i class="sp-dot"></i></span>`).join('')}</span></button>`;
+    }
+    return h + '</div>';
+  }
+  if (p.step === 'cihly') {
+    h += `<div class="sp-title">${esc(p.title)} <small class="ct-note">klikni na cihlu, která odpovídá hovoru</small></div>${leg}`;
+    for (const x of p.poznamky || []) h += `<div class="ct-note" style="padding:0 12px 4px">ⓘ ${esc(x)}</div>`;
+    h += '<div class="sp-bricks">' + p.tiles.map(t => `<button class="sp-brick ${t.kind}" data-act="ct-sp-tile" data-id="${esc(t.id)}">${ctBrickHtml(t)}</button>`).join('') + '</div>';
+    if (p.doprovod) h += `<details class="sp-dopr"><summary>${esc(p.doprovod.titul)}</summary><ul>${p.doprovod.polozky.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${p.doprovod.poznamky.map(x => `<p class="ct-note">${esc(x)}</p>`).join('')}</details>`;
+    return h + back;
+  }
+  const r = sp.result(ans);
+  h += `<div class="sp-res"><div class="sp-brick big ${r.kind}">${ctBrickHtml({ n: r.n, cmp: r.cmp, dyn: r.dyn, crew: r.crew, label: r.klasifExcel, lines: r.lines })}</div>
+    <div class="ct-note" style="margin-top:6px">${r.dyn ? 'Dynamická indikace: jede RZP bez lékaře, na místě rozhodne o lékaři.' : r.n === 1 ? 'N1: vždy lékař a nejbližší RZP.' : ''}${r.planovane ? ' N4 se z příjmu hovoru neodesílá.' : ''}</div></div>
+    <div class="sp-act"><button class="btn pri" data-act="ct-sp-use"${ct.call && !r.planovane ? '' : ' disabled'}>Použít do výzvy</button><button class="btn" data-act="ct-sp-back">‹ Zpět</button><button class="btn" data-act="ct-sp-reset">Znovu</button></div>${ct.call ? '' : '<p class="ct-note" style="padding:0 12px">Bez hovoru se pavouk jen prohlíží; do výzvy ho jde použít za hovoru.</p>'}`;
+  return h;
+}
+
 // ---------- akce ----------
 function ctTab(t) {
   ct.tab = t;
@@ -633,6 +748,7 @@ function ctAct(a, el) {
     case 'ct-say': ctSay(); break;
     case 'ct-use-aml': ctUseAml(); break;
     case 'ct-find': ctFind(); break;
+    case 'ct-sug': ctSugPick(d.f, Number(d.i)); break;
     case 'ct-spider-open': ctSpiderOpen(); break;
     case 'ct-spider-close': document.body.classList.add('ct-spider-off'); layoutApply(true); break;
     case 'ct-disp-toggle': cts.disp = !cts.disp; ctSaveSettings(); ctSync(); layoutApply(true); ct.phoneKey = ''; break;
@@ -651,8 +767,16 @@ function ctAct(a, el) {
   }
 }
 document.addEventListener('change', ev => { const t = ev.target; if (t && t.id === 'ct-sp-dyn') { ct.sp.dyn = t.checked; ctSpiderRender(); } });
-document.addEventListener('input', ev => { const t = ev.target; if (t && t.id === 'ctf-adresa') ct.addrAuto = false; });
-document.addEventListener('keydown', ev => { const t = ev.target; if (ev.key === 'Enter' && t) { if (t.id === 'ctf-adresa') { ev.preventDefault(); ctFind(); } else if (t.id === 'ct-say') { ev.preventDefault(); ctSay(); } } });
+document.addEventListener('input', ev => { const t = ev.target; if (t && CT_ADDR_F.includes(t.id)) { ct.addrAuto = false; ct.okoli = false; ctAddrSync(); ctSugShow(t.id.slice(4)); } });
+document.addEventListener('focusin', ev => { const t = ev.target; if (t && CT_ADDR_F.includes(t.id) && ctModeOn()) ctSugShow(t.id.slice(4)); });
+document.addEventListener('focusout', ev => { const t = ev.target; if (t && CT_ADDR_F.includes(t.id)) setTimeout(() => { if (!document.activeElement || !CT_ADDR_F.includes(document.activeElement.id)) ctSugHide(); }, 180); });
+document.addEventListener('mousedown', ev => { if (ev.target.closest && ev.target.closest('.ct-sug')) ev.preventDefault(); });
+document.addEventListener('keydown', ev => {
+  const t = ev.target, sg = ct.sug;
+  if (t && CT_ADDR_F.includes(t.id) && sg && sg.f === t.id.slice(4) && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) { ev.preventDefault(); sg.i = (sg.i + (ev.key === 'ArrowDown' ? 1 : -1) + sg.items.length) % sg.items.length; ctSugMark(); }
+  else if (t && CT_ADDR_F.includes(t.id) && ev.key === 'Escape') ctSugHide();
+});
+document.addEventListener('keydown', ev => { const t = ev.target; if (ev.key === 'Enter' && t) { if (CT_ADDR_F.includes(t.id)) { ev.preventDefault(); const sg = ct.sug; if (sg && sg.f === t.id.slice(4) && sg.i >= 0) ctSugPick(sg.f, sg.i); else if (sg && sg.f === t.id.slice(4) && sg.items.length === 1) ctSugPick(sg.f, 0); else { ctSugHide(); ctFind(); } } else if (t.id === 'ct-say') { ev.preventDefault(); ctSay(); } } });
 document.addEventListener('keydown', ev => {
   if (!ctModeOn() || !ev.altKey || ev.ctrlKey || ev.metaKey) return;
   const m = { KeyZ: 'ct-pickup', Digit1: 'ct-n1', KeyO: 'ct-send', KeyP: 'ct-spider-open', KeyU: 'ct-hangup', KeyD: 'ct-finish', KeyM: 'ct-mute' }[ev.code];

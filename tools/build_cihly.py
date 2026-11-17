@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""Převod skutečného klasifikačního systému ZOS (xlsx s „cihličkami“) do src/cihly.json.
+
+Použití:  python tools/build_cihly.py "cesta/A_1 Klasifikační systém.xlsx" [src/cihly.json]
+
+List = skupina (STAV, DĚJ, OSTATNÍ). Žlutá buňka ve sloupci A = dlaždice indikace (např. DUŠNOST).
+Cihla = sloučená buňka ve sloupci D (naléhavost): řádky textu ze sloupce B, klasifikace (C), naléhavost (D), posádka (E).
+Barva cihly se čte z výplně buňky D: červená N1, modrá N2 (RLP), růžová N2 (DI = dynamická indikace), zelená N3, fialová/šedá N4.
+Soubor obsahuje jen text klasifikace (žádná osobní data). Bez závislostí mimo standardní knihovnu.
+"""
+import json, re, sys, unicodedata, zipfile, xml.etree.ElementTree as ET
+
+NS = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+Q = lambda t: '{%s}%s' % (NS['m'], t)
+
+
+def col_row(ref):
+    m = re.match(r'([A-Z]+)(\d+)$', ref)
+    return m.group(1), int(m.group(2))
+
+
+def load(path):
+    z = zipfile.ZipFile(path)
+    ss = [''.join(t.text or '' for t in si.iter(Q('t'))) for si in ET.fromstring(z.read('xl/sharedStrings.xml'))]
+    st = ET.fromstring(z.read('xl/styles.xml'))
+    fills = []
+    for f in st.find('m:fills', NS):
+        pf = f.find('m:patternFill', NS)
+        fg = pf.find('m:fgColor', NS) if pf is not None else None
+        fills.append('' if fg is None else (fg.get('rgb') or 'theme%s/%s' % (fg.get('theme'), (fg.get('tint') or '')[:5])))
+    xfs = [int(x.get('fillId', 0)) for x in st.find('m:cellXfs', NS)]
+    wb = ET.fromstring(z.read('xl/workbook.xml'))
+    names = [s.get('name') for s in wb.find('m:sheets', NS)]
+    sheets = []
+    for i, nm in enumerate(names, 1):
+        root = ET.fromstring(z.read('xl/worksheets/sheet%d.xml' % i))
+        cells, merges = {}, []
+        for c in root.iter(Q('c')):
+            v = c.find('m:v', NS)
+            col, row = col_row(c.get('r'))
+            fill = fills[xfs[int(c.get('s', 0))]]
+            val = None
+            if v is not None:
+                val = ss[int(v.text)] if c.get('t') == 's' else v.text
+            cells[(col, row)] = (val, fill)
+        for mc in root.iter(Q('mergeCell')):
+            a, b = mc.get('ref').split(':')
+            (c1, r1), (c2, r2) = col_row(a), col_row(b)
+            merges.append((c1, r1, c2, r2))
+        sheets.append((nm, cells, merges))
+    return sheets
+
+
+def slug(s):
+    s = unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode().lower()
+    return re.sub(r'[^a-z0-9]+', '-', s).strip('-')
+
+
+def clean(s):
+    return re.sub(r'\s+', ' ', (s or '').replace('\xa0', ' ')).strip()
+
+
+def join_lines(lines):
+    """Zalomené fragmenty (malé písmeno nebo „(“ na začátku) se spojí, samostatná kritéria zůstanou zvlášť."""
+    out = []
+    for ln in lines:
+        ln = clean(ln)
+        if not ln:
+            continue
+        cont = out and (ln[0].islower() or (ln[0] == '(' and not ln.upper().startswith('(NEBO')))
+        if cont:
+            out[-1] += ' ' + ln
+        else:
+            out.append(ln)
+    return out
+
+
+def pretty(s):
+    """VELKÁ PÍSMENA z tabulky → čitelný název (zkratky zůstávají)."""
+    s = clean(s)
+    fixed = {'ZVR/PRŮ': 'Zvracení / průjem', 'ZVRACENÍ/ PRŮJEM': 'Zvracení / průjem', 'BB': 'Babybox', 'BABYBOX': 'Babybox', 'VNN': 'Vysoce nebezpečná nákaza (VNN)',
+             'JINÉ': 'Jiné', 'VSTŘ. JÍZDA': 'Vstřícná jízda', 'MU - MATRA 722': 'MU – MATRA 722', 'NZO - spatřená': 'NZO – spatřená', 'SEKUNDÁRNÍ PŘEVOZ': 'Sekundární převoz'}
+    if s in fixed:
+        return fixed[s]
+    keep = {'CMP', 'CZS', 'NZO', 'MU', 'MATRA', 'ZOS', 'VNN', 'PČR'}
+    if s.upper() == s:
+        w = [x if x in keep else x.lower() for x in re.split(r'(\s+|,)', s)]
+        r = ''.join(w)
+        return r[:1].upper() + r[1:]
+    return s
+
+
+def fill_kind(fill, n, crew):
+    if fill == 'FFFF0000':
+        return 'n1'
+    if fill == 'FFF73BB8' or crew == 'DI':
+        return 'n2di'
+    if fill == 'FF0070C0':
+        return 'n2'
+    if fill == 'FF00B050':
+        return 'n3'
+    return 'n4'
+
+
+def build(path):
+    sheets = load(path)
+    GR = {'dej': 'Děj, mechanismus', 'stav': 'Stav pacienta', 'ostatni': 'Ostatní (převoz, jízdy, asistence)'}
+    sheet_key = {'STAV': 'stav', 'DĚJ': 'dej', 'OSTATNÍ': 'ostatni'}
+    tiles, bricks, order = [], [], []
+    for nm, cells, merges in sheets:
+        key = sheet_key.get(nm, sheet_key.get(nm.upper()))
+        if key is None:
+            # názvy mohou být v jiném kódování – pořadí listů STAV, DĚJ, OSTATNÍ
+            key = ['stav', 'dej', 'ostatni'][[s[0] for s in sheets].index(nm)]
+        mrange = {}
+        for (c1, r1, c2, r2) in merges:
+            for r in range(r1, r2 + 1):
+                for c in range(ord(c1), ord(c2) + 1):
+                    mrange[(chr(c), r)] = (c1, r1, c2, r2)
+
+        def val(col, row):
+            tl = mrange.get((col, row))
+            if tl:
+                return cells.get((tl[0], tl[1]), (None, ''))[0]
+            return cells.get((col, row), (None, ''))[0]
+
+        maxr = max(r for (_, r) in cells)
+        # hlavičky a dlaždice
+        gray = None
+        tile_rows = []   # (první řádek, název, šedá hlavička)
+        for r in range(1, maxr + 1):
+            v, f = cells.get(('A', r), (None, ''))
+            if v and f.startswith('theme0/-0.24') and r > 4:
+                gray = clean(v)
+            elif v and f == 'FFFFFF00' and r > 4 and clean(v) not in ('Popis',):
+                tile_rows.append((r, clean(v), gray))
+        # sloučené žluté A buňky bez textu (např. ASISTENCE) použijí šedou hlavičku
+        for (c1, r1, c2, r2) in merges:
+            if c1 == 'A' and c2 == 'A' and r2 > r1 and not cells.get(('A', r1), (None, ''))[0] and r1 > 4 and any(('D', r) in cells and cells[('D', r)][0] for r in range(r1, r2 + 1)):
+                g = None
+                for r in range(r1, 0, -1):
+                    v, f = cells.get(('A', r), (None, ''))
+                    if v and f.startswith('theme0/-0.24'):
+                        g = clean(v)
+                        break
+                tile_rows.append((r1, g or '', g))
+        tile_rows.sort()
+        # počet dlaždic pod jednou šedou hlavičkou
+        by_gray = {}
+        for _, t, g in tile_rows:
+            by_gray.setdefault(g, []).append(t)
+
+        def tile_for(row):
+            cur = None
+            for r, t, g in tile_rows:
+                if r <= row:
+                    cur = (t, g)
+            return cur
+
+        for r, t, g in tile_rows:
+            label = pretty(t)
+            tid = key + ':' + slug(label)
+            skup = pretty(g) if g and len(by_gray.get(g, [])) > 1 else GR[key]
+            if not any(x['id'] == tid for x in tiles):
+                tiles.append({'id': tid, 'label': label, 'sheet': key, 'skupina': skup, 'poznamky': []})
+        tid_of = lambda t: key + ':' + slug(pretty(t))
+        # cihly = hodnoty ve sloupci D (řádky 1–4 jsou hlavička)
+        for r in range(5, maxr + 1):
+            if ('D', r) not in cells or not cells[('D', r)][0]:
+                continue
+            tl = mrange.get(('D', r))
+            if tl and tl[1] != r:
+                continue
+            r2 = tl[3] if tl else r
+            raw = clean(cells[('D', r)][0])
+            m = re.match(r'N\s*([1-4])\s*(.*)$', raw)
+            if not m:
+                continue
+            n, extra = int(m.group(1)), m.group(2)
+            crew = clean(val('E', r)) or ''
+            kl = clean(val('C', r)) or ''
+            lines = []
+            for rr in range(r, r2 + 1):
+                if mrange.get(('B', rr)) and mrange[('B', rr)][2] == 'E':
+                    continue
+                v = cells.get(('B', rr), (None, ''))[0]
+                if v:
+                    lines.append(v)
+            tt = tile_for(r)
+            if not tt:
+                continue
+            kind = fill_kind(cells[('D', r)][1], n, crew)
+            bricks.append({'id': 'c%03d' % (len(bricks) + 1), 'tile': tid_of(tt[0]), 'klasif': pretty(kl) if kl else pretty(tt[0]), 'n': n, 'cmp': 'CMP' in extra.upper(),
+                           'dyn': crew == 'DI', 'crew': crew, 'kind': kind, 'lines': join_lines(lines) or ['Bez doplňujícího popisu v tabulce']})
+        # poznámky přes celý řádek (B:E sloučené, bez D)
+        for (c1, r1, c2, r2) in merges:
+            if c1 == 'B' and c2 == 'E' and r1 == r2 and r1 > 4:
+                v = clean(cells.get(('B', r1), (None, ''))[0])
+                tt = tile_for(r1)
+                if v and tt and not (('D', r1) in cells and cells[('D', r1)][0]):
+                    for t in tiles:
+                        if t['id'] == tid_of(tt[0]) and v not in t['poznamky']:
+                            t['poznamky'].append(v)
+        # list OSTATNÍ: indikace lékařského doprovodu u sekundárního převozu
+        if key == 'ostatni':
+            items, notes = [], []
+            for r in range(20, 40):
+                a = clean(cells.get(('A', r), (None, ''))[0])
+                b = clean(cells.get(('B', r), (None, ''))[0])
+                if a == 'RLP' and b:
+                    items.append(b)
+                elif b and r > 32:
+                    notes.append(b)
+            if items:
+                for t in tiles:
+                    if t['id'].startswith('ostatni:') and 'prevoz' in t['id']:
+                        t['doprovod'] = {'titul': 'Indikace lékařského doprovodu – posádka RLP či RV+RZP', 'polozky': items, 'poznamky': join_lines(notes)}
+    for t in tiles:
+        t['bricks'] = [b['id'] for b in bricks if b['tile'] == t['id']]
+        if not t['poznamky']:
+            del t['poznamky']
+    tiles = [t for t in tiles if t['bricks']]
+    return {'format': 'zos-cihly/1', 'skupiny': [{'id': k, 'label': v} for k, v in GR.items()][::-1] if False else [{'id': 'stav', 'label': GR['stav']}, {'id': 'dej', 'label': GR['dej']}, {'id': 'ostatni', 'label': GR['ostatni']}], 'tiles': tiles, 'bricks': bricks}
+
+
+if __name__ == '__main__':
+    src = sys.argv[1]
+    out = sys.argv[2] if len(sys.argv) > 2 else 'src/cihly.json'
+    d = build(src)
+    with open(out, 'w', encoding='utf-8') as f:
+        json.dump(d, f, ensure_ascii=False, indent=1)
+    print('dlaždic:', len(d['tiles']), 'cihel:', len(d['bricks']), '->', out)

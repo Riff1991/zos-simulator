@@ -261,4 +261,22 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   ok(m('vietnamsky', { place: 'večerka u nádraží' }) >= 8 && m('ukrajinsky', { place: 'stavba, ubytovna dělníků' }) >= 4 && m('rakousky', { town: 'Kaplice' }) >= 8 && m('nemecky', { town: 'Horní Planá', place: 'penzion' }) >= 4, 'místo ovlivňuje výskyt (večerka, ubytovna, pohraničí, penzion)');
   ok(m('vietnamsky') === 1 && m('rakousky') === 1, 'bez kontextu žádné zvýhodnění (není to pravidlo)');
 }
+{ // hovor bere calltaker: žádný kanál 112/150/158, žádné červené datové zprávy ani „nabírá se“; PČR/HZS si volá calltaker
+  let n = 0, bad = 0, agOk = 0, agTot = 0;
+  for (let sd = 1; sd <= 400 && n < 25; sd++) {
+    const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if (t.phase !== 'dz') continue; n++;
+    const sim = new Sim({ seed: 5, mode: 'free' }), c = sim.addCallCase({ v: 1, seed: sd, form: { adresa: t.addr, n: String(t.n) }, sec: 100 });
+    if (c.phase === 'dz' || (c.radioReports || []).some(r => /^dz/.test(r.id)) || /Linka 15[08]|eCall|TCTV/i.test(c.src || '')) bad++;
+    const want = Object.keys(t.agencies || {}); if (want.length) { agTot++; if (want.every(k => c.call.truth.agNeed.includes(k))) agOk++; }
+  }
+  ok(n >= 10 && bad === 0, 'případ z hovoru nemá datové zprávy ani kanál 112/150/158 (' + n + ' případů, chyb ' + bad + ')');
+  ok(agOk === agTot, 'PČR/HZS z datové zprávy se stávají povinností calltakera (truth.agNeed): ' + agOk + '/' + agTot);
+}
+{ // klasifikace z pavouka: ekvivalenty názvů
+  const sim = new Sim({ seed: 9, mode: 'free' }), truth0 = { klasif: 'Resuscitace', symptoms: [], age: 50, n: 1, patient: '', caller: '' };
+  const c1 = sim._ctCheck({ klasif: 'NZO - spatřená', n: '1', cihla: true }, truth0, { typedN: 1, errM: 0, tol: 60 });
+  ok(c1.klasif.ok && c1.priznaky.jaccard === 1, 'NZO – spatřená z cihličky odpovídá klasifikaci Resuscitace');
+  const c2 = sim._ctCheck({ klasif: 'Dušnost', n: '1', cihla: true }, truth0, { typedN: 1, errM: 0, tol: 60 });
+  ok(!c2.klasif.ok && c2.priznaky.jaccard === 0, 'jiná klasifikace u resuscitace je chyba');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

@@ -11,6 +11,9 @@ const CT_TOL = { dum: 60, poi: 120, silnice: 200 };
 const ctRng = seed => { let a = (Number(seed) >>> 0) ^ 0x9e3779b9; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
 const ctShift = (lat, lon, d, ang) => ({ lat: lat + d * Math.cos(ang) / 111320, lon: lon + d * Math.sin(ang) / (111320 * Math.cos(lat * Math.PI / 180)) });
 const ctJaccard = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size && !B.size) return 1; let i = 0; for (const x of A) if (B.has(x)) i++; return i / (A.size + B.size - i); };
+// klasifikace zadaná podle pavouka x klasifikace generátoru: stejný název, nebo ekvivalent (v tabulce není Resuscitace, Pediatrické stavy ani Amputace jako samostatná klasifikace)
+const CT_KLASIF_ALIAS = { resuscitace: ['nzo spatrena', 'porucha vedomi'], 'pediatricke stavy': '*', amputace: ['trauma', 'dopravni nehoda'] };
+function ctKlasifOk(typed, truth) { const a = ctNorm(typed), b = ctNorm(truth); if (!a || a === b) return true; const al = CT_KLASIF_ALIAS[b]; return al === '*' || (Array.isArray(al) && al.includes(a)); }
 const ctSymNorm = x => ctNorm(String(x).replace(/^[^A-Za-zÀ-ž0-9]+/, ''));
 // hovory, které nevyžadují výjezd: calltaker má poradit nebo ukončit, vyslání posádky je chyba
 const CT_BEZ = [
@@ -155,10 +158,10 @@ class SimCalltaker {
     const tolAge = truth.age < 15 ? 1 : Math.max(3, Math.round(truth.age * 0.1));
     const typedSym = ctNoDyn(f.priznaky).map(ctSymNorm).filter(Boolean), trueSym = ctNoDyn(truth.symptoms).map(ctSymNorm);
     return {
-      klasif: { ok: !f.klasif || f.klasif === truth.klasif, typed: f.klasif || '', truth: truth.klasif },
+      klasif: { ok: ctKlasifOk(f.klasif, truth.klasif), typed: f.klasif || '', truth: truth.klasif },
       n: { ok: call.typedN === truth.n, typed: call.typedN, truth: truth.n },
       dyn: { ok: f.dyn == null || !!f.dyn === !!truth.dyn, typed: f.dyn == null ? null : !!f.dyn, truth: !!truth.dyn },
-      priznaky: { jaccard: +ctJaccard(typedSym, trueSym).toFixed(2), typed: (f.priznaky || []).length, truth: trueSym.length },
+      priznaky: f.cihla ? { jaccard: ctKlasifOk(f.klasif, truth.klasif) ? 1 : 0, typed: 0, truth: trueSym.length, cihla: true } : { jaccard: +ctJaccard(typedSym, trueSym).toFixed(2), typed: (f.priznaky || []).length, truth: trueSym.length },
       vek: { ok: age == null ? null : Math.abs(age - truth.age) <= tolAge, typed: age, truth: truth.age },
       jmena: { pacient: f.pJmeno || f.pPrijmeni ? same(f.pJmeno, tp.j) && same(f.pPrijmeni, tp.p) : null, volajici: f.vJmeno || f.vPrijmeni ? same(f.vJmeno, tcl.j) && same(f.vPrijmeni, tcl.p) : null },
       bodM: call.errM, tol: call.tol, aml: f.zdroj === 'AML', zdroj: f.zdroj || (f.bod ? 'mapa' : 'adresa'),
@@ -196,15 +199,20 @@ class SimCalltaker {
     const temp = new this.constructor({ seed: h.seed, mode: 'free' }), tc = temp._spawn(), dt = t - temp.s.t;
     const o = JSON.parse(JSON.stringify(tc));
     for (const k of CT_RUNTIME) delete o[k];
+    // hovor bere calltaker: případ nejde linkou 112/150/158, nejsou datové zprávy ani „nabírá se“ a složky (PČR/HZS) si volá calltaker v nabírání
     const needAg = (o.agNeed || []).slice(); o.agNeed = null;
+    for (const k of Object.keys(o.agencies || {})) if (!needAg.includes(k)) needAg.push(k);
+    delete o.agencies; o.phase = 'intake'; o.dzUntil = null;
+    o.radioReports = (o.radioReports || []).filter(r => !/^dz/.test(String(r.id)));
+    if (/Linka 15[08]|eCall|TCTV/i.test(String(o.src || ''))) o.src = 'Linka 155';
     { const fo0 = this._ctForeign(h.seed, tc); if (fo0) o.ozn = fo0.jmeno; }
     if (Array.isArray(o.radioReports)) for (const r of o.radioReports) if (r.at != null) r.at += dt;
     if (o.wakeAt != null) o.wakeAt += dt;
-    const truth = { addr: tc.addr, lat: tc.lat, lon: tc.lon, n: tc.n, klasif: tc.klasif, rvNeed: !!tc.rvNeed, agNeed: (tc.agNeed || []).slice(), pocet: tc.patientCount || 1, where: tc.where, dyn: !!tc.dyn, age: tc.age, sex: tc.sex, symptoms: (tc.symptoms || []).slice(), patient: tc.patientName, caller: (this._ctForeign(h.seed, tc) || {}).jmeno || tc.ozn };
+    const truth = { addr: tc.addr, lat: tc.lat, lon: tc.lon, n: tc.n, klasif: tc.klasif, rvNeed: !!tc.rvNeed, agNeed: needAg.slice(), pocet: tc.patientCount || 1, where: tc.where, dyn: !!tc.dyn, age: tc.age, sex: tc.sex, symptoms: (tc.symptoms || []).slice(), patient: tc.patientName, caller: (this._ctForeign(h.seed, tc) || {}).jmeno || tc.ozn };
     const typedN = this._ctN(f.n, tc.n), loc = this._ctLocate(f.adresa, tc, f.bod), baseNote = o.poznamka || '', note = this._ctNote(f);
     o.n = typedN; o.intake = 0; o.addr = loc.typed;
     if (loc.geo && loc.miss) { o.lat = loc.geo.lat; o.lon = loc.geo.lon; }
-    if (f.klasif && f.klasif !== tc.klasif) o.klasifZadana = String(f.klasif);
+    if (f.klasif && !ctKlasifOk(f.klasif, tc.klasif)) o.klasifZadana = String(f.klasif);
     if (note) o.poznamka = (baseNote ? baseNote + '; ' : '') + note;
     const c = this._newCase(o);
     c.src = c.src || 'Linka 155';
@@ -280,7 +288,7 @@ class SimCalltaker {
     if (n !== c.n) { this.L('case', `${c.num}: calltaker mění naléhavost N${c.n} → N${n}`, c.id); c.n = n; c.call.typedN = n; c.call.updates++; }
     const note = this._ctNote(f);
     if (f.poznamka != null || f.popis != null || f.upresneni != null) if (note !== c.call.note) { c.call.note = note; c.poznamka = (c.call.baseNote ? c.call.baseNote + '; ' : '') + note; this.L('case', `${c.num}: doplněna poznámka od calltakera`, c.id); c.call.updates++; }
-    if (f.klasif) { c.klasifZadana = f.klasif === c.call.truth.klasif ? null : String(f.klasif); c.call.klasifOk = f.klasif === c.call.truth.klasif; }
+    if (f.klasif) { const kOk = ctKlasifOk(f.klasif, c.call.truth.klasif); c.klasifZadana = kOk ? null : String(f.klasif); c.call.klasifOk = kOk; }
     const sig = JSON.stringify([this._ctStr(f.adresa), f.bod ? [f.bod.lat, f.bod.lon] : null]);
     if (c.call.sig == null) c.call.sig = JSON.stringify([c.call.form && this._ctStr(c.call.form.adresa), c.call.form && c.call.form.bod ? [c.call.form.bod.lat, c.call.form.bod.lon] : null]);
     if ((f.adresa || f.bod) && sig !== c.call.sig) {

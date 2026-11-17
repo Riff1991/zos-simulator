@@ -30,7 +30,7 @@ const SLOVNIK = {
   senior3: 'jednoduché zdvořilé věty („prosím vás“, „pane“), nářečně („voni“, „dyť“), pletou se ti časy, dny i jména, občas se ptáš „co jste řekl?“',
 };
 const PROSTREDI = {
-  doma: ['doma je ticho', 'doma je zapnutá televize a musíš ji ztlumit', 'doma štěká pes', 'v pozadí křičí děti', 'v pozadí hraje rádio', 'telefon máš na hlasitý odposlech a hlas zní vzdáleně'],
+  doma: ['doma je ticho', 'doma štěká pes', 'v pozadí křičí děti', 'v pozadí hraje rádio', 'telefon máš na hlasitý odposlech a hlas zní vzdáleně'],
   venku: ['venku hučí auta, špatně se slyší', 'venku fouká silný vítr', 'prší a je hluk, mluvíš hlasitěji', 'okolo stojí lidé a mluví přes sebe'],
   prace: ['jsi v práci a hučí stroje', 'jsi v kanceláři a okolo je ticho', 'okolo je hluk a lidé volají přes sebe'],
   skola: ['okolo je hluk dětí na chodbě', 'jsi v ředitelně, ticho'],

@@ -121,7 +121,7 @@ nav .badge{background:var(--n1);color:#fff;border-radius:9px;padding:0 6px;margi
   #clock{font-size:18px}
 }
 /* režim calltaker */
-body.ct-mode:not(.ct-disp) #alerts-live{display:none!important}
+body.ct-mode #alerts-live{display:none!important}
 body.ct-mode:not(.ct-disp) .tabs button.waiting-alert{animation:none!important}
 #w-intake,#w-spider{display:none}
 body.ct-mode #w-intake,body.ct-mode #w-spider{display:flex}
@@ -162,6 +162,26 @@ table.ct-t{width:100%;border-collapse:collapse;font-size:12px}table.ct-t td,tabl
 .sp-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:6px 0;background:var(--line)}.sp-bar i{display:block}
 .sp-sym{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}.sp-sym span{background:rgba(47,125,225,.16);border-radius:10px;padding:2px 9px;font-size:12px}.sp-sym span.add{background:rgba(128,140,150,.2)}
 #ct-pick{position:absolute;left:8px;bottom:8px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:4px 8px;font-size:12px;max-width:60%;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.sp-brick{--bc:#7b8794;display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--card);border:1px solid var(--line);border-left:10px solid var(--bc);border-radius:8px;padding:8px 10px;color:var(--ink);cursor:pointer;width:100%;font:inherit}
+.sp-brick:hover,.sp-brick:focus{border-color:var(--bc);outline:none;box-shadow:0 0 0 2px var(--bc)}
+.sp-brick.big{cursor:default;box-shadow:none;font-size:15px}
+.sp-brick.n1,.sp-kind.n1{--bc:#d9342b}.sp-brick.n2,.sp-kind.n2{--bc:#0070c0}.sp-brick.n2di,.sp-kind.n2di{--bc:#e0369f}.sp-brick.n3,.sp-kind.n3{--bc:#14a04e}.sp-brick.n4,.sp-kind.n4{--bc:#7030a0}
+.sp-bhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp-nb{background:var(--bc);color:#fff;font:700 12px var(--mono);border-radius:4px;padding:2px 8px}
+.sp-crew{font:700 12px var(--sans);color:var(--bc)}.sp-bk{font:600 12px var(--sans);color:var(--mut);margin-left:auto}
+.sp-lines{display:flex;flex-direction:column;gap:2px;font-size:13px;font-weight:400;line-height:1.3}
+.sp-bricks{display:flex;flex-direction:column;gap:7px;padding:4px 10px 8px}
+.sp-leg{display:flex;gap:10px;flex-wrap:wrap;padding:0 12px 4px;font-size:11px;color:var(--mut)}
+.sp-kind{--bc:#7b8794;display:inline-flex;gap:4px;align-items:center}.sp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bc)}
+.sp-dots{display:flex;gap:4px;margin-top:6px}
+.sp-sheet{grid-column:1/-1;font:700 12px var(--sans);color:var(--ink);border-bottom:1px solid var(--line);padding:6px 0 2px;margin-top:6px}
+.sp-dopr{margin:4px 12px 8px;font-size:12px}.sp-dopr summary{cursor:pointer;color:var(--mut)}.sp-dopr ul{margin:4px 0;padding-left:18px}
+.ct-addr{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.ct-addr .ac{position:relative;flex:2 1 150px}.ct-addr .ac.sm{flex:1 1 90px}
+.ct-addr .ac label{display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px}
+.ct-addr .btn{margin:0;white-space:nowrap}
+.ct-sug{position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--panel);border:1px solid var(--acc);border-radius:0 0 6px 6px;box-shadow:0 6px 16px rgba(0,0,0,.35);max-height:260px;overflow:auto}
+.ct-si{padding:7px 10px;font-size:14px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;color:var(--ink)}.ct-si small{color:var(--mut);font-size:11px}
+.ct-si:hover,.ct-si.on{background:var(--acc);color:#fff}.ct-si:hover small,.ct-si.on small{color:#e6eef7}
 .ct-mini{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:6px}
 /* tabs */
 .tabs{display:flex;gap:2px;padding:4px 6px 0;background:#d3dbe3;border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -475,7 +495,7 @@ html[data-theme=dark] .st-transport,html[data-theme=dark] .st-handover{backgroun
       <div id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"></svg><div id="maptools"></div><div id="covbar"></div></div></section>
     <section class="win" id="w-radio"><h2>Přehled transportů <small>nemocnice · předání · návrat k dispozici</small></h2><div id="transport-board" class="transport-board"></div><div class="section-cap">Provozní zprávy</div><div class="body log" id="log"></div></section>
     <section class="win" id="w-intake"><h2>Nabírání <small>telefon · formulář</small></h2><div id="ct-phone"></div><div class="tabs" id="ct-tabs"></div><div class="body" id="ct-body"></div></section>
-    <section class="win" id="w-spider"><h2>Pavouk <small>podle dat z výjezdů</small><button class="spider-x" data-act="ct-spider-close" title="Zavřít pavouka">✕</button></h2><div class="body" id="ct-spider"></div></section>
+    <section class="win" id="w-spider"><h2>Pavouk <small>klasifikační systém ZOS</small><button class="spider-x" data-act="ct-spider-close" title="Zavřít pavouka">✕</button></h2><div class="body" id="ct-spider"></div></section>
     <section class="win" id="w-crews"><h2>Přehledový panel posádek</h2><div class="body" id="crews"></div><div class="legend" id="legend"></div><div id="crewpanel" class="panel"></div></section>
   </main>
   <nav id="nav"></nav>
