@@ -311,4 +311,13 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   ok(rqs.length === 2 && rqs.every(r => r.state === 'accepted' || r.state === 'declined'), 'bot vyřídil žádosti sousedního kraje: ' + rqs.map(r => r.state).join(', '));
   ok(!sim.s.log.some(e => /bez odpovědi, žádost zrušena/.test(e.txt)), 'žádná žádost sousedního kraje nezůstala bez odpovědi');
 }
+{ // bot s částečně obsazeným případem (chybí lékař) neposílá další RZP a po 2 min převede N2 na dynamickou indikaci
+  const sim = new Sim({ seed: 51, mode: 'free', startHour: 10 }); sim.enableLiveCalls({ mode: 'training', gapSec: 3600, bot: true, level: 'bezne' });
+  for (const k of sim.s.crews) if (k.type === 'RV' || k.type === 'LZS') k.state = 'off';
+  const c = sim.addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: '2', cihla: true, klasifTabulka: 'Trauma', klasif: truth.klasif, kody: [], posadky: { DI: 0, KOR: 0, LZS: 0, RLP: 0, RV: 1, RZP: 1 } }, sec: 100 });
+  for (let i = 0; i < 400; i++) step(sim);
+  const rzp = c.crews.map(id => sim.crewOf(id)).filter(k => k && k.type === 'RZP').length;
+  ok(rzp === 1, 'bot vyslal jedinou RZP, ne všechny (' + rzp + ')');
+  ok(c.dyn === true && c.status === 'active', 'bez volného lékaře se N2 po 2 min převedla na dynamickou indikaci (' + c.status + ')');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

@@ -430,7 +430,7 @@ console.log('case click moves map camera true');
       { id: 2, kind: 'crew', txt: 'Vstřícná jízda přijata.' },
     ] } }, seenLog: 0,
     isVstricnaRadioMessage: text => /vstřícn|vstricn/i.test(String(text || '')),
-    vstricnaTone() { toneCount++; }, toast() {}, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {}, radioParse: () => null, radioFeed: [], voiceWillSpeak: () => false, radioLastAt: 0,
+    vstricnaTone() { toneCount++; }, toast() {}, ltoast() {}, ctSilent: () => false, newCallTone() {}, alarmBeep() {}, beep() {}, satellitePanel: null, radioSpeak() {}, radioParse: () => null, radioFeed: [], voiceWillSpeak: () => false, radioLastAt: 0,
     performance: { now: () => Date.now() }, setTimeout() {}, renderRadio() {}, logDueAt: new Map(), logLastDue: 0,
   };
   vm.runInNewContext(fn[0] + '\npollLog(); pollLog();', ctx);
