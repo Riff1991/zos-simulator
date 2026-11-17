@@ -279,4 +279,18 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   const c2 = sim._ctCheck({ klasif: 'Dušnost', n: '1', cihla: true }, truth0, { typedN: 1, errM: 0, tol: 60 });
   ok(!c2.klasif.ok && c2.priznaky.jaccard === 0, 'jiná klasifikace u resuscitace je chyba');
 }
+{ // čekající případ zůstává čekající, dokud není splněn celý požadavek na posádku (po typech)
+  const mkc = () => { const sim = new Sim({ seed: 31, mode: 'free', startHour: 10 }); const cs = sim._spawn({ ind: 'dusnost', n: 2, where: 'byt', intake: 0, extKinds: null }); for (let i = 0; i < 6; i++) step(sim); cs.status = 'waiting'; cs.dyn = false; cs.initialDispatchRequired = ['RZP', 'RV']; cs.initialDispatchSent = []; cs.rvNeed = true; return { sim, cs }; };
+  const a = mkc(), z = a.sim.suggest(a.cs.id, 'RZP')[0]; a.sim.assign(a.cs.id, z.crewId);
+  ok(a.cs.status === 'waiting' && a.sim._missingTypes(a.cs).join() === 'RV', 'jen RZP při požadavku RZP + RV: případ zůstává v čekajících (chybí RV)');
+  const v = a.sim.suggest(a.cs.id, 'RV')[0]; a.sim.assign(a.cs.id, v.crewId);
+  ok(a.cs.status === 'active', 'po přiřazení i RV přejde do probíhajících');
+  const b = mkc(); b.sim.assign(b.cs.id, b.sim.suggest(b.cs.id, 'RZP')[0].crewId);
+  const r = b.sim.convertN2Dynamic(b.cs.id);
+  ok(r.ok && b.cs.status === 'active', 'převod na dynamickou indikaci splní požadavek a případ přejde do probíhajících');
+  const c = mkc(); c.sim.assign(c.cs.id, c.sim.suggest(c.cs.id, 'RV')[0].crewId);
+  ok(c.cs.status === 'waiting', 'jen RV při požadavku RZP + RV: zůstává v čekajících');
+  for (let i = 0; i < 3000 && c.cs.status === 'waiting'; i++) step(c.sim);
+  ok(c.cs.status !== 'closed' || !c.cs.unserved, 'částečně obsazený případ se nezavře jako neobsloužený');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

@@ -157,7 +157,7 @@ function renderCases() {
       ? (c.unserved ? 'Neobslouženo' : c.typ === 'sekundární' ? 'Dokončeno' : `Uzavřeno · ${Math.round(c.score ? c.score.total : 0)} b.`)
       : c.examPending && c.status === 'waiting' ? 'Prohlídka zemřelého – vyšli RV'
         : c.exitus ? (c.coroner && c.coroner.state === 'available' ? 'Exitus · vyšli koronera' : c.coroner && c.coroner.state === 'sent' ? 'Exitus · koroner jede' : 'Exitus')
-        : c.status === 'waiting' ? 'Čeká na vyslání'
+        : c.status === 'waiting' ? (missing.length && c.asg && c.asg.length ? `Čeká na: ${missing.join(' + ')}` : 'Čeká na vyslání')
         : (missing.length || agMissing.length) ? `Doplnit: ${missing.concat(agMissing).join(' + ')}`
         : intk ? `${c.op} nabírá výzvu`
           : rvPending ? `RZP žádá RV: ${c.rvReq.kind || 'posouzení stavu'}` : 'Řeší se';

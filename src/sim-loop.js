@@ -151,7 +151,7 @@ class SimLoop {
         for (const k of c.crews.map(id => this.crewOf(id)).filter(k => k && (k.state === 'call' || k.state === 'enroute') && k.type !== 'LZS')) this._zosCall(k, c, 'pacient se probírá, měníme naléhavost na N2.');
       }
     }
-    if (c.status === 'waiting' && !c.mu) {
+    if (c.status === 'waiting' && !c.mu && !(c.crews && c.crews.length && this._busyCrews(c).length)) {   // částečně obsazený případ (posádka jede) neeskaluje ani se nezavírá
       if (t >= c.escAt && c.n > 1 && !c.exitus) {
         c.n--; c.escAt = t + 1500;
         if (c.n === 1) c.rvNeed = true;
@@ -359,7 +359,7 @@ class SimLoop {
         }
         if (c.parked && c.mv) { c.lat = c.mv.b[0]; c.lon = c.mv.b[1]; } else { c.lat = cs.lat; c.lon = cs.lon; }
         c.parked = false; c.mv = null; c.state = 'onscene'; c.arrivedAt = t;
-        cs.arrived = true;
+        cs.arrived = true; if (cs.status === 'waiting') cs.status = 'active';
         if (cs.firstArrive == null) cs.firstArrive = t;
         if (cs.agLate && cs.agLate.length && !cs.agLateDone) this._ctAgLate(cs);
         if (cs.mu && !cs.mu.sceneReportSent) this._muFirstSceneReport(cs, c, t);
@@ -880,6 +880,14 @@ class SimLoop {
     else { c.state = 'base'; c.lat = c.home.lat; c.lon = c.home.lon; }
     c.lzsLeg = null; c.hospitalRun = null;
   }
+  // chybějící typy posádek podle požadavku (RV může nahradit LZS nebo už přiřazený lékař)
+  _missingTypes(cs) {
+    const sent = cs.initialDispatchSent || [];
+    return (cs.initialDispatchRequired || []).filter(type => !(sent.includes(type) || (type === 'RV' && (sent.includes('LZS') || cs.docAssigned))));
+  }
+  _requirementMet(cs) { return !this._missingTypes(cs).length; }
+  // po změně požadavku (dynamická indikace, ZZUM) případ s vyslanou posádkou přejde do probíhajících, je-li požadavek splněn
+  _promoteIfMet(cs) { if (cs.status === 'waiting' && cs.asg && cs.asg.length && this._busyCrews(cs).length && this._requirementMet(cs)) cs.status = 'active'; }
   _checkClose(cs) {
     if (this._busyCrews(cs).length) return;
     if (cs.exitus) {

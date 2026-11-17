@@ -229,7 +229,8 @@ class SimNeighbors {
       c.lzsLeg = 'to-scene';
     }
     if (role === 'heli-transfer') cs.lzsTransferCrewId = c.id;
-    cs.status = 'active';
+    // do probíhajících případ přejde, až je splněn celý požadavek na posádku (po typech); do té doby zůstává v čekajících s již vyslanou posádkou
+    if (cs.status !== 'active') cs.status = this._requirementMet(cs) ? 'active' : 'waiting';
     this.L('crew', `${c.name} (${c.code}): výzva k případu ${cs.num}`, cs.id, c.id);
     if (relay) this._relayStart(c, cs);
     return { ok: true, eta };

@@ -724,6 +724,7 @@ class Sim {
     if (cs.crews.some(id => { const k = this.crewOf(id); return k && k.type === 'RV'; })) return { ok: false, msg: 'RV už je k případu vysláno; nejprve jej odvolej.' };
     cs.dyn = true; cs.rvNeed = false; cs.rvLater = false;
     cs.initialDispatchRequired = ['RZP']; cs.initialDispatchSent = cs.initialDispatchSent.filter(type => type !== 'RV');
+    this._promoteIfMet(cs);
     this.L('case', `${cs.num}: výzva N2 převedena na dynamickou indikaci; primárně RZP, lékaře lze vyžádat při změně stavu.`, cs.id);
     return { ok: true };
   }
@@ -739,6 +740,7 @@ class Sim {
       cs.zzumFlag = true; cs.zzumPrevNeed = cs.rvNeed; cs.zzumPrevReq = cs.initialDispatchRequired ? cs.initialDispatchRequired.slice() : null;
       cs.zzumOk = true; cs.rvNeed = false; cs.rvLater = this.rnd() < (cs.rvP || 0);
       if (cs.initialDispatchRequired) cs.initialDispatchRequired = ['RZP'];
+      this._promoteIfMet(cs);
       this.L('case', `${cs.num}: příznak ZZUM – výjezd bez lékaře (${zz.name}); lékaře lze vyžádat na pokyn posádky.`, cs.id);
     } else {
       if (!cs.zzumFlag) return { ok: true };

@@ -13,6 +13,8 @@ Nové:
 - **Náběr případu jako ve skutečném systému.** Nová obrazovka nabírání věrně kopíruje reálnou: Volající, Adresa případu (tabulka prvků, obec / ulice / číslo s našeptávačem), Klasifikace případu s **cihličkami** (jednotlivá kritéria v barvách naléhavosti), Detail pacienta, Požadavek na posádku, Spolupráce a spodní tlačítka. Označené cihly mají šikmé pruhování a jen doporučí N a typ posádky (vyšší barva vyhrává), naléhavost a požadavek na posádku zadáváš vždy ručně. Bez nich „Případ nelze založit“.
 - Univerzální cihly (TANR, DÍTĚ, +PČR, +HZS, SUSP_MU, TRANSPORT_PAC a další) jsou u každé klasifikace a jdou jen do poznámky. Složky se přivolávají ve Spolupráci (HJHC, PJHC).
 - Okno Pavouk zrušeno (klasifikace je přímo v obrazovce).
+- **Čekající případ zůstává v čekajících, dokud není splněn celý požadavek na posádku** (například N2 s lékařem a vyslané jen RZP). Ukáže „Čeká na: RV“. Po převodu na dynamickou indikaci nebo příznaku ZZUM přejde do probíhajících. Platí pro celou hru.
+- Způsob ohlášení se vyplňuje automaticky, POI/NIS/Souřadnice jsou vypnuté (terén a body zájmu v mapě), plné znění cihličky se ukáže pod myší.
 Interní:
 - `src/ui-intake.js`, `CT_CIHLY.createIntake`, `tools/build_cihly.py` generuje kritéria s kódy; Požadavek na posádku řídí potřebu lékaře v enginu.
 
