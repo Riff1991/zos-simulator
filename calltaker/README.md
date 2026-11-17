@@ -4,6 +4,16 @@ Ty jsi calltaker, AI hraje volajícího. Případ (adresa, pacient, příznaky, 
 
 Všechna data jsou generovaná. Do repa nepatří klíče ani skutečné přepisy hovorů (`calltaker/out/` je v `.gitignore`).
 
+## Webová stránka (doporučeno, bez instalace)
+
+Otevři soubor `calltaker/web/index.html` v prohlížeči (dvojklik, funguje na Windows, Macu i v telefonu). Vlož svůj **API klíč OpenAI** (platform.openai.com → API keys; ChatGPT předplatné API nezahrnuje), klikni „Načíst modely“, vyber model a „Nový hovor“. Klíč jde jen z prohlížeče na api.openai.com. Po hovoru vyplníš formulář, dostaneš hodnocení a můžeš stáhnout JSON s hovorem.
+
+Přegenerování: `node calltaker/build_cases.js 200 && node calltaker/build_web.js` (případy z generátoru → `web/cases.js` → samostatný `web/index.html`).
+
+## Příkazová řádka (Anthropic)
+
+Alternativa pro vývoj (Node 18+, klíč Anthropic):
+
 ## Spuštění
 
 ```bash

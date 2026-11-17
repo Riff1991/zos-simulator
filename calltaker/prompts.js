@@ -35,4 +35,4 @@ function judgeSystem() {
  }
 }`;
 }
-module.exports = { callerSystem, judgeSystem };
+if (typeof module !== 'undefined') module.exports = { callerSystem, judgeSystem }; else window.CT_PROMPTS = { callerSystem, judgeSystem };

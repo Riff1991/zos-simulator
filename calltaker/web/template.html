@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calltaker – trenažér (spike)</title>
+<style>
+:root{--bg:#f5f6f8;--fg:#1b1f24;--card:#fff;--line:#d5d9df;--acc:#c4161c;--mut:#5b6572;--me:#dbeafe;--them:#ececec;--bad:#b00020}
+@media (prefers-color-scheme:dark){:root{--bg:#14171b;--fg:#e8eaed;--card:#1d2127;--line:#343a42;--acc:#ff5a5f;--mut:#9aa4b0;--me:#1e3a5f;--them:#2a2f36;--bad:#ff8a80}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:12px 16px 80px}h1{font-size:1.2rem;margin:.6em 0}h3{font-size:1rem;margin:1em 0 .3em}
+.card,details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}label{display:block;margin:.5em 0 .15em;color:var(--mut);font-size:.9rem}
+input,select,textarea,button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+input[type=text],input[type=password],select,textarea{width:100%}button{cursor:pointer}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.5}
+#log{display:flex;flex-direction:column;gap:6px;margin:10px 0}.b{max-width:85%;padding:8px 12px;border-radius:14px;white-space:pre-wrap}
+.b.me{align-self:flex-end;background:var(--me)}.b.them{align-self:flex-start;background:var(--them)}.b.sys{align-self:center;color:var(--mut);font-size:.9rem;text-align:center}
+.row{display:flex;gap:8px}.row input{flex:1}#ani{font-weight:600}#status{color:var(--mut);min-height:1.4em}.bad{color:var(--bad)}small{color:var(--mut)}
+ul{margin:.3em 0;padding-left:1.2em}
+</style></head><body><main>
+<h1>Calltaker – trenažér (textový spike)</h1>
+<p><small>Ty jsi calltaker, AI hraje volajícího. Osoby, adresy a telefony jsou generované. Nejde o nástroj pro ostrý provoz.</small></p>
+<details id="setup" open><summary>Nastavení (OpenAI)</summary>
+<label for="key">API klíč OpenAI (platform.openai.com → API keys; není to předplatné ChatGPT)</label>
+<input id="key" type="password" autocomplete="off" placeholder="sk-…">
+<label><input type="checkbox" id="remember"> zapamatovat v tomto prohlížeči (jen na svém zařízení)</label>
+<label for="model">Model</label>
+<div class="row"><input id="model" type="text" list="modelList" placeholder="např. gpt-4.1-mini"><datalist id="modelList"></datalist><button id="load">Načíst modely</button></div>
+<small>Klíč jde jen z prohlížeče přímo na api.openai.com, nikam jinam se neposílá.</small>
+<p><button id="start" class="pri">Nový hovor</button></p></details>
+<div id="status"></div>
+<div id="call" class="card" hidden>
+<div id="ani"></div><div id="log"></div>
+<div class="row"><input id="say" type="text" placeholder="Co řekneš volajícímu…" autocomplete="off"><button id="send" class="pri">Poslat</button></div>
+<p><button id="end">Ukončit hovor</button></p></div>
+<div id="form" class="card" hidden><h3>Formulář (jako v dispečerském systému)</h3>
+<label for="fAdr">Adresa (ulice č., obec)</label><input id="fAdr" type="text">
+<label for="fN">Naléhavost</label><select id="fN"><option value="" selected>–</option><option value="1">N1</option><option value="2">N2</option><option value="3">N3</option></select>
+<label for="fInd">Indikace / klasifikace</label><input id="fInd" type="text">
+<label for="fNote">Poznámka</label><input id="fNote" type="text">
+<p><button id="judge" class="pri">Vyhodnotit</button></p></div>
+<div id="result" class="card" hidden></div>
+</main>
+<script>/*CHECK*/</script><script>/*PROMPTS*/</script><script>/*CASES*/</script><script>/*APP*/</script>
+</body></html>
