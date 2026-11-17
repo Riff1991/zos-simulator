@@ -95,7 +95,7 @@ function kiHtml() {
 }
 
 // ---------- cihličky ----------
-function kiChipHtml(x, cls) { return `<button type="button" class="ki-chip ${cls}${kf.sel.has(x.id) ? ' sel' : ''}" data-act="ct-ki-chip" data-id="${kiTxt(x.id)}" title="${kiTxt(x.t || x.c)}">${kiTxt(x.c)}</button>`; }
+function kiChipHtml(x, cls) { return `<button type="button" class="ki-chip ${cls}${kf.sel.has(x.id) ? ' sel' : ''}" data-act="ct-ki-chip" data-id="${kiTxt(x.id)}" data-tip="${kiTxt(x.d || x.t || x.c)}">${kiTxt(x.c)}</button>`; }
 function kiRenderChips() {
   const e = $('ki-chips'); if (!e) return;
   const u = kInst(); let h = '';
@@ -281,6 +281,19 @@ function kiAct(a, el) {
     case 'ct-ki-end': kiEnd(d.why); break;
   }
 }
+// plné znění cihličky pod myší (okamžitě, ne až po prodlevě systémového tooltipu)
+let kiTip = null;
+function kiTipShow(ev) {
+  const c = ev.target.closest && ev.target.closest('.ki-chip[data-tip]');
+  if (!c || !c.dataset.tip) { if (kiTip) kiTip.hidden = true; return; }
+  if (!kiTip) { kiTip = document.createElement('div'); kiTip.className = 'ki-tip'; document.body.appendChild(kiTip); }
+  kiTip.textContent = c.dataset.tip; kiTip.hidden = false;
+  const w = kiTip.offsetWidth, x = Math.min(ev.clientX + 12, innerWidth - w - 8);
+  kiTip.style.left = Math.max(4, x) + 'px'; kiTip.style.top = Math.min(ev.clientY + 18, innerHeight - kiTip.offsetHeight - 6) + 'px';
+}
+document.addEventListener('mousemove', kiTipShow);
+document.addEventListener('mouseleave', () => { if (kiTip) kiTip.hidden = true; });
+document.addEventListener('click', () => { if (kiTip) kiTip.hidden = true; });
 document.addEventListener('change', ev => {
   const t = ev.target; if (!t || !ctModeOn()) return;
   if (t.id === 'ki-klasif') { kf.klasif = t.value; for (const id of [...kf.sel]) if (!id.startsWith('u:')) kf.sel.delete(id); kiRenderChips(); kiRecommend(); }

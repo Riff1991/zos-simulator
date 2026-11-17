@@ -51,6 +51,12 @@
   // Cihlička = jedno kritérium bloku tabulky, nese barvu bloku. Označení cihliček jen doporučí N a posádku (vyšší barva vyhrává), nic nenastaví.
   const RANK = { n1: 5, n2: 4, n2di: 3, n3: 2, n4: 1 };
   // univerzální cihly nahoře (vždy stejné). cls: u-red, u-mag, u-pink, u-yel, u-sal, u-gray, u-empty; kind = vliv na doporučení N (jen červené TANR, a DYNAMICKÁ_INDIK = možnost DI)
+  // plné znění univerzálních cihel (zobrazí se pod myší); DN_BEZ_VYPROŠTĚ podle dispečera, ostatní doplněno
+  const DESC = { 'TANR': 'Telefonicky asistovaná neodkladná resuscitace', 'TANR_NELZE': 'Telefonicky asistovanou resuscitaci nelze provést', 'DÍTĚ': 'Pacient je dítě', 'DOSPĚLÝ': 'Pacient je dospělý',
+    'DYNAMICKÁ_INDIK': 'Dynamická indikace: jede RZP bez lékaře, na místě rozhodne o potřebě lékaře', 'DR_NA_ŽÁDOST': 'Lékař na žádost posádky RZP, která už vyráží na místo zásahu', 'SÁM_ZZUM': 'ZZUM jede sám, bez lékaře, na výjezd N2 nedynamickou',
+    'LZS_NELZE': 'Na LZS se myslelo, ale není k dispozici (letové podmínky, jiný vzlet)', '+ LÉKAŘ_Z_LZS': 'RZP Planá si bere lékaře z letecké záchranné služby', '+ PČR': 'Informace pro posádky: na místě je potřeba Policie ČR', '+ HZS': 'Informace pro posádky: na místě je potřeba Hasičský záchranný sbor',
+    'SUSP_MU': 'Podezření na mimořádnou událost', 'DN_BEZ_VYPROŠTĚ': 'Dopravní nehoda se zraněním bez vyproštění osob', 'OTEVŘENÍ_PROSTO': 'Otevření uzavřeného prostoru (bytu), v němž je osoba', 'TRANSPORT_PAC': 'Transport (přenesení) pacienta, součinnost složky',
+    'ÚKLID_VOZOVKY': 'Úklid vozovky po nehodě', 'DN_S_VYPROŠTĚNÍ': 'Dopravní nehoda se zraněním s vyproštěním osob', 'PALIATIVA': 'Paliativní pacient', 'INFO_RADA_TELEF': 'Informace a rada po telefonu', 'VIDEOHOVOR': 'Videohovor s volajícím', 'VOLÁNÍ_3.RUKA': 'Volání z třetí ruky (volající nevidí pacienta)' };
   const UNIVERSAL = [
     { c: 'TANR', cls: 'u-red', kind: 'n1' }, { c: 'TANR_NELZE', cls: 'u-red', kind: 'n1' }, { c: 'DÍTĚ', cls: 'u-gray', grp: 'vek' }, { c: 'DOSPĚLÝ', cls: 'u-gray', grp: 'vek' },
     { c: 'DYNAMICKÁ_INDIK', cls: 'u-mag', kind: 'n2di' }, { c: 'DR_NA_ŽÁDOST', cls: 'u-pink' }, { c: 'SÁM_ZZUM', cls: 'u-pink' }, { c: 'LZS_NELZE', cls: 'u-pink' },
@@ -58,7 +64,7 @@
     { c: 'DN_BEZ_VYPROŠTĚ', cls: 'u-sal' }, { c: 'OTEVŘENÍ_PROSTO', cls: 'u-sal' }, { c: 'TRANSPORT_PAC', cls: 'u-sal' }, { c: 'ÚKLID_VOZOVKY', cls: 'u-sal' },
     { c: 'DN_S_VYPROŠTĚNÍ', cls: 'u-sal' }, { c: 'PALIATIVA', cls: 'u-gray' }, { c: 'INFO_RADA_TELEF', cls: 'u-gray' }, { c: 'VIDEOHOVOR', cls: 'u-gray' },
     { c: 'VOLÁNÍ_3.RUKA', cls: 'u-gray' }, { c: '0', cls: 'u-empty' }, { c: '0', cls: 'u-empty' }, { c: '0', cls: 'u-empty' },
-  ].map((u, i) => Object.assign({ id: 'u:' + i }, u));
+  ].map((u, i) => Object.assign({ id: 'u:' + i, d: DESC[u.c] || '' }, u));
   // šedé cihly (popisy bez vlivu na naléhavost); u některých klasifikací podle screenů, jinak výchozí sada (doplnit podle skutečných názvů)
   const GRAY_MED = ['ALKOHOL', 'ASTMATIK', 'CHOPN', 'DEMENCE', 'DIABETIK', 'EPILEPTIK', 'HYPERTONIK', 'KARDIAK', 'ONKOLOGICKÝ', 'PALIATIVNÍ_PAC'];
   const GRAY_TRAUMA = ['ALKOHOL', 'BÉREC', 'BODNÉ_PORANĚNÍ', 'BŘICHO', 'CIZÍ_TĚLESO', 'CYKLISTA', 'DK', 'ELEKTR_PROUD', 'HK', 'HLAVA', 'HRUDNÍK', 'CHODEC', 'KRK', 'PÁNEV', 'STŘELNÉ_PORANĚNÍ', 'ZÁDA', 'ZVÍŘE'];
