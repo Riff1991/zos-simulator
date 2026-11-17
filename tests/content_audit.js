@@ -32,7 +32,7 @@ const checkName = (who, where) => {
 };
 
 const cases = [], crews = [];
-for (const seed of [11, 12, 13, 14, 15, 16]) {
+for (const seed of [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]) {
   const s = new Sim({ seed, mode: 'shift', startHour: seed % 2 ? 7 : 19 });
   // jednoduchý bot, aby výzvy neeskalovaly jen kvůli nečinnosti
   for (let t = 0; t < 12 * 3600 - 120; t += 20) {
@@ -72,7 +72,7 @@ for (const c of P) {
 // četnosti
 const nCount = { 1: 0, 2: 0, 3: 0, 4: 0 }; for (const c of P) nCount[c.nOrig]++;
 const share = k => nCount[k] / P.length;
-const perShift = cases.length / 6;
+const perShift = cases.length / 12;
 const dps = P.filter(c => c.where === 'domov').length / P.length;
 const n2 = P.filter(c => c.nOrig === 2), dynShare = n2.length ? n2.filter(c => /DYNAMICKÁ INDIKACE/i.test(c.up || '')).length / n2.length : 0;
 const emptyTail = P.filter(c => !c.place && !c.poznamka).length / P.length;

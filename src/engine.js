@@ -447,6 +447,35 @@ class Sim {
   crewOf(id) { return this.s.crews.find(c => c.id === id) || null; }
   avail(c) { return c.state === 'base' || c.state === 'free' || (c.caseRole === 'exam' && c.state === 'onscene') || (c.caseRole === 'escort' && !!c.escortFree && c.state === 'transport'); }
 
+  // hodnota z kvantilové tabulky (21 hodnot po 5 %), lineární interpolace
+  _qTab(q, u) {
+    const x = (u != null ? u : this.rnd()) * (q.length - 1), i = Math.min(q.length - 2, Math.floor(x));
+    return q[i] + (q[i + 1] - q[i]) * (x - i);
+  }
+  _gauss() { let a = 0; for (let i = 0; i < 6; i++) a += this.rnd(); return (a - 3) * Math.SQRT2; }   // ≈ N(0,1) (součet 6 rovnoměrných, rozptyl 0,5)
+  // kalibrovaná doba jízdy k případu (N1–N3) z času routeru; null = použije se starý model
+  _driveCal(sec, mode, c) {
+    const C = ZOS_DATA.driveCal;
+    if (!C || !/^N[123]$/.test(mode || '') || c.type === 'MU' || c.type === 'LZS') return null;
+    const n = +mode[1], rv = c.type === 'RV' || c.type === 'LIB', p = rv ? C.rv : (n === 3 ? C.rzp.N3 : C.rzp.N2);
+    let k = (n === 1 ? (rv ? C.c1.rv : C.c1.rzp) : 1) * C.hour[Math.floor(this.hour())];
+    k *= (c.fromBase && C.baseMul[c.st]) || 1;
+    const fixed = p[0] * k * (c.fromBase === false ? (C.roadA != null ? C.roadA : 1) : 1);
+    const mean = Math.max(25, fixed + k * (p[1] * Math.min(sec, C.sk) + p[2] * Math.max(0, sec - C.sk)));
+    return { mean, sg: p[3], fixed };
+  }
+  // pevná část jízdy se rozloží po trase: pomalejší rozjezd a hlavně dojezd (hledání adresy), vozidlo se hýbe až do „na místě“, bez čekání
+  _warpFrac(pts, frac, sec, dur, fixed) {
+    const n = frac.length; if (n < 2 || sec < 5) return frac;
+    const cum = [0]; for (let i = 1; i < n; i++) cum.push(cum[i - 1] + hav(pts[(i - 1) * 2], pts[(i - 1) * 2 + 1], pts[i * 2], pts[i * 2 + 1]) * 1000);
+    const L = cum[n - 1]; if (L < 1) return frac;
+    const A = Math.min(fixed, 0.85 * dur), eS = 0.2 * A, eE = 0.8 * A, dS = Math.min(300, 0.15 * L), dE = Math.min(900, 0.6 * L), k = (dur - eS - eE) / sec;
+    const out = new Array(n);
+    for (let i = 0; i < n; i++) out[i] = (k * frac[i] * sec + eS * Math.min(1, cum[i] / dS) + eE * Math.max(0, (cum[i] - (L - dE)) / dE)) / dur;
+    out[0] = 0; out[n - 1] = 1;
+    for (let i = 1; i < n; i++) if (out[i] < out[i - 1]) out[i] = out[i - 1];
+    return out;
+  }
   _turnout(c, urgency) {
     if (c.type === 'MU') return this.rr(240, 420);
     if (c.type === 'LZS') {
@@ -454,7 +483,13 @@ class Sim {
       return this.rr(range[0], range[1]);
     }
     if (urgency === 4) return c.state === 'base' ? this.rr(55, 115) : this.rr(15, 35);
-    // z reálných výjezdů: RZP N1 1–2 min, N2 a N3 1–3 min, lékař (RV) 1–5 min; občasné zpoždění je herní událost
+    // kalibrace na reálné výjezdy (leden + červenec 2026): kvantilové tabulky ZOS_DATA.turnCal, zvlášť posádka na základně a v autě, v noci pomaleji
+    const TC = ZOS_DATA.turnCal;
+    if (TC && (c.type === 'RZP' || c.type === 'RV') && urgency >= 1 && urgency <= 3) {
+      const typ = c.type === 'RV' ? 'RLP' : 'RZP', h = Math.floor(this.hour()), night = h >= 19 || h < 7;
+      if (c.state !== 'base') return Math.max(8, this._qTab(TC.road[typ]));
+      return Math.max(30, this._qTab(TC.base[typ + '_N' + urgency]) * (night ? TC.night[typ] : 1));
+    }
     const atBase = c.state === 'base';
     // kalibrace na reálné prodlevy výzva → výjezd (leden + červenec 2026): RZP medián N1 79 s, N2 100 s, N3 106 s (p90 136 / 161 / 168 s), RV medián 107–132 s (p90 168–254 s)
     const lateChance = urgency === 1 ? 0.01 : urgency === 2 ? 0.03 : 0.04;
@@ -507,7 +542,15 @@ class Sim {
     const p = this.pos(c), mode = 'N' + Math.min(4, Math.max(1, n || 2));
     if (c.type === 'LZS') return this._lzActivationExpected(c) + heliSec(p.lat, p.lon, lat, lon);
     if (c.type === 'MU') return 330 + driveSec(this._eta(p.lat, p.lon, lat, lon), 'N2');
-    return (c.state === 'base' ? 78 : 25) + driveSec(this._eta(p.lat, p.lon, lat, lon), mode) * this._wxMul(mode);
+    const sec = this._eta(p.lat, p.lon, lat, lon), TC = ZOS_DATA.turnCal;
+    const was = c.fromBase; c.fromBase = c.state === 'base';
+    const cal = this._driveCal(sec, mode, c); c.fromBase = was;
+    if (cal && TC && (c.type === 'RZP' || c.type === 'RV')) {
+      const typ = c.type === 'RV' ? 'RLP' : 'RZP', h = Math.floor(this.hour()), night = h >= 19 || h < 7, u = +mode[1];
+      const turn = c.state === 'base' ? this._qTab(TC.base[typ + '_N' + u], 0.5) * (night ? TC.night[typ] : 1) : this._qTab(TC.road[typ], 0.5);
+      return turn + cal.mean * this._wxMul(mode);
+    }
+    return (c.state === 'base' ? 78 : 25) + driveSec(sec, mode) * this._wxMul(mode);
   }
   _eta(a, b, c, d) {
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) { const v = ROUTER.eta(a, b, c, d); if (v != null) return v; }
@@ -524,7 +567,11 @@ class Sim {
     }
     if (sec == null) sec = travelSec(c.lat, c.lon, lat, lon, mode ? 1 : mult);
     let moving, dwell = 0;
-    if (mode) { const m = DRIVE[mode] || DRIVE.N3; dwell = m[0] * Math.min(1, sec / 150); moving = sec * m[1] * jit * this._wxMul(mode); }
+    const cal = this._driveCal(sec, mode, c);
+    if (cal) {
+      moving = Math.max(25, cal.mean * Math.exp(cal.sg * this._gauss() - cal.sg * cal.sg / 2) * this._wxMul(mode));
+      if (routed && frac) frac = this._warpFrac(path, frac, sec, moving, cal.fixed);
+    } else if (mode) { const m = DRIVE[mode] || DRIVE.N3; dwell = m[0] * Math.min(1, sec / 150); moving = sec * m[1] * jit * this._wxMul(mode); }
     else moving = (routed ? sec * mult : sec) * jit;
     const dur = moving + dwell;
     c.mv = { a: [c.lat, c.lon], b: [lat, lon], t0: t, t1: t + dur, dw: dwell, path, frac, mode };

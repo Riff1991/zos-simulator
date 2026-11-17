@@ -8,6 +8,18 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.31.0 – 2026-11-16
+
+> Rychlost posádek podle reálných výjezdů: od výzvy po „Na místě“.
+
+### Nové
+- **Prodleva výjezdu a jízda k případu jsou přestavěné podle dat** (leden a červenec 2026, ~12 800 výjezdů): zvlášť posádka na základně a v autě, RZP a RV, N1–N3, v noci pomaleji, vzdálenost podle trasy, rozdíly mezi základnami. Celý čas od vyslání po „Na místě“ sedí na realitu v mediánu na pár sekund (dřív byla hra u N3 rychlejší o skoro 2 minuty).
+- **Posádka po příjezdu nečeká.** Pevná část jízdy (hledání adresy, rozjezd) se rozloží po trase, vozidlo jede až do okamžiku „Na místě“.
+- **Odstraněno upozornění na pozdní výjezd u N2 a N3.** U N1 zůstává alarm po 2 minutách.
+
+### Interní
+- `ZOS_DATA.driveCal`, `ZOS_DATA.turnCal`, skripty v `tools/kalibrace/rychlost/`.
+
 ## v0.30.4 – 2026-11-16
 
 > Stav posádky na místě.

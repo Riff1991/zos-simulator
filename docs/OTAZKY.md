@@ -341,3 +341,11 @@ Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repoz
 
 ### Stavy posádky na místě (16. 11. 2026, zadání uživatele)
 - Skutečná posádka po dojezdu hlásí jen „na místě“, potom „transport“. Stav „Zahájení ošetření“ (dřív po 2 min na místě) se v panelu posádky už nezobrazuje; ošetření se nehlásí.
+
+### Přestavba rychlosti jízdy podle reálných dat (16. 11. 2026, zadání uživatele)
+- **Zadání:** od přetažení dlaždice (pager) po „na místě“ co nejreálnější plošně (podle N, vzdálenosti, typu posádky…), posádka po příjezdu nečeká (nejvýš ~10 s), bez upozornění na pozdní výjezd u N2 a N3.
+- **Prodleva výzva → výjezd:** kvantilové tabulky z reálných dat (`ZOS_DATA.turnCal`), zvlášť posádka na základně a v autě, RZP a RV, N1–N3, v noci pomalejší (RZP ×1,13, RV ×1,15). Upozornění „opožděný výjezd“ u N2 a N3 odstraněno; u N1 zůstává alarm (2 min).
+- **Doba jízdy k případu:** `(a + b·min(t,900) + b2·max(0,t−900)) × základna × hodina` (`ZOS_DATA.driveCal`), t = čas routeru; RZP N2 100 s + 1,03·t, RZP N3 107 s + 1,11·t, RV 105 s + 1,02·t, N1 = N2 × 0,96 (RZP) / 0,92 (RV), lognormální rozptyl σ ≈ 0,14–0,16, hodinový faktor (0–5 h ×1,10, 6–8 h ×1,04), násobky základen (Opařany ×0,70 … Týn n. Vlt. ×1,39). Dlouhé trasy (nad 15 min) jsou rychlejší než router (×0,6–0,9).
+- **Bez čekání u cíle:** pevná část se rozloží po trase (pomalejší rozjezd a dojezd), vozidlo jede až do okamžiku „na místě“ (`mv.dw = 0`).
+- **Ověření:** celý čas vyslání → „Na místě“ po 57 dvojicích základna–obec (≥ 20 případů): medián rozdílu hra − realita +5 s (dřív −89 s, N3 −106 s), 80 % dvojic do ±60 s, 94 % do ±90 s. Šířka mezikvartilového rozpětí 130 s proti 117 s v datech.
+- **Neověřeno / otevřené:** transport do nemocnice a návrat na základnu mají zatím staré konstanty; posádka už jedoucí v autě (`fromBase = false`) bere stejnou pevnou část (data to nerozlišují); skóre pokrytí používá starý vzorec `driveSec`.

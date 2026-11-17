@@ -22,3 +22,11 @@ Analýzy (spouštět z `work/stat`, např. `cd work/stat && python3 -I ../../too
 Měření hry (z kořene repa, `node tools/kalibrace/<soubor>.js`): `vol.js` (objem), `where.js` a `towns.js` (typ místa, obce), `timing.js` (časy fází s botem).
 
 Poznámka: `plc3.py`/`mkcal.py` čtou `all2.pkl`; texty z `Poznámka ZOS` obsahují volný text calltakerů – před přenesením do `data.js` vždy ručně projít (jména, adresy).
+
+## Kalibrace rychlosti jízdy a prodlevy výjezdu (v0.31.0)
+Skripty v `tools/kalibrace/rychlost/` (pro běh je zkopíruj do `work/stat/`, cesty jsou relativní k němu; vstup `all2.pkl` z `load.py`):
+- `route_pairs.js`, `sample_secs.js` – router: čas a délka trasy základna → střed obce, resp. 120 náhodných adres v obci (`secs_out.json`).
+- `ana_drive.py` – skutečná doba jízdy (výjezd → příjezd) proti času routeru po pásmech.
+- `fit_drive2.py` – fit modelu `(a + b·min(t,900) + b2·max(0,t−900)) × základna × hodina`, σ → `drive_params2.json`; z výsledku vzniká `ZOS_DATA.driveCal` a `turnCal` (tabulky kvantilů prodlevy) v `src/data.js`.
+- `game_pairs.js` + `cmp_pairs.py` – kontrola hry proti realitě (celý čas vyslání → „Na místě“ po dvojicích základna–obec): medián rozdílu +5 s (dřív −89 s), 80 % dvojic do ±60 s.
+Zjištění: pevná část jízdy je reálná (~100 s + 1,03–1,11 × router), v noci +10 %, malé základny se liší (Opařany ×0,7, Týn ×1,4).

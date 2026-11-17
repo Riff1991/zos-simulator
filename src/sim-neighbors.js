@@ -204,6 +204,7 @@ class SimNeighbors {
     const p = this.pos(c), rolling = c.state === 'free' && c.mv && c.mv.path && t < c.mv.t1 && c.type !== 'LZS';
     c.lat = p.lat; c.lon = p.lon; c.consulted = false; c.escortFree = false;
     if (!rolling) c.mv = null;
+    c.fromBase = c.state === 'base';
     c.turn = rolling ? this.rr(5, 15) : this._turnout(c, cs.n); // vůz na cestě (vrací se) jede rovnou, bez zastavení
     c.dispatchAt = t; c.turnoutAlerted = false;
     c.state = 'call'; c.until = t + c.turn; c.caseId = cs.id; c.arrivedAt = null; c.dest = null; c.hospitalRun = null; c.relayHold = false;

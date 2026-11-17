@@ -902,27 +902,30 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   console.log('mezikrajská spolupráce: žádosti, odpovědi, žádosti sousedů, Planá true');
 }
 
-// ---------- model jízdy: pevná část stojí u cíle, pořadí režimů, zpoždění výjezdu ----------
+// ---------- model jízdy: kalibrovaná doba jízdy bez čekání u cíle, pořadí režimů, zpoždění výjezdu ----------
 {
   const sim = new Sim({ seed: 31, mode: 'shift', startHour: 9, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nbPlan = [];
   const c = sim.s.crews.find(x => x.type === 'RZP' && x.id.startsWith('jh'));
   const dest = { lat: c.lat + 0.12, lon: c.lon + 0.1 };
-  const avg = mode => { let m = 0, n = 0; for (let i = 0; i < 40; i++) { sim._go(c, dest.lat, dest.lon, mode); m += c.mv.t1 - c.mv.dw - c.mv.t0; n++; } return m / n; };
+  const avg = mode => { let m = 0, n = 0; for (let i = 0; i < 800; i++) { sim._go(c, dest.lat, dest.lon, mode); m += c.mv.t1 - c.mv.dw - c.mv.t0; n++; } return m / n; };
   const m1 = avg('N1'), m2 = avg('N2'), m3 = avg('N3');
   if (!(m1 < m2 && m2 < m3)) throw new Error(`jízdní doba N1 < N2 < N3 (${m1.toFixed(0)}, ${m2.toFixed(0)}, ${m3.toFixed(0)})`);
   sim._go(c, dest.lat, dest.lon, 'N2');
   const mv = c.mv, t0 = sim.s.t;
-  if (!(mv.dw > 60)) throw new Error('N2 má mít pevnou část u cíle');
-  const pe = sim.pos(c, mv.t1 - mv.dw + 2), d = require('../src/engine.js').hav(pe.lat, pe.lon, dest.lat, dest.lon);
-  if (d > 0.05) throw new Error('po jízdní části je vozidlo u cíle: ' + d.toFixed(2) + ' km');
-  sim.s.t = mv.t1 - mv.dw / 2; if (sim.speedKmh(c) !== 0) throw new Error('při hledání adresy vozidlo stojí (0 km/h)');
-  sim.s.t = t0 + (mv.t1 - mv.dw - t0) / 2; if (sim.speedKmh(c) < 40) throw new Error('za jízdy je rychlost nad 40 km/h: ' + sim.speedKmh(c));
+  // vozidlo nečeká u cíle: v pohybu až do příjezdu, na konci trasy přesně v okamžiku „na místě“
+  if (mv.dw) throw new Error('po příjezdu se nečeká (dw = ' + mv.dw + ')');
+  const pe = sim.pos(c, mv.t1), d = require('../src/engine.js').hav(pe.lat, pe.lon, dest.lat, dest.lon);
+  if (d > 0.6) throw new Error('v čase příjezdu je vozidlo u cíle: ' + d.toFixed(2) + ' km');
+  const pb = sim.pos(c, mv.t1 - 10), pe0 = sim.pos(c, mv.t1), moved = require('../src/engine.js').hav(pb.lat, pb.lon, pe0.lat, pe0.lon) * 1000;
+  if (!(moved > 0.5)) throw new Error('10 s před příjezdem vozidlo stojí: ' + moved.toFixed(2) + ' m');
+  sim.s.t = t0 + (mv.t1 - t0) / 2; if (sim.speedKmh(c) < 30) throw new Error('uprostřed jízdy je rychlost nad 30 km/h: ' + sim.speedKmh(c));
   sim.s.t = t0;
-  // zpoždění výjezdu: RZP 55–260 s, lékař (RV) delší
-  let sr = 0, sv = 0, rv = sim.s.crews.find(x => x.type === 'RV' && x.state !== 'off') || sim.s.crews.find(x => x.type === 'RV'); rv.state = 'base'; c.state = 'base';
-  for (let i = 0; i < 300; i++) { sr += sim._turnout(c, 2); sv += sim._turnout(rv, 2); }
-  if (!(sr / 300 > 100 && sr / 300 < 170 && sv / 300 > sr / 300)) throw new Error(`zpoždění výjezdu: RZP ${(sr / 300).toFixed(0)} s, RV ${(sv / 300).toFixed(0)} s`);
-  console.log('model jízdy: pevná část u cíle, pořadí režimů, zpoždění výjezdu true');
+  // zpoždění výjezdu podle reálných kvantilů: RZP N2 na základně medián ~100 s, lékař (RV) delší, auto na cestě do ~45 s
+  let sr = 0, sv = 0, sx = 0, rv = sim.s.crews.find(x => x.type === 'RV' && x.state !== 'off') || sim.s.crews.find(x => x.type === 'RV'); rv.state = 'base'; c.state = 'base';
+  for (let i = 0; i < 600; i++) { sr += sim._turnout(c, 2); sv += sim._turnout(rv, 2); }
+  c.state = 'free'; for (let i = 0; i < 300; i++) sx += sim._turnout(c, 2);
+  if (!(sr / 600 > 90 && sr / 600 < 125 && sv / 600 > sr / 600 && sx / 300 < 45)) throw new Error(`zpoždění výjezdu: RZP ${(sr / 600).toFixed(0)} s, RV ${(sv / 600).toFixed(0)} s, v autě ${(sx / 300).toFixed(0)} s`);
+  console.log('model jízdy: kalibrovaná doba jízdy bez čekání u cíle, pořadí režimů, zpoždění výjezdu true');
 }
 
 // ---------- otrava CO: hlášení posádky o více postižených není dopravní nehoda ----------

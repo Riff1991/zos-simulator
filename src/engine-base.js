@@ -33,8 +33,8 @@ function civilTwilight(dateISO, lat, lon) {
 // Režimy jsou [pevná část v s (rozjezd, průjezd obcí, hledání adresy), násobek času trasy]. N1 bez limitu je o pár % rychlejší;
 // N4 a návrat bez VRZ v běžných limitech jsou pomalejší. N1–N3 kalibrováno na říjnovém vzorku výjezdů
 // (čas výjezd → příjezd proti trase ze základny): N1 113 s + 0,94×, N2 138 s + 0,97×, N3 193 s + 0,89× (bez nejdelších tras ~1,0×).
-// Pevná část (hledání adresy, průjezd obcí) se nepřičítá k jízdě: vozidlo jede po trase rychlostí routeru × násobek a pevnou část „stojí“ u cíle (mv.dw).
-// N3 pevná část 60 s: kalibrováno na reálných případech (N3 krátké trasy byly dřív o 3–4 min pomalejší).
+// Jízda k případu (N1–N3) od v0.31.0: doba z ZOS_DATA.driveCal (kalibrace na reálných výjezdech), pevná část se rozkládá po trase, nikdo nečeká u cíle (mv.dw = 0).
+// DRIVE níže platí už jen pro transport (P2/P3), návrat a zbylé režimy; N1–N3 slouží jako záloha, když chybí kalibrace.
 // jízdní režimy: k případu (N1–N3) a transport (P2/P3) vždy na majáky (VRZ), rychlost podle naléhavosti; RET = návrat bez majáků, RETL = návrat v „režimu N3“ na majáky na pokyn dispečera
 const DRIVE = { N1: [100, 0.92], N2: [125, 0.97], N3: [60, 1.05], N4: [60, 1.3], P2: [50, 0.97], P3: [50, 1.05], RET: [30, 1.35], RETL: [30, 1.02] };
 const LIGHT_MODES = ['N1', 'N2', 'N3', 'P2', 'P3', 'RETL'];

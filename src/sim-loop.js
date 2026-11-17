@@ -304,9 +304,6 @@ class SimLoop {
         }
         if (t < c.until) break;
         const cs = pending;
-        if (cs && cs.n > 1 && c.type !== 'LZS' && c.type !== 'MU' && c.turn > (c.type === 'RV' ? 300 : 210)) {
-          this.L('warn', `${c.name}: opožděný výjezd k N${cs.n} – ${Math.round(c.turn / 60)} min`, cs.id, c.id);
-        }
         let dur;
         if (c.type === 'LZS') dur = this._goAir(c, cs.lat, cs.lon);
         else {
