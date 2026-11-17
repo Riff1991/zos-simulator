@@ -4470,7 +4470,7 @@ class SimCalltaker {
     s.calls = []; s.callSeq = 0; s.secondaryEnabled = false; s.muEnabled = false; s.ev.nextMU = null; s.ev.nextSpawn = this.rr(8, 20);
   }
   _liveSpawn() {
-    const s = this.s, L = s.liveCalls, busy = s.calls.some(c => c.state === 'ringing' || c.state === 'taken');
+    const s = this.s, L = s.liveCalls, busy = s.calls.some(c => c.state === 'ringing' || c.state === 'taken' || c.state === 'wrap');
     const mine = L.mode === 'training' || this.rnd() < L.share;
     if (mine && !busy) this._ringCall(); else if (L.mode !== 'training') this._spawn();
   }
@@ -4497,10 +4497,25 @@ class SimCalltaker {
   // odeslání dispečerovi (poprvé vytvoří případ, dál případ aktualizuje); hovor tím nekončí
   sendCall(id, form) {
     const s = this.s, call = s.calls.find(x => x.id === id);
-    if (!call || call.state !== 'taken') return null;
+    if (!call || (call.state !== 'taken' && call.state !== 'wrap')) return null;
     if (call.caseId) return this.updateCallCase(this.caseOf(call.caseId), form);
     const c = this.addCallCase({ v: 1, seed: call.seed, form, sec: Math.round(s.t - call.pickedAt) });
     call.caseId = c.id; call.sentAt = s.t; return c;
+  }
+  // zavěšení bez uzavření nabírání: calltaker může případ dál dovyplnit a odeslat, dokud nezavolá finishCall
+  endCall(id) {
+    const s = this.s, call = s.calls.find(x => x.id === id);
+    if (!call || call.state !== 'taken') return null;
+    call.state = 'wrap'; call.endedAt = s.t; call.sec = Math.round(s.t - call.pickedAt); this.L('call', `Hovor ${id} ukončen, calltaker dovyplňuje případ`, null);
+    return call;
+  }
+  finishCall(id) {
+    const s = this.s, call = s.calls.find(x => x.id === id);
+    if (!call || call.state !== 'wrap') return null;
+    call.state = 'done';
+    if (!call.caseId) { this.L('warn', `Hovor ${id} ukončen bez odeslání případu dispečerovi`, null); this._opsScore(-20, `hovor ${id} bez odeslání případu`, null); }
+    else { const c = this.caseOf(call.caseId); if (c && c.call) c.call.sec = call.sec; }
+    return call;
   }
   hangupCall(id) {
     const s = this.s, call = s.calls.find(x => x.id === id);

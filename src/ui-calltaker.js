@@ -69,7 +69,7 @@ function ctReset() {
   const b = $('ct-body'); if (b) b.innerHTML = '';
   document.body.classList.add('ct-spider-off');
 }
-function ctAfterLoad() { ctReset(); if (ctModeOn()) { for (const c of sim.s.calls) if (c.state === 'taken') c.state = 'done'; view = 'intake'; } }
+function ctAfterLoad() { ctReset(); if (ctModeOn()) { for (const c of sim.s.calls) if (c.state === 'taken' || c.state === 'wrap') c.state = 'done'; view = 'intake'; } }
 // třídy na body, rozložení a vrstvy mapy podle režimu
 function ctSync() {
   const on = ctModeOn(), cl = document.body.classList;
@@ -129,6 +129,9 @@ function ctBuild() {
 function ctPhoneHtml() {
   const s = sim.s, rg = s.calls.find(c => c.state === 'ringing'), call = ct.call;
   const btnMenu = '<button class="btn" data-act="ct-home" title="Nabídka" style="margin:0 0 0 auto">☰</button>';
+  if (call && ct.ended) {
+    return { cls: 'call', html: `<div class="ph-st">Hovor ukončen<small>Dovyplň formulář a odešli nebo aktualizuj případ, pak klikni Dokončit${call.caseId ? '' : ' (případ zatím není odeslán!)'}</small></div><button class="btn pri" data-act="ct-finish">Dokončit a vyhodnotit</button>${btnMenu}` };
+  }
   if (call) {
     const v = ct.facts[call.id] ? ct.facts[call.id].view.volajici : null, el = s.t - call.pickedAt, vs = ct.vstatus ? ` · <span style="color:${ct.vbad ? '#ff9b94' : '#9fd9b0'}">${esc(ct.vstatus)}</span>` : '';
     return { cls: 'call', html: `<div class="ph-st">V hovoru ${ctMMSS(el)}<small>${v ? esc(ctPhoneShown()) + ' · ' + esc(v.linka) : ''}${vs}</small></div>${ct.voice ? `<button class="btn" data-act="ct-mute">${ct.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>` : ''}<button class="btn red" data-act="ct-hangup">Ukončit hovor</button>${btnMenu}` };
@@ -278,7 +281,7 @@ function ctPickup() {
   const rg = sim.s.calls.find(c => c.state === 'ringing'); if (!rg || ct.call) return;
   const facts = ct.facts[rg.id] || sim.callFacts(rg.seed);
   if (!sim.pickupCall(rg.id)) return;
-  ctStopRing(); ct.ringId = null; ct.facts[rg.id] = facts; ct.call = rg; ct.vstatus = ''; ct.vbad = false; ct.muted = false; ct.wav = null; ct.msgs = [];
+  ctStopRing(); ct.ringId = null; ct.facts[rg.id] = facts; ct.call = rg; ct.ended = false; ct.vstatus = ''; ct.vbad = false; ct.muted = false; ct.wav = null; ct.msgs = [];
   ctBuild(); ctFormReset(facts); ct.tab = 'intake'; ctTab('intake');
   document.body.classList.remove('ct-spider-off'); layoutApply(true);
   if (view !== 'intake' && !layoutDesktop()) view = 'intake';
@@ -306,7 +309,7 @@ function ctTrDelta(role, text) {
   ct.curTr.text += text; ct.curEl.textContent = ct.curTr.text;
 }
 async function ctSay() {
-  const inp = $('ct-say'), t = inp.value.trim(); if (!t || ct.busy || !ct.call) return;
+  const inp = $('ct-say'), t = inp.value.trim(); if (!t || ct.busy || !ct.call || ct.ended) return;
   const facts = ct.facts[ct.call.id]; inp.value = ''; ctTrAdd('me', t); ct.transcript.push({ role: 'calltaker', text: t }); ct.msgs.push({ role: 'user', content: t }); ct.busy = true;
   try {
     const rep = await ZOS_LIVE.chat(cts.key, cts.textModel, window.CT_PROMPTS.callerSystem(facts.view), ct.msgs);
@@ -317,14 +320,22 @@ async function ctSay() {
   } catch (e) { ct.vstatus = 'Chyba API: ' + e.message; ct.vbad = true; ct.msgs.pop(); ct.transcript.pop(); }
   ct.busy = false;
 }
-function ctMute() { if (ct.voice) { ct.muted = !ct.voice.mute(); ct.phoneKey = ''; } }
+function ctMute() { if (ct.voice && !ct.ended) { ct.muted = !ct.voice.mute(); ct.phoneKey = ''; } }
 async function ctHangup() {
+  const call = ct.call; if (!call || ct.ended) return;
+  const voice = ct.voice; ct.voice = null; ct.ended = true; ct.phoneKey = '';
+  sim.endCall(call.id); ct.rec = { usage: 0, wav: null };
+  ct.vstatus = ''; $('ct-textrow').style.display = 'none';
+  $('ct-sendinfo').textContent = call.caseId ? 'Hovor ukončen. Případ můžeš ještě doplnit a znovu odeslat (Aktualizovat případ).' : 'Hovor ukončen. Případ ještě odešli dispečerovi.';
+  if (voice) { try { ct.rec = await voice.close(); } catch (e) { /* ignore */ } }
+  render();
+}
+function ctFinish() {
   const call = ct.call; if (!call) return;
-  const facts = ct.facts[call.id], form = ctReadForm(), voice = ct.voice, transcript = ct.transcript.slice();
-  ct.call = null; ct.voice = null; ct.phoneKey = '';
-  const hc = sim.hangupCall(call.id);
-  let rec = { usage: 0, wav: null };
-  if (voice) { ct.vstatus = 'Ukončuji hovor…'; try { rec = await voice.close(); } catch (e) { /* ignore */ } }
+  const facts = ct.facts[call.id], form = ctReadForm(), transcript = ct.transcript.slice(), rec = ct.rec || { usage: 0, wav: null };
+  if (!ct.ended) { ct.ended = true; sim.endCall(call.id); }
+  const hc = sim.finishCall(call.id);
+  ct.call = null; ct.ended = false; ct.phoneKey = ''; ct.rec = null;
   document.body.classList.add('ct-spider-off'); layoutApply(true);
   ctResultModal({ call: hc || call, facts, form, transcript, wav: rec.wav, usage: rec.usage, cls: ct.cls });
   render();
@@ -469,6 +480,7 @@ function ctAct(a, el) {
     case 'ct-home': homeModal(); break;
     case 'ct-pickup': ctPickup(); break;
     case 'ct-hangup': ctHangup(); break;
+    case 'ct-finish': ctFinish(); break;
     case 'ct-mute': ctMute(); break;
     case 'ct-tab': ctTab(d.t); break;
     case 'ct-send': ctSend(); break;

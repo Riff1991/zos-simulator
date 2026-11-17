@@ -73,6 +73,21 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   const before = sim3.s.agg.opsPoints; sim3.pickupCall(cl3.id); sim3.hangupCall(cl3.id);
   ok(sim3.s.agg.opsPoints < before && sim3.s.log.some(l => /bez odeslání/.test(l.txt)), 'ukončení hovoru bez odeslání případu se trestá');
 }
+{ // zavěšení bez uzavření: případ jde po hovoru poslat a doplnit, trest až po finishCall
+  const sim = new Sim({ seed: 51, mode: 'free', startHour: 10 }); sim.enableLiveCalls({ mode: 'training', gapSec: 90 });
+  let cl = null; for (let i = 0; i < 2000 && !cl; i++) { step(sim); cl = sim.s.calls.find(c => c.state === 'ringing'); }
+  const f = sim.pickupCall(cl.id), before = sim.s.agg.opsPoints;
+  ok(sim.endCall(cl.id).state === 'wrap' && sim.s.agg.opsPoints === before, 'endCall: hovor v dovyplňování, bez trestu');
+  const c = sim.sendCall(cl.id, { adresa: f.key.adresa, n: String(f.key['naléhavost']).replace('N', '') });
+  ok(c && c.call && cl.caseId === c.id, 'po zavěšení jde případ poprvé odeslat');
+  sim.sendCall(cl.id, { adresa: f.key.adresa, n: String(f.key['naléhavost']).replace('N', ''), poznamka: 'doplněno' });
+  ok(/doplněno/.test(c.poznamka), 'po zavěšení jde případ aktualizovat');
+  ok(sim.finishCall(cl.id).state === 'done' && sim.s.agg.opsPoints === before, 'finishCall: odeslaný případ bez trestu');
+  const sim2 = new Sim({ seed: 52, mode: 'free', startHour: 10 }); sim2.enableLiveCalls({ mode: 'training', gapSec: 90 });
+  let c2 = null; for (let i = 0; i < 2000 && !c2; i++) { step(sim2); c2 = sim2.s.calls.find(c => c.state === 'ringing'); }
+  sim2.pickupCall(c2.id); const b2 = sim2.s.agg.opsPoints; sim2.endCall(c2.id); sim2.finishCall(c2.id);
+  ok(sim2.s.agg.opsPoints < b2, 'finishCall bez odeslání případu se trestá');
+}
 { // adresa, kterou systém nezná: dispečer ji dohledává (zdržení)
   const simU = new Sim({ seed: 41, mode: 'free', startHour: 10 }), cu = simU.addCallCase({ v: 1, seed, form: { adresa: 'Husova 1, Neexistující', n: String(truth.n) }, sec: 60 });
   ok(cu.call.unlocatable, 'neznámá adresa je označena jako nedohledatelná');
