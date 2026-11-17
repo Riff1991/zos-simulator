@@ -7,7 +7,7 @@ const kInst = () => ki || (ki = CT_CIHLY.createIntake(ZOS_CIHLY, { klasifs: ctKl
 const KI_POS = ['DI', 'KOR', 'LZS', 'RLP', 'RV', 'RZP'];
 const KI_COOP = [['HJHC', 'HZS Jihočeského kraje', '0999 150 150'], ['PJHC', 'Policie ČR Jihočeský kraj', '0999 158 158'], ['ZVYS', 'ZZS Kraje Vysočina', '0999 155 555'], ['HS', 'Horská služba', '0999 210 210'], ['VZS', 'Vodní záchranná služba', '0999 220 220'], ['FR', 'First responder', '0999 230 230']];
 const KI_LOK = ['Hlava', 'Krk', 'Hrudník', 'Břicho', 'Záda', 'Pánev', 'Horní končetina', 'Dolní končetina'];
-const KI_ZPUSOB = ['Linka 155', 'Linka 112', '112 – přeposláno', 'Mobilní aplikace', 'eCall', 'Osobně', 'Jiné'];
+const KI_ZPUSOB = ['telefonicky na 155', 'datová věta z NIS', 'Aplikace záchranka', 'datová věta z jiné složky', 'SMS od neslyšícího', 'telefonicky na jiné číslo', 'jiný', 'datová věta z TCTV 112'];   // číselník ze skutečného systému
 const KI_COLS = ['Název územního prvku', 'Typ prvku', 'Kraj', 'Okres', 'Obec', 'Základní sídelní jednotka', 'Část obce', 'Ulice', 'Doplnění místa', 'POI'];
 const kiNew = () => ({ klasif: '', sel: new Set(), n: 0, pos: { DI: 0, KOR: 0, LZS: 0, RLP: 0, RV: 0, RZP: 0 }, coop: new Set(), tab: 'coop', ptab: 'pac', sex: '', lok: new Set(), rows: [], rowSel: -1, log: [], mode: 'zakl' });
 let kf = kiNew();
