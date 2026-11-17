@@ -180,6 +180,167 @@ def symptoms_of(text):
     return [n for _, n in sorted(found)]
 
 
+# Cihlička na obrazovce = jeden příznak z katalogu; znak před názvem v katalogu říká, ke které klasifikaci patří
+# (§ křeče, - arytmie, _ hrudník a dušnost, ° krvácení, ! CMP, $ porucha vědomí, : psychika …). Barva = blok excelu, jehož text příznak popisuje; bez shody = šedá.
+GROUPS = {
+    'Arytmie': '-', 'Bolest': '*', 'Bolesti na hrudi': '_', 'CMP': '!', 'CZS': '[', 'Gynekologické stavy': '\\', 'Horečka': '(', 'Hypertenze': '/', 'Intoxikace': '^',
+    'Neúrazové krvácení': '°', 'Oběšení': '>', 'Popálení, poleptání': ']', 'Porucha vědomí': '$', 'Psychiatrické stavy': ':', 'Tonutí': '¨', 'Zvracení / průjem': ')',
+    'NZO – spatřená': '@', 'Neurologické stavy': '+!',
+}
+NAMEFILTER = {'Diabetické stavy': r'glyk|diabet', 'Alergické reakce': r'alerg|anafyl|otok|kopřiv|výsyp'}
+ABBR = [('dušnost', 'DUŠ'), ('krvácení', 'KRVÁC'), ('nezastavitelné', 'NEZAST'), ('opakovaný', 'OPAK'), ('opakovaná', 'OPAK'), ('závažné', 'ZÁVAŽ'), ('závažný', 'ZÁVAŽ'), ('příznaky', 'PŘÍZN'), ('bez', 'BEZ'),
+        ('ověřená', 'OVĚŘ'), ('ověřená', 'OVĚŘ'), ('trvající', 'TRVAJ'), ('několik', 'NĚKOL'), ('hodin', 'HOD'), ('končetiny', 'KONČ'), ('končetin', 'KONČ'), ('v souvislosti s', 'S'), ('onemocnění', 'ONEMOC')]
+
+
+SYN = [('akce srdeční', 'TF'), ('tepů/min', 'min'), ('příznaků', 'projevů'), ('příznaky', 'projevy'), ('graviditou', 'těhotenství'), ('graviditě', 'těhotenství'), ('onemocnění', 'nemoc'),
+       ('větší', 'většího'), ('kolabující', 'kolaps'), ('alterující', 'alterace')]
+
+
+def _syn(text):
+    t = text
+    for a, b in SYN:
+        t = re.sub(a, a + ' ' + b, t, flags=re.I)
+    return t
+
+
+def _stems(text):
+    import unicodedata
+    t = unicodedata.normalize('NFD', text.lower()).encode('ascii', 'ignore').decode()
+    return {w[:5] for w in re.findall(r'[a-z0-9]{3,}', t)}
+
+
+def _code(name):
+    n = name
+    for a, b in ABBR:
+        n = re.sub(r'\b' + a + r'\b', b, n, flags=re.I)
+    c = re.sub(r'[^\wÀ-ž<>%/.-]+', '_', n.strip()).strip('_').upper()
+    return c if len(c) <= 22 else c[:22].rstrip('_')
+
+
+def catalog_chips(bricks):
+    """Cihličky klasifikací bez screenu z příznaků katalogu (skupina podle znaku), barva podle shody s textem bloků excelu."""
+    import os
+    raw = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'symptoms.json'), encoding='utf-8'))['symptomCatalog']
+    out = {}
+    for klasif in sorted({b['klasif'] for b in bricks}):
+        if klasif in GROUPS:
+            names = []
+            for x in raw:
+                if x[:1] in GROUPS[klasif]:
+                    n = re.sub(r'^[^A-Za-zÀ-ž0-9]+', '', x).strip()
+                    if n not in names:
+                        names.append(n)
+        elif klasif in NAMEFILTER:
+            names = []
+            for x in raw:
+                n = re.sub(r'^[^A-Za-zÀ-ž0-9]+', '', x).strip()
+                if re.search(NAMEFILTER[klasif], n, re.I) and n not in names:
+                    names.append(n)
+        else:
+            continue
+        bs = [b for b in bricks if b['klasif'] == klasif]
+        texts = [(b, ' '.join(b['lines'])) for b in bs]
+        chips = {b['id']: [] for b in bs}
+        gray = []
+        for n in names:
+            if re.match(r'AVPU-', n) and not any(n in t for _, t in texts) and not (n in ('AVPU-A', 'AVPU-V') and sum(1 for z in names if z.startswith('AVPU-')) == 2):
+                continue   # AVPU jen když ho kritéria zmiňují, nebo skupina nabízí právě A a V (jako u křečí)
+            st = _stems(_syn(n)) - {'bez', 'jina', 'jine'}
+            best, bscore, bline = None, 0.0, ''
+            for b, t in texts:
+                ts = _stems(t)
+                if st and len(st & _stems(_syn(t))) / len(st) > bscore:
+                    bscore, best = len(st & _stems(_syn(t))) / len(st), b
+            if best is not None and bscore >= 0.5:
+                line = max(best['lines'], key=lambda l: len(st & _stems(_syn(l))))
+                chips[best['id']].append({'c': _code(n), 't': line, 's': [n]})
+            else:
+                gray.append(_code(n))
+        out[klasif] = (chips, gray)
+    return out
+
+
+GRAY_FORCE = r'hypertonik|kardiak|diabetik|astmatik|epileptik|chopn|alkohol|aspirace|oxygenoterapie|volání z (3\.|třetí) ?ruky|^pčr$|^hzs$|osobní auto|nákladní|autobus|motocykl|cyklist|chodec'
+
+
+def profile_chips(bricks):
+    """Cihličky z výjezdů (leden a červenec 2026, src/symptoms.json): slovník = příznaky, které se u klasifikace skutečně zaklikávají (podíl v kombinacích),
+    barva = blok excelu klasifikace, jehož text příznak popisuje; bez shody podle toho, při jaké naléhavosti se v datech příznak nejčastěji vyskytuje; jinak šedá."""
+    import os, unicodedata
+    S = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'symptoms.json'), encoding='utf-8'))
+    cat, prof = S['symptomCatalog'], S['symptomProfiles']
+    nrm = lambda x: re.sub(r'[^a-z0-9]+', ' ', unicodedata.normalize('NFD', x.lower()).encode('ascii', 'ignore').decode()).strip()
+    keys = {nrm(k): k for k in prof}
+    strip_ = lambda x: re.sub(r'^[^A-Za-zÀ-ž0-9]+', '', x).strip()
+    skip = {'dospělý', 'dítě', 'dynamická indikace', 'gasping', 'tanr', 'tanr nelze', 'nedýchá', 'dýchá', 'při vědomí', 'reaguje na bolest', 'reaguje na oslovení', 'bezvědomí'}
+    out = {}
+    for klasif in sorted({b['klasif'] for b in bricks}):
+        pk = keys.get(nrm(klasif)) or keys.get(nrm(klasif.replace('–', '-')))
+        if not pk:
+            continue
+        W = 0.0
+        tot, byN, dyn = {}, {}, {}
+        for nn in ('N1', 'N2', 'N3'):
+            for ids, cnt in prof[pk].get(nn, []):
+                names = [strip_(cat[i]) for i in ids]
+                isdyn = any(n.lower() == 'dynamická indikace' for n in names)
+                W += cnt
+                for n in set(names):
+                    if n.lower() in skip or cat[ids[names.index(n)]][:1] == '#':
+                        continue
+                    tot[n] = tot.get(n, 0) + cnt
+                    byN.setdefault(n, {'N1': 0, 'N2': 0, 'N3': 0})[nn] += cnt
+                    if isdyn and nn == 'N2':
+                        dyn[n] = dyn.get(n, 0) + cnt
+        bs = [b for b in bricks if b['klasif'] == klasif]
+        texts = [(b, ' '.join(b['lines'])) for b in bs]
+        names = [n for n, c in sorted(tot.items(), key=lambda x: -x[1]) if c / W >= 0.012][:30] if W else []
+        grp = [strip_(x) for x in cat if GROUPS.get(klasif) and x[:1] in GROUPS[klasif] and strip_(x).lower() not in skip]   # celá skupina klasifikace v katalogu (i vzácné příznaky)
+        names = list(dict.fromkeys(names + grp))[:40]
+        chips = {b['id']: [] for b in bs}
+        gray = []
+        for n in names:
+            if re.match(r'AVPU-', n) and not any(n in t for _, t in texts):
+                continue
+            st = _stems(_syn(n)) - {'bez', 'jina', 'jine'}
+            best, bscore = None, 0.0
+            for b, t in texts:
+                sc = len(st & _stems(_syn(t))) / len(st) if st else 0
+                if sc > bscore:
+                    bscore, best = sc, b
+            kind = None
+            if re.search(GRAY_FORCE, n, re.I) and not (best is not None and bscore >= 0.8):
+                tgt = None
+            elif best is not None and bscore >= 0.5:
+                tgt = best
+            elif tot.get(n, 0) / (W or 1) < 0.03:
+                tgt = None
+            else:
+                d = byN.get(n) or {'N1': 0, 'N2': 0, 'N3': 0}; t3 = sum(d.values()) or 1
+                dom = max(d, key=d.get)
+                if sum(d.values()) and d[dom] / t3 >= 0.75:
+                    want = {'N1': 'n1', 'N2': 'n2di' if dyn.get(n, 0) / (d['N2'] or 1) > 0.5 else 'n2', 'N3': 'n3'}[dom]
+                    tgt = next((b for b in bs if b['kind'] == want), None)
+                else:
+                    tgt = None
+            if tgt is None:
+                gray.append(_code(n))
+                continue
+            line = max(tgt['lines'], key=lambda l: len(st & _stems(_syn(l))))
+            chips[tgt['id']].append({'c': _code(n), 't': line, 's': [n]})
+        # kódy jsou v rámci klasifikace jedinečné
+        seen = {}
+        def uniq(c):
+            seen[c] = seen.get(c, 0) + 1
+            return c if seen[c] == 1 else c[:20] + '_' + str(seen[c])
+        for lst in chips.values():
+            for ch in lst:
+                ch['c'] = uniq(ch['c'])
+        gray = [uniq(g) for g in gray]
+        out[klasif] = (chips, gray)
+    return out
+
+
 def apply_screens(bricks):
     """Klasifikace, které máme ze screenů skutečné obrazovky, dostanou přesně jejich sadu cihliček (kódy, barvy, pořadí); text je z excelu."""
     import os, sys
@@ -343,6 +504,12 @@ def build(path):
                     if t['id'].startswith('ostatni:') and 'prevoz' in t['id']:
                         t['doprovod'] = {'titul': 'Indikace lékařského doprovodu – posádka RLP či RV+RZP', 'polozky': items, 'poznamky': join_lines(notes)}
     add_chips(bricks)
+    gen = profile_chips(bricks)
+    gen = {k: v for k, v in gen.items() if any(v[0].values())}   # klasifikace bez použitelných příznaků (Převoz, Technická jízda) zůstanou s cihličkami z textu excelu
+    for b in bricks:
+        g = gen.get(b['klasif'])
+        if g is not None:
+            b['chips'] = g[0].get(b['id'], [])
     apply_screens(bricks)
     for t in tiles:
         t['bricks'] = [b['id'] for b in bricks if b['tile'] == t['id']]
@@ -353,6 +520,9 @@ def build(path):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from screens_cihly import GRAY_SCREEN
     gray = {k: {'list': v[0], 'full': v[1]} for k, v in GRAY_SCREEN.items()}
+    for k, (_, gl) in gen.items():
+        if k not in gray:
+            gray[k] = {'list': gl, 'full': True}
     return {'format': 'zos-cihly/1', 'gray': gray, 'skupiny': [{'id': k, 'label': v} for k, v in GR.items()][::-1] if False else [{'id': 'stav', 'label': GR['stav']}, {'id': 'dej', 'label': GR['dej']}, {'id': 'ostatni', 'label': GR['ostatni']}], 'tiles': tiles, 'bricks': bricks}
 
 

@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.37.1 – 2026-11-18
+Opravy:
+- **Cihličky ostatních indikací vycházejí z katalogu příznaků.** Cihlička na obrazovce je jeden příznak z katalogu a znak před jeho názvem říká, ke které klasifikaci patří (§ křeče, - arytmie, _ hrudník a dušnost, ° krvácení, ! CMP, $ porucha vědomí, : psychika …). Slovník cihliček každé indikace tvoří příznaky, které se u ní v exportech výjezdů (leden a červenec 2026) skutečně zaklikávají (podíl v kombinacích), plus celá skupina příznaků této klasifikace v katalogu. Barva se určuje podle shody s blokem excelu klasifikace, jinak podle toho, při jaké naléhavosti se příznak v datech nejčastěji vyskytuje, a jinak je šedá. Příznak v Upřesnění je přesně ten z katalogu. Pět indikací ze screenů zůstává přesně podle screenů.
+
 ## v0.37.0 – 2026-11-18
 Nové:
 - **Dlaždice (cihličky) podle skutečných screenů.** Křečové stavy, Arytmie, Dušnost, Trauma a Dopravní nehoda mají přesně ty cihličky, které jsou ve skutečné obrazovce: stejné kódy (například KŘEČE_FEBRILNÍ, AS_<_30_MIN, SpO2_82-93%, ICD_VÝBOJ_OPAK), barvy a pořadí, včetně šedých cihel. Pod myší je plné znění kritéria z excelu. U ostatních indikací se cihličky odvozují z excelu (zatím bez screenů).
