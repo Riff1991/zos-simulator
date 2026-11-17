@@ -88,6 +88,7 @@ function applyVoice() {
 }
 if (typeof ZOS_VOICE !== 'undefined') ZOS_VOICE.onChange(() => { const el = $('voice-status'); if (el) el.textContent = voiceStatusText(); if (sim) renderRadioLive(); });
 function voiceSay0(text, key, isCall, id) {
+  if (typeof ctModeOn === 'function' && ctModeOn()) return;   // calltaker nikdy neslyší vysílačky (ani pípnutí)
   if (!settings.sound || typeof ZOS_VOICE === 'undefined') return;
   const st = ZOS_VOICE.status().state;
   if (settings.voice && (st === 'ready' || st === 'loading')) ZOS_VOICE.say(text, key, id);

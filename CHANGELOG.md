@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.32.1 – rozpracováno
+Opravy:
+- **Režim calltaker:** vysílačky (hlas i pípnutí) se v režimu calltaker nikdy neozývají, ani při zapnutých dispečerských oknech.
+
 ## v0.32.0 – 2026-11-17
 Nové:
 - **Režim Calltaker v hlavní aplikaci** (úvodní obrazovka → ☎ Calltaker): hráč zvedá telefon, nabírá výzvu od AI volajícího (hlas OpenAI GPT-Live, volitelně text), klasifikuje ji a odesílá dispečerovi (bot, jde vypnout). Okna: **Nabírání** (telefonní pruh, záložky Nabírání a Moje případy), **Pavouk** a **Mapa**; dispečerská okna jdou zapnout přepínačem.
