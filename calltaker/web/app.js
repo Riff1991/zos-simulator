@@ -141,7 +141,7 @@
       c.dc.addEventListener('close', () => { if (!c.closed && !ended && vc === c) status('Spojení se přerušilo.', true); });
       await c.pc.setLocalDescription(await c.pc.createOffer());
       await waitIce(c.pc);
-      const mk = name => oa('/live/sessions', { session: { model: 'gpt-live-1', instructions: P.callerSystem(v, true), audio: { output: { voice: name } } }, transport: { type: 'webrtc', sdp: c.pc.localDescription.sdp } });
+      const mk = name => oa('/live/sessions', { session: { model: $('vModel').value.trim() || 'gpt-live-1', instructions: P.callerSystem(v, true), audio: { output: { voice: name } } }, transport: { type: 'webrtc', sdp: c.pc.localDescription.sdp } });
       let res;
       try { res = await mk(voice); } catch (e) {
         if (/voice/i.test(e.message) && voice !== 'marin') { status('Hlas „' + voice + '“ nelze použít, zkouším marin…'); res = await mk('marin'); } else throw e;
