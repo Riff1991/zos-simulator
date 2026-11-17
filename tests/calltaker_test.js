@@ -47,4 +47,34 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   const sim = new Sim({ seed: 777, mode: 'free' }), wrong = truth.n === 3 ? 1 : 3, c = sim.addCallCase({ v: 1, seed, form: { adresa: truth.addr, n: String(wrong) }, sec: 100 });
   ok(c.n === wrong && c.call.truthN === truth.n && c.call.typedN === wrong, 'špatná naléhavost: zadáno ' + wrong + ', skutečně ' + truth.n);
 }
+{ // živé hovory: zvonění → zvednutí → odeslání → pokračování hovoru → bot vyšle posádku → ukončení
+  const sim = new Sim({ seed: 31, mode: 'free', startHour: 10 }); sim.enableLiveCalls({ mode: 'training', gapSec: 90 });
+  let call = null; for (let i = 0; i < 2000 && !call; i++) { step(sim); call = sim.s.calls.find(c => c.state === 'ringing'); }
+  ok(!!call, 'zazvonil hovor ' + (call && call.id));
+  const facts = sim.pickupCall(call.id);
+  ok(facts && facts.view && facts.key && call.state === 'taken', 'hovor zvednut, facts (' + (facts && facts.key['naléhavost']) + ', ' + (facts && facts.view.persona.typ) + ')');
+  for (let i = 0; i < 20; i++) step(sim);
+  const c = sim.sendCall(call.id, { adresa: facts.key.adresa, n: facts.key['naléhavost'], poznamka: 'zatím nedýchá' });
+  ok(c && c.call && call.state === 'taken' && call.caseId === c.id, 'případ odeslán, hovor stále běží');
+  for (let i = 0; i < 10; i++) step(sim);
+  ok(sim.s.cases.find(x => x.id === c.id).status === 'waiting', 'případ je u dispečera (waiting)');
+  const c2 = sim.sendCall(call.id, { adresa: facts.key.adresa, n: facts.key['naléhavost'], poznamka: 'zatím nedýchá; TANR zahájena' });
+  ok(c2 === c && /TANR/.test(c.poznamka) && c.call.updates >= 1, 'druhé odeslání případ jen aktualizuje (poznámka)');
+  let dispatched = false; for (let i = 0; i < 400 && !dispatched; i++) { step(sim); dispatched = c.asg.length > 0; }
+  ok(dispatched, 'bot dispečer vyslal posádku po reakční době');
+  ok(sim.hangupCall(call.id).state === 'done', 'hovor ukončen');
+  // zmeškaný hovor
+  const sim2 = new Sim({ seed: 32, mode: 'free', startHour: 10 }); sim2.enableLiveCalls({ mode: 'training', gapSec: 90, ringSec: 20 });
+  let n = 0; for (let i = 0; i < 4000 && !sim2.s.calls.some(c => c.state === 'missed'); i++) { step(sim2); n++; }
+  ok(sim2.s.calls.some(c => c.state === 'missed'), 'nezvednutý hovor je zmeškaný po vypršení');
+  // ukončení bez odeslání = penalizace
+  const sim3 = new Sim({ seed: 33, mode: 'free', startHour: 10 }); sim3.enableLiveCalls({ mode: 'training', gapSec: 90 });
+  let cl3 = null; for (let i = 0; i < 2000 && !cl3; i++) { step(sim3); cl3 = sim3.s.calls.find(c => c.state === 'ringing'); }
+  const before = sim3.s.agg.opsPoints; sim3.pickupCall(cl3.id); sim3.hangupCall(cl3.id);
+  ok(sim3.s.agg.opsPoints < before && sim3.s.log.some(l => /bez odeslání/.test(l.txt)), 'ukončení hovoru bez odeslání případu se trestá');
+}
+{ // adresa, kterou systém nezná: dispečer ji dohledává (zdržení)
+  const simU = new Sim({ seed: 41, mode: 'free', startHour: 10 }), cu = simU.addCallCase({ v: 1, seed, form: { adresa: 'Husova 1, Neexistující', n: String(truth.n) }, sec: 60 });
+  ok(cu.call.unlocatable, 'neznámá adresa je označena jako nedohledatelná');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

@@ -17,30 +17,11 @@ function loadEngine() {
   global.__zosLoaded = true;
   return require(path.join(R, 'src/engine.js'));
 }
-const { pickPersona } = require('./personas.js');
-
-// seed = číslo → deterministický případ i volající
+// seed = číslo → deterministický případ i volající (jediný zdroj pravdy je Sim.callFacts v src/sim-calltaker.js)
 function makeCase(seed) {
   const { Sim } = loadEngine();
-  const sim = new Sim({ seed, mode: 'free' });
-  const c = sim._spawn();
-  const rnd = () => sim.rnd();
-  const persona = pickPersona(rnd, c);
-  const bld = c.bld || {};
-  const view = {
-    seed,
-    volajici: { jmeno: c.ozn, vztah: c.oznRel.replace(/^volá\s*/, '') || c.oznRel, telefon: c.phone, linka: c.src },
-    pacient: { jmeno: c.patientName, vek: c.age, pohlavi: c.sex === 'M' ? 'muž' : 'žena', pacientJeVolajici: /pacient sám/.test(c.oznRel) },
-    misto: { adresa: c.addr, obec: c.town, okres: c.okres, castObce: c.cast || '', druh: c.where, popis: c.place || '', budova: bld.code === 3 ? 'bytový dům' : bld.code === 1 ? 'dům' : bld.code === 2 ? 'obytná budova' : '', podlazi: bld.levels || 0 },
-    // odborný obraz je jen pro tebe jako autora: popisuj laicky, nikdy nečti zkratky
-    klinickyObraz: c.up, poznamka: c.poznamka || '',
-    persona,
-  };
-  const key = {
-    seed, naléhavost: 'N' + c.n, dynamicka: !!c.dyn, lekar: !!c.rvNeed, klasifikace: c.klasif, indikace: c.ind, adresa: c.addr, obec: c.town,
-    pacient: c.patientName, vek: c.age, priznaky: c.up, telefon: c.phone,
-  };
-  return { view, key };
+  const f = new Sim({ seed: 1, mode: 'free' }).callFacts(seed);
+  return { view: f.view, key: f.key };
 }
 module.exports = { makeCase, loadEngine };
 if (require.main === module) {

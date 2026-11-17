@@ -2,7 +2,7 @@
   const $ = id => document.getElementById(id);
   const P = window.CT_PROMPTS, CHK = window.CT_CHECK, CASES = window.CT_CASES;
   const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
-  let cur = null, msgs = [], transcript = [], busy = false, ended = false, mode = 'voice', vc = null, lastWav = null;
+  let cur = null, msgs = [], transcript = [], busy = false, ended = false, mode = 'voice', vc = null, lastWav = null, sim = null, curCall = null, loopT = null, ringT = null, ringCtx = null, ringing = null, dataReady = false, factsCache = {}, lastBoard = 0;
 
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const key = () => $('key').value.trim();
@@ -36,18 +36,28 @@
     } catch (e) { status('Klíč nebo síť: ' + e.message, true); }
   }
 
-  function newCall() {
-    if (!key() || !model()) { status('Vlož klíč a vyber model (tlačítko Načíst modely).', true); return; }
+  function prepare() {
+    if (!key() || !model()) { status('Vlož klíč a vyber model (tlačítko Načíst modely).', true); return false; }
     if ($('remember').checked) { store.set('ct_key', key()); store.set('ct_model', model()); } else store.del('ct_key');
+    return true;
+  }
+  // rychlý hovor bez směny (náhodný předgenerovaný případ, bez dispečera)
+  function quick() {
+    if (!prepare()) return;
+    beginCall({ view: null, key: null }, null, CASES[Math.floor(Math.random() * CASES.length)]);
+  }
+  function beginCall(facts, callId, preset) {
     stopVoice(); lastWav = null; $('wavrow').hidden = true;
-    cur = CASES[Math.floor(Math.random() * CASES.length)];
+    cur = preset || facts; curCall = callId;
     msgs = []; transcript = []; ended = false;
-    $('log').innerHTML = ''; $('form').hidden = true; $('result').hidden = true; $('call').hidden = false; $('setup').open = false;
+    $('log').innerHTML = ''; $('post').hidden = true; $('result').hidden = true; $('call').hidden = false; $('setup').open = false;
+    for (const id of ['fAdr', 'fInd', 'fNote']) $(id).value = ''; $('fN').value = '';
+    $('sendCase').textContent = 'Odeslat dispečerovi'; $('sendCase').disabled = false; $('sendCase').hidden = !callId; delete $('sendCase').dataset.sent; $('sendInfo').textContent = '';
     $('ani').textContent = cur.view.volajici.telefon + ' · ' + cur.view.volajici.linka + ' · hovor č. ' + cur.view.seed;
     mode = document.querySelector('input[name=mode]:checked').value;
     $('textrow').hidden = mode === 'voice'; $('vctl').hidden = mode !== 'voice'; $('live').textContent = ''; $('mute').textContent = 'Ztlumit mikrofon';
     $('say').disabled = mode === 'voice'; $('send').disabled = mode === 'voice'; $('end').disabled = false; $('say').value = '';
-    bubble('sys', 'Příchozí hovor. Zvedni linku a pozdrav (např. „Zdravotnická záchranná služba, co se stalo?“).');
+    bubble('sys', callId ? 'Hovor spojen. Pozdrav a nabírej; případ pošli dispečerovi, jakmile ho máš klasifikovaný.' : 'Příchozí hovor. Zvedni linku a pozdrav (např. „Zdravotnická záchranná služba, co se stalo?“).');
     status('');
     if (mode === 'voice') startVoice(); else $('say').focus();
   }
@@ -69,9 +79,10 @@
   }
   async function endCall() {
     if (ended) return;
-    ended = true; $('say').disabled = true; $('send').disabled = true; $('end').disabled = true;
+    ended = true; $('say').disabled = true; $('send').disabled = true; $('end').disabled = true; $('sendCase').disabled = true;
     if (mode === 'voice') { status('Ukončuji hovor…'); await closeVoice(); }
-    $('form').hidden = false; $('form').scrollIntoView({ behavior: 'smooth' });
+    if (sim && curCall) { const hc = sim.hangupCall(curCall); if (hc && !hc.caseId) status('Hovor ukončen bez odeslání případu dispečerovi.', true); curCall = null; }
+    $('call').hidden = !!sim; $('post').hidden = false; $('post').scrollIntoView({ behavior: 'smooth' });
   }
 
   // ---------- hlas: OpenAI GPT-Live přes WebRTC ----------
@@ -239,7 +250,7 @@
   async function judgeCall() {
     const form = { adresa: $('fAdr').value.trim(), n: $('fN').value, indikace: $('fInd').value.trim(), poznamka: $('fNote').value.trim() };
     const rules = CHK.checkForm(form, cur.key);
-    $('result').hidden = false; $('result').innerHTML = '<p>Vyhodnocuji…</p>';
+    $('result').hidden = false; $('result').innerHTML = '<p>Vyhodnocuji…</p>'; $('judge').disabled = true;
     const txt = transcript.map(t => (t.role === 'calltaker' ? 'CALLTAKER: ' : 'VOLAJÍCÍ: ') + t.text).join('\n');
     const user = 'LIST FAKTŮ:\n' + JSON.stringify(cur.view, null, 1) + '\n\nKEY:\n' + JSON.stringify(cur.key, null, 1) + '\n\nFORMULÁŘ OD CALLTAKERA:\n' + JSON.stringify(form) + '\n\nPŘEPIS:\n' + txt;
     let soudce = null;
@@ -254,13 +265,16 @@
     const k = cur.key, c = s && s.calltaker, v = s && s.realismus_volajiciho;
     let h = '<h3>Kontrola pravidly</h3><ul><li>Ulice ' + yn(r.ulice) + ' · číslo ' + yn(r.cislo) + ' · obec ' + yn(r.obec) + '</li><li>Naléhavost: zadáno ' + esc(r.zadano || '–') + ', správně <b>' + esc(r.spravne) + '</b> ' + yn(r.naléhavost) + '</li></ul>';
     h += '<h3>Správná odpověď</h3><p>' + esc(k.adresa) + ' · ' + esc(k.klasifikace) + ' · ' + esc(k.priznaky) + ' · pacient ' + esc(k.vek) + ' let' + (k.dynamicka ? ' · dynamická indikace' : '') + (k.lekar ? ' · lékař' : '') + '</p>';
+    const sc = cur && cur.caseId && sim ? sim.caseOf(cur.caseId) : null;
+    if (sc && sc.call) h += '<h3>Následky v simulaci</h3><ul><li>Adresa: zadáno „' + esc(sc.call.typed) + '“, kvalita ' + esc(sc.call.quality) + (sc.call.miss ? ', <b>posádka jela jinam o ' + sc.call.errM + ' m</b>' : ', sedí') + '</li><li>Naléhavost: zadáno N' + sc.call.typedN + ', skutečně N' + sc.call.truthN + (sc.call.typedN === sc.call.truthN ? ' ✔' : ' ✘') + '</li><li>Doplnění hovoru po odeslání: ' + sc.call.updates + 'x' + (sc.call.sec != null ? ', hovor ' + sc.call.sec + ' s' : '') + '</li></ul>';
     if (c) h += '<h3>Soudce: calltaker</h3><ul>' + Object.keys(c).filter(x => x !== 'komentar').map(x => '<li>' + esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' ')) + ': ' + (Array.isArray(c[x]) ? esc(c[x].join('; ') || '–') : yn(c[x])) + '</li>').join('') + '</ul><p>' + esc(c.komentar || '') + '</p>';
     if (v) h += '<h3>Soudce: realismus volajícího</h3><ul>' + Object.keys(v).filter(x => x !== 'komentar').map(x => '<li>' + esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' ')) + ': ' + (Array.isArray(v[x]) ? esc(v[x].join('; ') || '–') : yn(v[x])) + '</li>').join('') + '</ul><p>' + esc(v.komentar || '') + '</p>';
     if (s && s.chyba) h += '<p class="bad">Soudce selhal: ' + esc(s.chyba) + '</p>';
     h += '<h3>Tvoje hodnocení realismu (1–5)</h3><p><select id="myScore"><option>–</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select> <input id="myNote" placeholder="Co bylo nereálné?" style="width:60%"></p>';
-    h += '<p><button id="dl">Stáhnout hovor (JSON)</button> <button id="again" class="pri">Další hovor</button></p>';
+    h += '<p><button id="dl">Stáhnout hovor (JSON)</button>' + (sim ? '' : ' <button id="again" class="pri">Další hovor</button>') + '</p>';
     $('result').innerHTML = h;
-    $('again').onclick = newCall;
+    if ($('again')) $('again').onclick = quick;
+    $('judge').disabled = false;
     $('dl').onclick = () => {
       const data = { seed: cur.view.seed, view: cur.view, key: cur.key, transcript, form, rules: r, soudce: s, mojeHodnoceni: { skore: $('myScore').value, poznamka: $('myNote').value }, model: model() };
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' })); a.download = 'hovor-' + cur.view.seed + '.json'; a.click();
@@ -271,7 +285,104 @@
   for (const r of document.querySelectorAll('input[name=mode]')) r.onchange = () => { $('voiceOpts').hidden = document.querySelector('input[name=mode]:checked').value !== 'voice'; };
   window.addEventListener('beforeunload', () => stopVoice());
   $('wavdl').onclick = () => { if (!lastWav) return; const a = document.createElement('a'); a.href = URL.createObjectURL(lastWav.blob); a.download = lastWav.name; a.click(); };
-  $('load').onclick = loadModels; $('start').onclick = newCall; $('send').onclick = send; $('end').onclick = endCall; $('judge').onclick = judgeCall;
+  // ---------- směna: engine v prohlížeči, zvonění telefonu, bot dispečer ----------
+  const STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 'Výjezd', onscene: 'Na místě', transport: 'Transport', handover: 'U ZZ', off: 'Nepřihlášena', activating: 'Aktivace', second: 'Sekundár', attached: 'Ve voze RZP' };
+  let lastT = 0, curSpeed = 1;
+  function dataBase() {
+    const u = $('dataurl').value.trim() || new URLSearchParams(location.search).get('data');
+    if (u) return u.replace(/\/*$/, '/');
+    return /^https?:/.test(location.protocol) && /\/calltaker\//.test(location.pathname) ? '../' : 'https://riff1991.github.io/zos-simulator/';
+  }
+  async function loadData() {
+    if (dataReady) return;
+    const base = dataBase(); status('Načítám data (adresy, silnice)…');
+    const get = (f, buf) => fetch(base + f).then(r => { if (!r.ok) throw new Error(f + ' (HTTP ' + r.status + ')'); return buf ? r.arrayBuffer() : r.json(); });
+    const [g, addr, poi, rail] = await Promise.all([get('graph.wasm', true), get('addr.json'), get('poi.json'), get('rail.json')]);
+    ROUTER.init(g); window.ZOS_ADDR = addr; window.ZOS_POI = poi; window.ZOS_RAIL = rail; dataReady = true;
+  }
+  function ringOnce() {
+    if (!ringCtx) return;
+    const t0 = ringCtx.currentTime;
+    for (const off of [0, 0.6]) for (const f of [425, 480]) {
+      const o = ringCtx.createOscillator(), g = ringCtx.createGain(); o.frequency.value = f; o.connect(g); g.connect(ringCtx.destination);
+      g.gain.setValueAtTime(0, t0 + off); g.gain.linearRampToValueAtTime(0.07, t0 + off + 0.02); g.gain.setValueAtTime(0.07, t0 + off + 0.4); g.gain.linearRampToValueAtTime(0, t0 + off + 0.45);
+      o.start(t0 + off); o.stop(t0 + off + 0.5);
+    }
+  }
+  function startRing() { stopRing(); ringOnce(); ringT = setInterval(ringOnce, 3000); }
+  function stopRing() { if (ringT) { clearInterval(ringT); ringT = null; } }
+  async function startShift() {
+    if (!prepare()) return;
+    try { await loadData(); } catch (e) { status('Data se nepodařilo načíst: ' + e.message + ' (zdroj ' + dataBase() + ')', true); return; }
+    stopShift();
+    try { ringCtx = ringCtx || new (window.AudioContext || window.webkitAudioContext)(); ringCtx.resume(); } catch (e) { /* zvuk není nutný */ }
+    sim = new Sim({ seed: Math.floor(Math.random() * 1e9), mode: 'free', startHour: new Date().getHours() });
+    sim.enableLiveCalls({ mode: $('hmode').value, gapSec: (Number($('hgap').value) || 3) * 60, bot: true });
+    const kl = [...new Set(ZOS_DATA.indications.map(x => x.klasif))].sort();
+    $('klasifList').innerHTML = kl.map(k => '<option value="' + esc(k) + '">').join('');
+    $('phone').hidden = false; $('board').hidden = false; $('call').hidden = true; $('post').hidden = true; $('result').hidden = true; $('setup').open = false;
+    lastT = performance.now(); loopT = setInterval(tick, 250);
+    status('Směna běží, čekáš na hovor.');
+    updatePhone();
+  }
+  function stopShift() { if (loopT) { clearInterval(loopT); loopT = null; } stopRing(); ringing = null; curCall = null; }
+  function tick() {
+    if (!sim) return;
+    const now = performance.now(), dt = Math.min(1, (now - lastT) / 1000); lastT = now;
+    const live = !!curCall || !!ringing;
+    curSpeed = live ? 1 : (Number($('fast').value) || 1);
+    sim.step(dt * curSpeed);
+    const rg = sim.s.calls.find(c => c.state === 'ringing') || null;
+    if (rg && !ringing) { factsCache[rg.id] = sim.callFacts(rg.seed); startRing(); }
+    else if (!rg && ringing) stopRing();
+    ringing = rg;
+    updatePhone();
+    if (now - lastBoard > 1000) { lastBoard = now; renderBoard(); }
+  }
+  function updatePhone() {
+    const ph = $('phoneState'), pk = $('pickup');
+    if (curCall) { ph.className = ''; ph.textContent = 'V hovoru'; pk.hidden = true; return; }
+    if (ringing) { const f = factsCache[ringing.id]; ph.className = 'ring'; ph.textContent = '☎ ZVONÍ  ' + (f ? f.view.volajici.telefon + ' · ' + f.view.volajici.linka : ''); pk.hidden = false; return; }
+    const missed = sim ? sim.s.calls.filter(c => c.state === 'missed').length : 0;
+    ph.className = ''; ph.textContent = 'Čekáš na hovor' + (missed ? ' (zmeškáno: ' + missed + ')' : ''); pk.hidden = true;
+  }
+  function pickup() {
+    if (!sim || !ringing || curCall) return;
+    const id = ringing.id, f = sim.pickupCall(id);
+    if (!f) return;
+    stopRing(); ringing = null;
+    beginCall(f, id);
+    updatePhone();
+  }
+  function sendCase() {
+    if (!sim || !curCall) return;
+    const form = { adresa: $('fAdr').value.trim(), n: $('fN').value, klasif: $('fInd').value.trim(), poznamka: $('fNote').value.trim() };
+    if (!form.adresa || !form.n) { $('sendInfo').textContent = 'Zadej adresu a naléhavost.'; return; }
+    const first = !$('sendCase').dataset.sent, c = sim.sendCall(curCall, form);
+    if (!c) return;
+    cur.caseId = c.id; $('sendCase').dataset.sent = '1'; $('sendCase').textContent = 'Aktualizovat případ';
+    $('sendInfo').textContent = (first ? 'Odesláno dispečerovi (' + c.num + ')' : 'Případ aktualizován') + ' v ' + sim.clock();
+    renderBoard();
+  }
+  function crewEta(k) { return k.until != null && ['call', 'enroute'].includes(k.state) ? ' ~' + Math.max(0, Math.round((k.until - sim.s.t) / 60)) + ' min' : ''; }
+  function renderBoard() {
+    if (!sim) return;
+    const s = sim.s;
+    $('clock').textContent = sim.clock() + ' · ×' + curSpeed;
+    const mine = s.cases.filter(c => c.call).slice(-8).reverse();
+    const st = c => c.status === 'closed' ? 'uzavřeno' : c.status === 'intake' ? 'přijímá se' : c.status === 'waiting' ? 'čeká na vyslání' : 'obsluhováno';
+    let h = mine.length ? '<table><tr><th>Případ</th><th>Zadání</th><th>Stav</th><th>Posádky</th></tr>' + mine.map(c => {
+      const cr = (c.crews || []).map(id => s.crews.find(k => k.id === id)).filter(Boolean).map(k => esc(k.name) + ': ' + (STLAB[k.state] || k.state) + crewEta(k)).join('<br>') || '–';
+      return '<tr><td>' + esc(c.num) + '<br><small>' + sim.clockAt(c.createdAt) + '</small></td><td>' + esc(c.addr) + '<br><small>N' + c.n + ' · ' + esc(c.klasif) + (c.call.miss ? ' · <b>adresa nesedí</b>' : '') + '</small></td><td>' + st(c) + '</td><td>' + cr + '</td></tr>';
+    }).join('') + '</table>' : '<small>Zatím žádný tvůj případ.</small>';
+    const other = s.cases.filter(c => !c.call && c.status !== 'closed').length;
+    if (other) h += '<small>Případy od kolegů calltakerů právě v řešení: ' + other + '</small>';
+    $('cases').innerHTML = h;
+    $('slog').innerHTML = s.log.slice(-12).reverse().map(l => esc(l.clock || '') + ' ' + esc(l.txt)).join('<br>');
+  }
+
+  $('startShift').onclick = startShift; $('pickup').onclick = pickup; $('sendCase').onclick = sendCase;
+  $('load').onclick = loadModels; $('start').onclick = quick; $('send').onclick = send; $('end').onclick = endCall; $('judge').onclick = judgeCall;
   $('say').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   const k = store.get('ct_key'); if (k) { $('key').value = k; $('remember').checked = true; $('model').value = store.get('ct_model') || ''; }
 })();

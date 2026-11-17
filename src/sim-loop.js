@@ -11,7 +11,8 @@ class SimLoop {
     const day = this._isDay();
     if (day !== s.dayFlag) { s.dayFlag = day; this.L('sys', day ? 'Střídání směn: denní směna.' : 'Střídání směn: noční směna.'); this._roster(true); }
 
-    while (s.ev.nextSpawn <= t) { this._spawn(); s.ev.nextSpawn += this._gap(); }
+    while (s.ev.nextSpawn <= t) { if (s.liveCalls) this._liveSpawn(); else this._spawn(); s.ev.nextSpawn += s.liveCalls && s.liveCalls.mode === 'training' ? s.liveCalls.gap : this._gap(); }
+    if (s.liveCalls) { this._callsTick(); if (s.liveCalls.bot) this.botTick(); }
     if (t >= s.ev.nextSecond) {
       const shiftFinished = s.mode === 'shift' && t >= s.shiftLen;
       const muOpen = s.cases.some(c => c.mu && c.status !== 'closed');

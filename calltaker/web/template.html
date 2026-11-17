@@ -14,6 +14,8 @@ input[type=text],input[type=password],select,textarea{width:100%}button{cursor:p
 .b.me{align-self:flex-end;background:var(--me)}.b.them{align-self:flex-start;background:var(--them)}.b.sys{align-self:center;color:var(--mut);font-size:.9rem;text-align:center}
 .row{display:flex;gap:8px}.row input{flex:1}#ani{font-weight:600}#status{color:var(--mut);min-height:1.4em}.bad{color:var(--bad)}small{color:var(--mut)}
 ul{margin:.3em 0;padding-left:1.2em}
+#phoneState{font-size:1.1rem;font-weight:600}.ring{color:var(--acc);animation:bl 1s infinite}@keyframes bl{50%{opacity:.35}}
+table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}#slog{font-size:.85rem;color:var(--mut);max-height:12em;overflow:auto}#clock{float:right;color:var(--mut);font-weight:400}
 </style></head><body><main>
 <h1>Calltaker – trenažér</h1>
 <p><small>Ty jsi calltaker, AI hraje volajícího. Osoby, adresy a telefony jsou generované. Nejde o nástroj pro ostrý provoz.</small></p>
@@ -28,24 +30,32 @@ ul{margin:.3em 0;padding-left:1.2em}
 <label><input type="checkbox" id="filt" checked> telefonní filtr a šum linky přes hlas (volající ve sluchátkách; v nahrávce oba hlasy)</label>
 <label><input type="checkbox" id="rec" checked> nahrávat hovor do WAV (oba hlasy dohromady, stereo)</label>
 <small>Doporučuju sluchátka s mikrofonem, jinak volající slyší sám sebe z reproduktorů. Hlas se účtuje 0,05 $ za minutu hovoru.</small></div>
+<label for="hmode">Hovory</label>
+<div class="row"><select id="hmode"><option value="realistic">Realistický tok (zvoní jen část hovorů, ostatní berou kolegové)</option><option value="training">Trénink: jen moje hovory</option></select><input id="hgap" type="number" min="1" max="30" value="3" style="max-width:4.5em" title="minut mezi hovory v tréninku"></div>
+<small>Číslo = minut mezi hovory v tréninku.</small>
+<label for="fast">Rychlost času mezi hovory</label><select id="fast"><option value="1">1×</option><option value="5" selected>5×</option><option value="10">10×</option></select>
+<label for="dataurl">Zdroj dat mapy a adres (nech prázdné)</label><input id="dataurl" type="text" placeholder="automaticky">
 <label for="model">Textový model (vyhodnocení hovoru po skončení a textový režim)</label>
 <div class="row"><input id="model" type="text" list="modelList" placeholder="např. gpt-4.1-mini"><datalist id="modelList"></datalist><button id="load">Načíst modely</button></div>
 <small>Klíč jde jen z prohlížeče přímo na api.openai.com, nikam jinam se neposílá.</small>
-<p><button id="start" class="pri">Nový hovor</button></p></details>
+<p><button id="startShift" class="pri">Začít směnu</button> <button id="start">Rychlý hovor (bez směny)</button></p></details>
 <div id="status"></div>
+<div id="phone" class="card" hidden><div id="phoneState"></div><p><button id="pickup" class="pri" hidden>Zvednout</button></p></div>
 <div id="call" class="card" hidden>
 <div id="ani"></div><div id="log"></div>
 <div id="vctl" hidden><button id="mute">Ztlumit mikrofon</button> <span id="live"></span></div>
 <div class="row" id="textrow"><input id="say" type="text" placeholder="Co řekneš volajícímu…" autocomplete="off"><button id="send" class="pri">Poslat</button></div>
-<p><button id="end">Ukončit hovor</button></p></div>
-<div id="form" class="card" hidden><p id="wavrow" hidden><span id="wavinfo"></span> <button id="wavdl">Stáhnout WAV</button></p>
-<h3>Formulář (jako v dispečerském systému)</h3>
+<div id="caseForm"><h3>Nabírání (jako v dispečerském systému)</h3>
 <label for="fAdr">Adresa (ulice č., obec)</label><input id="fAdr" type="text">
 <label for="fN">Naléhavost</label><select id="fN"><option value="" selected>–</option><option value="1">N1</option><option value="2">N2</option><option value="3">N3</option></select>
-<label for="fInd">Indikace / klasifikace</label><input id="fInd" type="text">
+<label for="fInd">Klasifikace</label><input id="fInd" type="text" list="klasifList"><datalist id="klasifList"></datalist>
 <label for="fNote">Poznámka</label><input id="fNote" type="text">
-<p><button id="judge" class="pri">Vyhodnotit</button></p></div>
+<p><button id="sendCase" class="pri">Odeslat dispečerovi</button> <span id="sendInfo"></span></p></div>
+<p><button id="end">Ukončit hovor</button></p></div>
+<div id="post" class="card" hidden><p id="wavrow" hidden><span id="wavinfo"></span> <button id="wavdl">Stáhnout WAV</button></p>
+<p><button id="judge" class="pri">Vyhodnotit hovor</button></p></div>
 <div id="result" class="card" hidden></div>
+<div id="board" class="card" hidden><h3>Případy <span id="clock"></span></h3><div id="cases"></div><h3>Dění</h3><div id="slog"></div></div>
 </main>
-<script>/*CHECK*/</script><script>/*PROMPTS*/</script><script>/*CASES*/</script><script>/*APP*/</script>
+<script>/*ENGINE*/</script><script>/*PERSONAS*/</script><script>/*CHECK*/</script><script>/*PROMPTS*/</script><script>/*CASES*/</script><script>/*APP*/</script>
 </body></html>

@@ -12,6 +12,7 @@ UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout
 ui = "(function () {\n'use strict';\n" + ''.join(rd('src/%s.js' % n) for n in UI_PARTS) + '})();\n'
 os.makedirs('work', exist_ok=True)
 open('work/ui.bundle.js', 'w', encoding='utf8').write(ui)  # jen pro lint (npm run lint)
+open('work/engine.bundle.js', 'w', encoding='utf8').write(d + symptoms + e + strip(rd('src/router.js')))  # engine + data pro stránku calltakera (calltaker/build_web.js)
 u = strip(rd('src/voice.js')) + strip(rd('src/tutorial.js')) + ui
 t = rd('src/template.html')
 ver = open('VERSION', encoding='utf8').read().strip() if os.path.exists('VERSION') else 'dev'
@@ -55,3 +56,11 @@ sw = rd('src/sw.js').replace('__VERSION__', ver).replace('__BUILD__', build).rep
 open('site/sw.js', 'w', encoding='utf8').write(sw)
 _json.dump({'version': ver, 'build': build}, open('site/version.json', 'w'))
 print('site/sw.js', ver, build)
+# stránka calltakera (trenažér s AI volajícím): samostatný index.html s enginem, nasazuje se do site/calltaker/
+import subprocess
+try:
+    subprocess.run(['node', 'calltaker/build_web.js'], check=True)
+    os.makedirs('site/calltaker', exist_ok=True)
+    shutil.copyfile('calltaker/web/index.html', 'site/calltaker/index.html')
+except (FileNotFoundError, subprocess.CalledProcessError) as _e:
+    print('calltaker stránka nesestavena:', _e)

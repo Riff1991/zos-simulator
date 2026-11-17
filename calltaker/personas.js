@@ -25,4 +25,4 @@ function pickPersona(rnd, c) {
   const adresa = roadish ? lvl(1, 2) : (ch.id === 'opily' || ch.id === 'dite' || ch.id === 'cizinec') ? lvl(1, 2) : lvl(2, 3);
   return { typ: ch.id, popis: ch.popis, stres, spoluprace, znalostAdresy: adresa };
 }
-module.exports = { pickPersona, ARCH };
+if (typeof module !== 'undefined') module.exports = { pickPersona, ARCH }; else window.CT_PERSONAS = { pickPersona, ARCH };
