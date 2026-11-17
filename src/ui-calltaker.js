@@ -585,11 +585,12 @@ function ctResultModal(rec) {
     <h3 style="margin:8px 0 2px;font-size:13px">Následky v simulaci</h3>${cons}
     <h3 style="margin:8px 0 2px;font-size:13px">Zadaný a skutečný bod</h3>${ctMiniMap({ lat: k.lat, lon: k.lon }, typedPt, aml)}
     <div id="ct-analyza" style="margin-top:8px"></div>
-    <div class="foot" style="margin-top:10px;flex-wrap:wrap"><button class="btn" data-act="ct-analyza"${cts.key && cts.textModel ? '' : ' disabled title="Potřebuje klíč a textový model v menu Calltaker"'}>Analýza hovoru (AI)</button><button class="btn" data-act="ct-dl-json">Stáhnout hovor (JSON)</button>${wavBtns}<button class="btn pri" data-act="close">Zavřít</button></div></div>`);
+    <div class="foot" style="margin-top:10px;flex-wrap:wrap"><button class="btn" data-act="ct-analyza"${cts.key ? '' : ' disabled title="Potřebuje OpenAI API klíč v menu Calltaker"'}>Analýza hovoru (AI)</button><button class="btn" data-act="ct-dl-json">Stáhnout hovor (JSON)</button>${wavBtns}<button class="btn pri" data-act="close">Zavřít</button></div></div>`);
 }
 async function ctAnalyza() {
   const rec = window._ctRes, out = $('ct-analyza'); if (!rec) return;
   out.innerHTML = '<p class="ct-note">Vyhodnocuji…</p>';
+  if (!cts.textModel) { try { const r = await ZOS_LIVE.models(cts.key); cts.textModel = r.best || ''; ctSaveSettings(); } catch (e) { /* chyba se ukáže při volání */ } }   // textový model se zvolí sám, když není vybraný
   const P = window.CT_PROMPTS, f = rec.facts, txt = rec.transcript.map(t => (t.role === 'calltaker' ? 'CALLTAKER: ' : 'VOLAJÍCÍ: ') + t.text).join('\n');
   const user = 'LIST FAKTŮ:\n' + JSON.stringify(f.view, null, 1) + '\n\nKEY:\n' + JSON.stringify(f.key, null, 1) + '\n\nFORMULÁŘ OD CALLTAKERA:\n' + JSON.stringify(rec.form) + '\n\nPŘEPIS:\n' + txt;
   let s;

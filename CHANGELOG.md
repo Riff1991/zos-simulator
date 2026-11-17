@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.34.2 – 2026-11-17
+Opravy:
+- **Analýza hovoru (AI)** už nevyžaduje ručně vybraný textový model: stačí OpenAI klíč, model se při prvním použití zvolí sám.
+
 ## v0.34.1 – 2026-11-17
 Opravy:
 - **Náběr případu:** označené cihly se nepropisují dvakrát. Cihly klasifikace, šedé cihly a DÍTĚ, DOSPĚLÝ, TANR, DYNAMICKÁ_INDIK jdou do Upřesnění, ostatní univerzální cihly (+PČR, +HZS, DR_NA_ŽÁDOST, TRANSPORT_PAC …) jen do Poznámky jako štítky `#…`.
