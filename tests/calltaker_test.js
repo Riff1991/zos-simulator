@@ -77,4 +77,55 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   const simU = new Sim({ seed: 41, mode: 'free', startHour: 10 }), cu = simU.addCallCase({ v: 1, seed, form: { adresa: 'Husova 1, Neexistující', n: String(truth.n) }, sec: 60 });
   ok(cu.call.unlocatable, 'neznámá adresa je označena jako nedohledatelná');
 }
+{ // AML: dostupnost, fáze, determinismus, pravda v kruhu
+  const sim = new Sim({ seed: 5, mode: 'free' }), H = (la, lo, la2, lo2) => { const R = 6371000, p = Math.PI / 180, a = Math.sin((la2 - la) * p / 2) ** 2 + Math.cos(la * p) * Math.cos(la2 * p) * Math.sin((lo2 - lo) * p / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
+  let mob = 0, aml = 0, inCell = 0, inAml = 0, amlN = 0, tot = 0, bad = false; const src = {};
+  for (let sd = 1000; sd < 1400; sd++) {
+    const f = sim.callFacts(sd), g = sim.callFacts(sd); tot++;
+    if (JSON.stringify(f.aml) !== JSON.stringify(g.aml)) bad = true;
+    if (f.aml.typ !== 'mobil') { if (f.aml.phases.length) bad = true; continue; }
+    mob++; const P = f.aml.phases;
+    if (P[0].zdroj !== 'buňka' || P[0].atSec !== 0 || P[0].radiusM < 600 || P[0].radiusM > 3500) bad = true;
+    if (H(P[0].lat, P[0].lon, f.key.lat, f.key.lon) <= P[0].radiusM) inCell++;
+    if (P[1]) { aml++; src[P[1].zdroj] = (src[P[1].zdroj] || 0) + 1; if (P[1].atSec < 8 || P[1].atSec > 40 || P[1].radiusM < 5 || P[1].radiusM > 150 || P[1].radiusM >= P[0].radiusM) bad = true; amlN++; if (H(P[1].lat, P[1].lon, f.key.lat, f.key.lon) <= P[1].radiusM) inAml++; }
+    if (JSON.stringify(f.view).includes(String(f.key.lat))) bad = true;
+  }
+  ok(!bad, 'AML: fáze v mezích, deterministické, pevná/skryté bez polohy, pravda se ve view neprozradí');
+  ok(mob / tot > 0.7 && mob / tot < 0.9, 'AML: podíl mobilů ' + (mob / tot).toFixed(2));
+  ok(aml / mob > 0.65 && aml / mob < 0.85, 'AML: dostupnost u mobilů ' + (aml / mob).toFixed(2) + ' (zdroje ' + JSON.stringify(src) + ')');
+  ok(inCell / mob > 0.99, 'AML: pravda uvnitř kruhu buňky (' + (inCell / mob).toFixed(3) + ')');
+  ok(inAml / amlN > 0.9 && inAml / amlN < 0.99, 'AML: pravda uvnitř kruhu AML u ~95 % (' + (inAml / amlN).toFixed(3) + ')');
+}
+{ // bod z mapy: tolerance, malé zdržení, chybná poloha
+  const near = (m, ang) => { const d = m / 111320; return { lat: truth.lat + d * Math.cos(ang), lon: truth.lon + d * Math.sin(ang) / Math.cos(truth.lat * Math.PI / 180) }; };
+  const mk = (m, extra) => { const sim = new Sim({ seed: 777, mode: 'free' }); return sim.addCallCase({ v: 1, seed, form: Object.assign({ adresa: truth.addr, bod: near(m, 1), zdroj: 'mapa', n: String(truth.n) }, extra || {}), sec: 90 }); };
+  const kind = new Sim({ seed: 1, mode: 'free' })._ctKind(truth), tol = new Sim({ seed: 1, mode: 'free' })._ctTol(truth);
+  ok(kind === 'dum' && tol === 60, 'tolerance pro standardní adresu 60 m');
+  let c = mk(30);
+  ok(!c.addrMiss && !c.call.searchDelay && c.call.errM < 40 && c.call.zdroj === 'mapa', 'bod do 60 m: správně, bez zdržení (' + c.call.errM + ' m)');
+  c = mk(100);
+  ok(!c.addrMiss && c.call.searchDelay >= 60 && c.call.searchDelay <= 150, 'bod 100 m: malé zdržení ' + c.call.searchDelay + ' s');
+  c = mk(400);
+  ok(c.addrMiss && c.addrMiss.thr === 180 && c.call.miss, 'bod 400 m (> 3× tolerance): chybná poloha s následky');
+  // posádka u bodu 100 m vedle chvíli hledá a pak dojede
+  { const sim = new Sim({ seed: 777, mode: 'free' }), cc = sim.addCallCase({ v: 1, seed, form: { adresa: truth.addr, bod: near(100, 2), n: String(truth.n) }, sec: 90 }); let hl = false, arr = false;
+    for (let i = 0; i < 12000 && !arr; i++) { for (const cs of sim.s.cases) if (cs.status === 'waiting' && !cs.crews.length) { const r = sim.suggest(cs.id, 'RZP')[0]; if (r) sim.assign(cs.id, r.crewId); } step(sim); arr = !!cc.arrived; hl = hl || sim.s.log.some(l => /pacienta hledáme/.test(l.txt || '')); }
+    ok(arr && hl, 'u bodu těsně mimo toleranci posádka krátce hledá a dojede'); }
+  c = mk(10, { adresa: 'Husova 1, Neexistující' });
+  ok(!c.call.unlocatable && !c.addrMiss, 'bod z mapy má přednost před neznámým textem adresy');
+  c = mk(10, { adresa: truth.addr });
+  ok(c.call.check.bodM === c.call.errM && c.call.check.zdroj === 'mapa', 'kontrola obsahuje vzdálenost a zdroj polohy');
+}
+{ // nová pole a kontrola klasifikace
+  const f = new Sim({ seed: 5, mode: 'free' }).callFacts(seed), k = f.key, sp = String(k.pacient).split(/\s+/), vp = String(f.view.volajici.jmeno).split(/\s+/);
+  const sim = new Sim({ seed: 777, mode: 'free' });
+  const form = { adresa: k.adresa, n: String(k['naléhavost']).replace('N', ''), klasif: k.klasifikace, priznaky: k.priznakyList.slice(), dyn: k.dynamicka, pJmeno: sp[0], pPrijmeni: sp[sp.length - 1], pVek: k.vek, vJmeno: vp[0], vPrijmeni: vp[vp.length - 1], zdroj: 'AML', popis: 'test', upresneni: '2. patro' };
+  const c = sim.addCallCase({ v: 1, seed, form, sec: 80 }), ck = c.call.check;
+  ok(ck.klasif.ok && ck.n.ok && ck.dyn.ok && ck.priznaky.jaccard === 1 && ck.vek.ok && ck.jmena.pacient === true && ck.jmena.volajici === true && ck.aml, 'kontrola klasifikace: vše shodné → samé shody (J ' + ck.priznaky.jaccard + ')');
+  ok(/2\. patro/.test(c.poznamka), 'upřesnění místa jde do poznámky pro dispečera');
+  sim.updateCallCase(c, Object.assign({}, form, { klasif: k.klasifikace === 'Bolest' ? 'Dušnost' : 'Bolest', priznaky: [], pVek: k.vek + 40, pJmeno: 'Xxx', n: '3', dyn: !k.dynamicka }));
+  const c2 = c.call.check; 
+  ok(!c2.klasif.ok && c2.priznaky.jaccard < 0.5 && c2.vek.ok === false && c2.jmena.pacient === false && !c2.dyn.ok, 'aktualizace přepočítá kontrolu (špatná klasifikace, věk, jméno, dynamika)');
+  ok(JSON.stringify(sim.s) && JSON.parse(JSON.stringify(sim.s)).cases.length === 1, 'stav zůstává čistý JSON');
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);

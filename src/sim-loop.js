@@ -340,7 +340,7 @@ class SimLoop {
           break;
         }
         const missAt = c.mv && c.mv.b ? c.mv.b : [cs.lat, cs.lon];
-        if (cs.addrMiss && !c.addrFound && !c.caseRole && c.type !== 'LZS' && hav(missAt[0], missAt[1], cs.addrMiss.lat, cs.addrMiss.lon) * 1000 > 250) {
+        if (cs.addrMiss && !c.addrFound && !c.caseRole && c.type !== 'LZS' && hav(missAt[0], missAt[1], cs.addrMiss.lat, cs.addrMiss.lon) * 1000 > (cs.addrMiss.thr || 250)) {
           // dojeli na zadanou adresu, ale pacient je jinde (calltaker zadal špatnou adresu): hledání a přejezd
           c.addrFound = true; c.parked = false;
           c.lat = missAt[0]; c.lon = missAt[1]; c.mv = null;
@@ -349,6 +349,12 @@ class SimLoop {
           cs.addrMissLost = (cs.addrMissLost || 0) + d2;
           this.L('crew', `${c.name}: na zadané adrese pacient není, hledáme (skutečně o ${Math.round(cs.addrMiss.m)} m dál)`, cs.id, c.id);
           if (!cs.addrFixed) { cs.addrFixed = true; cs.lat = cs.addrMiss.lat; cs.lon = cs.addrMiss.lon; cs.addr = cs.addrMiss.addr; }
+          break;
+        }
+        if (cs.call && cs.call.searchDelay && !c.searchDone && !c.caseRole && c.type !== 'LZS') {
+          // zadaný bod je mimo toleranci, ale blízko: posádka chvíli hledá pacienta (calltaker)
+          c.searchDone = true; c.parked = false; c.lat = missAt[0]; c.lon = missAt[1]; c.mv = null; c.state = 'enroute'; c.until = t + cs.call.searchDelay;
+          this.L('crew', `${c.name}: pacienta hledáme, bod je o ${cs.call.errM} m vedle`, cs.id, c.id);
           break;
         }
         if (c.parked && c.mv) { c.lat = c.mv.b[0]; c.lon = c.mv.b[1]; } else { c.lat = cs.lat; c.lon = cs.lon; }
