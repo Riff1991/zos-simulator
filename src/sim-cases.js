@@ -482,14 +482,14 @@ class SimCases {
     const placeText = tail.place;
     const op = 'OP-' + this.pick(['A', 'B', 'C', 'D']);
     const P = this._P();
-    let patientName = '', oznName, oznRel = '', phone, noteFull = poznamka;
+    let patientName = '', oznName, oznRel = '', phone, noteFull = poznamka, oznAge = null, oznSex = null;
     if (P) {
       const pat = P.person(this._rndFn(), sex, age);
       patientName = pat.reverse;
       // sám volat může jen pacient při vědomí (AVPU-A); při U/P/V, bezvědomí, nedýchá a křečích ne
       const unconscious = /AVPU-[UPV]\b|bezvědomí|nedýchá|reaguje na (bolest|oslovení)|křeč|křeče|křečov|nereaguje|zmatený/i.test(up) || (ind.id === 'kreceU' && !/AVPU-A\b/i.test(up));
       const cl = P.caller(this._rndFn(), { patient: pat, age, sex, whKey, unconscious, roadAccident: isRoadAccident, child: age < 15 });
-      oznName = cl.person.full; oznRel = cl.label; phone = cl.phone;
+      oznName = cl.person.full; oznRel = cl.label; phone = cl.phone; oznAge = P.YEAR - cl.person.birthYear; oznSex = cl.person.sex;
       noteFull = poznamka;   // vztah volajícího je u oznamovatele (oznRel), do poznámky ZOS nepatří
     } else { oznName = this._name(); phone = this._phone(); }
     const c = this._newCase({
@@ -498,7 +498,7 @@ class SimCases {
       rvP: ind.rvP || 0, zzumInd: !!ind.zzum, addr, bld, town: town.n, okres, cast, lat, lon, age, sex, child: age < 18, burnCenterCandidate: ind.id === 'popal' && symptomText.includes('ROZSÁHLÉ'),
       desc: patientCount > 1 ? `${patientCount} ${hasCo ? 'osob s podezřením na otravu CO' : 'zranění při dopravní nehodě'}; hlavní pacient: ${this._person(age, sex)}, ${age} let.` : `${this._person(age, sex)}, ${age} let. ${ind.klasif}.`,
       hospType, trans: this.rnd() < ind.trans, scene: ind.scene, sceneQ: ind.sceneQ || null, pocet: patientCount, patientCount, patientsRemaining: patientCount, patientsHandled: 0, radioReports,
-      poznamka: noteFull, ozn: oznName, oznRel, patientName, ageText: this._ageText(age),
+      poznamka: noteFull, ozn: oznName, oznRel, oznAge, oznSex, patientName, ageText: this._ageText(age),
       phone,
       src: extKinds && (dzFirst || this.rnd() < 0.6) ? EXTMSG.SRC_CALL[extKinds[0]] : this.pick(['Linka 155', 'Linka 155', 'Linka 155', 'Linka 112', '112 – přeposláno']), op,
       intake, phase: dzFirst ? 'dz' : 'intake', dzUntil: dzFirst ? t + dzDur : null,

@@ -1,11 +1,8 @@
 const STRES = ['klidný', 'mírně napjatý', 'výrazně vystresovaný', 'v panice'];
 const SPOL = ['téměř nespolupracuje', 'spolupracuje neochotně', 'spolupracuje, ale je rozrušený', 'spolupracuje dobře'];
 const ADR = ['', 'neví přesnou adresu: zná jen obec a orientační bod (obchod, zastávka, křižovatka)', 'zná obec a ulici, číslo domu nevybaví nebo se splete a opraví se až na dotaz', 'zná přesnou adresu a řekne ji, když se zeptají'];
-const STYL = {
-  vecny: 'klidně, normálním tempem', panika: 'rychle, zadýchaně, hlas se ti třese, v útržcích', rozcileny: 'zvýšeným hlasem, ostře a netrpělivě',
-  vagni: 'váhavě, s pauzami a „no…“, tišeji', star: 'pomalu, starším hlasem, tišeji, občas se zeptáš „cože?“', plac: 'přerývaně, vzlykavě, dusíš pláč',
-  opily: 'rozmazaně, pomalu, zadrháváš se', dite: 'vysokým dětským hlasem, vystrašeně, jednoduchými slovy', cizinec: 'lámanou češtinou s cizím přízvukem, jednoduchými slovy', nespolupracujici: 'odmítavě a podrážděně',
-};
+const HOVOR = ['odpovídá úsporně, jen na to, na co se ptají', 'odpovídá normálně, jednou až dvěma větami', 'rád přidá drobnosti navíc', 'hodně mluví, odbíhá a doplňuje vedlejší věci'];
+const SLUCH = ['slyšíš dobře', 'slyšíš trochu hůř, občas požádáš o zopakování („cože?“)', 'slyšíš velmi špatně, často nerozumíš a ptáš se znovu, mluvíš nahlas'];
 function callerSystem(v, voice) {
   const m = v.misto, p = v.pacient, c = v.volajici, pe = v.persona;
   return `Hraješ VOLAJÍCÍHO na tísňovou linku zdravotnické záchranné služby (155/112) v Jihočeském kraji. Jde o výukový trenažér, osoby i místa jsou fiktivní. Druhá strana je calltaker, který přijímá výzvu.
@@ -18,6 +15,10 @@ TVOJE ROLE
 
 CHOVÁNÍ
 - Typ: ${pe.popis}. Stres: ${STRES[pe.stres]}. Spolupráce: ${SPOL[pe.spoluprace]}.
+- Věk a pohlaví: ${pe.vekVolajiciho != null ? pe.vekVolajiciho + ' let, ' + pe.pohlaviVolajiciho + ' (' + pe.pasmoNazev + ')' : 'neuvedeno'}. Svůj věk nikdy neříkáš sám od sebe, ale chováš se a mluvíš podle něj.
+- Slovník a způsob vyjadřování: ${pe.slovnik || 'běžná hovorová čeština'}.
+- Povídavost: ${HOVOR[pe.povidavost == null ? 1 : pe.povidavost]}. Sluch: ${SLUCH[pe.sluch || 0]}.${pe.jazyk ? '\n- Jazyk: ' + pe.jazyk + '.' : ''}
+- Prostředí kolem tebe: ${pe.prostredi || 'doma je ticho'} (občas to krátce zmíníš, např. „počkejte, ztlumím to“, nevymýšlej si další děj).
 - Adresa: ${ADR[pe.znalostAdresy] || ''}
 - Mluv česky, hovorově, krátce (obvykle 1–2 věty, jako člověk do telefonu). Žádné odrážky, žádné popisy emocí v závorkách, žádné herecké poznámky.
 - NEJSI asistent. Neradíš, nevysvětluješ, nepomáháš calltakerovi. Odpovídáš jen na to, na co se ptá, a jen to, co by volající v tvé situaci věděl. Co nevíš, řekneš, že nevíš, nebo odhadneš nejistě.
@@ -28,7 +29,9 @@ CHOVÁNÍ
 ${voice ? `
 HLASOVÝ HOVOR
 - Mluvíš výhradně česky, jako člověk do telefonu, v krátkých větách. Nikdy nečteš zkratky ani kódy a nemluvíš o tom, že jsi AI.
-- Styl hlasu: mluvíš ${STYL[pe.typ] || STYL.vecny}.
+- Styl hlasu: mluvíš ${pe.styl || 'klidně, normálním tempem'}.
+- Hlas podle věku: ${pe.hlas || 'běžný dospělý hlas'}. Drž tenhle hlas po celý hovor, nepřecházej do hlasu mladšího člověka.
+- Přirozenost: mluv jako skutečný člověk po telefonu: občas slyšitelně nadechni, přidej pauzu, „no“, „hm“, „počkejte“, krátké odkašlání, nedokončenou větu nebo opravu sebe sama („tam… ne, vlastně tam“). Netvoř rovnoměrné hladké věty jako hlasový asistent. Tempo a hlasitost mění podle stresu a věku.
 - Na začátku mlč a počkej, až calltaker zvedne a pozdraví. Pak odpověz svou první větou.
 Backchannel policy: občas krátké zvuky při poslechu (hm, jo, aha) podle toho, jak jsi rozrušený. Neskákej do řeči, když calltaker dává pokyny, pokud nejsi v panice.
 Interruption policy: když calltaker začne mluvit, přestaň a poslouchej. V panici nebo rozčilení můžeš do řeči vstoupit krátce.
@@ -43,7 +46,7 @@ function judgeSystem() {
  },
  "realismus_volajiciho": {
   "veren_roli_0_5": číslo, "konzistentni_s_listem_faktu_0_5": číslo, "pusobi_jako_ctlivy_clovek_0_5": číslo, "prilis_napomocny_0_5": číslo (5 = nerealisticky ochotný asistent),
-  "kdy_vypadl_z_role": "popis nebo null", "rozpory_s_listem_faktu": ["…"], "komentar": "2–4 věty česky, co by skutečný volající v téhle situaci dělal jinak"
+  "hlas_odpovida_veku_a_roli_0_5": číslo, "kdy_vypadl_z_role": "popis nebo null", "rozpory_s_listem_faktu": ["…"], "komentar": "2–4 věty česky, co by skutečný volající v téhle situaci dělal jinak"
  }
 }`;
 }

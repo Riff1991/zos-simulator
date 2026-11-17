@@ -123,8 +123,12 @@ const ZOS_LIVE = (function () {
       await waitIce(c.pc);
       const mk = name => oa(o.key, '/live/sessions', { session: { model: o.model || 'gpt-live-1', instructions: o.instructions, audio: { output: { voice: name } } }, transport: { type: 'webrtc', sdp: c.pc.localDescription.sdp } });
       let res;
-      try { res = await mk(o.voice || 'marin'); } catch (e) {
-        if (/voice/i.test(e.message) && o.voice !== 'marin') { st('Hlas „' + o.voice + '“ nelze použít, zkouším marin…'); res = await mk('marin'); } else throw e;
+      const chain = [...new Set((o.voices && o.voices.length ? o.voices : [o.voice]).concat(['marin']).filter(Boolean))];
+      for (let i = 0; i < chain.length && !res; i++) {
+        try { res = await mk(chain[i]); } catch (e) {
+          if (!/voice/i.test(e.message) || i === chain.length - 1) throw e;
+          st('Hlas „' + chain[i] + '“ nelze použít, zkouším „' + chain[i + 1] + '“…');
+        }
       }
       await c.pc.setRemoteDescription({ type: 'answer', sdp: res.transport.sdp });
     } catch (e) { st('Hlas se nepodařilo spojit: ' + e.message, true); stopAll(c); }

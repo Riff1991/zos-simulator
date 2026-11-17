@@ -122,7 +122,7 @@ class SimCalltaker {
     const bld = c.bld || {};
     const view = {
       seed,
-      volajici: { jmeno: c.ozn, vztah: c.oznRel.replace(/^volá\s*/, '') || c.oznRel, telefon: c.phone, linka: c.src },
+      volajici: { jmeno: c.ozn, vztah: c.oznRel.replace(/^volá\s*/, '') || c.oznRel, telefon: c.phone, linka: c.src, vek: c.oznAge, pohlavi: c.oznSex === 'M' ? 'muž' : c.oznSex === 'Ž' ? 'žena' : '' },
       pacient: { jmeno: c.patientName, vek: c.age, pohlavi: c.sex === 'M' ? 'muž' : 'žena', pacientJeVolajici: /pacient sám/.test(c.oznRel) },
       misto: { adresa: c.addr, obec: c.town, okres: c.okres, castObce: c.cast || '', druh: c.where, popis: c.place || '', budova: bld.code === 3 ? 'bytový dům' : bld.code === 1 ? 'dům' : bld.code === 2 ? 'obytná budova' : '', podlazi: bld.levels || 0 },
       klinickyObraz: c.up, poznamka: c.poznamka || '', persona,

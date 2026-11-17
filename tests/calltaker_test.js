@@ -143,4 +143,25 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   ok(!c2.klasif.ok && c2.priznaky.jaccard < 0.5 && c2.vek.ok === false && c2.jmena.pacient === false && !c2.dyn.ok, 'aktualizace přepočítá kontrolu (špatná klasifikace, věk, jméno, dynamika)');
   ok(JSON.stringify(sim.s) && JSON.parse(JSON.stringify(sim.s)).cases.length === 1, 'stav zůstává čistý JSON');
 }
+{ // volající: věk, hlas podle věku, rozmanitost typů, seniorské typy
+  const sim = new Sim({ seed: 5, mode: 'free' }), PR = require(path.join(R, 'calltaker/prompts.js')), PE = require(path.join(R, 'calltaker/personas.js'));
+  const typ = {}, band = {}; let n = 0, sen = 0, senOk = 0, bad = false, noAge = 0, cizi = 0, ciziJ = 0;
+  for (let sd = 1; sd <= 1500; sd++) {
+    const f = sim.callFacts(sd), v = f.view, p = v.persona; n++;
+    typ[p.typ] = (typ[p.typ] || 0) + 1; band[p.pasmo] = (band[p.pasmo] || 0) + 1;
+    if (!Number.isFinite(v.volajici.vek) || v.volajici.vek < 3 || v.volajici.vek > 105) noAge++;
+    if (p.vekVolajiciho !== v.volajici.vek || !p.hlas || !p.slovnik || !p.prostredi) bad = true;
+    if (v.volajici.vek >= 70) { sen++; if (/^senior_|pacient_|profesional|ustarany|vecny|vagni|panika|plac|soc|hovorny|flegmatik|rozcileny|nespolupracujici|opily|cizinec/.test(p.typ) && !/^(dite|teen|mlady_spech|dospely_rodic_seniora|turista)/.test(p.typ)) senOk++; }
+    if (p.typ === 'cizinec') { cizi++; if (p.jazyk) ciziJ++; }
+    if (sd % 300 === 0) { const t = PR.callerSystem(v, true); if (!t.includes(p.hlas) || !t.includes(String(v.volajici.vek))) bad = true; }
+  }
+  ok(!bad && noAge === 0, 'volající mají věk, hlas podle věku, slovník a prostředí; prompt je obsahuje');
+  ok(Object.keys(typ).length >= 25, 'rozmanitost typů volajících: ' + Object.keys(typ).length + ' různých');
+  ok(['teen', 'mlady', 'stredni', 'starsi', 'senior1', 'senior2', 'senior3'].every(b => band[b] > 0), 'všechna věková pásma se vyskytují: ' + JSON.stringify(band));
+  ok(sen > 30 && senOk === sen, 'senioři (70+) nikdy nedostanou mladistvý typ: ' + sen);
+  ok(cizi === ciziJ, 'cizinci mají určený jazyk');
+  const a = sim.callFacts(77), b = sim.callFacts(77); ok(JSON.stringify(a.view.persona) === JSON.stringify(b.view.persona), 'persona je deterministická');
+  const sn = {}; for (let sd = 1; sd <= 1500; sd++) { const f = sim.callFacts(sd); if (f.view.volajici.vek >= 75) sn[f.view.persona.typ] = (sn[f.view.persona.typ] || 0) + 1; }
+  console.log('typy u 75+:', JSON.stringify(sn)); console.log('všechny typy:', JSON.stringify(typ));
+}
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);
