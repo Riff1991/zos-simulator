@@ -199,6 +199,9 @@ function alarmBeep() { beep(1040); setTimeout(() => beep(780), 170); setTimeout(
 function vstricnaTone() { beep(740, 0, 0.12); beep(988, 0.15, 0.12); beep(1318, 0.3, 0.2); }
 const logDueAt = new Map(); let radioLastAt = 0;
 const radioFeed = [];   // rádiové hlášky s časem vyslovení (skutečný čas); zdroj živého přepisu v panelu Rádio
+// v režimu calltaker nechodí upozornění na události, pípnutí ani hlášky dispečerské části (nové případy, žádosti posádek o PČR, termíny …)
+const ctSilent = () => typeof ctModeOn === 'function' && ctModeOn();
+const ltoast = (...a) => { if (!ctSilent()) toast(...a); };
 function pollLog() {
   if (typeof ctQuiet === 'function' && ctQuiet()) { for (const e of sim.s.log) if (e.id > seenLog) seenLog = e.id; return; }
   let vstricnaIncoming = false;
@@ -218,12 +221,12 @@ function pollLog() {
     }
     if (isVstricnaRadioMessage(e.txt)) {
       vstricnaIncoming = true;
-      if (e.kind === 'alert' || e.kind === 'req' || e.kind === 'deadline' || e.kind === 'warn') toast(e.txt, 'alert');
+      if (e.kind === 'alert' || e.kind === 'req' || e.kind === 'deadline' || e.kind === 'warn') ltoast(e.txt, 'alert');
       continue;
     }
     const newCall = e.kind === 'case' && e.txt.startsWith('Nový případ ');
-    if (newCall) { toast(e.txt, /: N1\b/.test(e.txt) ? 'alert' : ''); newCallTone(); if (settings.autoPauseN1 && /: N1\b/.test(e.txt) && speed > 0) { speed = 0; toast('Pauza: nová N1. Pokračuj mezerníkem nebo rychlostí nahoře.', 'alert'); } }
-    else if (e.kind === 'req' || e.kind === 'alert' || e.kind === 'deadline' || e.kind === 'warn' || (e.kind === 'case' && /: N1/.test(e.txt))) { toast(e.txt, e.kind === 'case' || e.kind === 'deadline' || e.kind === 'req' ? 'alert' : e.kind); if (e.kind === 'deadline') alarmBeep(); else if (!(e.kind === 'warn' && /opožděný výjezd/.test(e.txt))) beep(e.kind === 'req' ? 660 : 880); }
+    if (newCall) { ltoast(e.txt, /: N1\b/.test(e.txt) ? 'alert' : ''); if (!ctSilent()) newCallTone(); if (settings.autoPauseN1 && !ctSilent() && /: N1\b/.test(e.txt) && speed > 0) { speed = 0; ltoast('Pauza: nová N1. Pokračuj mezerníkem nebo rychlostí nahoře.', 'alert'); } }
+    else if (e.kind === 'req' || e.kind === 'alert' || e.kind === 'deadline' || e.kind === 'warn' || (e.kind === 'case' && /: N1/.test(e.txt))) { ltoast(e.txt, e.kind === 'case' || e.kind === 'deadline' || e.kind === 'req' ? 'alert' : e.kind); if (e.kind === 'deadline') alarmBeep(); else if (!(e.kind === 'warn' && /opožděný výjezd/.test(e.txt))) beep(e.kind === 'req' ? 660 : 880); }
   }
-  if (vstricnaIncoming) vstricnaTone();
+  if (vstricnaIncoming && !ctSilent()) vstricnaTone();
 }

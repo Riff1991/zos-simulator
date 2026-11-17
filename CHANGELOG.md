@@ -8,6 +8,10 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.34.3 – 2026-11-17
+Opravy:
+- **Režim calltaker:** nechodí žádná upozornění z dispečerské části (nový případ, „posádka žádá PČR“, termíny, upozornění na N1), ani pípnutí a automatická pauza při nové N1. Zůstávají jen vlastní hlášky nabírání.
+
 ## v0.34.2 – 2026-11-17
 Opravy:
 - **Analýza hovoru (AI)** už nevyžaduje ručně vybraný textový model: stačí OpenAI klíč, model se při prvním použití zvolí sám.
