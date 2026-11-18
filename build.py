@@ -11,8 +11,8 @@ m = strip(rd('src/basemap.js') + rd('src/router.js') + 'const GLMASK=' + rd('src
 UI_PARTS = ['ui-core', 'ui-panels', 'ui-map', 'ui-radio', 'ui-modal', 'ui-layout', 'ui-calltaker', 'ui-intake', 'ui-events']  # jedna IIFE, části v tomto pořadí
 ui = "(function () {\n'use strict';\n" + ''.join(rd('src/%s.js' % n) for n in UI_PARTS) + '})();\n'
 os.makedirs('work', exist_ok=True)
-open('work/ui.bundle.js', 'w', encoding='utf8').write(ui)  # jen pro lint (npm run lint)
-open('work/engine.bundle.js', 'w', encoding='utf8').write(d + symptoms + e + strip(rd('src/router.js')))  # engine + data pro stránku calltakera (calltaker/build_web.js)
+open('work/ui.bundle.js', 'w', encoding='utf8', newline='\n').write(ui)  # jen pro lint (npm run lint)
+open('work/engine.bundle.js', 'w', encoding='utf8', newline='\n').write(d + symptoms + e + strip(rd('src/router.js')))  # engine + data pro stránku calltakera (calltaker/build_web.js)
 ctmods = ''.join('(function () {' + chr(10) + rd('calltaker/%s.js' % n) + chr(10) + '})();' + chr(10) for n in ['personas', 'cizinci', 'check', 'prompts', 'spider', 'cihly', 'phonecodec', 'addrindex'])  # moduly calltakera (UMD, v prohlížeči nastaví window.CT_*)
 u = strip(rd('src/voice.js')) + strip(rd('src/live-voice.js')) + ctmods + strip(rd('src/tutorial.js')) + ui
 t = rd('src/template.html')
@@ -40,22 +40,27 @@ outline = 'M' + 'L'.join('%.1f %.1f' % q for q in pts) + 'Z'
 meta = 'const ZOS_VERSION = ' + _j.dumps(ver) + ';\nconst ZOS_CHANGELOG = ' + _j.dumps(changelog, ensure_ascii=False) + ';\nconst ZOS_OUTLINE = ' + _j.dumps(outline) + ';\n'
 d = d + meta
 t = t.replace('/*DATA*/', d).replace('/*SYMPTOMS*/', symptoms).replace('/*BASEMAP*/', m).replace('/*ENGINE*/', e).replace('/*UI*/', u)
-open('site/index.html', 'w', encoding='utf8').write(t)
+open('site/index.html', 'w', encoding='utf8', newline='\n').write(t)
 print('site/index.html', len(t))
 import shutil
 os.makedirs('site/tts', exist_ok=True)
-shutil.copyfile('src/tts-worker.js', 'site/tts/worker.js')
+open('site/tts/worker.js', 'w', encoding='utf8', newline='\n').write(rd('src/tts-worker.js'))
 # service worker + version.json (PWA: offline a aktualizace)
 import hashlib, json as _json
 pre = ['./index.html', './manifest.webmanifest', './lib/maplibre-gl-csp.js', './lib/maplibre-gl-csp-worker.js', './graph.wasm', './addr.json',
        './poi.json', './rail.json', './tts/worker.js', './tiles-index.json', './t/low.wasm', './t/glyphs.wasm', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png']
 pre = [p for p in pre if os.path.exists('site/' + p[2:])]
+def asset_bytes(path):
+    data = open(path, 'rb').read()
+    if path.lower().endswith(('.html', '.js', '.json', '.webmanifest', '.css')):
+        data = data.replace(b'\r\n', b'\n')
+    return data
 h = hashlib.sha256()
-for p in pre: h.update(open('site/' + p[2:], 'rb').read())
+for p in pre: h.update(asset_bytes('site/' + p[2:]))
 build = h.hexdigest()[:10]
-sw = rd('src/sw.js').replace('__VERSION__', ver).replace('__BUILD__', build).replace('__PRECACHE__', _json.dumps(pre)).replace("PFX + 'tiles-v1'", "PFX + 'tiles-" + hashlib.sha256(open('site/tiles-index.json', 'rb').read()).hexdigest()[:8] + "'")
-open('site/sw.js', 'w', encoding='utf8').write(sw)
-_json.dump({'version': ver, 'build': build}, open('site/version.json', 'w'))
+sw = rd('src/sw.js').replace('__VERSION__', ver).replace('__BUILD__', build).replace('__PRECACHE__', _json.dumps(pre)).replace("PFX + 'tiles-v1'", "PFX + 'tiles-" + hashlib.sha256(asset_bytes('site/tiles-index.json')).hexdigest()[:8] + "'")
+open('site/sw.js', 'w', encoding='utf8', newline='\n').write(sw)
+_json.dump({'version': ver, 'build': build}, open('site/version.json', 'w', encoding='utf8', newline='\n'))
 print('site/sw.js', ver, build)
 # stránka calltakera (trenažér s AI volajícím): samostatný index.html s enginem, nasazuje se do site/calltaker/
 import subprocess
