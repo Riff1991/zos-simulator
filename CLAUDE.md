@@ -1,41 +1,12 @@
-# Pokyny pro Claude Code v tomto repozitáři
+# Práce s Claude Code
 
-Před prací si přečti, v tomto pořadí:
-1. `AGENTS.md` – tvrdá pravidla projektu (data, verze, vydání, kontroly).
-2. `docs/HANDOFF.md` – architektura a doménová rozhodnutí.
-3. `docs/OTAZKY.md` – otevřené otázky a odpovědi uživatele (vlastníka projektu).
-4. Poslední sekci `CHANGELOG.md`, abys věděl, co je aktuálně ve hře.
+Projektové a doménové zásady jsou v `AGENTS.md`. Praktický postup práce s větvemi, verzemi a předáním je v `docs/AI-WORKFLOW.md`.
 
-## Jak spolupracovat
+Při každém úkolu:
 
-- Komunikuj **česky** a stručně. Uživatel často čte z mobilu.
-- Nové věci nejdřív zapiš do `docs/OTAZKY.md`, až potom implementuj.
-- Uživatel rozhodl, že se pushuje rovnou do `main` (bez větve `dev`). Změny a vydání se pushují přímo na `main`, jakmile je uživatel schválí.
-- Každá změna, kterou hráč uvidí, dostane záznam v `CHANGELOG.md`.
-- Nikdy necommituj reálná data z xls, osobní údaje ani e-maily z dispečinku (viz `AGENTS.md`).
-- Medicínská a dispečerská pravidla v `src/data.js` neměň bez potvrzení uživatele.
+1. Ověř kořen repozitáře, větev, `git status` a poslední commit. Pokračuj jen v kopii určené pro daný úkol; při nejasnosti nic neslučuj ani nemaž.
+2. Přečti jen relevantní části zdrojů a dokumentace. `docs/HANDOFF.md` a `docs/OTAZKY.md` otevři jen tehdy, když souvisí s úkolem; nehromadíš historii konverzací v promptu.
+3. Ptej se jen na dosud nerozhodnutou doménovou věc, jejíž odpověď mění chování simulace. Odpovědi uživatele z předchozích chatů a dokumentace platí, dokud je uživatel nezmění.
+4. Dokonči ucelený úkol, shrň změněné soubory a kontroly. Necommituj, nepushuj, nevydávej ani nenasazuj bez výslovného pokynu.
 
-## Před každým commitem spusť
-
-```
-npm run lint
-node tests/test.js
-node tests/content_audit.js
-python3 build.py
-```
-
-Pokud je potřeba prohlížeč, spusť lokální server (`python3 -m http.server -d site 8765`) a `python3 tests/browser_smoke.py`.
-
-## Ostré vydání (jen na pokyn uživatele)
-
-Až uživatel řekne „pushni do ostré“, a jen tehdy: merge `dev` do `main`, `VERSION` bez `-dev`, sekce v `CHANGELOG.md`, push na `main`. Tagy ručně nepushuj.
-
-## Způsob práce
-
-- Před změnou najdi relevantní kód (grep) a změň co nejméně.
-- Před úpravou napiš plán ve 2–3 větách.
-- Když zadání není jednoznačné, zeptej se jednou, s konkrétními volbami.
-- Po změně ukaž konkrétní výstup, ne jen „je to hotové“.
-- Neposílej na `main` nic, co uživatel neviděl a neschválil.
-- Průběžně nekomentuj každý krok.
-- Rozhodnutí o formátu nebo chování zapiš do `docs/OTAZKY.md`.
+Komunikuj česky, stručně. Každou viditelnou změnu zaznamenej v `CHANGELOG.md`; před odevzdáním spusť odpovídající kontroly z `AGENTS.md`.

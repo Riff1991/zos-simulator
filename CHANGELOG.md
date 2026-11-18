@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## v0.37.2 – 2026-11-18 (rozpracováno)
+## v0.37.2 – 2026-11-18
 Nové:
 - **Calltaker:** zachováno původní rozmístění polí a dlaždic, vzhled sladěn s tmavou aplikací a barevným rozlišením klasifikací. Při zvonění se skryjí dispečerské panely, mapa se vrátí na celý kraj a po příchodu AML se přiblíží k poloze (když se mapa dočítá později, přiblížení se provede, jakmile je hotová). Téma funguje ve světlém i tmavém motivu a drží původní rozměry prvků, takže se řádky formuláře nezalamují jinak než dřív.
 - **Calltaker mapa:** v okolí AML se zobrazují orientační body z `poi.json` (kostely a kaple, školy, pojmenované obchody a provozovny; při větším přiblížení i ordinace, domovy, ubytování, další místa a sportoviště). Počet je omezen podle vzdálenosti od AML a přiblížení (max. 220/150/90 bodů, štítky se nepřekrývají). Výběr je neutrální a nikdy nezvýrazňuje skutečnou polohu případu.

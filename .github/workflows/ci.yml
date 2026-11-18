@@ -2,6 +2,8 @@ name: Kontroly
 on:
   push:
     branches: [main, dev]
+  pull_request:
+    branches: [main]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -12,6 +14,15 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - name: Sestavení
-        run: python3 build.py && git diff --exit-code -- site/index.html || (echo "site/index.html neodpovídá src/ – spusť python3 build.py a commitni" && exit 1)
+        run: python3 build.py
+      - name: Kontrola vygenerovaných souborů
+        run: git diff --exit-code -- site/index.html site/sw.js site/version.json site/calltaker/index.html calltaker/web/index.html site/tts/worker.js || (echo "Vygenerované soubory neodpovídají zdrojům – spusť python3 build.py a commitni změny" && exit 1)
       - name: ESLint (nedefinované funkce)
-        run: npx --yes eslint@9 'src/*.js' work/ui.bundle.js --ignore-pattern src/sw.js --ignore-pattern 'src/ui-*.js'
+        run: npm run lint
+      - name: Testy
+        run: npm test
+      - name: Test v prohlížeči
+        run: |
+          pip install playwright && python3 -m playwright install --with-deps chromium
+          python3 -m http.server -d site 8765 &
+          sleep 2 && python3 tests/browser_smoke.py
