@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## Nevydáno
+Opravy:
+- Hlas volajícího při zapnutém telefonním filtru: přehrávání běží přes živý prvek s hlasitostí 0 místo ztlumeného (podezření: ztlumený prvek zdržel zvuk o 10–15 s), čeká se na spuštění zvukového kontextu a měří se, kdy dorazí první zvuk. Když zvuk přijde víc než 1,5 s po textu odpovědi, ukáže se to ve stavu hovoru. Neověřeno na skutečném hovoru.
+
+---
+
 ## v0.37.2 – 2026-11-18
 Nové:
 - **Calltaker:** zachováno původní rozmístění polí a dlaždic, vzhled sladěn s tmavou aplikací a barevným rozlišením klasifikací. Při zvonění se skryjí dispečerské panely, mapa se vrátí na celý kraj a po příchodu AML se přiblíží k poloze (když se mapa dočítá později, přiblížení se provede, jakmile je hotová). Téma funguje ve světlém i tmavém motivu a drží původní rozměry prvků, takže se řádky formuláře nezalamují jinak než dřív.

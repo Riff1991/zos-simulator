@@ -118,7 +118,8 @@ const ZOS_LIVE = (function () {
       c.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       c.mark('mic');
       if (c.stopped) { c.mic.getTracks().forEach(t => t.stop()); return h; }
-      const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); c.ctx.resume();
+      const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); try { await c.ctx.resume(); } catch (e) { /* zkusí se znovu při přehrání */ }
+      c.mark('ctx');
       const msrc = c.ctx.createMediaStreamSource(c.mic);
       c.prof = lineProfile(o.line); c.codec = o.filter ? await loadCodec(c.ctx) : false; c.mark('codec');
       c.micTap = o.filter ? phoneLine(c.ctx, msrc, c.prof, c.codec) : msrc;
@@ -136,8 +137,11 @@ const ZOS_LIVE = (function () {
       c.pc.addEventListener('track', ev => {
         const stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
         c.audio = new Audio(); c.audio.srcObject = stream;
-        if (o.filter) { c.audio.muted = true; const out = phoneLine(c.ctx, c.ctx.createMediaStreamSource(stream), c.prof, c.codec); out.connect(c.ctx.destination); if (c.rx) out.connect(c.rx); }
-        else if (c.rx) c.ctx.createMediaStreamSource(stream).connect(c.rx);
+        const rsrc = c.ctx.createMediaStreamSource(stream);
+        // zvuk volajícího musí dorazit hned: živý prvek s hlasitostí 0 (ne „muted“, Chrome u ztlumeného prvku může proud do Web Audio pustit se zpožděním)
+        if (o.filter) { c.audio.volume = 0; const out = phoneLine(c.ctx, rsrc, c.prof, c.codec); out.connect(c.ctx.destination); if (c.rx) out.connect(c.rx); }
+        else if (c.rx) rsrc.connect(c.rx);
+        watchRx(c, rsrc, st);
         c.audio.play().catch(() => st('Klikni kamkoli na stránku, aby se přehrál zvuk.', true));
       });
       c.mic.getAudioTracks().forEach(t => c.pc.addTrack(t, c.mic));   // volající vždy slyší čistý hlas
@@ -159,12 +163,26 @@ const ZOS_LIVE = (function () {
     } catch (e) { st('Hlas se nepodařilo spojit: ' + e.message, true); stopAll(c); }
     return h;
   }
+  // měření: kdy dorazí první slyšitelný zvuk volajícího do Web Audio (c.diag.zvuk) a kdy přišel první text jeho odpovědi (c.diag.text);
+  // při rozdílu víc než 1,5 s se to ukáže ve stavu a v konzoli, aby bylo vidět, jestli zdržuje model, nebo přehrávání
+  function watchRx(c, src, st) {
+    const an = c.ctx.createAnalyser(); an.fftSize = 512; src.connect(an); const buf = new Float32Array(an.fftSize);
+    const timer = setInterval(() => {
+      if (c.stopped || c.ctx.state === 'closed') { clearInterval(timer); return; }
+      if (c.ctx.state === 'suspended') c.ctx.resume().catch(() => {});
+      an.getFloatTimeDomainData(buf); let m = 0; for (let i = 0; i < buf.length; i++) m = Math.max(m, Math.abs(buf[i]));
+      if (m > 0.01) {
+        c.mark('zvuk'); clearInterval(timer);
+        if (c.diag.text != null && c.diag.zvuk - c.diag.text > 1.5) { const d = (c.diag.zvuk - c.diag.text).toFixed(1); if (window.console) console.warn('zvuk volajícího dorazil o ' + d + ' s později než text'); st('Zvuk volajícího dorazil o ' + d.replace('.', ',') + ' s později než jeho text.', true); }
+      }
+    }, 50);
+  }
   function onEvent(c, o, st, raw) {
     let ev; try { ev = JSON.parse(raw); } catch (e) { return; }
     switch (ev.type) {
       case 'session.started': c.ready = true; c.mark('session'); if (o.onReady) o.onReady(c.diag); st('Hovor spojen.'); break;
       case 'session.input_transcript.delta': if (o.onTranscript) o.onTranscript('calltaker', ev.delta || ''); break;
-      case 'session.output_transcript.delta': if (o.onTranscript) o.onTranscript('volajici', ev.delta || ''); break;
+      case 'session.output_transcript.delta': c.mark('text'); if (o.onTranscript) o.onTranscript('volajici', ev.delta || ''); break;
       case 'session.usage.updated': if (ev.usage && ev.usage.seconds != null) c.usage = ev.usage.seconds; break;
       case 'session.closed': c.closed = true; if (ev.usage && ev.usage.seconds != null) c.usage = ev.usage.seconds; if (c.onClosed) c.onClosed(); break;
       case 'error': st('Chyba hlasového API: ' + ((ev.error && ev.error.message) || ev.message || String(raw).slice(0, 200)), true); break;
