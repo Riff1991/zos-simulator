@@ -411,3 +411,12 @@ Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repoz
 - **Zadané vs. skutečné:** dispečer vidí klasifikaci a cihličky, které calltaker zadal (`c.klasif`, `c.sympShown`); skrytá pravda je v `c.klasifTruth` a `c.call.truth` a řídí mechaniku (nemocnice, LZS, průběh). V záložce Moje případy je seznam vyhodnocených hovorů s Analýzou; přepis hovoru se ukazuje jen v textovém režimu.
 - **Realismus volajících:** adresu zná přesně ~90 % volajících (kromě svědka na silnici či v terénu, dítěte a turisty), prostředí „pes“ a „rádio“ odstraněno, AI nepřidává zvracení ani televizi. Podíl Zvracení/průjem v generátoru (5 %) vychází z říjnového vzorku a neměnil jsem ho.
 - **Číselníky:** Charakter = tři „Tísňová výzva …“ (budova, terén, zdravotnické zařízení); Způsob ohlášení vyplňuje systém automaticky (běžný hovor = „telefonicky na 155“), pole je jen ke čtení; číselník ze screenu: telefonicky na 155, datová věta z NIS, Aplikace záchranka, datová věta z jiné složky, SMS od neslyšícího, telefonicky na jiné číslo, jiný, datová věta z TCTV 112.
+
+### Calltaker – uživatelské zadání směru (2026-11-18)
+- Zachovat stávající rozmístění formuláře, polí a dlaždic; vizuálně ho sladit s moderním, barevným stylem celé aplikace.
+- Při zazvonění skrýt dispečerské panely a vrátit mapu na celý kraj. S přicházející AML se mapa postupně přiblíží k poloze.
+- N1 předpoplach zůstává na ručním rozhodnutí calltakera; má umožnit rychlé vyslání a pokračování v hovoru.
+- Hráč sám vyplňuje klinické údaje. V začátečnickém režimu se mohou automaticky vepsat jen stručné textové okolnosti, které pacient výslovně řekl (např. patro); nic se neodvozuje, naléhavost ani indikace se nevyplňují.
+- Těžký režim má mít vyšší podíl naléhavostí N1 a N2.
+- Potřebná PČR/HZS, která nebyla označena během hovoru, se při příjezdu posádky automaticky přivolá bez bodového postihu.
+- Calltaker mapa: z `poi.json` zobrazit orientační body (kostely/kaple, školy, pojmenované obchody a provozovny přednostně; ordinace, domovy, ubytování, ostatní pojmenovaná místa a sport až při větším přiblížení) jen v okolí posledního AML, s limity podle vzdálenosti a přiblížení. Body jsou neutrální: výběr nezávisí na skutečné poloze případu a ta se nijak nezvýrazňuje.

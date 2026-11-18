@@ -111,9 +111,9 @@ async function ctStart() {
 function ctReset() {
   if (ct.voice) { try { ct.voice.stop(); } catch (e) { /* ignore */ } }
   ctStopRing();
-  ct = Object.assign(ct, { tanr: null, dropAt: null, kindNote: '', lastRes: null, recs: [], wavs: [], usage: 0, was: false, call: null, facts: {}, tab: 'intake', ringId: null, voice: null, transcript: [], pt: null, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, hash: '', mapHash: '', built: false, phoneKey: '', msgs: [], wav: null });
+  ct = Object.assign(ct, { tanr: null, dropAt: null, kindNote: '', lastRes: null, recs: [], wavs: [], usage: 0, was: false, call: null, facts: {}, tab: 'intake', ringId: null, voice: null, transcript: [], pt: null, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, fitPend: null, poiKey: '', hash: '', mapHash: '', built: false, phoneKey: '', msgs: [], wav: null });
   const b = $('ct-body'); if (b) b.innerHTML = '';
-  document.body.classList.add('ct-spider-off');
+  document.body.classList.add('ct-spider-off'); document.body.classList.remove('ct-call-focus');
 }
 function ctAfterLoad() { ctReset(); if (ctModeOn()) { for (const c of sim.s.calls) if (c.state === 'taken' || c.state === 'wrap') c.state = 'done'; view = 'intake'; } }
 // třídy na body, rozložení a vrstvy mapy podle režimu
@@ -191,7 +191,9 @@ function ctRender() {
   ctBuild();
   if (!ct.spiderDrawn) { ct.spiderDrawn = true; ctSpiderRender(); }   // pavouk je použitelný i před prvním hovorem
   const s = sim.s, rg = s.calls.find(c => c.state === 'ringing');
-  if (rg && ct.ringId !== rg.id) { ct.ringId = rg.id; ct.facts[rg.id] = sim.callFacts(rg.seed, rg); ctStartRing(); toast(rg.cb ? '☎ Volající zavolal zpět' : '☎ Zvoní telefon', 'warn'); }
+  const callFocus = !!rg || !!ct.call, wasFocused = document.body.classList.contains('ct-call-focus');
+  if (callFocus !== wasFocused) { document.body.classList.toggle('ct-call-focus', callFocus); layoutApply(true); }
+  if (rg && ct.ringId !== rg.id) { ct.ringId = rg.id; ct.facts[rg.id] = sim.callFacts(rg.seed, rg); ctStartRing(); setTimeout(() => { if (!ct.call) ctFitRegion(); }, 90); toast(rg.cb ? '☎ Volající zavolal zpět' : '☎ Zvoní telefon', 'warn'); }
   else if (!rg && ct.ringId) { ctStopRing(); ct.ringId = null; }
   const ph = ctPhoneHtml(), pe = $('ct-phone'), DY = /<span class="dy">([^<]*)<\/span>/g, key = ph.cls + ph.html.replace(DY, '<span class="dy"></span>');
   if (key !== ct.phoneKey) { ct.phoneKey = key; pe.className = ph.cls; pe.innerHTML = ph.html; }   // celá lišta se překreslí jen při změně stavu
@@ -205,6 +207,7 @@ function ctRender() {
       if (ct.tanr) ctTanrTick();
     }
   }
+  if (ct.fitPend && GL && glReady) { const fp = ct.fitPend; if (fp === 'region') ctFitRegion(); else ctFitCircle(fp); }   // odložené přiblížení (mapa se dočetla až po zazvonění / AML)
   ctMapSync();
   if (ct.tab === 'mine' && performance.now() - ct.lastCases > 900) { ct.lastCases = performance.now(); ctCasesHtml(); }
 }
@@ -251,9 +254,15 @@ function ctCircle(lat, lon, rM, n) {
   return co;
 }
 function ctFitCircle(p) {
-  if (!GL || !glReady) return;
+  if (!GL || !glReady) { ct.fitPend = p; return; }   // mapa ještě není připravená: přiblížení se provede, jakmile bude
+  ct.fitPend = null;
   const dl = p.radiusM / 111320, dn = p.radiusM / (111320 * Math.cos(p.lat * Math.PI / 180));
   try { GL.fitBounds([[p.lon - dn, p.lat - dl], [p.lon + dn, p.lat + dl]], { padding: 50, maxZoom: 17.5, duration: 700 }); } catch (e) { /* ignore */ }
+}
+function ctFitRegion() {
+  if (!GL || !glReady) { ct.fitPend = 'region'; return; }
+  ct.fitPend = null;
+  try { GL.fitBounds([[13.53, 48.55], [15.61, 49.63]], { padding: 24, duration: 550 }); } catch (e) { /* ignore */ }
 }
 function ctUseAml() {
   const ph = ctAmlPhases(), p = ph[ph.length - 1]; if (!p) return;
@@ -261,9 +270,45 @@ function ctUseAml() {
 }
 
 // ---------- mapa: výběr bodu, kruhy ----------
+// ---------- orientační body (poi.json) v okolí AML: neutrální kontext, žádné zvýraznění skutečné polohy ----------
+// Vybírá se jen podle vzdálenosti od středu AML a podle kategorie; skutečný případ se nikdy nezohledňuje.
+// tier 1 = kostely/kaple, školy, pojmenované obchody a provozovny; tier 2 = ostatní pojmenované veřejné body, ordinace, domovy, ubytování; tier 3 = sportoviště
+const CT_POI_CHURCH = /kostel|kaple|chrám|klášter|modlitebn|synagog/i;
+let CT_POI_IDX = null;
+function ctPoiIndex() {
+  const P = window.ZOS_POI && window.ZOS_POI.poi; if (!P) return null;
+  if (CT_POI_IDX) return CT_POI_IDX;
+  const out = [], add = (p, tier, kind, name) => { if (name) out.push({ lat: p[0] / 1e5, lon: p[1] / 1e5, tier, kind, name }); };
+  for (const p of P.verejne || []) { const n = p[2] || ''; if (CT_POI_CHURCH.test(n)) add(p, 1, 'kostel', n); else if (n) add(p, 2, 'misto', n); }
+  for (const p of P.skola || []) add(p, 1, 'skola', p[2] || 'Škola');
+  for (const p of P.prov || []) add(p, 1, 'obchod', p[2]);
+  for (const p of P.ordinace || []) add(p, 2, 'zdravi', p[2] || 'Ordinace');
+  for (const p of P.domov || []) add(p, 2, 'zdravi', p[2] || 'Domov');
+  for (const p of P.ubytovani || []) add(p, 2, 'ubytovani', p[2]);
+  for (const p of P.sport || []) add(p, 3, 'sport', p[2]);
+  return (CT_POI_IDX = out);
+}
+function ctPoiFeatures(c) {
+  const idx = ctPoiIndex(); if (!idx || !c) return [];
+  const R = Math.min(3500, Math.max(700, c.radiusM * 1.7)), dl = R / 111320, dn = R / (111320 * Math.cos(c.lat * Math.PI / 180)), k = Math.cos(c.lat * Math.PI / 180), cap = [0, 220, 150, 90], by = [[], [], [], []];
+  for (const p of idx) {
+    if (Math.abs(p.lat - c.lat) > dl || Math.abs(p.lon - c.lon) > dn) continue;
+    const d = Math.hypot((p.lat - c.lat) * 111320, (p.lon - c.lon) * 111320 * k);
+    if (d <= R) by[p.tier].push({ p, d });
+  }
+  const feats = [];
+  for (let t = 1; t <= 3; t++) for (const { p } of by[t].sort((a, b) => a.d - b.d).slice(0, cap[t])) feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: { tier: p.tier, kind: p.kind, lab: p.name } });
+  return feats;
+}
 function ctGlInit() {
   const empty = { type: 'FeatureCollection', features: [] };
-  for (const s of ['ct-circles', 'ct-labels', 'ct-pt']) GL.addSource(s, { type: 'geojson', data: empty });
+  for (const s of ['ct-poi', 'ct-circles', 'ct-labels', 'ct-pt']) GL.addSource(s, { type: 'geojson', data: empty });
+  // orientační body pod kruhy AML; menší důležitost = až při větším přiblížení, štítky se mezi sebou samy odsunou (bez překryvů)
+  const kc = ['match', ['get', 'kind'], 'kostel', '#8a7aa8', 'skola', '#5d9a78', 'obchod', '#c0924d', 'zdravi', '#c06a76', 'ubytovani', '#5f92b5', '#8793a0'];
+  for (const [t, mz, lz] of [[1, 12.5, 14], [2, 14.5, 15.5], [3, 15.5, 16.5]]) {
+    GL.addLayer({ id: 'ct-poi-c' + t, type: 'circle', source: 'ct-poi', minzoom: mz, filter: ['==', ['get', 'tier'], t], paint: { 'circle-radius': t === 1 ? 4 : 3, 'circle-color': kc, 'circle-opacity': 0.85, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1 } });
+    GL.addLayer({ id: 'ct-poi-l' + t, type: 'symbol', source: 'ct-poi', minzoom: lz, filter: ['==', ['get', 'tier'], t], layout: { 'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.6], 'text-max-width': 8, 'symbol-sort-key': t }, paint: { 'text-color': '#2f3d4b', 'text-halo-color': 'rgba(255,255,255,.92)', 'text-halo-width': 1.4 } });
+  }
   GL.addLayer({ id: 'ct-fill', type: 'fill', source: 'ct-circles', paint: { 'fill-color': ['get', 'col'], 'fill-opacity': ['get', 'op'] } });
   GL.addLayer({ id: 'ct-line', type: 'line', source: 'ct-circles', paint: { 'line-color': ['get', 'col'], 'line-width': 2, 'line-opacity': ['get', 'lop'] } });
   GL.addLayer({ id: 'ct-lab', type: 'symbol', source: 'ct-labels', layout: { 'text-field': ['get', 'lab'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true, 'text-anchor': 'top', 'text-offset': [0, 0.6] }, paint: { 'text-color': ['get', 'col'], 'text-halo-color': '#fff', 'text-halo-width': 1.6 } });
@@ -282,6 +327,8 @@ function ctMapSync() {
   });
   GL.getSource('ct-circles').setData({ type: 'FeatureCollection', features: feats });
   GL.getSource('ct-labels').setData({ type: 'FeatureCollection', features: labs });
+  const lp = ph[ph.length - 1], pk = (lp ? lp.lat + ',' + lp.lon + ',' + lp.radiusM : '-') + ':' + (window.ZOS_POI ? 1 : 0);   // orientační body se přepočítají jen při nové fázi AML (střed = poslední AML, ne případ)
+  if (pk !== ct.poiKey) { ct.poiKey = pk; GL.getSource('ct-poi').setData({ type: 'FeatureCollection', features: ctPoiFeatures(ph[ph.length - 1]) }); }
   GL.getSource('ct-pt').setData({ type: 'FeatureCollection', features: pt ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [pt.lon, pt.lat] }, properties: { lab: pt.src === 'AML' ? 'střed AML' : pt.src === 'adresa' ? 'adresa' : 'vybraný bod' } }] : [] });
 }
 // nejbližší adresní bod z ZOS_ADDR do 100 m, jinak „okolí obce X“

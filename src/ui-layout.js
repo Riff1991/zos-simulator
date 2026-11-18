@@ -26,7 +26,7 @@ let layoutStore = { normal: null, mu: null, ct: null }, layoutZ = 60, layoutSpli
 try { layoutStore = Object.assign(layoutStore, JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}')); } catch (_) {}
 const layoutKey = () => (ctModeOn() ? 'ct' : muModeOn() ? 'mu' : 'normal');
 const layoutClone = o => JSON.parse(JSON.stringify(o));
-const layoutHidden = id => (id === 'map' && mainPanelHidden.map) || (id === 'radio' && mainPanelHidden.radio) || (ctModeOn() && ((id === 'spider' && document.body.classList.contains('ct-spider-off')) || (!document.body.classList.contains('ct-disp') && ['cases', 'detail', 'rcom', 'radio', 'crews'].includes(id))));
+const layoutHidden = id => (id === 'map' && mainPanelHidden.map) || (id === 'radio' && mainPanelHidden.radio) || (ctModeOn() && ((id === 'spider' && document.body.classList.contains('ct-spider-off')) || ((!document.body.classList.contains('ct-disp') || document.body.classList.contains('ct-call-focus')) && ['cases', 'detail', 'rcom', 'radio', 'crews'].includes(id))));
 const layoutDesktop = () => !satellitePanel && matchMedia('(min-width: 1100px)').matches && !document.body.classList.contains('map-fullscreen');
 function layoutGet(key) {
   let L = layoutStore[key];
