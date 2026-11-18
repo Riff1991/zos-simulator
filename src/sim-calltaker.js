@@ -304,15 +304,27 @@ class SimCalltaker {
     }
     cs.lat = lat; cs.lon = lon;
   }
+  // první posádka na místě: PČR/HZS, které calltaker v hovoru nezadal a případ je potřebuje, se přivolají automaticky
+  // (bez bodového postihu; c.agLate zůstává jen jako evidence, do skóre hovoru nevstupuje)
+  _ctAgLate(cs) {
+    cs.agLateDone = true;
+    const A = cs.agencies || (cs.agencies = {});
+    for (const k of cs.agLate || []) {
+      if (A[k] || (k !== 'pcr' && k !== 'hzs')) continue;   // už vyžádáno nebo vyrozuměno
+      this.L('req', `${cs.num}: posádka na místě, ${k === 'pcr' ? 'PČR' : 'HZS'} se přivolává automaticky`, cs.id);
+      this.sendAgency(cs.id, k);   // bez předchozí žádosti: žádný bod navíc ani postih
+    }
+  }
   // body za hovor: čas do odeslání, klasifikace, N, příznaky, věk, poloha, okolnosti (kompletnost dotazů a empatii hodnotí analýza hovoru)
   _ctScore(call, c) {
-    const ck = c && c.call && c.call.check, tr = c && c.call && c.call.truth; if (!ck) return null;
+    const ck = c && c.call && c.call.check; if (!ck) return null;
     const sec = Math.max(0, Math.round((c.call.sentAtFirst != null ? c.call.sentAtFirst : this.s.t) - ctT0(call))), lim = { 1: 60, 2: 120, 3: 180 }[c.call.truthN] || 120;
     const cas = sec <= lim ? 20 : sec <= lim * 1.5 ? 12 : sec <= lim * 2.5 ? 6 : 0;
     const dn = Math.abs(c.call.typedN - c.call.truthN), n = dn === 0 ? 20 : dn === 1 ? 8 : 0;
     const kl = ck.klasif.ok ? 15 : 0, pr = Math.round(15 * ck.priznaky.jaccard), vek = ck.vek.ok === false ? 0 : 5, dyn = ck.dyn.ok ? 5 : 0;
     const pol = c.call.miss ? 0 : c.call.searchDelay ? 8 : 15;
-    const ag = Math.max(0, ((tr.agNeed || []).length ? Math.round(5 * ((tr.agNeed.length - (c.agLate || []).length) / tr.agNeed.length)) : 5) - 2 * ((c.call.agOver || []).length));
+    // chybějící PČR/HZS se na místě přivolají automaticky a bez postihu (rozhodnutí Q1); c.agLate zůstává jen jako evidence pro log a přehled, body se strhávají jen za zbytečně přivolané složky
+    const ag = Math.max(0, 5 - 2 * ((c.call.agOver || []).length));
     const total = cas + n + kl + pr + vek + dyn + pol + ag;
     return { sec, lim, cas, n, kl, pr, vek, dyn, pol, ag, total, max: 20 + 20 + 15 + 15 + 5 + 5 + 15 + 5 };
   }

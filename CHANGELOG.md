@@ -8,6 +8,13 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.37.2 – 2026-11-18
+Nové:
+- **Calltaker:** zachováno původní rozmístění polí a dlaždic, vzhled sladěn s tmavou aplikací a barevným rozlišením klasifikací. Při zvonění se skryjí dispečerské panely, mapa se vrátí na celý kraj a po příchodu AML se přiblíží k poloze (když se mapa dočítá později, přiblížení se provede, jakmile je hotová). Téma funguje ve světlém i tmavém motivu a drží původní rozměry prvků, takže se řádky formuláře nezalamují jinak než dřív.
+- **Calltaker mapa:** v okolí AML se zobrazují orientační body z `poi.json` (kostely a kaple, školy, pojmenované obchody a provozovny; při větším přiblížení i ordinace, domovy, ubytování, další místa a sportoviště). Počet je omezen podle vzdálenosti od AML a přiblížení (max. 220/150/90 bodů, štítky se nepřekrývají). Výběr je neutrální a nikdy nezvýrazňuje skutečnou polohu případu.
+Opravy:
+- Potřebná PČR/HZS, kterou calltaker při hovoru neoznačil, se po příjezdu posádky přivolá automaticky bez bodového postihu.
+
 ## v0.37.1 – 2026-11-18
 Opravy:
 - **Cihličky ostatních indikací vycházejí z katalogu příznaků.** Cihlička na obrazovce je jeden příznak z katalogu a znak před jeho názvem říká, ke které klasifikaci patří (§ křeče, - arytmie, _ hrudník a dušnost, ° krvácení, ! CMP, $ porucha vědomí, : psychika …). Slovník cihliček každé indikace tvoří příznaky, které se u ní v exportech výjezdů (leden a červenec 2026) skutečně zaklikávají (podíl v kombinacích), plus celá skupina příznaků této klasifikace v katalogu. Barva se určuje podle shody s blokem excelu klasifikace, jinak podle toho, při jaké naléhavosti se příznak v datech nejčastěji vyskytuje, a jinak je šedá. Příznak v Upřesnění je přesně ten z katalogu. Pět indikací ze screenů zůstává přesně podle screenů.

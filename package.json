@@ -7,7 +7,7 @@
     "build": "python3 build.py",
     "serve": "python3 -m http.server -d site 8765",
     "data": "bash pipeline/run.sh",
-    "lint": "npx eslint@9 'src/*.js' work/ui.bundle.js --ignore-pattern src/sw.js --ignore-pattern 'src/ui-*.js'",
+    "lint": "npx eslint@9 \"src/*.js\" work/ui.bundle.js --ignore-pattern src/sw.js --ignore-pattern \"src/ui-*.js\"",
     "audit": "node tests/content_audit.js",
     "smoke": "python3 tests/browser_smoke.py",
     "check": "npm run lint && npm test && python3 build.py"

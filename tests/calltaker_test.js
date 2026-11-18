@@ -196,6 +196,38 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
       ok(Object.keys(c1.agencies || {}).length === seedAg.t.agNeed.length && !(c1.agLate || []).length, 'PČR/HZS označené v hovoru jdou hned dispečerovi');
       const c2 = sm.addCallCase({ v: 1, seed: seedAg.sd, form: { adresa: seedAg.t.addr, n: String(seedAg.t.n) }, sec: 50 });
       ok((c2.agLate || []).length === seedAg.t.agNeed.length, 'PČR/HZS neoznačené v hovoru se vyžádají až na místě'); } else console.log('(žádný seed s PČR/HZS)'); }
+  // PČR/HZS neoznačené v hovoru: při příjezdu první posádky se přivolají automaticky, bez výjimky a bez bodového postihu (bot zapnutý i vypnutý)
+  { const seeds = []; for (let sd = 1; sd < 6000 && seeds.length < 4; sd++) { const t = new Sim({ seed: sd, mode: 'free' })._spawn(); if ((t.agNeed || []).length && /\d/.test(t.addr) && !/okolí|\(/.test(t.addr) && t.addr.includes(',') && (seeds.length < 2 || t.agNeed.includes('hzs') !== seeds[0].t.agNeed.includes('hzs') || seeds.length < 3)) seeds.push({ sd, t }); }
+    ok(seeds.length >= 2, 'nalezeny případy s potřebou PČR/HZS (' + seeds.length + ')');
+    for (const bot of [true, false]) for (const sg of seeds) {
+      const sm = mkSim(80 + sg.sd % 7); sm.s.liveCalls.bot = bot;
+      const pen = []; const os = sm._opsScore.bind(sm); sm._opsScore = (d, why, id) => { if (/PČR|HZS|vyrozuměn/.test(String(why))) pen.push([d, why]); return os(d, why, id); };
+      const c = sm.addCallCase({ v: 1, seed: sg.sd, form: { adresa: sg.t.addr, n: String(sg.t.n), zdroj: 'adresa' }, sec: 40 });
+      const need = c.agLate.slice(); let thrown = null;
+      const crewsAssign = () => { for (const cs of sm.s.cases) if (cs.status === 'waiting' && !cs.crews.length) { const r = sm.suggest(cs.id, 'RZP')[0]; if (r) sm.assign(cs.id, r.crewId); if (cs.rvNeed) { const v = sm.suggest(cs.id, 'RV')[0]; if (v) sm.assign(cs.id, v.crewId); } } };
+      try { for (let i = 0; i < 40000 && !c.arrived; i++) { if (!bot) crewsAssign(); step(sm); } for (let i = 0; i < 900; i++) step(sm); } catch (e) { thrown = e; }
+      const A = c.agencies || {};
+      ok(!thrown && c.arrived, `agLate (bot ${bot ? 'ano' : 'ne'}, seed ${sg.sd}): dojezd bez výjimky${thrown ? ' – ' + thrown.message : ''}`);
+      ok(need.length > 0 && c.agLateDone === true && need.every(k => A[k] && (A[k].state === 'sent' || A[k].state === 'onscene')), `agLate (bot ${bot ? 'ano' : 'ne'}, seed ${sg.sd}): ${need.join('+')} přivolána automaticky`);
+      ok(pen.length === 0 && !sm.s.log.some(l => /nevyrozuměná/.test(l.txt || '')), `agLate (bot ${bot ? 'ano' : 'ne'}, seed ${sg.sd}): bez bodového postihu ani bonusu`);
+      ok(sm.s.log.some(l => /přivolává automaticky/.test(l.txt || '')), `agLate (bot ${bot ? 'ano' : 'ne'}, seed ${sg.sd}): záznam v logu`);
+      ok(JSON.stringify(JSON.parse(JSON.stringify(sm.s))) === JSON.stringify(sm.s), `agLate (bot ${bot ? 'ano' : 'ne'}, seed ${sg.sd}): stav je čistý JSON`);
+    }
+    // determinismus: dva běhy stejného scénáře dají stejný stav
+    const rn = () => { const sm = mkSim(99), c = sm.addCallCase({ v: 1, seed: seeds[0].sd, form: { adresa: seeds[0].t.addr, n: String(seeds[0].t.n), zdroj: 'adresa' }, sec: 40 }); for (let i = 0; i < 40000 && !c.arrived; i++) step(sm); for (let i = 0; i < 900; i++) step(sm); return JSON.stringify(sm.s); };
+    ok(rn() === rn(), 'agLate: determinismus dvou běhů');
+    // skóre hovoru: chybějící PČR/HZS (později automaticky přivolané) nesnižuje ag body, ať se hovor vyhodnotí před příjezdem nebo po něm; evidence c.agLate zůstává
+    for (const sg of seeds.slice(0, 3)) for (const after of [false, true]) {
+      const sm = mkSim(90 + sg.sd % 5), flagged = { agPcr: sg.t.agNeed.includes('pcr'), agHzs: sg.t.agNeed.includes('hzs') };
+      const run = fl => { const cl = ringKind(sm, 'vyjezd', { seed: sg.sd }); sm.pickupCall(cl.id); const c = sm.sendCall(cl.id, Object.assign({ adresa: sg.t.addr, n: String(sg.t.n), zdroj: 'adresa' }, fl ? flagged : {})); sm.endCall(cl.id);
+        if (after) { for (let i = 0; i < 40000 && !c.arrived; i++) step(sm); for (let i = 0; i < 60; i++) step(sm); }
+        sm.finishCall(cl.id); return c; };
+      const miss = run(false), good = run(true), tag = `seed ${sg.sd}, ${after ? 'po příjezdu' : 'před příjezdem'}`;
+      ok(miss.call.skore && good.call.skore && miss.call.skore.ag === 5 && good.call.skore.ag === 5, `agLate skóre (${tag}): ag body bez postihu za neoznačené služby (${miss.call.skore && miss.call.skore.ag}/${good.call.skore && good.call.skore.ag})`);
+      ok((miss.agLate || []).length > 0 && !(good.agLate || []).length, `agLate skóre (${tag}): evidence c.agLate zůstává (${(miss.agLate || []).join('+')})`);
+      ok(JSON.stringify(JSON.parse(JSON.stringify(sm.s))) === JSON.stringify(sm.s), `agLate skóre (${tag}): stav je čistý JSON`);
+    }
+  }
   // hovor bez výjezdu: odeslání se trestá, správné vyřízení se odměňuje
   { const sm = mkSim(65), cl = ringKind(sm, 'bez'); const f = sm.pickupCall(cl.id);
     ok(f.kind === 'bez' && f.key.vyjezd === false && f.view.situace && /NEVYŽADUJE/.test(f.view.situace), 'hovor bez výjezdu má scénář (' + f.key.scenar + ')');
@@ -335,5 +367,18 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   ok(c.shown.age === 68 && c.shown.sex === 'M' && c.sympShown.join() === 'AVPU-A,Hlava', 'věk, pohlaví a příznaky jsou zadané');
   const f2 = Object.assign({}, form, { upresneni: 'patro 5', poznamka: '', popis: 'doplněno' }); sim.updateCallCase(c, f2);
   ok(c.place === 'patro 5' && c.poznamka === 'doplněno', 'aktualizace přepíše jen zadané, bez skryté poznámky');
+}
+// orientační body kolem AML: neutrální výběr jen podle vzdálenosti od středu AML a kategorie, s limity
+{
+  const src = fs.readFileSync(path.join(R, 'src/ui-calltaker.js'), 'utf8'), a0 = src.indexOf('const CT_POI_CHURCH'), b0 = src.indexOf('function ctGlInit');
+  global.window = { ZOS_POI: global.ZOS_POI };
+  const CTP = new Function('window', src.slice(a0, b0) + '; return { F: ctPoiFeatures, IDX: ctPoiIndex };')(global.window);
+  const idx = CTP.IDX(); ok(idx && idx.length > 5000, 'index orientačních bodů: ' + (idx && idx.length));
+  const c = { lat: 48.9747, lon: 14.4744, radiusM: 40 }, f = CTP.F(c), t = [0, 0, 0, 0]; f.forEach(x => t[x.properties.tier]++);
+  ok(f.length > 50 && t[1] <= 220 && t[2] <= 150 && t[3] <= 90, 'centrum ČB: limity podle tierů (' + t.slice(1).join('/') + ')');
+  ok(f.every(x => Math.hypot((x.geometry.coordinates[1] - c.lat) * 111320, (x.geometry.coordinates[0] - c.lon) * 111320 * Math.cos(c.lat * Math.PI / 180)) <= 700.5), 'jen v okolí AML (700 m)');
+  ok(f.every(x => Object.keys(x.properties).sort().join() === 'kind,lab,tier'), 'vlastnosti bodů jsou jen neutrální (druh, název, tier), žádné označení případu');
+  ok(CTP.F({ lat: 48.9747, lon: 14.4744, radiusM: 40 }).map(x => x.properties.lab).join() === f.map(x => x.properties.lab).join(), 'výběr je deterministický (nezávisí na skutečném případu)');
+  ok(f.some(x => x.properties.kind === 'kostel') || CTP.F({ lat: 49.0, lon: 14.45, radiusM: 2700 }).some(x => x.properties.kind === 'kostel'), 'kostely se do výběru dostávají');
 }
 console.log(fail ? 'SELHALO: ' + fail : 'calltaker test OK'); process.exit(fail ? 1 : 0);
