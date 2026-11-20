@@ -1,9 +1,13 @@
 name: Kontroly
+# Push na main a dev (spouští nasazení webu): jen minimum potřebné, asi 1,5 minuty:
+# sestavení, shoda vygenerovaných souborů se zdroji, ESLint a rychlé testy.
+# Těžké testy (herní jádro, audit obsahu, test v prohlížeči; dohromady asi 5 minut) běží u pull requestů a při ručním spuštění (Actions → Kontroly → Run workflow).
 on:
   push:
     branches: [main, dev]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,9 +23,13 @@ jobs:
         run: git diff --exit-code -- site/index.html site/sw.js site/version.json site/calltaker/index.html calltaker/web/index.html site/tts/worker.js || (echo "Vygenerované soubory neodpovídají zdrojům – spusť python3 build.py a commitni změny" && exit 1)
       - name: ESLint (nedefinované funkce)
         run: npm run lint
-      - name: Testy
-        run: npm test
-      - name: Test v prohlížeči
+      - name: Rychlé testy
+        run: node tests/calltaker_test.js && node tests/calltaker_lokace_test.js && node tests/spider_test.js && node tests/cihly_test.js && node tests/phone_codec_test.js && node tests/addr_test.js && node tests/tutorial.js
+      - name: Těžké testy (jen pull request a ruční spuštění)
+        if: github.event_name != 'push'
+        run: node tests/test.js && node tests/content_audit.js
+      - name: Test v prohlížeči (jen pull request a ruční spuštění)
+        if: github.event_name != 'push'
         run: |
           pip install playwright && python3 -m playwright install --with-deps chromium
           python3 -m http.server -d site 8765 &
