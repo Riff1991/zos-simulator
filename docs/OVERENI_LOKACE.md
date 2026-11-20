@@ -152,3 +152,23 @@ ok: při opakovaném hovoru a zpětném volání už volající ví, co zjistil 
 ok: druhý svědek je jinde než pacient a ví o odstupu (24 případů)
 VŠE V POŘÁDKU
 ```
+
+## Průchod v prohlížeči (lokální `site/`, režim calltaker, textový hovor)
+
+**Odpovídal testovací skript, ne jazykový model.** Klíč k OpenAI jsem neměl, takže odpověď na každou větu z textového pole vybral pravidlový „volající“ (stejná pravidla jako v `tests/calltaker_lokace_test.js`) z faktů hovoru. UI, přepis, zápis zjištěného, AML kruh na mapě a herní výpočet chyby polohy (`_ctLocate`) jsou skutečné. Připravil jsem jen seed hovoru (nastavení `seed` ringujícího hovoru) a odeslání formuláře u prvního hovoru jsem udělal voláním enginu (skutečný formulář vyžaduje klasifikaci v pavoukovi).
+
+### Opakovaný hovor (seed 7, čerpací stanice „Flaga LPG plyn“, Český Krumlov)
+První hovor: hráč se zeptal „Kde přesně jste?“ a „Na jaké ulici to je?“ (volající musel hledat: „Moment, podívám se… Domoradická 124“). Název místa se nezeptal. UI zapsalo do hovoru `zjisteno: ["ulice"]`. Opakovaný hovor (`opak`) zdědil přesně to:
+- „Na jaké ulici to je?“ → odpověď hned, bez hledání (už věděl),
+- „Jak se to místo jmenuje?“ → „Moment, podívám se… Flaga LPG plyn“ (musí hledat, nezaznělo),
+- „Není tam vedle vás Lidl?“ → „To tu nevidím, to nevím.“ (nic se nevložilo do paměti).
+Po tomto hovoru je v `zjisteno` i `nazev`.
+
+### Nepřesná poloha (silnice, AML jen buňka ±1,8 km, volající nezná směr)
+Hráč slyšel: „jsem u silnice poblíž Stožec“; na směr jízdy a poslední obec „nevím“; na „Jste u obce Bohušovice?“ „To tu nevidím“; po otevření mapy v mobilu „nejbližší obec Stožec, 5,5 km jihozápadně, místní komunikace“; kolem „nic konkrétního“. Na mapě viděl jen červený kruh buňky (±1,8 km u Haidmühle a Stožce). Podle toho mohl poslat posádku: na střed kruhu (herní chyba 1,4 km, tolerance 200 m, posádka by místo nenašla a hledala), nebo na bod „5,5 km jihozápadně od Stožce“ (chyba 4 km). Nejlepší je jet do kruhu a čekat na zpřesnění AML, které tady nedorazilo. Hra to tedy správně počítá jako špatně lokalizovaný případ.
+
+### Co se při tom našlo
+- Formulace „nejbližší obec X (asi 5,5 km jihozápadně)“ nebyla jednoznačná (kdo je kde). Opraveno na „ty jsi od ní asi 5,5 km jihozápadně“.
+- Vzdálenosti k obci se měří od středu adresních bodů, ne od popisku obce na herní mapě; ten bývá o kilometr jinde. Hráč, který měří od popisku, se mýlí víc, než by chtěl.
+- Směr se zaokrouhluje na 8 stran; při 5 km to je i přes 2 km příčně.
+- Stávající generátor případů popisuje tuto polohu jako „okolí obce České Budějovice“, ačkoli leží u Stožce (`nearTown` v `src/sim-cases.js` váží města a bere i vzdálená). Do jádra jsem nesahal.

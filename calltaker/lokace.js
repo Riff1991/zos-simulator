@@ -95,7 +95,7 @@ function build(rnd, x) {
         zac('misto', 'jsi u silnice poblíž ' + (nej ? nej.nazev : c.town), { obec: nej ? nej.nazev : c.town });
         L.nevi.push('odkud jsi jel(a), kterým směrem a jaké odbočky jsi minul(a)', 'název nebo číslo silnice');
       }
-      const mapa = [nej && 'nejbližší obec ' + nej.nazev + ' (' + km1(nej.vzdalenostKm * 1000) + ' ' + nej.smerOdObce + ')', ok.silnice && 'třída silnice: ' + ok.silnice].filter(Boolean).join('; ');
+      const mapa = [nej && 'nejbližší obec ' + nej.nazev + ' (ty jsi od ní asi ' + km1(nej.vzdalenostKm * 1000).replace(/^asi /, '') + ' ' + nej.smerOdObce + ', tedy obec je od tebe na opačné straně)', ok.silnice && 'třída silnice: ' + ok.silnice].filter(Boolean).join('; ');
       dot('mapa', mapa, 'otevřeš mapu v mobilu a podíváš se na modrou tečku (chvíli to trvá)', { typ: 'obec', hodnota: nej ? nej.nazev : c.town, km: nej ? nej.vzdalenostKm : null, smer: nej ? nej.smerOdObce : null, lat: c.lat, lon: c.lon, tol: 2500 });
       dot('okoli', [].concat(ok.uMista, ok.poblizu).map(i => i.nazev + ' (' + i.kategorie + ', asi ' + i.vzdalenostM + ' m)').join('; ') || 'nic konkrétního nevidíš ani nevíš', 'rozhlédneš se; neřekneš nic nad rámec toho, co tu stojí, a s nejistotou', null, [].concat(ok.uMista, ok.poblizu).map(i => i.nazev));
       if (nej) K.vodidla.push({ tema: 'obec', typ: 'obec', hodnota: nej.nazev, lat: c.lat, lon: c.lon, tol: 2500 });
@@ -113,7 +113,7 @@ function build(rnd, x) {
         dot('cas', (r.self ? 'jdeš už ' : 'jdete už ') + (min < 55 ? 'asi ' + min + ' minut' : 'asi ' + (Math.round(min / 30) / 2).toString().replace('.', ',') + ' hodiny') + ' (odhad, hodinky neřešíš)', 'odhadneš', { typ: 'cas', minut: min, vzdalenostM: len });
       } else { zac('misto', 'jste v terénu mimo zástavbu', {}); L.nevi.push('odkud jste vyšli a jak dlouho jdete'); }
       dot('cesta', (r.self ? 'jsi ' : 'jste ') + (ok.silniceKde || 'u cesty') + ' (podle hlášeného místa); jak daleko od cesty pacient přesně leží a jestli z ní sešel(a), nevíš', null, { typ: 'cesta' });
-      dot('mapa', nej ? 'nejbližší obec ' + nej.nazev + ' (' + km1(nej.vzdalenostKm * 1000) + ' ' + nej.smerOdObce + ')' : 'nic konkrétního', 'otevřeš mapu v mobilu (chvíli to trvá, signál bývá slabý)', { typ: 'obec', hodnota: nej ? nej.nazev : c.town, km: nej ? nej.vzdalenostKm : null, smer: nej ? nej.smerOdObce : null, lat: c.lat, lon: c.lon, tol: 3000 });
+      dot('mapa', nej ? 'nejbližší obec ' + nej.nazev + ' (ty jsi od ní asi ' + km1(nej.vzdalenostKm * 1000).replace(/^asi /, '') + ' ' + nej.smerOdObce + ', tedy obec je od tebe na opačné straně)' : 'nic konkrétního', 'otevřeš mapu v mobilu (chvíli to trvá, signál bývá slabý)', { typ: 'obec', hodnota: nej ? nej.nazev : c.town, km: nej ? nej.vzdalenostKm : null, smer: nej ? nej.smerOdObce : null, lat: c.lat, lon: c.lon, tol: 3000 });
       L.nevi.push('jak daleko od cesty pacient přesně leží a jestli z ní sešel(a); neodhaduj to ani nevymýšlej metry', 'název lesa, cesty, značky nebo rozcestníku (nic z toho nevíš)', 'kam přesně jste mířili dál než k obecnému cíli procházky');
       if (nej) K.vodidla.push({ tema: 'obec', typ: 'obec', hodnota: nej.nazev, lat: c.lat, lon: c.lon, tol: 3000 });
     } else {   // dům s adresou: panelák, rodinný dům, ulice

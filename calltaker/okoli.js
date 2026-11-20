@@ -222,8 +222,8 @@ function textOkoli(o, zena, opt) {
   L.push('ORIENTACE V MÍSTĚ (pevná pravda tohoto hovoru: odpovídej podle ní vždy stejně, ať se calltaker zeptá jakkoli; co tu není, nevíš):');
   const p = o.poloha;
   const kde = o.typ === 'silnice' || o.typ === 'teren' ? (o.silniceKde || 'u silnice') : 'na veřejném místě';
-  L.push('- Poloha: jsi ' + kde + (p.vObci ? ', v obci ' + p.vObci : ', mimo zástavbu') + (p.nejblizsiObec && p.nejblizsiObec.nazev !== p.vObci ? '; nejbližší obec, kterou znáš: ' + p.nejblizsiObec.nazev + ' (' + p.nejblizsiObec.druh + ', ' + km1(p.nejblizsiObec.vzdalenostKm * 1000) + ' ' + p.nejblizsiObec.smerOdObce + ' odsud)' : '') + '. Pacient je u tebe' + (o.odPacienta ? '' : '') + '.');
-  if (p.hlasenaObec && p.hlasenaObec.nazev !== p.vObci && (!p.nejblizsiObec || p.hlasenaObec.nazev !== p.nejblizsiObec.nazev)) L.push('- Obec, ke které se místo vztahuje: ' + p.hlasenaObec.nazev + ' (' + km1(p.hlasenaObec.vzdalenostKm * 1000) + ' ' + p.hlasenaObec.smerOdObce + ' odsud); i ta je pravdivý údaj, použij ji nebo nejbližší obec výše podle toho, co ti dřív dojde.');
+  L.push('- Poloha: jsi ' + kde + (p.vObci ? ', v obci ' + p.vObci : ', mimo zástavbu') + (p.nejblizsiObec && p.nejblizsiObec.nazev !== p.vObci ? '; nejbližší obec, kterou znáš: ' + p.nejblizsiObec.nazev + ' (' + p.nejblizsiObec.druh + ', ty jsi od ní ' + km1(p.nejblizsiObec.vzdalenostKm * 1000).replace(/^asi /, 'asi ') + ' ' + p.nejblizsiObec.smerOdObce + ' od ní, tedy obec je od tebe na opačné straně)' : '') + '. Pacient je u tebe' + (o.odPacienta ? '' : '') + '.');
+  if (p.hlasenaObec && p.hlasenaObec.nazev !== p.vObci && (!p.nejblizsiObec || p.hlasenaObec.nazev !== p.nejblizsiObec.nazev)) L.push('- Obec, ke které se místo vztahuje: ' + p.hlasenaObec.nazev + ' (' + km1(p.hlasenaObec.vzdalenostKm * 1000) + ' ' + p.hlasenaObec.smerOdObce + ' od ní, tedy obec je od tebe na opačné straně); i ta je pravdivý údaj, použij ji nebo nejbližší obec výše podle toho, co ti dřív dojde.');
   if (o.odPacienta) L.push('- Odstup: ' + o.odPacienta + '.');
   if (o.typ === 'silnice') {
     if (o.trasa && o.trasa.znamySmer) {
