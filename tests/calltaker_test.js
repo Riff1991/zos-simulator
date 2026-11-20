@@ -99,10 +99,10 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
     const f = sim.callFacts(sd), g = sim.callFacts(sd); tot++;
     if (JSON.stringify(f.aml) !== JSON.stringify(g.aml)) bad = true;
     if (f.aml.typ !== 'mobil') { if (f.aml.phases.length) bad = true; continue; }
-    mob++; const P = f.aml.phases;
+    mob++; const P = f.aml.phases, tel = f.key.lokace && f.key.lokace.volajici ? f.key.lokace.volajici : f.key;   // AML patří telefonu volajícího (u příbuzného volajícího odjinud není u pacienta)
     if (P[0].zdroj !== 'buňka' || P[0].atSec !== 0 || P[0].radiusM < 600 || P[0].radiusM > 3500) bad = true;
-    if (H(P[0].lat, P[0].lon, f.key.lat, f.key.lon) <= P[0].radiusM) inCell++;
-    if (P[1]) { aml++; src[P[1].zdroj] = (src[P[1].zdroj] || 0) + 1; if (P[1].atSec < 8 || P[1].atSec > 40 || P[1].radiusM < 5 || P[1].radiusM > 150 || P[1].radiusM >= P[0].radiusM) bad = true; amlN++; if (H(P[1].lat, P[1].lon, f.key.lat, f.key.lon) <= P[1].radiusM) inAml++; }
+    if (H(P[0].lat, P[0].lon, tel.lat, tel.lon) <= P[0].radiusM) inCell++;
+    if (P[1]) { aml++; src[P[1].zdroj] = (src[P[1].zdroj] || 0) + 1; if (P[1].atSec < 8 || P[1].atSec > 40 || P[1].radiusM < 5 || P[1].radiusM > 150 || P[1].radiusM >= P[0].radiusM) bad = true; amlN++; if (H(P[1].lat, P[1].lon, tel.lat, tel.lon) <= P[1].radiusM) inAml++; }
     if (JSON.stringify(f.view).includes(String(f.key.lat))) bad = true;
   }
   ok(!bad, 'AML: fáze v mezích, deterministické, pevná/skryté bez polohy, pravda se ve view neprozradí');
@@ -163,6 +163,86 @@ const step = sim => (sim.step ? sim.step(1) : sim.tick(1));
   const a = sim.callFacts(77), b = sim.callFacts(77); ok(JSON.stringify(a.view.persona) === JSON.stringify(b.view.persona), 'persona je deterministická');
   const sn = {}; for (let sd = 1; sd <= 1500; sd++) { const f = sim.callFacts(sd); if (f.view.volajici.vek >= 75) sn[f.view.persona.typ] = (sn[f.view.persona.typ] || 0) + 1; }
   console.log('typy u 75+:', JSON.stringify(sn)); console.log('všechny typy:', JSON.stringify(typ));
+}
+
+{ // okolnosti, řeč a orientace volajícího: bohatá kombinovatelná zásoba, bez opakujících se šablon, počasí jen z dat, orientace jen z mapových faktů
+  const sim = new Sim({ seed: 5, mode: 'free' }), PR = require(path.join(R, 'calltaker/prompts.js')), OK = require(path.join(R, 'calltaker/okolnosti.js')), OKO = require(path.join(R, 'calltaker/okoli.js'));
+  const N = 1200, kde = new Set(), zvuk = new Set(), zac = {}, combo = new Set(), proj = {}; let noWx = 0, badWx = 0, noObj = 0, vyp = 0;
+  for (let sd = 1; sd <= N; sd++) {
+    const p = sim.callFacts(sd).view.persona, o = p.okolnosti, r = p.reci;
+    if (!o || !r) { noObj++; continue; }
+    kde.add(o.misto.kde); zvuk.add(o.zvuk.popis); zac[r.zacatek.id] = (zac[r.zacatek.id] || 0) + 1; proj[o.projev.id] = (proj[o.projev.id] || 0) + 1;
+    combo.add([o.misto.kde, o.zvuk.popis, o.projev.id, r.zacatek.id, r.tvary.map(t => t.id).join(','), r.vypln.join(','), r.delka, p.hlas].join('|'));
+    if (/vítr|fouká|prší|déšť|mráz|sněží|horko/i.test(o.misto.kde + ' ' + o.zvuk.popis + ' ' + o.projev.pokyn)) badWx++;
+    if (o.pocasi) noWx++;
+    if (r.vypln.length > 3 || r.tvary.length > 3) vyp++;
+  }
+  ok(noObj === 0, 'každá persona má okolnosti i řeč (čistý datový objekt)');
+  ok(kde.size >= 50 && zvuk.size >= 40, 'bohatá zásoba okolností: ' + kde.size + ' podmístností a ' + zvuk.size + ' popisů zvuku');
+  ok(combo.size >= N * 0.97, 'kombinace okolností a řeči se prakticky neopakují: ' + combo.size + ' z ' + N);
+  ok(Object.keys(zac).length >= 10 && Math.max(...Object.values(zac)) / N < 0.32, 'začátky hovoru jsou rozmanité (nejčastější ' + (Math.max(...Object.values(zac)) / N * 100).toFixed(0) + ' %)');
+  ok(proj.nic / N > 0.5 && proj.nic / N < 0.92, 'okolí většinou nic nekomentuje (' + (proj.nic / N * 100).toFixed(0) + ' %), ale občas se projeví');
+  ok(badWx === 0 && noWx === 0, 'bez dat o počasí se nikdy neobjeví vítr, déšť ani mráz');
+  ok(vyp === 0, 'projevy řeči se vybírají střídmě (nejvýš 3 tvary a 3 výplňová slova)');
+  // počasí z dat: jen venku, jen zřídka, jen když je co slyšet
+  { const wx = { wind: 30, gust: 38, precip: 0, snow: 0, temp: 10 }, calm = { wind: 3, gust: 5, precip: 0, snow: 0, temp: 12 }; let out = 0, ins = 0, calmN = 0, M = 2000;
+    for (let i = 0; i < M; i++) {
+      let u = 1 + i; const rnd = () => { u = (u * 1664525 + 1013904223) >>> 0; return u / 4294967296; };
+      if (OK.build(rnd, { where: 'silnice', place: '', addr: '', vek: 40, stres: 1, wx }).pocasi) out++;
+      if (OK.build(rnd, { where: 'byt', place: '1.p.', addr: '', vek: 40, stres: 1, wx }).pocasi) ins++;
+      if (OK.build(rnd, { where: 'silnice', place: '', addr: '', vek: 40, stres: 1, wx: calm }).pocasi) calmN++;
+    }
+    ok(out > M * 0.1 && out < M * 0.35, 'při silném větru venku se vítr prosadí jen zřídka: ' + (out / M * 100).toFixed(0) + ' %');
+    ok(ins === 0 && calmN === 0, 'uvnitř budovy ani za bezvětří se vítr neobjeví'); }
+  // orientace: pevná fakta, deterministická, konzistentní
+  let nOk = 0, nRoad = 0, nTrasa = 0, bad = [], text = 0;
+  for (let sd = 1; sd <= 3000 && nTrasa < 60; sd++) {
+    const f = sim.callFacts(sd), v = f.view, c = f.tc, ok0 = v.okoli;
+    if (!['silnice', 'priroda'].includes(c.where)) { if (ok0 && c.where !== 'ulice') bad.push('okolí u místa ' + c.where); continue; }
+    nRoad++; if (!ok0) { bad.push('chybí okolí u ' + c.where + ' seed ' + sd); continue; } nOk++;
+    if (JSON.stringify(ok0) !== JSON.stringify(sim.callFacts(sd).view.okoli)) bad.push('nedeterministické okolí ' + sd);
+    if (/undefined|null|NaN/.test(ok0.text)) bad.push('špatný text okolí ' + sd);
+    for (const u of ok0.uMista) if (!(u.vzdalenostM <= 45 && u.vidi === null)) bad.push('blízký bod prohlášen za viditelný ' + sd);
+    for (const u of ok0.poblizu) if (!(u.vzdalenostM > 45 && u.vidi === null)) bad.push('blízkost bez nejistoty ' + sd);
+    if (ok0.trasa && ok0.trasa.znamySmer) {
+      nTrasa++;
+      const names = [].concat(ok0.trasa.minuli, ok0.trasa.pred).map(x => x.nazev + '|' + x.typ);
+      if (new Set(names).size !== names.length) bad.push('obec nebo odbočka je před i za místem ' + sd);
+      for (const arr of [ok0.trasa.minuli, ok0.trasa.pred]) for (let i = 1; i < arr.length; i++) if (arr[i].vzdalenostM < arr[i - 1].vzdalenostM && arr === ok0.trasa.pred && !arr[i].cil && !arr[i - 1].cil) bad.push('pořadí před místem není vzestupné ' + sd);
+      for (let i = 1; i < ok0.trasa.minuli.length; i++) if (ok0.trasa.minuli[i].vzdalenostM > ok0.trasa.minuli[i - 1].vzdalenostM) bad.push('pořadí za sebou není sestupné ' + sd);
+      if (ok0.trasa.minuli.some(x => x.typ === 'odbocka' && typeof x.vsiml !== 'boolean')) bad.push('minutá odbočka bez vsiml ' + sd);
+      if (!/vsiml|všiml/.test(JSON.stringify(ok0.trasa)) && ok0.trasa.minuli.some(x => x.typ === 'odbocka')) bad.push('chybí údaj o povšimnutí ' + sd);
+      const pt = PR.callerSystem(v, true); if (pt.includes('ORIENTACE V MÍSTĚ') && !pt.includes('Nehádej')) bad.push('prompt bez pravidel orientace ' + sd); else text++;
+      if (/silnice (I|II|III)\. třídy, okolí obce/.test(pt.split('CHOVÁNÍ')[0])) bad.push('prompt prozrazuje interní text adresy ' + sd);
+    }
+  }
+  ok(nRoad > 30 && nOk === nRoad, 'každý hovor ze silnice nebo terénu má místní vodítko (' + nOk + '/' + nRoad + ')');
+  ok(nTrasa >= 15, 'u silnice je známá trasa se směrem jízdy (' + nTrasa + ' hovorů)');
+  ok(bad.length === 0, 'orientace je konzistentní (bez duplicit, pořadí podle trasy, blízkost bodu není viditelnost): ' + bad.slice(0, 3).join('; '));
+  ok(text === nTrasa, 'prompt obsahuje blok orientace i jeho pravidla');
+  { // nezávislá kontrola strany minutých odboček: trasa z výchozí obce a z obce odbočky, odbočka musí být na straně ve směru jízdy
+    const rad = Math.PI / 180, sdist = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy; let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(a[0] + t * dx - p[0], a[1] + t * dy - p[1]); };
+    const pdist = (p, pl) => { let m = 1e9; for (let i = 1; i < pl.length; i++) m = Math.min(m, sdist(p, pl[i - 1], pl[i])); return m; };
+    let chk = 0, good = 0;
+    for (let sd = 1; sd <= 6000 && chk < 40; sd++) {
+      const f = sim.callFacts(sd), o1 = f.view.okoli, c = f.tc; if (!o1 || !o1.trasa || !o1.trasa.znamySmer || !o1.jede || !o1.jede.odkud) continue;
+      const XY = (la, lo) => [(lo - c.lon) * 111320 * Math.cos(c.lat * rad), (la - c.lat) * 111320], near = OKO.obceBlizko(c.lat, c.lon, 40, 1);
+      const path = s => { const r = ROUTER.route(s.la, s.lo, c.lat, c.lon), a = []; for (let i = r.pts.length - 2; i >= 0; i -= 2) a.push(XY(r.pts[i], r.pts[i + 1])); return a; };
+      const orig = near.find(e => e.n === o1.jede.odkud); if (!orig) continue; const tp = path(orig);   // výchozí bod: poslední projetá obec (od ní se odbočky pamatují)
+      for (const it of o1.trasa.minuli.filter(x => x.typ === 'odbocka')) {
+        const bs = near.find(e => e.n === it.nazev); if (!bs) continue; const bp = path(bs); let dv = -1, pos = 0;
+        for (let i = 1; i < bp.length; i++) if (pdist(bp[i], tp) > 90) { dv = i; break; } if (dv < 0) continue;
+        for (let i = 1; i < dv; i++) pos += Math.hypot(bp[i][0] - bp[i - 1][0], bp[i][1] - bp[i - 1][1]);
+        let k = 1, c2 = 0; for (; k < tp.length - 1; k++) { c2 += Math.hypot(tp[k][0] - tp[k - 1][0], tp[k][1] - tp[k - 1][1]); if (c2 >= pos) break; }
+        const h = [tp[k - 1][0] - tp[k][0], tp[k - 1][1] - tp[k][1]], bi = Math.min(bp.length - 1, dv + 2), b = [bp[bi][0] - bp[dv - 1][0], bp[bi][1] - bp[dv - 1][1]];
+        chk++; if ((h[0] * b[1] - h[1] * b[0] > 0 ? 'vlevo' : 'vpravo') === it.strana) good++;
+      }
+    }
+    ok(chk >= 20 && good >= chk * 0.95, 'strana minutých odboček sedí s nezávisle spočtenou trasou (' + good + '/' + chk + ')');
+  }
+  ok(sim.callFacts(7).view.okoli === null || typeof sim.callFacts(7).view.okoli.text === 'string', 'okolí je čistý JSON');
+  ok(JSON.stringify(sim.callFacts(11).view) === JSON.stringify(JSON.parse(JSON.stringify(sim.callFacts(11).view))), 'celý view zůstává čistý JSON');
+  const bez = sim.callFacts(5, { kind: 'bez', scn: 'omyl_ordinace' }); ok(bez.view.okoli === null, 'hovor bez výjezdu nemá místní vodítko');
 }
 
 const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.s.calls[sim.s.calls.length - 1]; };

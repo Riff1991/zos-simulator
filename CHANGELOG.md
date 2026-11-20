@@ -9,6 +9,11 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 ---
 
 ## Nevydáno
+Nové:
+- **Calltaker: rozmanitější a uvěřitelnější hovory.** Prostředí volajícího se skládá z místa (byt, dům, chodba, zahrada, ulice, silnice, zastávka, obchod, restaurace, pracoviště, škola, sportoviště, zařízení, auto, odlehlé místo), podmínek slyšitelnosti (ticho a běžný ruch jsou nejčastější, dále doprava, vzdálené hlasy, ozvěna, přístroje, špatná slyšitelnost telefonu) a způsobu projevu (většinou se okolí vůbec nekomentuje). Vítr a déšť se zmíní jen výjimečně a jen když jsou v datech hovoru a volající je venku. Dřív „fouká silný vítr“ slyšel každý čtvrtý volající „venku“, včetně hospody nebo obchodu.
+- **Calltaker: pestřejší řeč.** Každý hovor dostane jiný začátek, 1 až 3 tvary řeči, výplňová slova podle věku, délku odpovědí a označení pacienta podle vztahu; pevná věta „1–2 věty“ a ukázková první věta zmizely. Fakta o pacientovi a případu zůstávají beze změny.
+- **Calltaker: orientace v místě.** U hovorů ze silnice, z terénu a z veřejných míst bez jisté adresy dostane volající z mapy pevná fakta (nejbližší a hlášená obec, trasa s obcemi a odbočkami v pořadí, vlevo/vpravo, směr jízdy, orientační body z POI). Odbočku mohl minout bez povšimnutí, vidí jen to, co je u místa, a o ničem dalším neví.
+- **Calltaker: poloha v hovoru.** Volající si pamatuje, odkud ví, co ví: adresu zná zpaměti, přečte ceduli, podívá se na číslo domu, otevře mapu v mobilu nebo zprávu s adresou. Hráč se může doptávat volně a stejné místo jde najít více cestami (adresa, název podniku a ulice, poslední obec a cíl cesty, odkud vyšli turisté). Příbuzný může volat odjinud než od pacienta a AML pak patří jeho telefonu. Otázka na obchod nebo obec, která tam není, volajícímu nic nevloží do paměti. Řeky a turistické značky se nevymýšlejí, v datech nejsou.
 Opravy:
 - Hlas volajícího při zapnutém telefonním filtru: přehrávání běží přes živý prvek s hlasitostí 0 místo ztlumeného (podezření: ztlumený prvek zdržel zvuk o 10–15 s), čeká se na spuštění zvukového kontextu a měří se, kdy dorazí první zvuk. Když zvuk přijde víc než 1,5 s po textu odpovědi, ukáže se to ve stavu hovoru. Neověřeno na skutečném hovoru.
 

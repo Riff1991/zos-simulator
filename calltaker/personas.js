@@ -29,12 +29,26 @@ const SLOVNIK = {
   senior2: 'velmi zdvořile a pomalu („pane doktore“, „holenku“, „prosím vás hezky“), laické pojmy, lehce nářečně („voni“, „dyť“, „vopravdu“, „néé“), čísla a časy zaměňuješ, ptáš se „cože?“',
   senior3: 'jednoduché zdvořilé věty („prosím vás“, „pane“), nářečně („voni“, „dyť“), pletou se ti časy, dny i jména, občas se ptáš „co jste řekl?“',
 };
-const PROSTREDI = {
-  doma: ['doma je ticho', 'doma je ticho', 'doma je ticho', 'doma je ticho', 'doma je ticho', 'v pozadí křičí děti', 'telefon máš na hlasitý odposlech a hlas zní vzdáleně'],
-  venku: ['venku hučí auta, špatně se slyší', 'venku fouká silný vítr', 'prší a je hluk, mluvíš hlasitěji', 'okolo stojí lidé a mluví přes sebe'],
-  prace: ['jsi v práci a hučí stroje', 'jsi v kanceláři a okolo je ticho', 'okolo je hluk a lidé volají přes sebe'],
-  skola: ['okolo je hluk dětí na chodbě', 'jsi v ředitelně, ticho'],
-  zarizeni: ['jsi na pokoji, okolo je ticho', 'na chodbě je rušno, lidé se baví'],
+// doplňky k hlasu a slovníku: z každé skupiny se vybere nanejvýš jeden (ať dva lidé stejného věku nezní stejně)
+const BARVA = {
+  dite: ['zvonivě', 'tiše a ostýchavě', 'zastřeně od pláče', 'hlasitě a rychle'],
+  teen: ['světle', 'trochu nosově', 'tiše a nejistě', 'hlasitě a ostřeji'],
+  mlady: ['jasně', 'trochu ochraptěle', 'klidně a zřetelně', 'hlasitě a rychle'],
+  stredni: ['klidně', 'trochu hrubším hlasem', 'zřetelně a rozhodně', 'unaveně'],
+  starsi: ['klidně a zřetelně', 'trochu unaveně', 'mírně přiškrceně', 'zpěvavě'],
+  senior1: ['unaveně', 'klidně a pomalu', 'trochu přiškrceně', 'jemně a tiše'],
+  senior2: ['slabě a tence', 'unaveně', 'jemně a roztřeseně', 'tiše, někdy se vytrácí'],
+  senior3: ['sotva slyšitelně', 'tence a zlomeně', 'jemně a pomalu'],
+};
+const RYSY = {
+  dite: ['říká „maminka“ a „tatínek“', 'ptá se, jestli se zlobí', 'odpovídá krátkými slovy'],
+  teen: ['občas „jo“ a „no“ místo „ano“', 'ptá se, jestli někdo přijede hned', 'ztlumí hlas, když se bojí'],
+  mlady: ['ptá se, co má dělat', 'občas „v pohodě“ i ve stresu', 'občas zkrátí slovo'],
+  stredni: ['občas „víte“', 'stručné pojmenování, žádné odborné výrazy', 'vysvětluje souvislosti jen když se zeptají'],
+  starsi: ['občas „prosím vás“', 'klidně vysvětluje souvislosti', 'zdvořile'],
+  senior1: ['občas zdrobnělina („srdíčko“, „cukřík“)', 'říká „doktor“ i o záchranářích', 'oslovuje „pane“ nebo „slečno“'],
+  senior2: ['občas zdrobnělina', 'oslovuje „pane doktore“', 'zmíní, že nevidí na čísla nebo že neslyší dobře'],
+  senior3: ['často opakuje poslední slovo', 'ptá se „co jste říkal?“', 'občas ztratí, o čem mluvil'],
 };
 const JAZYKY = [
   { id: 'ukrajinsky', popis: 'ukrajinsky mluvící osoba: lámaná čeština s ukrajinským přízvukem, jednoduchá slova, občas ukrajinské slovo', w: 3 },
@@ -58,8 +72,8 @@ const ARCH = [
   { id: 'flegmatik', w: 1, s: [0, 0], sp: [2, 3], po: [0, 1], when: x => x.vek >= 25, popis: 'podivně klidný, bere to s nadhledem, bagatelizuje vážnost', styl: 'ploše a pomalu, bez emocí' },
   { id: 'ustarany', w: 2, s: [2, 3], sp: [2, 3], po: [2, 3], when: x => x.rodina, popis: 'ustaraný blízký člověk, ptá se „bude v pořádku?“, vyptává se na vše, bojí se', styl: 'napjatě a starostlivě, hlas se chvěje' },
   { id: 'soc', w: 2, s: [3, 3], sp: [1, 2], po: [0, 1], when: x => x.tezky, popis: 'v šoku, ztuhlý, odpovídá se zpožděním, opakuje poslední slova calltakera', styl: 'plochým, zadrhávajícím hlasem, dlouhé pauzy' },
-  { id: 'svedek_nezna', w: 3, s: [1, 3], sp: [2, 3], po: [1, 2], when: x => x.venku && x.svedek, popis: 'náhodný svědek, nezná místo, popisuje okolí (cedule, kostel, pole, benzínka) a neví číslo domu ani obec jistě', styl: 'zadýchaně, rozhlíží se, odpovídá „počkejte, kouknu“' },
-  { id: 'turista', w: 1, s: [1, 2], sp: [2, 3], po: [1, 2], when: x => x.venku && x.svedek && x.vek < 70, popis: 'turista, neorientuje se, čte údaje z mapy v mobilu nebo z tabule a plete pořadí názvů', styl: 'rozhlíží se, nejistě čte názvy' },
+  { id: 'svedek_nezna', w: 3, s: [1, 3], sp: [2, 3], po: [1, 2], when: x => x.venku && x.svedek, popis: 'náhodný svědek, místo nezná; okolí popisuje jen podle bloku „Orientace v místě“ (nic dalšího nevidí ani nezná) a číslo domu ani obec neví jistě', styl: 'zadýchaně, rozhlíží se, někdy se nejdřív musí podívat' },
+  { id: 'turista', w: 1, s: [1, 2], sp: [2, 3], po: [1, 2], when: x => x.venku && x.svedek && x.vek < 70, popis: 'turista, neorientuje se, údaje čte z mapy v mobilu nebo z tabule, řadí názvy nejistě a při doptání se opraví podle bloku „Orientace v místě“', styl: 'rozhlíží se, nejistě čte názvy' },
   { id: 'cizinec', w: 0, excl: true, s: [1, 3], sp: [2, 3], po: [1, 2], popis: 'cizinec, česky mluví lámaně a jednoduše, adresu hláskuje špatně', styl: 'lámanou češtinou s cizím přízvukem, jednoduchými slovy', cizi: true },
   { id: 'mensina', w: 0, excl: true, s: [1, 3], sp: [2, 3], po: [1, 3], popis: 'příslušník romské komunity, mluví českým etnolektem, často s rodinou kolem sebe', styl: 'melodicky, citově, rychleji při stresu' },
   { id: 'profesional', w: 5, s: [0, 1], sp: [3, 3], po: [0, 1], when: x => x.pro, popis: 'profesionál (zdravotník, policista, hasič, personál zařízení): stručný, používá odborné pojmy a ví přesné údaje, odpovídá na jednu otázku jednou větou', styl: 'rychle, věcně, odborně a stručně' },
@@ -85,7 +99,12 @@ const LV = {
   zacatecnik: { panika: 0.3, rozcileny: 0.3, nespolupracujici: 0, agresivni: 0, cizinec: 0.2, opily: 0.3, senior_zmateny: 0.3, senior_nahluchly: 0.5, hovorny: 0.5, soc: 0.5, vecny: 2, profesional: 1.5 },
   tezke: { panika: 1.8, cizinec: 2.5, agresivni: 3, senior_zmateny: 2, senior_nahluchly: 2, vagni: 1.5, hovorny: 1.5, opily: 2, nespolupracujici: 2, vecny: 0.5, soc: 1.5 },
 };
-function pickPersona(rnd, c, level, fo) {
+// pomocné moduly (Node: require, prohlížeč: window); chybí-li, persona jede po staru bez bohatých okolností
+const modul = (id, soubor) => (typeof window !== 'undefined' && window[id]) || (typeof require === 'function' ? (() => { try { return require(soubor); } catch (e) { return null; } })() : null);
+// samostatný deterministický proud z čísla seedu: nové prvky tak nemění výběr typu, stresu ani věku u stávajících seedů
+const subRng = (seed, salt) => { let a = ((Number(seed) >>> 0) ^ Math.imul(salt, 0x9e3779b1)) >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+// ctx (volitelně): { seed, hour, wx } – hodina hovoru a počasí z dat hry (wx jen když je k dispozici)
+function pickPersona(rnd, c, level, fo, ctx) {
   const rel = String(c.oznRel || ''), self = /pacient sám/.test(rel), vek = Number.isFinite(c.oznAge) ? c.oznAge : (self ? c.age : 40);
   const sex = c.oznSex === 'M' ? 'M' : c.oznSex === 'Ž' ? 'Ž' : (/á$/.test(String(c.ozn || '').trim().split(/\s+/).pop()) ? 'Ž' : 'M');
   const up = String(c.up || ''), where = c.where;
@@ -110,11 +129,22 @@ function pickPersona(rnd, c, level, fo) {
   const adresa = ['silnice', 'priroda'].includes(where) || ['dite', 'svedek_nezna', 'turista'].includes(ch.id) ? lvl(1, 2) : rnd() < 0.9 ? 3 : 2;
   const band = bandOf(vek);
   const jaz = ch.cizi ? (() => { let t = rnd() * JAZYKY.reduce((s, j) => s + j.w, 0); for (const j of JAZYKY) { t -= j.w; if (t <= 0) return j; } return JAZYKY[0]; })() : null;
+  const sex2 = sex === 'M' ? 'muž' : 'žena', R = ctx && ctx.seed != null ? subRng(ctx.seed, 101) : rnd, Rr = ctx && ctx.seed != null ? subRng(ctx.seed, 202) : rnd, Rh = ctx && ctx.seed != null ? subRng(ctx.seed, 303) : rnd;
+  const stres = Math.min(3, Math.max(level === 'tezke' ? 1 : 0, lvl(ch.s[0], ch.s[1]) - (level === 'zacatecnik' ? 1 : 0))), spoluprace = Math.max(level === 'zacatecnik' ? 2 : 0, lvl(ch.sp[0], ch.sp[1]));
+  const povidavost = lvl(ch.po[0], ch.po[1]), sluch = ch.su ? lvl(ch.su[0], ch.su[1]) : 0;
+  const pick1 = (r, a) => a[Math.floor(r() * a.length)];
+  const hlas = HLAS[band.id][sex] + '; ' + pick1(Rh, BARVA[band.id]);
+  const slovnik = SLOVNIK[band.id] + (Rh() < 0.6 ? '; navíc: ' + pick1(Rh, RYSY[band.id]) : '');
+  const OK = modul('CT_OKOLNOSTI', './okolnosti.js'), RE = modul('CT_RECI', './reci.js');
+  const pj = String(c.patientName || '').trim().split(/\s+/);   // „Příjmení Jméno“
+  const OKO = modul('CT_OKOLI', './okoli.js'), poiKatSk = OKO && OKO.poiSkupina ? OKO.poiSkupina(c.addr) : null;
+  const okolnosti = OK ? OK.build(R, { where, place: c.place, addr: c.addr, poiKat: poiKatSk, vek, self, pro: x.pro, jinde: !!(ctx && ctx.jinde), stres, sluch, typ: ch.id, hour: ctx ? ctx.hour : null, wx: ctx ? ctx.wx : null }) : null;
+  const reci = RE ? RE.build(Rr, { typ: ch.id, vek, pasmo: band.id, stres, sp: spoluprace, po: povidavost, sluch, adresa, self, svedek: x.svedek, cizi: !!ch.cizi, rel, pacient: { krestni: pj.length > 1 ? pj[pj.length - 1] : '', prijmeni: pj[0] || '', pohlavi: c.sex === 'M' ? 'muž' : 'žena' } }) : null;
   return {
-    typ: ch.id, popis: ch.popis, styl: ch.styl, stres: Math.min(3, Math.max(level === 'tezke' ? 1 : 0, lvl(ch.s[0], ch.s[1]) - (level === 'zacatecnik' ? 1 : 0))), spoluprace: Math.max(level === 'zacatecnik' ? 2 : 0, lvl(ch.sp[0], ch.sp[1])), znalostAdresy: adresa,
-    povidavost: lvl(ch.po[0], ch.po[1]), sluch: ch.su ? lvl(ch.su[0], ch.su[1]) : 0,
-    vekVolajiciho: vek, pasmo: band.id, pasmoNazev: band.nazev, pohlaviVolajiciho: sex === 'M' ? 'muž' : 'žena',
-    hlas: HLAS[band.id][sex], slovnik: SLOVNIK[band.id], prostredi: (list => list[lvl(0, list.length - 1)])(PROSTREDI[x.venku ? 'venku' : where === 'prov' ? 'prace' : where === 'skola' ? 'skola' : ['domov', 'ordinace', 'zz'].includes(where) ? 'zarizeni' : 'doma']), jazyk: fo ? fo.popis : '',
+    typ: ch.id, popis: ch.popis, styl: ch.styl, stres, spoluprace, znalostAdresy: adresa,
+    povidavost, sluch,
+    vekVolajiciho: vek, pasmo: band.id, pasmoNazev: band.nazev, pohlaviVolajiciho: sex2,
+    hlas, slovnik, prostredi: okolnosti ? okolnosti.text : 'doma je ticho', okolnosti, reci, jazyk: fo ? fo.popis : '',
   };
 }
 if (typeof module !== 'undefined') module.exports = { pickPersona, ARCH, BANDS, bandOf, HLAS, JAZYKY }; else window.CT_PERSONAS = { pickPersona, ARCH, BANDS, bandOf, HLAS, JAZYKY };

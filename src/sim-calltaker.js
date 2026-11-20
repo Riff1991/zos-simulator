@@ -127,11 +127,13 @@ class SimCalltaker {
   }
   _ctN(v, dflt) { const n = Number(String(v == null ? '' : v).replace(/\D/g, '')); return [1, 2, 3].includes(n) ? n : dflt; }
   // AML (Advanced Mobile Location): fáze polohy volajícího podle seedu; pravda se nikdy nevrací (jen kruhy)
-  _ctAml(seed, tc) {
+  _ctAml(seed, tc0, pos) {
+    const tc = pos ? Object.assign({}, tc0, { lat: pos.lat, lon: pos.lon }) : tc0;   // pos: volající telefonuje odjinud než od pacienta (AML patří jeho telefonu)
     const R = ctRng(seed * 7 + 13), ri = (a, b) => Math.round(a + R() * (b - a));
     const r = R(), typ = r < 0.8 ? 'mobil' : r < 0.93 ? 'pevná' : 'skryté';
     const out = { typ, phases: [] };
-    if (typ === 'pevná' && this._ctKind(tc) === 'dum') {   // adresa účastníka: ze 4/5 sedí s místem události
+    if (typ === 'pevná' && pos && pos.adresa) out.abonent = { adresa: pos.adresa, lat: pos.lat, lon: pos.lon, shoda: false };   // pevná linka volajícího je u něj doma
+    else if (typ === 'pevná' && this._ctKind(tc) === 'dum') {   // adresa účastníka: ze 4/5 sedí s místem události
       const idx = this._ctIndex(), list = idx.byCity && idx.byCity.get(ctNorm(tc.town)), A = idx.A;
       if (R() < 0.8 || !list || !list.length) out.abonent = { adresa: tc.addr, lat: tc.lat, lon: tc.lon, shoda: true };
       else { const i = list[Math.floor(R() * list.length)], a = A.a, S = A.s, city = S[a[i + 3]], st = S[a[i + 2]], num = S[a[i + 4]]; out.abonent = { adresa: (st && st !== city ? st + ' ' + num : 'čp. ' + num) + ', ' + city, lat: a[i] / 1e5, lon: a[i + 1] / 1e5, shoda: false }; }
@@ -148,6 +150,19 @@ class SimCalltaker {
       out.phases.push({ atSec: ri(8, 40), radiusM: rad, lat: +p.lat.toFixed(6), lon: +p.lon.toFixed(6), zdroj: gnss ? 'GNSS' : 'Wi-Fi' });
     }
     return out;
+  }
+  // kontext okolností hovoru: hodina a počasí (jen z dat; bez živého počasí wx = null a model o počasí nic neví)
+  _ctCtx(seed) {
+    let wx = null;
+    try { const o = this._wxLive() ? this.wxObs() : null; if (o) wx = { wind: o.wind, gust: o.gust, precip: o.precip, snow: o.snow, temp: o.temp }; } catch (e) { wx = null; }
+    return { seed, hour: this.hour(), wx };
+  }
+  // orientace volajícího v místě (calltaker/okoli.js): silnice, terén a veřejná místa bez jisté adresy; jinak null
+  _ctMod(id, soubor) { return typeof window !== 'undefined' && window[id] ? window[id] : (typeof require === 'function' ? require('../calltaker/' + soubor) : null); }
+  _ctOkoli(seed, c, persona, kind, ctx) {
+    const O = typeof window !== 'undefined' && window.CT_OKOLI ? window.CT_OKOLI : (typeof require === 'function' ? require('../calltaker/okoli.js') : null);
+    if (!O || !persona) return null;
+    return O.okoliFor(ctRng(seed * 53 + 19), c, { znalostAdresy: persona.znalostAdresy, typ: persona.typ, zena: persona.pohlaviVolajiciho === 'žena', dup: kind === 'dup' });
   }
   // varianty hovoru: bez výjezdu, opakovaný, druhý volající k téže události, zpětné volání po přerušení
   _ctKindFacts(view, key, c, aml, call, kind, P) {
@@ -167,7 +182,7 @@ class SimCalltaker {
       const rnd = ctRng((view.seed || 1) * 131 + 11), sex = rnd() < 0.5 ? 'M' : 'Ž', age = 22 + Math.floor(rnd() * 45), pe = ZOS_PEOPLE.person(rnd, sex, age);
       view.volajici = Object.assign({}, view.volajici, { jmeno: pe.full, vztah: 'svědek', telefon: ZOS_PEOPLE.phone(rnd), vek: age, pohlavi: sex === 'M' ? 'muž' : 'žena' });
       view.pacient = Object.assign({}, view.pacient, { jmeno: 'neznámý', pacientJeVolajici: false });
-      if (P) view.persona = P.pickPersona(rnd, Object.assign({}, c, { oznRel: 'volá svědek', ozn: pe.full, oznAge: age, oznSex: sex }), 'bezne');
+      if (P) view.persona = P.pickPersona(rnd, Object.assign({}, c, { oznRel: 'volá svědek', ozn: pe.full, oznAge: age, oznSex: sex }), 'bezne', null, { seed: (view.seed || 1) * 131 + 11, hour: this.hour(), wx: this._ctCtx(view.seed).wx });
       view.situace = (view.situace || '') + ' Jsi jiný svědek téže události než ten, kdo volal dřív; vidíš ji z jiného místa. Víš méně: neznáš jméno ani věk pacienta, jen to, co vidíš zdálky. Můžeš zmínit, že už tam někdo telefonuje.';
       key.duplicita = true;
     }
@@ -196,7 +211,11 @@ class SimCalltaker {
     const temp = new this.constructor({ seed, mode: 'free' }), c = temp._spawn();
     const P = typeof window !== 'undefined' && window.CT_PERSONAS ? window.CT_PERSONAS : (typeof require === 'function' ? require('../calltaker/personas.js') : null);
     const fo = this._ctForeign(seed, c);
-    const persona = P ? P.pickPersona(() => temp.rnd(), c, level, fo) : { typ: 'vecny', popis: 'věcný, klidný', stres: 0, spoluprace: 3, znalostAdresy: 3 };
+    const ctx = this._ctCtx(seed);   // hodina hovoru a počasí z dat hry (jen když jsou k dispozici); jinak žádné počasí
+    const LK = this._ctMod('CT_LOKACE', 'lokace.js'), OKO = this._ctMod('CT_OKOLI', 'okoli.js');
+    const jx = LK && OKO && LK.jinde(ctRng(seed * 67 + 29), c, kind) ? OKO.nahodnaAdresa(ctRng(seed * 71 + 31), c.lat, c.lon, 2, 35) : null;   // rodina volá za příbuzného odjinud (telefon není u pacienta)
+    ctx.jinde = !!jx;
+    const persona = P ? P.pickPersona(() => temp.rnd(), c, level, fo, ctx) : { typ: 'vecny', popis: 'věcný, klidný', stres: 0, spoluprace: 3, znalostAdresy: 3 };
     const bld = c.bld || {};
     const view = {
       seed,
@@ -210,7 +229,17 @@ class SimCalltaker {
     const aml = this._ctAml(seed, c);
     view.volajici.linkaTyp = aml.typ;
     this._ctKindFacts(view, key, c, aml, call, kind, P);
-    return { view, key, tc: c, aml, kind };
+    view.okoli = kind === 'bez' ? null : this._ctOkoli(seed, c, view.persona, kind, ctx);   // místní vodítko z mapy (jen venku); pevná fakta, model se o ně opírá
+    let aml2 = aml;
+    if (kind !== 'bez' && LK) {   // poloha: kde je pacient, odkud volající telefonuje, co ví a odkud; AML patří telefonu volajícího
+      const lk = LK.build(ctRng(seed * 61 + 23), { c, persona: view.persona, okoli: view.okoli, kind, jinde: jx, znaJiz: !!(call && (call.kind === 'opak' || call.cb)), zena: view.persona.pohlaviVolajiciho === 'žena' });
+      if (lk) {
+        view.lokace = lk.lokace; key.lokace = lk.kotvy;
+        const kv = lk.kotvy.volajici;
+        if (kv.lat !== c.lat || kv.lon !== c.lon) aml2 = this._ctAml(seed, c, { lat: kv.lat, lon: kv.lon, adresa: jx ? jx.adresa : null });
+      }
+    }
+    return { view, key, tc: c, aml: aml2, kind };
   }
   _ctStr(v) { return String(v == null ? '' : v).trim(); }
   // poznámka pro dispečera z nových polí formuláře
