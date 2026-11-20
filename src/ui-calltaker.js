@@ -411,8 +411,17 @@ function ctPickup() {
   ctVoiceStart(facts, resume ? { resume: true } : {});
   render();
 }
+// co volající skutečně řekl, se zapíše do hovoru: při opakovaném hovoru a zpětném volání ví jen to a to, co věděl hned (calltaker/lokace.js)
+function ctZapisZjisteno(call) {
+  try {
+    const facts = call && ct.facts[call.id], L = facts && facts.view && facts.view.lokace, LK = window.CT_LOKACE;
+    if (!L || !LK) return;
+    sim.zaznamenejZjisteno(call.id, LK.zjistenoZPrepisu(L, ct.transcript.filter(t => t.role !== 'calltaker').map(t => t.text).join(' ')));
+  } catch (e) { /* záznam je jen doplněk */ }
+}
 function ctDrop() {
   const call = ct.call; if (!call || call.state !== 'taken') return;
+  ctZapisZjisteno(call);
   ct.dropAt = null;
   const v = ct.voice; ct.voice = null; if (v) { v.close().then(r => { if (r && r.wav) (ct.wavs = ct.wavs || []).push(r.wav); }).catch(() => {}); }
   sim.dropCall(call.id); ct.vstatus = ''; ct.phoneKey = '';
@@ -510,6 +519,7 @@ async function ctHangup() {
   const call = ct.call; if (!call || ct.ended) return;
   const voice = ct.voice; ct.voice = null; ct.ended = true; ct.tanr = null; ct.dropAt = null; ct.phoneKey = '';
   if (call.state === 'dropped') { sim.s.calls.forEach(x => { if (x.id === call.id) { x.state = 'taken'; } }); }
+  ctZapisZjisteno(call);
   sim.endCall(call.id);
   ct.vstatus = ''; $('ct-textrow').style.display = 'none';
   $('ct-sendinfo').textContent = call.caseId ? 'Hovor ukončen. Případ můžeš ještě doplnit a znovu odeslat (Aktualizovat případ).' : 'Hovor ukončen. Případ ještě odešli dispečerovi.';
@@ -519,6 +529,7 @@ async function ctHangup() {
 function ctFinish() {
   const call = ct.call; if (!call) return;
   const facts = ct.facts[call.id], form = ctReadForm(), transcript = ct.transcript.slice();
+  ctZapisZjisteno(call);
   if (!ct.ended) { ct.ended = true; sim.endCall(call.id); }
   const hc = sim.finishCall(call.id);
   const rec = { call: hc || call, facts, form, transcript, wavs: (ct.wavs || []).slice(), usage: ct.usage || 0, cls: ct.cls };

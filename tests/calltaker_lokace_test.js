@@ -122,14 +122,33 @@ ok(share('teren', 'NAJDE SE', 'BLÍZKO (hledání)', 'JEN ÚSEK') >= 0.9, 'teré
   ok(arr.every(f => f.key.lokace.pacient.lat === f.tc.lat && f.view.lokace.volajici.stejneMisto === false), 'pravda pro posádku zůstává u pacienta, volající je označen jako jinde');
   ok(arr.every(f => !/\bdýchá\b/.test(f.view.lokace.volajici.kde)), 'volající odjinud nepopisuje stav, který nevidí'); }
 
-// ---- pamatuje si, co zjistil: opakovaný hovor a zpětné volání téhož člověka ----
-{ let n = 0, bad = 0;
-  for (const s of ['adresa', 'podnik', 'silnice', 'teren']) for (const f of (by[s] || []).slice(0, 12)) {
-    const g = sim.callFacts(f.seed, { kind: 'opak', nova: 'bolest se zhoršila' }), cb = sim.callFacts(f.seed, { kind: 'vyjezd', cb: true }), L0 = f.view.lokace, L1 = g.view.lokace, L2 = cb.view.lokace; n++;
-    const all0 = new Set(L0.zacatek.concat(L0.dotaz).map(i => i.tema)), all1 = new Set(L1.zacatek.map(i => i.tema)), all2 = new Set(L2.zacatek.map(i => i.tema));
-    if (L1.dotaz.length || L2.dotaz.length || ![...all0].every(t => all1.has(t) && all2.has(t))) bad++;
+// ---- opakovaný hovor a zpětné volání: přenese se jen to, co volající původně věděl, nebo co při předchozím hovoru skutečně řekl ----
+{ let n = 0, bad = [], nerekl = 0, rekl = 0;
+  for (const s of ['adresa', 'podnik', 'silnice', 'teren', 'navsteva']) for (const f of (by[s] || []).slice(0, 14)) {
+    const L0 = f.view.lokace, hled = L0.dotaz.filter(d => d.hledani && (d.klic || []).length); if (!hled.length) continue;
+    const rekl0 = hled[0], text = rekl0.fakt;   // volající při prvním hovoru řekl jen první z údajů, které musel hledat
+    const z = LK.zjistenoZPrepisu(L0, text);
+    for (const call of [{ kind: 'opak', nova: 'bolest se zhoršila', zjisteno: z }, { kind: 'vyjezd', cb: true, zjisteno: z }]) {
+      const L1 = sim.callFacts(f.seed, call).view.lokace; n++;
+      for (const d of L1.dotaz) { const orig = L0.dotaz.find(x => x.id === d.id), mel = !orig.hledani || z.includes(d.id); if (d.hledani === mel) bad.push(f.seed + ' ' + d.id + ' (' + (mel ? 'měl vědět' : 'nezaznělo') + ')'); if (!mel && !/hledat|podíváš|přečteš|otevřeš|rozhlédneš|zeptáš/.test(d.zpusob || '')) bad.push(f.seed + ' ' + d.id + ' ztratil způsob zjištění'); if (mel && orig.hledani) rekl++; if (!mel) nerekl++; }
+    }
+    // bez záznamu (nic nezaznělo) se nepřenáší nic z toho, co musel hledat
+    const L2 = sim.callFacts(f.seed, { kind: 'opak', zjisteno: [] }).view.lokace; if (L2.dotaz.some((d, k) => d.hledani !== L0.dotaz[k].hledani)) bad.push(f.seed + ' přenos bez záznamu');
   }
-  ok(n > 30 && bad === 0, 'při opakovaném hovoru a zpětném volání už volající ví, co zjistil (' + n + ' případů)'); }
+  ok(n > 30 && bad.length === 0 && rekl > 0 && nerekl > 0, 'opakovaný hovor a zpětné volání přenesou jen co volající věděl nebo skutečně řekl (' + n + ' hovorů, řečené ' + rekl + ', neřečené ' + nerekl + '): ' + bad.slice(0, 3).join('; ')); }
+// ---- přesnost: hráč má při ověřování jen tu přesnost, jakou slyší („pár set metrů“, „asi kilometr“, „asi 3,4 km“) ----
+{ const hear = m => (m < 800 ? 500 : m < 1500 ? 1000 : m < 10000 ? Math.round(m / 100) * 100 : Math.round(m / 1000) * 1000); let n = 0, bad = 0, zaokr = 0;
+  for (const s of ['silnice', 'teren']) for (const f of (by[s] || [])) for (const d of f.view.lokace.dotaz) {
+    if (!d.data) continue; const t = f.key.lokace.vodidla.find(v => v.tema === d.tema && (v.nazev || '') === (d.data.nazev || '') && v.typ === d.data.typ); if (!t) continue;
+    if (d.data.vzdalenostM != null && t.vzdalenostM != null) { n++; if (d.data.vzdalenostM !== hear(t.vzdalenostM)) bad++; if (d.data.vzdalenostM !== t.vzdalenostM) zaokr++; }
+    if (d.data.km != null && t.km != null) { n++; if (Math.abs(d.data.km - hear(t.km * 1000) / 1000) > 1e-9) bad++; if (d.data.km !== t.km) zaokr++; }
+    if (d.data.minut != null && t.minut != null) { n++; const h = t.minut < 55 ? t.minut : Math.round(t.minut / 30) * 30; if (d.data.minut !== h) bad++; }
+  }
+  ok(n > 40 && bad === 0 && zaokr > 5, 'hráč dostane vzdálenosti, kilometry a čas zaokrouhlené stejně jako v odpovědi (' + n + ' údajů, zaokrouhleno ' + zaokr + ', rozdíl ' + bad + ')'); }
+// ---- terén: neznámý vztah pacienta k cestě se nevymýšlí (žádná vzdálenost ani „sešel z cesty“) ----
+{ const arr = by.teren || [], txt = f => f.view.lokace.text + JSON.stringify(f.view.lokace.dotaz) + JSON.stringify(f.key.lokace);
+  ok(arr.length >= 8 && arr.every(f => !/metrů od cesty|odCestyM|zůstal|sešli jste|sešel\(a\) jsi z ní/.test(txt(f))), 'terén: žádná vymyšlená vzdálenost od cesty ani „sešli z cesty“ (' + arr.length + ' případů)');
+  ok(arr.every(f => f.view.lokace.nevi.some(x => /jak daleko od cesty/.test(x))), 'terén: volající výslovně neví, jak daleko od cesty pacient leží'); }
 // ---- druhý svědek: vidí zdálky, pacient je od něj v odstupu ----
 { let n = 0, bad = 0;
   for (const s of ['silnice', 'adresa']) for (const f of (by[s] || []).slice(0, 12)) { const g = sim.callFacts(f.seed, { kind: 'dup' }), L = g.view.lokace; n++; if (!L || L.scenar !== 'dup' || L.volajici.stejneMisto || !L.dotaz.some(d => d.tema === 'kde_pacient') || g.key.lokace.volajici.lat === g.tc.lat) bad++; }

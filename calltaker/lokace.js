@@ -38,8 +38,11 @@ function build(rnd, x) {
     const L = { scenar: 'adresa', pacient: { kde: '' }, volajici: { stejneMisto: true, kde: 'jsi na místě u pacienta' }, zacatek: [], dotaz: [], nevi: [], ceka: null, znaJiz: zna };
     const K = { pacient: { lat: c.lat, lon: c.lon }, volajici: { lat: c.lat, lon: c.lon }, vodidla: [] };
     const zac = (tema, fakt, data) => L.zacatek.push({ tema, fakt, data: data || null });
-    const ciste = k => { if (!k) return null; const o = {}; for (const i of Object.keys(k)) if (!['lat', 'lon', 'tol', 'stejnojmennych', 'odCestyM'].includes(i)) o[i] = k[i]; return o; };   // co hráč smí z odpovědi použít (pravda s polohou zůstává v key)
-    const dot = (tema, fakt, zpusob, kotva) => { L.dotaz.push({ tema, fakt, zpusob: zpusob || null, data: ciste(kotva) }); if (kotva) K.vodidla.push(Object.assign({ tema }, kotva)); };
+    const slysenoM = m => (m < 800 ? 500 : m < 1500 ? 1000 : m < 10000 ? Math.round(m / 100) * 100 : Math.round(m / 1000) * 1000);   // co hráč v odpovědi slyší („pár set metrů“, „asi kilometr“, „asi 3,4 km“): přesněji než to nezná
+    const ciste = k => { if (!k) return null; const o = {}; for (const i of Object.keys(k)) { if (['lat', 'lon', 'tol', 'stejnojmennych', 'odCestyM'].includes(i)) continue; let v = k[i]; if (typeof v === 'number') { if (k.typ === 'odstup' && i === 'vzdalenostM') v = Math.round(v / 5) * 5; else if (i === 'vzdalenostM') v = slysenoM(v); else if (i === 'km') v = slysenoM(v * 1000) / 1000; else if (i === 'minut') v = v < 55 ? v : Math.round(v / 30) * 30; } o[i] = v; } return o; };   // co hráč smí z odpovědi použít, ve stejné přesnosti, jakou slyší (pravda s polohou zůstává v key)
+    const HLEDANI = /podíváš|přečteš|otevřeš|rozhlédneš|zeptáš/;   // údaj, který volající musí nejdřív zjistit; jen takový se při opakovaném hovoru přenáší, když opravdu zazněl
+    const klicZ = k => { if (!k) return []; const a = []; if (k.typ === 'adresa') { if (ar.ulice) a.push(ar.ulice); if (ar.cislo) a.push(ar.cislo); } else if (k.typ === 'adresaPoi') { const q = rozbor(k.hodnota, ''); if (q.ulice) a.push(q.ulice); if (q.cislo) a.push(q.cislo); } else if (k.typ === 'cislo' || k.typ === 'ulice' || k.typ === 'obec') a.push(k.hodnota); else if (k.typ === 'poi' || k.typ === 'odbocka' || k.typ === 'vychozi') a.push(k.nazev); else if (k.typ === 'trasa') a.push(k.posledniObec); return a.filter(Boolean).map(String); };   // co musí v řeči volajícího zaznít, aby se údaj považoval za řečený
+    const dot = (tema, fakt, zpusob, kotva, klic) => { const id = tema === 'odbocka' && kotva ? 'odbocka:' + kotva.nazev : tema; L.dotaz.push({ id, tema, fakt, zpusob: zpusob || null, hledani: HLEDANI.test(zpusob || ''), klic: klic || klicZ(kotva), data: ciste(kotva) }); if (kotva) K.vodidla.push(Object.assign({ tema }, kotva)); };
     const poiE = druh === 'poi' ? O.poiPodleAdresy(c.addr) : null;
 
     if (kind === 'dup') {   // jiný svědek téže události: vidí to zdálky z jiného místa, o pacientovi ví málo
@@ -73,7 +76,7 @@ function build(rnd, x) {
       const kaz = { typ: 'poi', nazev: poiE.n, ulice: rozbor(poiE.adr, poiE.obec).ulice, obec: poiE.obec, lat: poiE.la, lon: poiE.lo, tol: 120, stejnojmennych: stejne.length };
       if (!zam) dot('nazev', poiE.n, 'podíváš se na nápis nebo štít a přečteš ho', kaz);
       dot('ulice', (rozbor(poiE.adr, poiE.obec).ulice || 'bez ulice, jen číslo popisné') + ' ' + rozbor(poiE.adr, poiE.obec).cislo, zam ? 'ulice si nevybavíš zpaměti; podíváš se na dokument nebo zeptáš kolegy, jen pokud tam kolega je' + (r.kolega ? '' : '; jinak řekneš, že nevíš') : 'přečteš ji z cedule s názvem ulice nebo z čísla na budově', { typ: 'adresaPoi', hodnota: poiE.adr, lat: poiE.la, lon: poiE.lo, tol: 120 });
-      dot('kde_pacient', dist <= 15 ? 'pacient je přímo u budovy či u vchodu' : 'pacient je asi ' + Math.round(dist / 5) * 5 + ' metrů od něj', null, { typ: 'odstup', lat: c.lat, lon: c.lon, vzdalenostM: Math.round(dist) });
+      dot('kde_pacient', dist <= 15 ? 'pacient je hned u budovy' : 'pacient je asi ' + Math.round(dist / 5) * 5 + ' metrů od něj', null, { typ: 'odstup', lat: c.lat, lon: c.lon, vzdalenostM: Math.round(dist) });
       if (stejne.length) L.nevi.push('že existuje další místo stejného jména jinde; pokud se calltaker ptá, jestli jde o jinou pobočku, řekni jen, co čteš z cedule (ulice)');
       if (!zam) L.nevi.push('číslo popisné nebo adresu zpaměti (jen z cedule)');
     } else if (druh === 'silnice' && ok && (ok.typ === 'silnice')) {   // silnice: poslední obec, směr, odbočky; poctivé „nevím“, když trasu neznáš
@@ -86,7 +89,7 @@ function build(rnd, x) {
         if (posl) dot('posledni_obec', posl.nazev + ' (' + km1(posl.vzdalenostM) + ' zpátky)', 'víš to z cesty', { typ: 'trasa', odkud: ok.jede.odkud, kam: ok.jede.kam, posledniObec: posl.nazev, vzdalenostM: posl.vzdalenostM });
         dot('smer', 'jedeš' + (ok.jede.kam ? ' směrem na ' + ok.jede.kam : ' po této silnici, cíl v tomto úseku neumíš pojmenovat') + (ok.jede.odkud ? ', naposledy jsi projel(a) obec ' + ok.jede.odkud : ''), 'víš to z cesty', { typ: 'trasa', odkud: ok.jede.odkud, kam: ok.jede.kam, posledniObec: posl ? posl.nazev : null, vzdalenostM: posl ? posl.vzdalenostM : null });
         for (const i of t.minuli.filter(i => i.typ === 'odbocka')) dot('odbocka', i.vsiml ? 'odbočku ' + i.strana + ' na ' + i.nazev + ' jsi projel(a) před ' + km1(i.vzdalenostM) + ' a všiml(a) sis jí' : 'odbočky na ' + i.nazev + ' sis nevšiml(a), nevíš o ní', null, i.vsiml ? { typ: 'odbocka', nazev: i.nazev, strana: i.strana, vzdalenostM: i.vzdalenostM } : null);
-        const pr = t.pred.filter(i => i.typ === 'obec'); if (pr.length) dot('dal', pr.map(i => i.nazev + ' (' + km1(i.vzdalenostM) + ' dál)').join(', ') + ' (jedeš tam; přibližně)', null);
+        const pr = t.pred.filter(i => i.typ === 'obec'); if (pr.length) dot('dal', pr.map(i => i.nazev + ' (' + km1(i.vzdalenostM) + ' dál)').join(', ') + ' (jedeš tam; přibližně)', null, null, pr.map(i => i.nazev));
         L.nevi.push('název nebo číslo silnice', 'odbočky, kterých sis nevšiml(a), a odbočky před sebou', 'jestli jsi mohl(a) minout i další odbočky než ty uvedené');
       } else {
         zac('misto', 'jsi u silnice poblíž ' + (nej ? nej.nazev : c.town), { obec: nej ? nej.nazev : c.town });
@@ -94,7 +97,7 @@ function build(rnd, x) {
       }
       const mapa = [nej && 'nejbližší obec ' + nej.nazev + ' (' + km1(nej.vzdalenostKm * 1000) + ' ' + nej.smerOdObce + ')', ok.silnice && 'třída silnice: ' + ok.silnice].filter(Boolean).join('; ');
       dot('mapa', mapa, 'otevřeš mapu v mobilu a podíváš se na modrou tečku (chvíli to trvá)', { typ: 'obec', hodnota: nej ? nej.nazev : c.town, km: nej ? nej.vzdalenostKm : null, smer: nej ? nej.smerOdObce : null, lat: c.lat, lon: c.lon, tol: 2500 });
-      dot('okoli', [].concat(ok.uMista, ok.poblizu).map(i => i.nazev + ' (' + i.kategorie + ', asi ' + i.vzdalenostM + ' m)').join('; ') || 'nic konkrétního nevidíš ani nevíš', 'rozhlédneš se; neřekneš nic nad rámec toho, co tu stojí, a s nejistotou', null);
+      dot('okoli', [].concat(ok.uMista, ok.poblizu).map(i => i.nazev + ' (' + i.kategorie + ', asi ' + i.vzdalenostM + ' m)').join('; ') || 'nic konkrétního nevidíš ani nevíš', 'rozhlédneš se; neřekneš nic nad rámec toho, co tu stojí, a s nejistotou', null, [].concat(ok.uMista, ok.poblizu).map(i => i.nazev));
       if (nej) K.vodidla.push({ tema: 'obec', typ: 'obec', hodnota: nej.nazev, lat: c.lat, lon: c.lon, tol: 2500 });
     } else if (druh === 'silnice' && ok && ok.typ === 'teren') {   // terén: odkud vyšli, jak dlouho šli, zůstali na cestě; jen to, k čemu máme podklad
       const P = { lat: c.lat, lon: c.lon }, nej = ok.poloha.nejblizsiObec, poi = O.poiVychozi(c.lat, c.lon, 6)[0] || null, obce = O.obceBlizko(c.lat, c.lon, 12, 8);
@@ -102,16 +105,16 @@ function build(rnd, x) {
       let start = vyb, len = null;
       if (start) len = O.cestaDelka({ la: start.la, lo: start.lo }, P);
       if (!len) { start = null; for (const s of kand) { const d = O.cestaDelka(s, P); if (d && d < 14000) { start = { n: s.n, la: s.la, lo: s.lo }; len = d; break; } } }
-      const odCesty = O.odSilnice(c.lat, c.lon), naCeste = odCesty != null && odCesty <= 35, min = len ? Math.max(5, Math.round(len / 1000 / 3.8 * 60 / 5) * 5) : null;
+      const min = len ? Math.max(5, Math.round(len / 1000 / 3.8 * 60 / 5) * 5) : null;
       L.scenar = 'teren'; L.pacient.kde = (ok.silniceKde || 'v terénu') + ', mimo zástavbu' + (nej ? ', ' + km1(nej.vzdalenostKm * 1000) + ' ' + nej.smerOdObce + ' od obce ' + nej.nazev : '');
       if (start) {
         zac('misto', (r.self ? 'jsi' : 'jste') + ' v terénu mimo zástavbu a ' + (r.self ? 'vyšel(a) jsi' : 'vyšli jste') + ' od ' + (start.poi ? 'místa „' + start.n + '“' : 'obce ' + start.n), { vychozi: start.n });
         dot('vychozi', (start.poi ? '„' + start.n + '“' : start.n) + ' (odtud ' + (r.self ? 'jsi vyšel(a)' : 'jste vyšli') + ')', 'víš to, je to začátek cesty', { typ: 'vychozi', nazev: start.n, lat: start.la, lon: start.lo, vzdalenostM: len, tol: 600 });
         dot('cas', (r.self ? 'jdeš už ' : 'jdete už ') + (min < 55 ? 'asi ' + min + ' minut' : 'asi ' + (Math.round(min / 30) / 2).toString().replace('.', ',') + ' hodiny') + ' (odhad, hodinky neřešíš)', 'odhadneš', { typ: 'cas', minut: min, vzdalenostM: len });
       } else { zac('misto', 'jste v terénu mimo zástavbu', {}); L.nevi.push('odkud jste vyšli a jak dlouho jdete'); }
-      dot('cesta', naCeste ? (r.self ? 'zůstal(a) jsi na cestě, nesešel(a) jsi z ní' : 'zůstali jste na cestě, nesešli jste z ní') : 'asi ' + Math.max(10, Math.round((odCesty || 40) / 10) * 10) + ' metrů od cesty (' + (r.self ? 'sešel(a) jsi z ní kousek' : 'sešli jste z ní kousek') + ')', null, { typ: 'cesta', odCestyM: odCesty });
+      dot('cesta', (r.self ? 'jsi ' : 'jste ') + (ok.silniceKde || 'u cesty') + ' (podle hlášeného místa); jak daleko od cesty pacient přesně leží a jestli z ní sešel(a), nevíš', null, { typ: 'cesta' });
       dot('mapa', nej ? 'nejbližší obec ' + nej.nazev + ' (' + km1(nej.vzdalenostKm * 1000) + ' ' + nej.smerOdObce + ')' : 'nic konkrétního', 'otevřeš mapu v mobilu (chvíli to trvá, signál bývá slabý)', { typ: 'obec', hodnota: nej ? nej.nazev : c.town, km: nej ? nej.vzdalenostKm : null, smer: nej ? nej.smerOdObce : null, lat: c.lat, lon: c.lon, tol: 3000 });
-      L.nevi.push('název lesa, cesty, značky nebo rozcestníku (nic z toho nevíš)', 'kam přesně jste mířili dál než k obecnému cíli procházky');
+      L.nevi.push('jak daleko od cesty pacient přesně leží a jestli z ní sešel(a); neodhaduj to ani nevymýšlej metry', 'název lesa, cesty, značky nebo rozcestníku (nic z toho nevíš)', 'kam přesně jste mířili dál než k obecnému cíli procházky');
       if (nej) K.vodidla.push({ tema: 'obec', typ: 'obec', hodnota: nej.nazev, lat: c.lat, lon: c.lon, tol: 3000 });
     } else {   // dům s adresou: panelák, rodinný dům, ulice
       L.scenar = 'adresa'; L.pacient.kde = c.addr;
@@ -134,10 +137,10 @@ function build(rnd, x) {
         L.nevi.push('adresu zpaměti');
       }
       if (c.where === 'byt') { const m = String(c.place || '').match(/(\d)\s*\.?\s*(p\b|pat|\.p)/i) || (/přízemí/i.test(c.place || '') ? ['0'] : null); if (m) dot('patro', /přízemí/i.test(c.place || '') ? 'přízemí' : m[1] + '. patro', 'víš to', { typ: 'patro' }); else L.nevi.push('v kterém patře přesně'); }
-      if (ok && ok.typ === 'mesto' && (ok.uMista.length || ok.poblizu.length)) dot('okoli', [].concat(ok.uMista, ok.poblizu).map(i => i.nazev + ' (' + i.kategorie + ', asi ' + i.vzdalenostM + ' m)').join('; '), 'rozhlédneš se; neřekneš nic nad rámec toho, a s nejistotou', null);
+      if (ok && ok.typ === 'mesto' && (ok.uMista.length || ok.poblizu.length)) dot('okoli', [].concat(ok.uMista, ok.poblizu).map(i => i.nazev + ' (' + i.kategorie + ', asi ' + i.vzdalenostM + ' m)').join('; '), 'rozhlédneš se; neřekneš nic nad rámec toho, a s nejistotou', null, [].concat(ok.uMista, ok.poblizu).map(i => i.nazev));
       if (!r.self && !r.pro && druh === 'dum' && (/před domem|venku|počká|čeká|mávat/i.test(c.place || '') || rnd() < 0.2)) L.ceka = c.where === 'byt' ? 'počkáš před domem u vchodu a posádku navedeš' : 'počkáš před domem a posádku navedeš';
     }
-    if (zna) { for (const d of L.dotaz) L.zacatek.push({ tema: d.tema, fakt: d.fakt }); L.dotaz = []; }   // už to jednou zjistil: ví to hned
+    if (zna) { const zj = new Set(x.zjisteno || []); for (const d of L.dotaz) if (!d.hledani || zj.has(d.id)) { d.zpusob = 'už to víš z dřívějšího hovoru (věděl(a) jsi to nebo jsi to tehdy zjistil(a)); nic nehledáš'; d.hledani = false; d.zname = true; } }   // přenáší se jen to, co volající původně věděl nebo při předchozím hovoru skutečně řekl; co hledat musel a nezaznělo, musí zase hledat
     L.text = text(L, zena);
     return { lokace: L, kotvy: K };
   } catch (e) { return null; }
@@ -148,7 +151,7 @@ function text(L, zena) {
   o.push('MÍSTO A TVOJE ZNALOST (pevná pravda hovoru: odpovídej podle ní vždy stejně, ať se calltaker zeptá jakkoli; má přednost před jiným pokynem k adrese):');
   o.push('- Pacient je: ' + L.pacient.kde + '.');
   o.push('- Ty: ' + L.volajici.kde + '.');
-  o.push('- Na začátku sám(a) řekneš jen: ' + (L.zacatek.length ? L.zacatek.slice(0, L.znaJiz ? 99 : 2).map(z => z.fakt).join('; ') : 'že potřebuješ pomoc') + '.' + (L.znaJiz ? ' (Tohle už víš z dřívějšího hovoru, tehdy jsi to zjistil(a); neříkáš to ale celé najednou, jen to, na co se ptá.)' : ''));
+  o.push('- Na začátku sám(a) řekneš jen: ' + (L.zacatek.length ? L.zacatek.slice(0, 2).map(z => z.fakt).join('; ') : 'že potřebuješ pomoc') + '.' + (L.znaJiz ? ' (Je to další hovor téhož člověka: u údajů označených „už víš“ nic nehledáš; co jsi tehdy nehledal(a) ani neřekl(a), musíš zase zjistit způsobem v závorce.)' : ''));
   if (L.dotaz.length) o.push('- Další údaje řekneš až když se calltaker zeptá na dané téma (způsob, jak to zjistíš, je v závorce; kde je způsob, odpovíš teprve po něm, a to třeba až v další větě):\n' + L.dotaz.map(d => '  • ' + d.tema.replace('_', ' ') + ': ' + d.fakt + (d.zpusob ? ' (' + d.zpusob + ')' : '')).join('\n'));
   if (L.nevi.length) o.push('- Nevíš: ' + L.nevi.join('; ') + '.');
   if (L.ceka) o.push('- ' + L.ceka.charAt(0).toUpperCase() + L.ceka.slice(1) + ' (nabídneš to, až když se ptají, kde posádku uvítáš, nebo když je to přirozené).');
@@ -163,5 +166,16 @@ function zjisti(L, tema) {
   const d = L.dotaz.find(i => i.tema === tema); if (d) return { stav: 'dotaz', fakt: d.fakt, zpusob: d.zpusob };
   return { stav: 'nevi', fakt: null };
 }
-const api = { build, jinde, zjisti, rozbor, druhAdresy, relOf, text };
+// co volající v přepisu skutečně řekl: id údajů (z L.dotaz), jejichž klíče (ulice, číslo, název, obec…) v jeho větách zazněly; údaje bez klíče se nepočítají
+function zjistenoZPrepisu(L, text) {
+  if (!L) return [];
+  const t = nrm(text), out = [];
+  for (const d of L.dotaz || []) {
+    const kl = d.klic || []; if (!kl.length) continue;
+    const ok = kl.every(k => { const n = nrm(k); return /^\d/.test(n) ? new RegExp('(^|[^0-9])' + n.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&') + '([^0-9]|$)').test(t) : t.includes(n); });
+    if (ok && !out.includes(d.id)) out.push(d.id);
+  }
+  return out;
+}
+const api = { build, jinde, zjisti, zjistenoZPrepisu, rozbor, druhAdresy, relOf, text };
 if (typeof module !== 'undefined') module.exports = api; else window.CT_LOKACE = api;

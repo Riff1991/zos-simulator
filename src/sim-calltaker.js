@@ -158,6 +158,12 @@ class SimCalltaker {
     return { seed, hour: this.hour(), wx };
   }
   // orientace volajícího v místě (calltaker/okoli.js): silnice, terén a veřejná místa bez jisté adresy; jinak null
+  // co volající v tomto hovoru skutečně řekl (UI to zjistí z přepisu); přenese se do opakovaného hovoru a zpětného volání téhož člověka
+  zaznamenejZjisteno(callId, ids) {
+    const call = this.s.calls.find(x => x.id === callId); if (!call || !Array.isArray(ids)) return null;
+    call.zjisteno = Array.from(new Set((call.zjisteno || []).concat(ids)));
+    return call.zjisteno;
+  }
   _ctMod(id, soubor) { return typeof window !== 'undefined' && window[id] ? window[id] : (typeof require === 'function' ? require('../calltaker/' + soubor) : null); }
   _ctOkoli(seed, c, persona, kind, ctx) {
     const O = typeof window !== 'undefined' && window.CT_OKOLI ? window.CT_OKOLI : (typeof require === 'function' ? require('../calltaker/okoli.js') : null);
@@ -232,7 +238,7 @@ class SimCalltaker {
     view.okoli = kind === 'bez' ? null : this._ctOkoli(seed, c, view.persona, kind, ctx);   // místní vodítko z mapy (jen venku); pevná fakta, model se o ně opírá
     let aml2 = aml;
     if (kind !== 'bez' && LK) {   // poloha: kde je pacient, odkud volající telefonuje, co ví a odkud; AML patří telefonu volajícího
-      const lk = LK.build(ctRng(seed * 61 + 23), { c, persona: view.persona, okoli: view.okoli, kind, jinde: jx, znaJiz: !!(call && (call.kind === 'opak' || call.cb)), zena: view.persona.pohlaviVolajiciho === 'žena' });
+      const lk = LK.build(ctRng(seed * 61 + 23), { c, persona: view.persona, okoli: view.okoli, kind, jinde: jx, znaJiz: !!(call && (call.kind === 'opak' || call.cb)), zjisteno: (call && call.zjisteno) || [], zena: view.persona.pohlaviVolajiciho === 'žena' });
       if (lk) {
         view.lokace = lk.lokace; key.lokace = lk.kotvy;
         const kv = lk.kotvy.volajici;
@@ -406,7 +412,7 @@ class SimCalltaker {
     const s = this.s, id = 'k' + (++s.callSeq); extra = extra || {};
     const call = { id, seed: extra.seed || this.ri(1, 2000000000), state: 'ringing', ringAt: s.t, pickedAt: null, caseId: kind === 'opak' ? extra.caseId : null, kind: kind || 'vyjezd', ref: extra.caseId || null };
     if (kind === 'bez') call.scn = CT_BEZ[this.ri(0, CT_BEZ.length - 1)].id;
-    if (kind === 'opak') call.nova = CT_NOVA[this.ri(0, CT_NOVA.length - 1)];
+    if (kind === 'opak') { call.nova = CT_NOVA[this.ri(0, CT_NOVA.length - 1)]; call.zjisteno = (extra.zjisteno || []).slice(); }
     s.calls.push(call);
     if (s.calls.length > 40) s.calls.shift();
     this.L('call', `Zvoní hovor ${id}${kind === 'opak' ? ' (opakovaný)' : kind === 'dup' ? ' (další volající k události)' : ''}`, null);
@@ -417,7 +423,7 @@ class SimCalltaker {
     for (const c of s.calls) if (c.state === 'dropped' && t >= c.dropRingAt) { c.state = 'ringing'; c.ringAt = t; c.cb = true; this.L('call', `Volající zavolal zpět (hovor ${c.id})`, null); }
     if (!active) for (const cs of s.cases) {
       if (!cs.call || cs.status === 'closed') continue;
-      if (cs.call.repeatAt != null && t >= cs.call.repeatAt) { cs.call.repeatAt = null; if (!cs.arrived) { this._ringCall('opak', { seed: cs.call.seed, caseId: cs.id }); break; } }
+      if (cs.call.repeatAt != null && t >= cs.call.repeatAt) { cs.call.repeatAt = null; if (!cs.arrived) { this._ringCall('opak', { seed: cs.call.seed, caseId: cs.id, zjisteno: ((s.calls.find(x => x.id === cs.call.callId) || {}).zjisteno || []) }); break; } }
       if (cs.call.dupAt != null && t >= cs.call.dupAt) { cs.call.dupAt = null; this._ringCall('dup', { seed: cs.call.seed, caseId: cs.id }); break; }
     }
     for (const c of s.calls) if (c.state === 'ringing' && s.t - c.ringAt > L.ring) {
@@ -450,7 +456,11 @@ class SimCalltaker {
         return c0;
       }
     }
-    if (call.caseId) { const c1 = this.caseOf(call.caseId); if (c1) return this.updateCallCase(c1, form); call.caseId = null; }
+    if (call.caseId) {
+      const c1 = this.caseOf(call.caseId);
+      if (c1) { const o0 = c1.call && this.s.calls.find(x => x.id === c1.call.callId); if (o0 && o0 !== call && call.zjisteno) o0.zjisteno = Array.from(new Set((o0.zjisteno || []).concat(call.zjisteno))); return this.updateCallCase(c1, form); }   // další opakovaný hovor navazuje i na to, co zjistil tento
+      call.caseId = null;
+    }
     const c = this.addCallCase({ v: 1, seed: call.seed, form, sec: Math.round(s.t - ctT0(call)), callId: call.id, dupOf: kind === 'dup' ? call.ref : null });
     call.caseId = c.id; call.sentAt = s.t; c.call.sentAtFirst = s.t;
     if (kind === 'dup') this._opsScore(-6, `hovor ${call.id}: duplicitní hovor nebyl sloučen s existujícím případem`, c.id);
