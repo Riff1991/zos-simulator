@@ -290,7 +290,7 @@ ${transferInfo(c) ? `<dt>Překlad pacienta</dt><dd>${esc(transferInfo(c))}</dd>`
     return `<span class="assigned-crew">${chipHTML(k)}${canCancel ? `<button class="btn red" data-act="cancel" data-case="${c.id}" data-crew="${k.id}">${k.type === 'LZS' ? 'Odvolat LZS' : 'Odvolat'}</button>` : ''}</span>`;
   }).join('') : (c.frs || []).length ? '' : '<span style="color:#5a6a7a">nikdo</span>'}${(c.frs || []).map(f => `<span class="assigned-crew"><span class="chip fr">${esc(f.name)}</span></span>`).join('')}</div>`;
   if (c.status === 'closed' && c.typ === 'sekundární') h += `<p>Body za dodržení času: <b>${c.score ? c.score.total : 0}/100</b></p>`;
-  else if (c.status === 'closed' && c.score) h += `<p>Skóre případu: <b>${Math.round(c.score.total)}</b> (včas ${c.score.delay.toFixed(0)}/20 · příjezd ${c.score.arrive.toFixed(0)}/50 · lékař ${c.score.rv.toFixed(0)}/15 · volba ${c.score.eff.toFixed(0)}/15${c.score.pen ? ' · přesměrování −' + c.score.pen : ''})</p>`;
+  else if (c.status === 'closed' && c.score) h += `<p>Skóre případu: <b>${Math.round(c.score.total)}</b> (včas ${c.score.delay.toFixed(0)}/20 · dojezd ${c.score.arrive.toFixed(0)}/50 · lékař ${c.score.rv.toFixed(0)}/15 · volba ${c.score.eff.toFixed(0)}/15${c.score.pen ? ' · přesměrování −' + c.score.pen : ''})</p>`;
   h += '</div><div class="dc2">';
   if (c.status === 'waiting' || c.status === 'active') {
     h += `<div><button class="btn pri" data-act="sug">Navrhnout posádku ${sugOpen ? '▴' : '▾'}</button></div>`;

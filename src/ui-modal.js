@@ -59,7 +59,8 @@ async function checkUpdate(btn, cb) {
 const RULES = [
   ['Případ (0–100 b., váha N1 3×, N2 2×, N3 1×)', [
     '20 b. rychlost vyslání po nabrání výzvy (cíl N1 do 60 s, N2 do 120 s, N3 do 5 min).',
-    '50 b. volba posádky: plný počet za nejrychlejší dostupnou RZP. Vzdálenější posádka body nebere, pokud by nejbližší nechala svou oblast bez volné RZP. Absolutní dojezdový čas se netrestá.',
+    '25 b. volba posádky: plný počet za nejrychlejší dostupnou RZP. Vzdálenější posádka body nebere, pokud by nejbližší nechala svou oblast bez volné RZP.',
+    '25 b. skutečný čas příjezdu od převzetí výzvy: plné body do reálného mediánu (asi 9 min), k nule klesá plynule u reálného p90 (asi 19 min u N1 a N2, 18 min u N3). Počítá se i dojezd, který hráč neovlivní, proto je 100 b. za případ velmi těžké.',
     '15 b. lékař: RV (nebo LZS, LIBERO) tam, kde je potřeba, a včas; zbytečně vyslaný lékař body ubírá.',
     '15 b. efektivita: posádka nejede zbytečně daleko.',
     'Přesměrování posádky z naléhavějšího případu: −8 až −10 b. u původního případu.']],
@@ -116,12 +117,68 @@ ${liberoHtml}
 <p style="font-size:12px">Tip: čekající případy jsou v seznamu vlevo. Klikni na případ, otevři „Navrhnout posádku“ a vyšli nejbližší. N1 vždy s lékařem (RV). N3 jede RZP, lékař jen na vyžádání posádky. Doporučené rychlosti 5× až 30×.</p>
 <p style="font-size:12px;color:#5a6a7a">Stav: ${assetsState}</p>${appInstallHtml()}<button class="btn pri" data-act="start" style="font-size:15px;padding:7px 18px">Začít směnu</button> <button class="btn" data-act="rules" data-back="shift">Pravidla a hodnocení</button> <button class="btn" data-act="home">‹ Zpět</button></div>`);
 }
+const HIST_KEY = 'zos_jck_hist_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // historie vyhodnocených směn (testovací verze zvlášť)
+function histLoad() { try { const a = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function histSave(entry) {
+  const a = histLoad().filter(h => h.seed !== entry.seed); a.push(entry);
+  const keep = a.slice(-20); try { localStorage.setItem(HIST_KEY, JSON.stringify(keep)); } catch (e) {}
+  return keep;
+}
+// Srovnání s předchozími směnami: posledních 5 (nejnovější nahoře), trend proti průměru předchozích a osobní rekord.
+function histHtml(hist, seed) {
+  const last = hist.slice(-5).reverse(); if (last.length < 1) return '';
+  const cur = hist.find(h => h.seed === seed), prev = hist.filter(h => h.seed !== seed);
+  const best = hist.reduce((b, h) => h.total > b ? h.total : b, -1), avgPrev = prev.length ? prev.slice(-5).reduce((a, h) => a + h.total, 0) / Math.min(5, prev.length) : null;
+  const d = cur && avgPrev != null ? cur.total - avgPrev : null;
+  const trend = d == null ? '' : d >= 1 ? `<span style="color:#2e8b57">▲ +${d.toFixed(1)}</span> proti průměru předchozích` : d <= -1 ? `<span style="color:#c0392b">▼ ${d.toFixed(1)}</span> proti průměru předchozích` : '≈ jako obvykle';
+  const f = x => x == null ? '–' : x.toFixed(1), dt = at => { const t = new Date(at); return `${t.getDate()}. ${t.getMonth() + 1}. ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; };
+  const rows = last.map(h => `<tr${h.seed === seed ? ' style="font-weight:bold"' : ''}><td style="padding:2px 12px 2px 0">${dt(h.at)}${h.seed === seed ? ' <small>(tato)</small>' : ''}</td><td style="padding-right:12px">${f(h.total)}</td><td style="padding-right:12px">${f(h.base)}</td><td style="padding-right:12px">${f(h.ops)}</td><td>${h.closed}</td></tr>`).join('');
+  return `<p style="margin:12px 0 2px"><b>Předchozí směny</b> <small style="color:#5a6a7a">${trend}${cur && cur.total >= best && hist.length > 1 ? ' · <b>nový osobní rekord</b>' : ` · rekord ${f(best)}`}</small></p>
+<table style="margin:4px 0"><tr style="color:#5a6a7a;font-size:12px"><td style="padding-right:12px">Kdy</td><td style="padding-right:12px">Skóre</td><td style="padding-right:12px">Základ</td><td style="padding-right:12px">Provozní</td><td>Případů</td></tr>${rows}</table>`;
+}
+function fmtMS(sec) { if (sec == null || !isFinite(sec)) return '–'; sec = Math.round(sec); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+// Důvody ztráty bodů u případu slovy s čísly (dvě největší ztráty).
+function caseLossText(c) {
+  if (c.unserved) return 'neobslouženo, žádná posádka nedojela';
+  if (c.mu) return 'mimořádná událost, viz hodnocení MU';
+  const sc = c.score, tgtD = { 1: 60, 2: 120, 3: 300 }[c.nOrig], T = { 1: 720, 2: 960, 3: 1500 }[c.nOrig], L = [];
+  const dl = 20 - sc.delay; if (dl >= 1) L.push([dl, `vyslání za ${fmtMS(c.asg && c.asg.length ? c.asg[0].t - c.readyAt : null)} (cíl ${fmtMS(tgtD)})`]);
+  const c01 = x => Math.max(0, Math.min(1, x));
+  const [aLo, aHi] = ZOS_DATA.scoreAbs[c.nOrig] || [520, 1100], wait = c.firstArrive != null ? c.firstArrive - c.readyAt : null, absLoss = wait == null ? (c.pick ? 25 : 50) : (c.pick ? 25 : 50) * (1 - c01(1 - (wait - aLo) / (aHi - aLo)));
+  if (c.pick && !c.pick.justified) { const over = Math.max(0, c.pick.chosen - c.pick.best - (c.nOrig === 3 ? 480 : 120)), rl = 25 * c01(over / (T * 0.6)); if (rl >= 1) L.push([rl, `vzdálenější posádka (dojezd ${fmtMS(c.pick.chosen)} místo ${fmtMS(c.pick.best)})`]); }
+  if (absLoss >= 1) L.push([absLoss, `příjezd za ${fmtMS(wait)} (reálný medián ${fmtMS(aLo)})`]);
+  const rl = 15 - sc.rv; if (rl >= 1) L.push([rl, c.docAssigned ? 'lékař vyslán pozdě' : 'lékař nevyslán']);
+  const el = 15 - sc.eff; if (el >= 1) L.push([el, 'nebyla vybrána nejbližší posádka']);
+  if (sc.pen >= 1) L.push([sc.pen, 'přesměrování posádky']);
+  L.sort((a, b) => b[0] - a[0]);
+  return L.length ? L.slice(0, 2).map(x => `−${Math.round(x[0])} b. ${x[1]}`).join(' · ') : 'bez větší ztráty';
+}
+// Z čeho se skládá hodnocení: složky případů (vážené N1×3, N2×2, N3×1), pokrytí a časy podle naléhavosti.
+function endBreakdownHtml(sm) {
+  const k = sm.comp; if (!k) return '';
+  const row = (label, v, max, hint, neg) => {
+    const p = max ? Math.max(0, Math.min(100, (neg ? 100 - v / max * 100 : v / max * 100))) : 0, col = p >= 85 ? '#2e8b57' : p >= 60 ? '#d9a521' : '#c0392b';
+    return `<tr><td style="padding:3px 12px 3px 0">${label}<br><small style="color:#5a6a7a">${hint}</small></td><td style="width:150px"><div style="background:rgba(128,140,150,.28);height:8px;border-radius:4px"><i style="display:block;height:8px;border-radius:4px;width:${p.toFixed(0)}%;background:${col}"></i></div></td><td style="padding-left:10px;white-space:nowrap"><b>${neg ? '−' : ''}${v.toFixed(1)}</b> / ${max}</td></tr>`;
+  };
+  const tgt = { 1: [60, ZOS_DATA.scoreAbs[1][0]], 2: [120, ZOS_DATA.scoreAbs[2][0]], 3: [300, ZOS_DATA.scoreAbs[3][0]] };
+  const nrows = [1, 2, 3].map(n => {
+    const b = k.byN[n]; if (!b || !b.n) return '';
+    return `<tr><td style="padding:2px 12px 2px 0"><b>N${n}</b> <small style="color:#5a6a7a">(${b.n})</small></td><td style="padding-right:12px">vyslání <b>${fmtMS(b.dispN ? b.disp / b.dispN : null)}</b> <small style="color:#5a6a7a">cíl ${fmtMS(tgt[n][0])}</small></td><td>příjezd na místo <b>${fmtMS(b.arrN ? b.arr / b.arrN : null)}</b> <small style="color:#5a6a7a">cíl ${fmtMS(tgt[n][1])}</small></td></tr>`;
+  }).join('');
+  return `<p style="margin:10px 0 2px"><b>Z čeho se hodnocení skládá</b> <small style="color:#5a6a7a">(průměr případů: N1 počítá 3×, N2 2×, N3 1×)</small></p>
+<table style="margin:4px 0;width:100%">${row('Včasnost vyslání', k.delay, 20, 'jak rychle po převzetí jsi poslal posádku')}${row('Volba posádky a dojezd', k.arrive, 50, 'polovina za volbu nejrychlejší posádky, polovina za skutečný čas příjezdu proti reálnému mediánu')}${row('Lékař', k.rv, 15, 'RV nebo LZS vyslán tam, kde měl být, a včas')}${row('Efektivita volby', k.eff, 15, 'podíl dojezdu nejbližší a zvolené posádky')}${row('Pokrytí území', sm.coverage, 100, 'podíl obyvatel měst, ke kterým dojede volná RZP do 15 min')}${k.pen >= 0.5 ? row('Přesměrování (ztráta)', k.pen, 10, 'za přehození posádky na jiný případ', true) : ''}</table>
+<p style="margin:6px 0;color:#5a6a7a;font-size:12px">Základ = 75 % hodnocení případů + 25 % pokrytí. K tomu se přičítají a odečítají provozní body (níže).</p>
+${nrows ? `<p style="margin:10px 0 2px"><b>Časy podle naléhavosti</b> <small style="color:#5a6a7a">(průměr od převzetí výzvy)</small></p><table style="margin:4px 0">${nrows}</table>` : ''}`;
+}
 function endModal() {
   const sm = sim.summary(), s = sim.s;
-  const worst = s.cases.filter(c => c.status === 'closed' && c.score).sort((a, b) => a.score.total - b.score.total).slice(0, 5);
-  const why = c => { const sc = c.score, L = [['pozdní vyslání', 20 - sc.delay], ['volba vzdálenější posádky', 50 - sc.arrive], ['lékař', 15 - sc.rv], ['volba posádky', 15 - sc.eff], ['přesměrování', sc.pen]].sort((a, b) => b[1] - a[1]); return c.unserved ? 'neobslouženo' : L[0][0]; };
+  const worst = s.cases.filter(c => c.status === 'closed' && c.score && c.typ !== 'sekundární').sort((a, b) => a.score.total - b.score.total).slice(0, 10);
+  const why = c => caseLossText(c);
   const ms0 = sim.s.muOnly ? sim.muSummary() : null, ht = ms0 && !ms0.downgraded && ms0.score ? ms0.score.total : sm.total;   // v cvičení MU je hlavní číslo hodnocení MU
   const rank = ht >= 92 ? 'Dispečer na jedničku' : ht >= 80 ? 'Spolehlivý dispečer' : ht >= 65 ? 'Slušný praktikant' : ht >= 45 ? 'Ještě potrénuj' : 'Katastrofa na lince';
+  const histOk = !sim.s.muOnly && !s.scripted && s.mode === 'shift' && sm.closed >= 5;
+  let hist = histLoad();
+  if (histOk && !hist.some(h => h.seed === s.seed)) hist = histSave({ seed: s.seed, at: Date.now(), total: ht, base: sm.baseTotal, ops: sm.opsPoints, cov: sm.coverage, closed: sm.closed, d: sm.comp ? sm.comp.delay : null, a: sm.comp ? sm.comp.arrive : null, r: sm.comp ? sm.comp.rv : null, e: sm.comp ? sm.comp.eff : null });
   const m = (l, v) => `<tr><td style="padding:2px 14px 2px 0;color:#5a6a7a">${l}</td><td><b>${v}</b></td></tr>`;
   const mus = sim.s.muOnly ? sim.muSummary() : null;
   const muHtml = !mus ? '' : mus.downgraded ? `<p><b>MU se nevyhlásila:</b> ${esc(mus.label)}, ${esc(mus.addr)}. Událost pokračovala jako běžná.</p>` : (() => {
@@ -133,10 +190,12 @@ ${mus.ops.length ? `<details><summary>Body a chyby u MU (${mus.ops.length})</sum
   })();
   modal(`<div class="card"><h1>${mus ? 'Vyhodnocení cvičení MU' : 'Vyhodnocení'}</h1><div class="big">${ht.toFixed(1)} <span style="font-size:15px;font-family:var(--sans)">/ 100 · ${rank}</span></div>
 <div class="bar"><i style="width:${Math.min(100, ht)}%"></i></div>${ms0 && !ms0.downgraded ? '<p style="margin:4px 0;color:#5a6a7a;font-size:12px">Níže: detail MU a běžný provoz během cvičení.</p>' : ''}${muHtml}
+${endBreakdownHtml(sm)}
 <table style="margin:10px 0;width:auto">${m('Průměrné hodnocení případů', sm.caseAvg.toFixed(1))}${m('Pokrytí území', sm.coverage.toFixed(0) + ' %')}${m('Případů celkem', sm.cases)}${m('Neobslouženo', sm.unserved)}${m('N1 průměrně k pacientovi', sm.avgN1 == null ? '–' : (sm.avgN1 / 60).toFixed(1) + ' min')}${m('Příjezd do 20 min od vyslání', sm.legalPct == null ? '–' : sm.legalPct.toFixed(0) + ' %')}${m('Přesměrování posádek', sm.diversions)}${m('Dokončené sekundární převozy', sm.secondaryCompleted)}${m('Sekundární převozy v toleranci ±15 min', sm.secondaryOnTime)}${m('Průměr bodů za sekundární převoz', sm.secondaryAvg == null ? '–' : sm.secondaryAvg.toFixed(0) + ' / 100')}</table>
 ${sm.opsPoints || sm.opsLog.length ? `<p>Provozní body: <b>${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints}</b> · základní skóre ${sm.baseTotal.toFixed(1)}</p>${sm.opsLog.length ? `<details open><summary>Za co byly provozní body (${sm.opsLog.length})</summary><ul style="max-height:180px;overflow:auto">${sm.opsLog.slice().reverse().map(x => `<li>${sim.clockAt(x.t)} · ${x.delta > 0 ? '+' : ''}${x.delta} b. · ${esc(x.reason)}</li>`).join('')}</ul></details>` : ''}` : ''}
 ${lzsEndHtml(sm)}
-${worst.length ? '<b>Nejhorší případy</b><table style="margin-top:4px">' + worst.map(c => `<tr><td style="padding:2px 10px 2px 0">${c.num} N${c.nOrig}</td><td style="padding-right:10px">${esc(c.klasif)}</td><td><b>${Math.round(c.score.total)}</b> · ${why(c)}</td></tr>`).join('') + '</table>' : ''}
+${histOk ? histHtml(hist, s.seed) : ''}
+${worst.length ? '<b>Kde ses nejvíc propadl</b> <small style="color:#5a6a7a">(10 nejhorších případů, záporné body = ztráta oproti maximu)</small><table style="margin-top:4px">' + worst.map(c => `<tr><td style="padding:2px 10px 2px 0;white-space:nowrap">${sim.clockAt(c.readyAt)}</td><td style="padding-right:10px">${c.num} N${c.nOrig}</td><td style="padding-right:10px">${esc(c.klasif)}</td><td style="padding-right:10px"><b>${Math.round(c.score.total)}</b></td><td><small>${why(c)}</small></td></tr>`).join('') + '</table>' : ''}
 <p style="margin-top:12px"><button class="btn pri" data-act="again">Nová směna</button> <button class="btn" data-act="rules" data-back="game">Pravidla a hodnocení</button></p></div>`);
 }
 function printModal(k) {

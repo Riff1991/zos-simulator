@@ -11,9 +11,13 @@ class SimScore {
     const fa = c.asg.length ? c.asg[0].t : t;
     const delay = 20 * clamp01(1 - ((fa - c.readyAt) - tgtD) / (2 * tgtD));
     // příjezd: hodnotí se volba posádky proti nejrychlejší dostupné (ne absolutní čas, ten dispečer vždy neovlivní)
+    // Dojezd (50 b.): 25 b. za volbu posádky proti nejrychlejší dostupné a 25 b. za skutečný čas od převzetí: plné body do reálného mediánu
+    // (ZOS_DATA.scoreAbs), plynule klesá k nule u reálného p90. Bez zvolené první RZP (c.pick) platí celých 50 b. za skutečný čas.
     let arrive;
-    if (c.pick) { const over = c.pick.justified ? 0 : Math.max(0, c.pick.chosen - c.pick.best - (n === 3 ? 480 : 120)); arrive = 50 * clamp01(1 - over / (T * 0.6)); }
-    else arrive = c.firstArrive != null ? 50 * clamp01(1 - ((c.firstArrive - c.readyAt) - T) / T) : 0;
+    const [aLo, aHi] = ZOS_DATA.scoreAbs[n] || [520, 1100];
+    const absF = clamp01(1 - (((c.firstArrive != null ? c.firstArrive : t) - c.readyAt) - aLo) / (aHi - aLo));
+    if (c.pick) { const over = c.pick.justified ? 0 : Math.max(0, c.pick.chosen - c.pick.best - (n === 3 ? 480 : 120)); arrive = 25 * clamp01(1 - over / (T * 0.6)) + 25 * absF; }
+    else arrive = c.firstArrive != null ? 50 * absF : 0;
     const rv = this._rvScore(c);
     const eff = 15 * Math.min(1, (c.effRatio == null ? 1 : c.effRatio) / 0.85);
     if (c.mu) { const q = this._muScore(c); return { delay: q.delay, arrive: q.arrive, rv: q.rv, eff: q.eff, pen: c.pen, total: Math.max(0, q.delay + q.arrive + q.rv + q.eff - c.pen) }; }
@@ -63,13 +67,27 @@ class SimScore {
     cv.n++; cv.sum += tot ? ok / tot : 1; cv.last = tot ? ok / tot : 1;
   }
 
+  // Složky skóre případů (vážený průměr jako u hodnocení případů) a časy podle naléhavosti pro přehled vyhodnocení.
+  _compNew() { const b = () => ({ n: 0, disp: 0, dispN: 0, arr: 0, arrN: 0 }); return { w: 0, d: 0, a: 0, r: 0, e: 0, p: 0, byN: { 1: b(), 2: b(), 3: b() } }; }
+  _compAdd(k, c, sc) {
+    const w = { 1: 3, 2: 2, 3: 1 }[c.nOrig] || 1;
+    k.w += w; k.d += w * sc.delay; k.a += w * sc.arrive; k.r += w * sc.rv; k.e += w * sc.eff; k.p += w * (sc.pen || 0);
+    const b = !c.mu && k.byN[c.nOrig];
+    if (b) {
+      b.n++;
+      if (c.asg && c.asg.length) { b.disp += c.asg[0].t - c.readyAt; b.dispN++; }
+      if (c.firstArrive != null) { b.arr += c.firstArrive - c.readyAt; b.arrN++; }
+    }
+  }
   summary() {
     const s = this.s, a = s.agg, W = { 1: 3, 2: 2, 3: 1 };
     let sw = a.sw, sv = a.sv;
+    const comp = a.comp ? JSON.parse(JSON.stringify(a.comp)) : this._compNew();
     for (const c of s.cases) {
       if (c.status === 'closed' || c.status === 'intake' || c.typ === 'sekundární') continue;
       const sc = this._scoreCase(c), w = W[c.nOrig];
       sw += w; sv += w * sc.total;
+      this._compAdd(comp, c, sc);
     }
     const caseAvg = sw ? sv / sw : 0;
     const cov = s.cov.n ? s.cov.sum / s.cov.n * 100 : 100;
@@ -81,6 +99,7 @@ class SimScore {
       avgN1: a.arrN1 ? a.arrSum1 / a.arrN1 : null, legalPct: a.legalN ? a.legalOk / a.legalN * 100 : null,
       secondaryCompleted: a.secondaryCount || 0, secondaryAvg: a.secondaryCount ? a.secondarySum / a.secondaryCount : null,
       secondaryOnTime: a.secondaryOnTime || 0,
+      comp: comp.w ? { delay: comp.d / comp.w, arrive: comp.a / comp.w, rv: comp.r / comp.w, eff: comp.e / comp.w, pen: comp.p / comp.w, byN: comp.byN } : null,
       cases: s.cases.filter(c => c.status !== 'intake').length, covNow: s.cov.last == null ? null : s.cov.last * 100,
     };
   }

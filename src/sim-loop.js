@@ -936,6 +936,8 @@ class SimLoop {
     this._lzsEval(cs);
     const a = s.agg, w = { 1: 3, 2: 2, 3: 1 }[cs.nOrig] || 1;
     a.sw += w; a.sv += w * cs.score.total; a.closed++;
+    if (!a.comp) a.comp = this._compNew();
+    this._compAdd(a.comp, cs, cs.score);
     if (cs.unserved) a.unserved++;
     if (cs.firstArrive != null) {
       const arr = cs.firstArrive - cs.readyAt;

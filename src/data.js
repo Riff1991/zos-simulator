@@ -531,6 +531,8 @@ for (const x of ZOS_DATA.indications) {
   if (c.sceneQ) x.scene = [c.sceneQ[0], c.sceneQ[2]];
 }
 
+// Absolutní stupnice dojezdu pro skóre případu: plné body do mediánu, nula u p90 skutečné doby výzva → příjezd (sekundy; leden a červenec 2026, 15,6 tis. výjezdů, [N1, N2, N3]).
+ZOS_DATA.scoreAbs = { 1: [520, 1190], 2: [530, 1130], 3: [520, 1060] };
 // Akutní (neplánované) sekundární převozy – kalibrace podle exportu Seznam výjezdů, typ výjezdu sekundár (1. 1.–21. 11. 2026, 407 výjezdů).
 // Plánované N4 převozy (přistavení na čas) v tom exportu nejsou, řeší je _spawnSecondary. Hodiny = počty událostí podle hodiny výzvy 0–23.
 ZOS_DATA.acuteSec = {
