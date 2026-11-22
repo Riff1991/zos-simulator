@@ -366,7 +366,17 @@ console.log('severe burn LZS route to FNKV true');
 const cleanStart = new Sim({ seed: 201, mode: 'shift', startState: 'clean' });
 const runningStart = new Sim({ seed: 201, mode: 'shift', startState: 'running' });
 if (cleanStart.s.cases.length !== 0) throw new Error('clean shift must start with zero cases');
-if (runningStart.s.cases.length !== 3 || !runningStart.s.cases.some(c => c.crews.length)) throw new Error('running shift must start with three cases and a dispatched crew');
+if (!runningStart.s.cases.some(c => c.crews.length) || runningStart._activeRuns() < 4 || runningStart._activeRuns() > 6) throw new Error('running shift (málo) must start with 4–6 runs, got ' + runningStart._activeRuns());
+// úrovně rozjetého kraje: málo ≈ 5, středně ≈ 10, špička 15–18 probíhajících výjezdů; převzaté případy se nehodnotí
+for (const [lvl, lo, hi] of [['low', 4, 6], ['mid', 9, 11], ['peak', 15, 18]]) for (const sd of [301, 302, 303]) {
+  const r = new Sim({ seed: sd, mode: 'shift', startHour: sd % 2 ? 7 : 13, startState: 'running-' + lvl });
+  const n = r._activeRuns(), phases = new Set(r.s.crews.filter(c => c.caseId).map(c => c.state));
+  if (n < lo || n > hi) throw new Error(`rozjetý kraj ${lvl} seed ${sd}: ${n} výjezdů, čekám ${lo}–${hi}`);
+  if (phases.size < 2) throw new Error(`rozjetý kraj ${lvl} seed ${sd}: posádky jen v jedné fázi (${[...phases]})`);
+  const sm = r.summary(); if (sm.closed !== 0 || sm.baseTotal !== 0 && r.s.cases.every(c => c.carried)) throw new Error('převzaté případy se započítaly do skóre');
+  if (r.s.t < 4000 || r.s.log.length > 3) throw new Error('rozjetý kraj: čas nebo log po zahřátí neodpovídá');
+}
+console.log('rozjetý kraj: málo 4–6, středně 9–11, špička 15–18 výjezdů v různých fázích true');
 runningStart._opsScore(2, 'test bonus'); runningStart._opsScore(-3, 'test penalty');
 const scoreRestore = Sim.restore(runningStart.serialize());
 if (scoreRestore.summary().opsPoints !== -1 || scoreRestore.summary().opsLog.length !== 2) throw new Error('operational score did not survive save/restore');

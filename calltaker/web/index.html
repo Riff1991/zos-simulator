@@ -8478,6 +8478,7 @@ class SimLoop {
     if (cs.unserved) this._opsScore(-8, `neobsloužený případ ${cs.num}`, cs.id);
     cs.score = this._scoreCase(cs);
     this._lzsEval(cs);
+    if (cs.carried) { this.L('case', `${cs.num}: uzavřeno (převzatá událost, bez bodů)`, cs.id); return; }   // událost převzatá při startu rozjetého kraje se nehodnotí
     const a = s.agg, w = { 1: 3, 2: 2, 3: 1 }[cs.nOrig] || 1;
     a.sw += w; a.sv += w * cs.score.total; a.closed++;
     if (!a.comp) a.comp = this._compNew();
@@ -8576,7 +8577,7 @@ class SimScore {
     let sw = a.sw, sv = a.sv;
     const comp = a.comp ? JSON.parse(JSON.stringify(a.comp)) : this._compNew();
     for (const c of s.cases) {
-      if (c.status === 'closed' || c.status === 'intake' || c.typ === 'sekundární') continue;
+      if (c.status === 'closed' || c.status === 'intake' || c.typ === 'sekundární' || c.carried) continue;
       const sc = this._scoreCase(c), w = W[c.nOrig];
       sw += w; sv += w * sc.total;
       this._compAdd(comp, c, sc);
@@ -9211,7 +9212,7 @@ class Sim {
     s.dayFlag = this._isDay();
     this._roster(false);
     this.L('sys', 'Začátek směny. Posádky přihlášeny.');
-    if (s.mode === 'shift' && opts.startState === 'running') this._prepareBusyStart();
+    if (s.mode === 'shift' && /^running/.test(opts.startState || '')) this._prepareBusyStart(String(opts.startState).split('-')[1] || 'low');
     if (s.muOnly) this._prepareMuOnly();
   }
 
@@ -9260,23 +9261,39 @@ class Sim {
       firstArrive: c.firstArrive != null ? c.firstArrive - c.readyAt : null, avizo: m.avizoAt != null && m.declaredAt != null ? m.avizoAt - m.declaredAt : null, updates: m.mt.n, mistakes: m.mistakes, score: c.score,
       ops: s.agg.opsLog.filter(x => x.caseId === c.id), neighbours: Object.keys(m.nb).length };
   }
-  _prepareBusyStart() {
-    const s = this.s, cases = [];
-    for (let i = 0; i < 3; i++) {
-      const c = this._spawn();
-      c.createdAt = c.readyAt = c.waitSince = s.t;
-      c.escAt = s.t + 1500;
-      c.status = 'waiting';
-      cases.push(c);
-      this.L('case', `Předaná rozpracovaná událost ${c.num}: N${c.n} – ${c.klasif}, ${c.addr}`, c.id);
+  // počet probíhajících výjezdů: otevřené primární případy, ke kterým jede nebo na kterých je posádka (v jakékoli fázi do předání)
+  _activeRuns() { return this.s.cases.filter(c => c.status !== 'closed' && c.status !== 'intake' && !c.mu && c.typ !== 'sekundární' && this._busyCrews(c).length > 0).length; }
+  // Rozjetý kraj: kraj se „zahřeje“ 80 min provozu s automatickým dispečerem (různé fáze výjezdů), pak se počet probíhajících výjezdů
+  // dorovná na cíl: málo ≈ 5, středně ≈ 10, špička 15–18. Případy, které už mají posádku, se hráči nezapočítávají do skóre (carried).
+  _prepareBusyStart(level) {
+    const s = this.s, warm = 4800, h0 = s.startHour, radio = s.radioMode, sec = s.secondaryEnabled, diff = s.diff, muNext = s.ev.nextMU;
+    const R = { low: [4, 6], mid: [9, 11], peak: [15, 18] }[level] || [4, 6], target = this.ri(R[0], R[1]);
+    s.radioMode = 'auto'; s.secondaryEnabled = false; s.ev.nextMU = null; s.diff = diff * ({ low: 0.35, mid: 0.8, peak: 1.8 }[level] || 0.35);
+    s.startHour = (h0 - warm / 3600 + 24) % 24;
+    const run = secs => { for (let i = 0; i < secs / 5; i++) { this._tick(5); this._warmDispatch(); } };
+    run(warm);
+    if (this._activeRuns() > target) {   // příliš mnoho: dojet bez nových událostí
+      const keep = s.ev.nextSpawn; s.ev.nextSpawn = 1e12;
+      for (let i = 0; i < 720 && this._activeRuns() > target; i++) run(5);
+      s.ev.nextSpawn = Math.max(keep, s.t + this.rr(30, 120));
     }
-    // V jednom případu už je RZP na cestě; přednost má N3/dynamická N2,
-    // jinak hráč převezme případ s chybějící další potřebnou posádkou.
-    const active = cases.find(c => c.n === 3 && !c.rvNeed) || cases.find(c => !c.rvNeed) || cases[0];
-    if (active) {
-      const rzp = this.suggest(active.id, 'RZP')[0];
-      if (rzp) this.assign(active.id, rzp.crewId);
+    for (let g = 0; g < 60 && this._activeRuns() < target; g++) { this._spawn({ intake: this.ri(30, 90) }); run(this.rr(40, 360)); }   // málo: doplnit událostmi v různých fázích
+    if (this._activeRuns() > R[1]) {   // doplnění přestřelilo horní mez: dojet bez nových událostí
+      const keep = s.ev.nextSpawn; s.ev.nextSpawn = 1e12;
+      for (let i = 0; i < 720 && this._activeRuns() > R[1]; i++) run(5);
+      s.ev.nextSpawn = Math.max(keep, s.t + this.rr(30, 120));
     }
+    s.cases = s.cases.filter(c => c.status !== 'closed');
+    for (const c of s.cases) if (c.typ !== 'sekundární' && !c.mu && (c.firstAssign != null || (c.crews && c.crews.length))) c.carried = true;
+    s.log = []; s.radioQ = []; s.autoRadio = []; s.radioMode = radio; s.secondaryEnabled = sec; s.diff = diff;
+    s.agg = { sw: 0, sv: 0, closed: 0, unserved: 0, arrSum1: 0, arrN1: 0, legalOk: 0, legalN: 0, pen: 0, diversions: 0, secondaryCount: 0, secondarySum: 0, secondaryOnTime: 0, opsPoints: 0, opsLog: [] };
+    s.cov = { n: 0, sum: 0, next: s.t + 60 };
+    s.shiftLen = s.t + 12 * 3600;
+    s.ev.nextSpawn = s.t + this.rr(20, 70);
+    s.ev.nextMU = muNext != null ? s.t + muNext : null;
+    s.ev.nextSecond = s.t + (this._isDay() ? 0 : ((7 - this.hour() + 24) % 24 || 24) * 3600);
+    s.ev.nextAcute = null;
+    this.L('sys', `Rozjetý kraj: ${this._activeRuns()} probíhajících výjezdů, ${s.cases.length} rozpracovaných událostí.`);
   }
 
   // spojový řád: volání, potvrzení ZOS, zpráva, odpověď ZOS

@@ -934,6 +934,7 @@ class SimLoop {
     if (cs.unserved) this._opsScore(-8, `neobsloužený případ ${cs.num}`, cs.id);
     cs.score = this._scoreCase(cs);
     this._lzsEval(cs);
+    if (cs.carried) { this.L('case', `${cs.num}: uzavřeno (převzatá událost, bez bodů)`, cs.id); return; }   // událost převzatá při startu rozjetého kraje se nehodnotí
     const a = s.agg, w = { 1: 3, 2: 2, 3: 1 }[cs.nOrig] || 1;
     a.sw += w; a.sv += w * cs.score.total; a.closed++;
     if (!a.comp) a.comp = this._compNew();

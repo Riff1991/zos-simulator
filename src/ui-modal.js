@@ -94,6 +94,7 @@ function shiftModal() {
   let saved = null; try { saved = localStorage.getItem(SAVE_KEY); } catch (e) {}
   let stored = {}; try { stored = JSON.parse(localStorage.getItem(OPT_KEY) || '{}') || {}; } catch (_) {}
   const o = window._opt = Object.assign({ mode: 'shift', hour: 7, diff: 1, secondaryEnabled: 'true', startState: 'clean', muEnabled: 'true', muProbability: 10, muRole: 'mu' }, stored, window._opt || {});
+  if (o.startState === 'running') o.startState = 'running-low';   // stará volba Rozjetý kraj = málo
   o.libero = Sim.liberoSettings(o.libero);
   saveOpts();
   const lib = o.libero, libMode = (id, m, label) => `<button data-libmode="${id}" data-val="${m}" class="${lib.modes[id] === m ? 'on' : ''}">${label}</button>`;
@@ -108,7 +109,7 @@ function shiftModal() {
 <b>Směna</b><div class="opts">${b('hour', 7, 'Denní 7–19')}${b('hour', 19, 'Noční 19–7')}</div>
 <b>Datum a hodina začátku</b><div class="opts"><input type="date" id="opt-date" value="${esc(o.date || new Date().toISOString().slice(0, 10))}" max="${new Date().toISOString().slice(0, 10)}"> <select id="opt-hour">${Array.from({ length: 24 }, (_, h) => `<option value="${h}"${Number(o.hour) === h ? ' selected' : ''}>${h}:00</option>`).join('')}</select></div>
 <p style="font-size:12px;margin:2px 0;color:#5a6a7a">Počasí se stáhne podle data (historická data; u dnešního a budoucího data nebo bez sítě se simuluje).</p>
-${o.mode === 'mu' ? `<p style="font-size:12px;margin:4px 0;color:#5a6a7a">Kraj je rozjetý podle zvoleného času (posádky na výjezdech, v transportu, při předání i na návratu). MU začne za pár minut a cvičení končí jejím ukončením s vyhodnocením.</p><b>Tvoje role</b><div class="opts">${b('muRole', 'mu', 'Řídím MU (401)')}${b('muRole', 'normal', 'Řídím běžný provoz')}</div><b>Typ MU</b><div class="opts"><select id="opt-mutype"><option value="">Náhodný podle času a počasí</option>${ZOS_DATA.muTypes.map(t => `<option value="${t.id}"${o.muType === t.id ? ' selected' : ''}>${esc(t.l)}</option>`).join('')}</select></div>` : ''}${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('startState', 'clean', 'Načisto · 0 výjezdů')}${b('startState', 'running', 'Rozjetý kraj · rozpracované události')}</div>` : ''}
+${o.mode === 'mu' ? `<p style="font-size:12px;margin:4px 0;color:#5a6a7a">Kraj je rozjetý podle zvoleného času (posádky na výjezdech, v transportu, při předání i na návratu). MU začne za pár minut a cvičení končí jejím ukončením s vyhodnocením.</p><b>Tvoje role</b><div class="opts">${b('muRole', 'mu', 'Řídím MU (401)')}${b('muRole', 'normal', 'Řídím běžný provoz')}</div><b>Typ MU</b><div class="opts"><select id="opt-mutype"><option value="">Náhodný podle času a počasí</option>${ZOS_DATA.muTypes.map(t => `<option value="${t.id}"${o.muType === t.id ? ' selected' : ''}>${esc(t.l)}</option>`).join('')}</select></div>` : ''}${o.mode === 'shift' ? `<b>Počáteční stav kraje</b><div class="opts">${b('startState', 'clean', 'Načisto · 0 výjezdů')}${b('startState', 'running-low', 'Rozjetý kraj · málo (asi 5 výjezdů)')}${b('startState', 'running-mid', 'Rozjetý kraj · středně (asi 10)')}${b('startState', 'running-peak', 'Rozjetý kraj · špička (15–18)')}</div>` : ''}
 <b>Vytížení</b><div class="opts">${b('diff', 0.85, 'Klidné')}${b('diff', 1, 'Běžné')}${b('diff', 1.25, 'Nálož')}</div>
 <b>Sekundární převozy</b><div class="opts">${b('secondaryEnabled', 'true', 'Zapnuté')}${b('secondaryEnabled', 'false', 'Vypnuté')}</div>
 ${o.mode === 'mu' ? '' : `<b>Mimořádná událost (MU)</b><div class="opts">${b('muEnabled', 'true', 'Povoleno')}${b('muEnabled', 'false', 'Vypnuto')}</div>
@@ -228,7 +229,7 @@ async function newGame(noWx) {
   sim = new Sim({ date, weather, mode: o.mode, startHour: Number(o.hour), diff: Number(o.diff), secondaryEnabled: o.secondaryEnabled !== 'false', muEnabled: o.mode === 'mu' ? true : o.muEnabled !== 'false', muProbability: Number(o.muProbability), muType: o.mode === 'mu' ? (o.muType || null) : null, muRole: o.mode === 'mu' ? (o.muRole || 'mu') : null, startState: o.startState, libero: o.libero, radio: settings.radioInteractive ? 'interactive' : 'auto', seed });
   applyVoice();
   afterLoad(); speed = settings.speed; savedSpeed = settings.speed;
-  closeModal(); toast(o.mode === 'mu' ? 'Cvičení MU: kraj je rozjetý, MU začne za pár minut.' : o.mode === 'shift' && o.startState === 'running' ? 'Směna začala s rozpracovanými událostmi; jedna posádka už je na cestě.' : 'Směna začala. Čekající případy jsou vlevo.', '');
+  closeModal(); toast(o.mode === 'mu' ? 'Cvičení MU: kraj je rozjetý, MU začne za pár minut.' : o.mode === 'shift' && /^running/.test(o.startState || '') ? 'Směna začala, kraj je rozjetý: probíhá ' + sim._activeRuns() + ' výjezdů v různých fázích.' : 'Směna začala. Čekající případy jsou vlevo.', '');
 }
 function afterLoad() { radioFeed.length = 0; sel = { c: null, k: null }; seenLog = sim.s.logId; tabCase = 'waiting'; caseSearch = ''; $('case-search').value = ''; vb = { x: 30, y: 30, w: 970, h: 940 }; renderToolsOnce(); render(); }
 function doSave() { if (sim.s.scripted) return; try { localStorage.setItem(SAVE_KEY, sim.serialize()); } catch (e) {} }

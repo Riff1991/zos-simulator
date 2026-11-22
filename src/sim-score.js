@@ -84,7 +84,7 @@ class SimScore {
     let sw = a.sw, sv = a.sv;
     const comp = a.comp ? JSON.parse(JSON.stringify(a.comp)) : this._compNew();
     for (const c of s.cases) {
-      if (c.status === 'closed' || c.status === 'intake' || c.typ === 'sekundární') continue;
+      if (c.status === 'closed' || c.status === 'intake' || c.typ === 'sekundární' || c.carried) continue;
       const sc = this._scoreCase(c), w = W[c.nOrig];
       sw += w; sv += w * sc.total;
       this._compAdd(comp, c, sc);
