@@ -369,7 +369,7 @@ class SimCases {
   _spawn(over) {
     over = over || {};
     const s = this.s, D = ZOS_DATA, t = s.t;
-    const ind = over.ind ? D.indications.find(x => x.id === over.ind) : this.wpick(D.indications, x => x.w * this._wxCase(x.id));
+    const ind = over.indObj || (over.ind ? D.indications.find(x => x.id === over.ind) : this.wpick(D.indications, x => x.w * this._wxCase(x.id)));
     const nKeys = Object.keys(ind.n).map(Number);
     let n = over.n || Number(this.wpick(nKeys, k => ind.n[k]));
     let dyn = over.dyn != null ? over.dyn : n === 2 && !!ind.dyn && this.rnd() < ind.dyn;

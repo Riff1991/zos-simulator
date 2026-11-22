@@ -217,7 +217,16 @@ document.addEventListener('click', ev => {
     selectCaseFromElement(cc, t);
   }
 });
-$('btn-end').addEventListener('click', () => { if (sim) { sim.s.ended = true; speed = 0; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} endModal(); } });
+$('btn-end').addEventListener('click', () => {
+  if (!sim || sim.s.ended) return;
+  const prev = speed; speed = 0;
+  if (!confirm('Ukončit směnu a vyhodnotit ji podle dosavadního průběhu? Uložená směna se smaže.')) { speed = prev; lastT = performance.now(); return; }
+  sim.finishShift(true); try { localStorage.removeItem(SAVE_KEY); } catch (e) {} render(); endModal();
+});
+$('btn-pause-shift').addEventListener('click', () => {
+  if (!sim || sim.s.ended) return;
+  speed = 0; doSave(); homeModal();   // rozehraná směna zůstane uložená, v nabídce je Pokračovat
+});
 // mapa: výběr a posun
 (function () {
   const svg = $('map'), wrap = $('mapwrap'); let mapDrag = null;

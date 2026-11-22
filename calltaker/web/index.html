@@ -590,6 +590,20 @@ for (const x of ZOS_DATA.indications) {
   if (c.sceneQ) x.scene = [c.sceneQ[0], c.sceneQ[2]];
 }
 
+// Akutní (neplánované) sekundární převozy – kalibrace podle exportu Seznam výjezdů, typ výjezdu sekundár (1. 1.–21. 11. 2026, 407 výjezdů).
+// Plánované N4 převozy (přistavení na čas) v tom exportu nejsou, řeší je _spawnSecondary. Hodiny = počty událostí podle hodiny výzvy 0–23.
+ZOS_DATA.acuteSec = {
+  perDay: 407 / 325,                                  // průměr za den (≈ 0,6 za 12h směnu)
+  hourW: [6, 6, 6, 5, 2, 5, 7, 17, 17, 31, 29, 26, 34, 24, 28, 37, 16, 22, 22, 18, 12, 15, 9, 13],
+  nW: { 1: 2, 2: 324, 3: 69 },                        // naléhavost (N4 v exportu 12 – patří mezi plánované)
+  rlp: { 1: 0.5, 2: 0.44, 3: 0.13 },                  // podíl RLP (RZP s lékařem) podle N
+  origin: [['h-cb', 0.24], ['h-ck', 0.17], ['h-st', 0.13], ['h-pi', 0.125], ['h-pt', 0.1], ['h-ta', 0.095], ['h-jh', 0.085]],
+  charakter: [['Sekundární převoz', 0.78], ['Tísňová výzva ve zdrav. zařízení', 0.19], ['Tísňová výzva v budově', 0.03]],
+  intakeQ: [2, 4, 24],                                // volání → výzva v minutách [p10, p50, p90]
+  ind: { id: 'prevoz_ak', klasif: 'Převoz', symptomKey: 'Převoz', n: { 2: 0.82, 3: 0.18 }, rvP: 0.05, trans: 1, hosp: 'okresni',
+    scene: [5, 35], sceneQ: [5, 14, 35], w: 0, where: ['zz'], age: [30, 90], ageQ: [37, 55, 69, 78, 86] },
+};
+
 // ZOS simulátor – generátor fiktivních osob (pacient, oznamovatel, členové posádek).
 // Všechny osoby jsou vymyšlené. Jména se skládají z běžných českých jmen a příjmení,
 // ženské tvary příjmení jsou v párech (Novák → Nováková, Černý → Černá, Sedláček → Sedláčková).
@@ -6557,7 +6571,7 @@ class SimCases {
   _spawn(over) {
     over = over || {};
     const s = this.s, D = ZOS_DATA, t = s.t;
-    const ind = over.ind ? D.indications.find(x => x.id === over.ind) : this.wpick(D.indications, x => x.w * this._wxCase(x.id));
+    const ind = over.indObj || (over.ind ? D.indications.find(x => x.id === over.ind) : this.wpick(D.indications, x => x.w * this._wxCase(x.id)));
     const nKeys = Object.keys(ind.n).map(Number);
     let n = over.n || Number(this.wpick(nKeys, k => ind.n[k]));
     let dyn = over.dyn != null ? over.dyn : n === 2 && !!ind.dyn && this.rnd() < ind.dyn;
@@ -7472,6 +7486,43 @@ class SimMU {
     this.L('case', `Nový sekundární převoz ${c.num}: N4 – ${from.short} → ${to.short}, přistavení ${this.clockAt(scheduledAt)}`, c.id);
     return c;
   }
+  // Čas příštího akutního sekundáru: thinning podle hodinového profilu ZOS_DATA.acuteSec.hourW (celkem perDay za den).
+  _nextAcute(t) {
+    const A = ZOS_DATA.acuteSec, W = A.hourW, sum = W.reduce((a, b) => a + b, 0), wMax = Math.max(...W);
+    const rate = h => A.perDay * W[h] / sum / 3600, rMax = A.perDay * wMax / sum / 3600;
+    let tt = t;
+    for (let i = 0; i < 400; i++) {
+      tt += -Math.log(1 - this.rnd()) / rMax;
+      const h = Math.floor(((this.s.startHour * 3600 + tt) % 86400) / 3600);
+      if (this.rnd() < rate(h) / rMax) break;
+    }
+    return tt;
+  }
+  // Akutní sekundární převoz = primární případ (naléhavost N1–N3, vysílání, lékař a skóre jako u primárních) z nemocnice do jiné nemocnice.
+  // RLP (lékař jede v RZP) ze skutečného podílu podle N; lékař u takového převozu vždy doprovází pacienta (ME02.06).
+  _spawnAcuteSecondary(over) {
+    over = over || {};
+    const D = ZOS_DATA, A = D.acuteSec, t = this.s.t;
+    const n = over.n || Number(this.wpick(Object.keys(A.nW), k => A.nW[k]));
+    const near = D.hospitals.filter(h => !h.far && !h.ext);
+    const fromId = over.from || this.wpick(A.origin, x => x[1])[0];
+    const from = D.hospitals.find(h => h.id === fromId);
+    const to = (over.to && D.hospitals.find(h => h.id === over.to)) || (from.id === 'h-cb' ? this.pick(near.filter(h => h.id !== 'h-cb' && h.types.includes('okresni'))) : D.hospitals.find(h => h.id === 'h-cb'));
+    const town = D.towns.reduce((best, x) => !best || hav(x.lat, x.lon, from.lat, from.lon) < hav(best.lat, best.lon, from.lat, from.lon) ? x : best, null);
+    const rlp = over.rlp != null ? over.rlp : this.rnd() < (A.rlp[n] || 0);
+    const intake = Math.round(Math.max(60, this._logn(A.intakeQ, 1)));
+    const c = this._spawn({ indObj: A.ind, n, where: 'zz', at: { lat: from.lat, lon: from.lon, addr: from.name, town: town.n, okres: null },
+      symptoms: this._symptomSet('Převoz', n), extKinds: null, intake, rvLater: false });
+    c.acuteSec = true; c.ind = A.ind.id; c.klasif = 'Převoz';
+    c.charakter = this.wpick(A.charakter, x => x[1])[0];
+    c.hospType = 'okresni'; c.targetHospitalId = to.id; c.originHospitalId = from.id; c.trans = true;
+    c.rvNeed = rlp; c.dyn = false; c.rvLater = false; c.rvReqKind = null; c.rvReqAt = null;
+    c.initialDispatchRequired = rlp ? ['RZP', 'RV'] : ['RZP'];
+    c.src = 'Zdravotnické zařízení'; c.oznRel = 'sestra oddělení';
+    c.poznamka = this.pick([`překlad z ${from.short} do ${to.short}`, `akutní převoz na vyšší pracoviště, ${to.short}`, `přeložení k dalšímu ošetření v ${to.short}`]);
+    c.desc = `${c.desc.replace(/ Převoz\.$/, '')} Převoz: ${from.short} → ${to.short}${rlp ? ', s lékařem' : ''}.`;
+    return c;
+  }
   _newCase(o) {
     const s = this.s, t = s.t;
     const num = 'P' + (1000 + (++s.caseSeq));
@@ -7504,6 +7555,13 @@ class SimLoop {
 
     while (s.ev.nextSpawn <= t) { if (s.liveCalls) this._liveSpawn(); else this._spawn(); s.ev.nextSpawn += s.liveCalls && s.liveCalls.mode === 'training' ? s.liveCalls.gap : this._gap(); }
     if (s.liveCalls) { this._callsTick(); if (s.liveCalls.bot) this.botTick(); }
+    // akutní sekundární převozy: nehomogenní Poissonův proces podle hodinového profilu z reálných dat
+    if (s.ev.nextAcute == null) s.ev.nextAcute = this._nextAcute(t);
+    if (t >= s.ev.nextAcute) {
+      const open = s.cases.some(c => c.mu && c.status !== 'closed');
+      if (!open && s.secondaryEnabled !== false && !s.scripted && !(s.mode === 'shift' && t >= s.shiftLen)) this._spawnAcuteSecondary();
+      s.ev.nextAcute = this._nextAcute(t);
+    }
     if (t >= s.ev.nextSecond) {
       const shiftFinished = s.mode === 'shift' && t >= s.shiftLen;
       const muOpen = s.cases.some(c => c.mu && c.status !== 'closed');
@@ -7544,11 +7602,14 @@ class SimLoop {
       let drop = s.cases.length - 400;
       s.cases = s.cases.filter(c => { if (drop > 0 && c.status === 'closed') { drop--; return false; } return true; });
     }
-    if (s.mode === 'shift' && t >= s.shiftLen && !s.ended) {
-      s.ended = true;
-      for (const cs of s.cases) if (cs.status !== 'closed' && cs.exam && cs.exam.needed && !cs.exam.done) this._opsScore(-3, `neprovedená prohlídka zemřelého u ${cs.num}`, cs.id);
-      this.L('sys', 'Konec směny.');
-    }
+    if (s.mode === 'shift' && t >= s.shiftLen && !s.ended) this.finishShift(false);
+  }
+  // Konec směny: přirozený (uplynulo 12 h) i předčasný (hráč zvolil Ukončit a vyhodnotit).
+  finishShift(early) {
+    const s = this.s; if (s.ended) return;
+    s.ended = true;
+    for (const cs of s.cases) if (cs.status !== 'closed' && cs.exam && cs.exam.needed && !cs.exam.done) this._opsScore(-3, `neprovedená prohlídka zemřelého u ${cs.num}`, cs.id);
+    this.L('sys', early ? 'Směna ukončena předčasně, vyhodnocení podle dosavadního průběhu.' : 'Konec směny.');
   }
 
   _caseStep(c) {
@@ -7642,7 +7703,8 @@ class SimLoop {
         for (const k of c.crews.map(id => this.crewOf(id)).filter(k => k && (k.state === 'call' || k.state === 'enroute') && k.type !== 'LZS')) this._zosCall(k, c, 'pacient se probírá, měníme naléhavost na N2.');
       }
     }
-    if (c.status === 'waiting' && !c.mu && !(c.crews && c.crews.length && this._busyCrews(c).length)) {   // částečně obsazený případ (posádka jede) neeskaluje ani se nezavírá
+    // akutní sekundár neeskaluje a nezavírá se jako neobsloužený: nemocnice volá znovu a případ čeká do vyřízení
+    if (c.status === 'waiting' && !c.mu && !c.acuteSec && !(c.crews && c.crews.length && this._busyCrews(c).length)) {   // částečně obsazený případ (posádka jede) neeskaluje ani se nezavírá
       if (t >= c.escAt && c.n > 1 && !c.exitus) {
         c.n--; c.escAt = t + 1500;
         if (c.n === 1) c.rvNeed = true;
@@ -8134,7 +8196,7 @@ class SimLoop {
         if (rv && rv.type === 'RV' && rv.caseRole !== 'heli-transfer' && rv.caseId === cs.id) {
           if (rv.state !== 'onscene') { this.L('crew', `${rv.name}: RZP odváží jediného pacienta, RV se vrací na základnu`, cs.id, rv.id); this._release(rv); continue; }
           // doprovod: po KPR vždy, N1 většinou, N2 hlavně děti, N3 výjimečně
-          const pEsc = cs.script && cs.script.escort != null ? (cs.script.escort ? 1 : 0) : cs.fate === 'rosc' ? 1 : cs.n === 1 ? 0.85 : cs.n === 2 ? (cs.child ? 0.8 : 0.35) : 0.06;
+          const pEsc = cs.acuteSec ? (cs.docAssigned ? 1 : 0) : cs.script && cs.script.escort != null ? (cs.script.escort ? 1 : 0) : cs.fate === 'rosc' ? 1 : cs.n === 1 ? 0.85 : cs.n === 2 ? (cs.child ? 0.8 : 0.35) : 0.06;
           if (this.rnd() < pEsc) escorts.push(rv);
           else leaving.push(rv);
         }

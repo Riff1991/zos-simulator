@@ -704,6 +704,43 @@ class SimMU {
     this.L('case', `Nový sekundární převoz ${c.num}: N4 – ${from.short} → ${to.short}, přistavení ${this.clockAt(scheduledAt)}`, c.id);
     return c;
   }
+  // Čas příštího akutního sekundáru: thinning podle hodinového profilu ZOS_DATA.acuteSec.hourW (celkem perDay za den).
+  _nextAcute(t) {
+    const A = ZOS_DATA.acuteSec, W = A.hourW, sum = W.reduce((a, b) => a + b, 0), wMax = Math.max(...W);
+    const rate = h => A.perDay * W[h] / sum / 3600, rMax = A.perDay * wMax / sum / 3600;
+    let tt = t;
+    for (let i = 0; i < 400; i++) {
+      tt += -Math.log(1 - this.rnd()) / rMax;
+      const h = Math.floor(((this.s.startHour * 3600 + tt) % 86400) / 3600);
+      if (this.rnd() < rate(h) / rMax) break;
+    }
+    return tt;
+  }
+  // Akutní sekundární převoz = primární případ (naléhavost N1–N3, vysílání, lékař a skóre jako u primárních) z nemocnice do jiné nemocnice.
+  // RLP (lékař jede v RZP) ze skutečného podílu podle N; lékař u takového převozu vždy doprovází pacienta (ME02.06).
+  _spawnAcuteSecondary(over) {
+    over = over || {};
+    const D = ZOS_DATA, A = D.acuteSec, t = this.s.t;
+    const n = over.n || Number(this.wpick(Object.keys(A.nW), k => A.nW[k]));
+    const near = D.hospitals.filter(h => !h.far && !h.ext);
+    const fromId = over.from || this.wpick(A.origin, x => x[1])[0];
+    const from = D.hospitals.find(h => h.id === fromId);
+    const to = (over.to && D.hospitals.find(h => h.id === over.to)) || (from.id === 'h-cb' ? this.pick(near.filter(h => h.id !== 'h-cb' && h.types.includes('okresni'))) : D.hospitals.find(h => h.id === 'h-cb'));
+    const town = D.towns.reduce((best, x) => !best || hav(x.lat, x.lon, from.lat, from.lon) < hav(best.lat, best.lon, from.lat, from.lon) ? x : best, null);
+    const rlp = over.rlp != null ? over.rlp : this.rnd() < (A.rlp[n] || 0);
+    const intake = Math.round(Math.max(60, this._logn(A.intakeQ, 1)));
+    const c = this._spawn({ indObj: A.ind, n, where: 'zz', at: { lat: from.lat, lon: from.lon, addr: from.name, town: town.n, okres: null },
+      symptoms: this._symptomSet('Převoz', n), extKinds: null, intake, rvLater: false });
+    c.acuteSec = true; c.ind = A.ind.id; c.klasif = 'Převoz';
+    c.charakter = this.wpick(A.charakter, x => x[1])[0];
+    c.hospType = 'okresni'; c.targetHospitalId = to.id; c.originHospitalId = from.id; c.trans = true;
+    c.rvNeed = rlp; c.dyn = false; c.rvLater = false; c.rvReqKind = null; c.rvReqAt = null;
+    c.initialDispatchRequired = rlp ? ['RZP', 'RV'] : ['RZP'];
+    c.src = 'Zdravotnické zařízení'; c.oznRel = 'sestra oddělení';
+    c.poznamka = this.pick([`překlad z ${from.short} do ${to.short}`, `akutní převoz na vyšší pracoviště, ${to.short}`, `přeložení k dalšímu ošetření v ${to.short}`]);
+    c.desc = `${c.desc.replace(/ Převoz\.$/, '')} Převoz: ${from.short} → ${to.short}${rlp ? ', s lékařem' : ''}.`;
+    return c;
+  }
   _newCase(o) {
     const s = this.s, t = s.t;
     const num = 'P' + (1000 + (++s.caseSeq));

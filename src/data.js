@@ -531,4 +531,18 @@ for (const x of ZOS_DATA.indications) {
   if (c.sceneQ) x.scene = [c.sceneQ[0], c.sceneQ[2]];
 }
 
+// Akutní (neplánované) sekundární převozy – kalibrace podle exportu Seznam výjezdů, typ výjezdu sekundár (1. 1.–21. 11. 2026, 407 výjezdů).
+// Plánované N4 převozy (přistavení na čas) v tom exportu nejsou, řeší je _spawnSecondary. Hodiny = počty událostí podle hodiny výzvy 0–23.
+ZOS_DATA.acuteSec = {
+  perDay: 407 / 325,                                  // průměr za den (≈ 0,6 za 12h směnu)
+  hourW: [6, 6, 6, 5, 2, 5, 7, 17, 17, 31, 29, 26, 34, 24, 28, 37, 16, 22, 22, 18, 12, 15, 9, 13],
+  nW: { 1: 2, 2: 324, 3: 69 },                        // naléhavost (N4 v exportu 12 – patří mezi plánované)
+  rlp: { 1: 0.5, 2: 0.44, 3: 0.13 },                  // podíl RLP (RZP s lékařem) podle N
+  origin: [['h-cb', 0.24], ['h-ck', 0.17], ['h-st', 0.13], ['h-pi', 0.125], ['h-pt', 0.1], ['h-ta', 0.095], ['h-jh', 0.085]],
+  charakter: [['Sekundární převoz', 0.78], ['Tísňová výzva ve zdrav. zařízení', 0.19], ['Tísňová výzva v budově', 0.03]],
+  intakeQ: [2, 4, 24],                                // volání → výzva v minutách [p10, p50, p90]
+  ind: { id: 'prevoz_ak', klasif: 'Převoz', symptomKey: 'Převoz', n: { 2: 0.82, 3: 0.18 }, rvP: 0.05, trans: 1, hosp: 'okresni',
+    scene: [5, 35], sceneQ: [5, 14, 35], w: 0, where: ['zz'], age: [30, 90], ageQ: [37, 55, 69, 78, 86] },
+};
+
 if (typeof module !== "undefined") module.exports = ZOS_DATA;

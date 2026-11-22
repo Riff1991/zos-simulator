@@ -1271,3 +1271,17 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (!(rd / nRd > 0.5 && byt / nByt > 0.55 && upper > lower * 0.3)) throw new Error(`popis místa: RD ${rd}/${nRd}, byt ${byt}/${nByt}, malá ${lower}, ostatní ${upper}`);
   console.log(`kalibrace podle reálných dat: objem zima ${wd.toFixed(0)}/${wn.toFixed(0)}, léto ${sd.toFixed(0)}; dynamická ${(dy / n2 * 100).toFixed(0)} % z N2, CMP bez ní; popis místa ve stylu zápisů true`);
 }
+
+// předčasný konec směny: summary jde vyhodnotit, ended zastaví step, druhé volání nic nezmění
+{
+  const sim = new Sim({ seed: 31, mode: 'shift', startHour: 7 });
+  sim.step(3600);
+  const before = sim.s.t;
+  sim.finishShift(true);
+  if (!sim.s.ended) throw new Error('finishShift(true) nenastavil ended');
+  const total = sim.summary().total, logN = sim.s.log.length;
+  sim.finishShift(true); sim.step(600);
+  if (sim.s.t !== before || sim.s.log.length !== logN || sim.summary().total !== total) throw new Error('po předčasném konci se simulace změnila');
+  if (typeof total !== 'number' || !isFinite(total)) throw new Error('summary po předčasném konci není číslo');
+  console.log('předčasný konec směny: vyhodnocení po 1 h, další krok nic nemění', true);
+}
