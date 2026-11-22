@@ -33,7 +33,16 @@ header .brand{font-weight:600;letter-spacing:.04em;font-size:12px;color:#9fb4c7;
 .speeds button{background:var(--hdr2);border:1px solid #38505f;color:#cfe0ee;padding:3px 8px;border-radius:4px;font:500 12px var(--mono)}
 .speeds button.on{background:var(--acc);border-color:#7db0f2;color:#fff}
 .speeds button.set{border:1px dashed #7db0f2;color:#9fc3e2}
-#alerts-live{flex:1 0 100%;order:10}
+#alerts-live{position:fixed;top:var(--hdr-h,48px);left:50%;transform:translateX(-50%);width:min(560px,94vw);z-index:70;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#alerts-live:empty{display:none}
+#alerts-live>*{pointer-events:auto}
+.alert-more{align-self:flex-end;background:var(--hdr);color:#cfe0ee;border:1px solid #38505f;border-radius:999px;padding:2px 11px;font-size:11px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.hbtn.legacy{display:none}
+.kpi>span{background:rgba(255,255,255,.07);border:1px solid #2f4658;border-radius:999px;padding:1px 9px;white-space:nowrap;flex:none}
+@media (min-width:1100px){header{flex-wrap:nowrap;width:100%;box-sizing:border-box;overflow:hidden}header .brand,#clock{white-space:nowrap}.kpi{flex:1 1 0;min-width:0;overflow:hidden;justify-content:flex-start;gap:6px}header .gear,header .hbtn,#multiwin,.speeds{flex:none}}
+@media (min-width:1100px) and (max-width:1439px){.kpi .k-left,.kpi .k-wx{display:none}}
+@media (min-width:1100px) and (max-width:1299px){.kpi .k-score small{display:none}}
+@media (min-width:1100px) and (max-width:1439px){header{gap:7px}.speeds button{padding:3px 5px}.kpi>span{padding:1px 7px}#clock{min-width:0}}
 #radio-live{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:5px;padding:5px;background:#0b1c2a}.rc-idle{color:#7d97ad;font-size:12px;padding:6px 4px;text-align:center}
 #w-rcom.live>h2{background:linear-gradient(#2a5f8f,#1d4568)}.rc-hearing{color:#9fc3e2;font-style:italic;flex:1 1 220px}
 .radio-call.rv{background:#4a1612;border-color:#e0453a}.radio-call.rv .rc-msg{color:#ffd9d4}.radio-call.rv.open{background:#5a1a15}.rc-red{background:#c0392b;color:#fff;border-radius:3px;padding:1px 6px;font:700 11px var(--sans);letter-spacing:.04em}
@@ -52,7 +61,7 @@ header .brand{font-weight:600;letter-spacing:.04em;font-size:12px;color:#9fb4c7;
 .tut-hl{outline:3px solid #f5c542 !important;outline-offset:2px;box-shadow:0 0 0 6px rgba(245,197,66,.25) !important;animation:tut-pulse 1.4s ease-in-out infinite}
 @keyframes tut-pulse{50%{outline-color:#ffe08a}}
 .radio-call .btn{padding:2px 9px;font-size:12px;background:#24445e;color:#eef6fd;border:1px solid #5d8db5}.radio-call .btn:hover{background:#2f5a7c}.radio-call .btn.pri{background:#2f7de1;border-color:#7db0f2;color:#fff}
-.live-alert{width:100%;background:#8f1e18;color:#fff;border:2px solid #ff756b;border-radius:4px;padding:5px 10px;text-align:left;font-weight:700;animation:alert-flash .75s steps(2,end) infinite}
+.live-alert{width:100%;background:#8f1e18;color:#fff;border:1px solid #ff756b;border-left-width:4px;border-radius:6px;padding:4px 8px;text-align:left;font-weight:700;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.45);animation:alert-flash .75s steps(2,end) infinite}
 @keyframes alert-flash{50%{background:#d9342b;color:#fff;box-shadow:0 0 12px #ff756b}}
 .kpi{display:flex;gap:12px;margin-left:auto;font-size:12px;color:#9fb4c7}
 .kpi b{color:#fff;font:500 14px var(--mono)}
@@ -91,6 +100,7 @@ main.lay>.win{margin:3px}
 .win.floating .rz{display:block}
 body.mu-mode #w-detail>h2::after{content:' · režim MU';color:#ffb4ae;font-weight:400}
 #layout-menu{position:fixed;z-index:99000;background:var(--panel);color:#1c2b3a;border:1px solid #000;border-radius:6px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:5px;width:270px}
+#layout-menu b{color:var(--ink)}
 #layout-menu small{color:#5a6a7a;font-size:11px;line-height:1.35}
 @media (max-width:1099px){.pin-btn,.split,.rz{display:none!important}}
 
@@ -389,6 +399,7 @@ td.nn small{display:block;font:400 10px var(--mono);color:var(--mut)}
 .st-activating{background:var(--c-act);color:#201040;animation:pulse 1s infinite}
 .st-second{background:var(--c-second);color:#fff}
 @keyframes pulse{50%{opacity:.55}}
+.legend-toggle{background:var(--hdr2);color:#cfe0ee;border:1px solid #38505f;border-radius:999px;padding:1px 10px;font-size:11px;cursor:pointer}
 .legend{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;padding:5px 8px;font-size:11px;color:var(--mut);border-top:1px solid var(--line);background:#dfe6ec}
 .legend-item{display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
 .legend-icon{display:inline-flex;width:36px;height:22px;align-items:center;justify-content:center;border:1px solid #0005;border-radius:3px;font-style:normal}
@@ -577,7 +588,7 @@ html[data-theme=dark] .st-transport,html[data-theme=dark] .st-handover{backgroun
     <span id="clock">--:--:--</span>
     <div class="speeds" id="speeds"></div>
     <div class="kpi" id="kpi"></div>
-    <div id="multiwin"><button class="hbtn" data-act="layout-menu">⊞ Rozložení</button><button class="hbtn" data-act="open-map">Otevřít mapu bokem</button><button class="hbtn" id="toggle-map-main" data-act="toggle-map-main">Skrýt mapu zde</button><button class="hbtn" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="hbtn" id="toggle-radio-main" data-act="toggle-radio-main">Skrýt přehled zde</button></div>
+    <div id="multiwin"><button class="hbtn" data-act="layout-menu" title="Rozložení panelů a okna bokem">⊞ Okna ▾</button><button class="hbtn legacy" data-act="open-map">Otevřít mapu bokem</button><button class="hbtn legacy" id="toggle-map-main" data-act="toggle-map-main">Skrýt mapu zde</button><button class="hbtn legacy" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="hbtn legacy" id="toggle-radio-main" data-act="toggle-radio-main">Skrýt přehled zde</button></div>
     <div id="alerts-live"></div>
     <button class="hbtn gear" id="btn-upd" data-act="check-update-hdr" title="Zkontrolovat aktualizaci" aria-label="Zkontrolovat aktualizaci">⟳</button>
     <button class="hbtn gear" data-act="settings" title="Nastavení" aria-label="Nastavení">⚙</button>

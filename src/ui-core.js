@@ -9,6 +9,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&am
 const SPEEDS = [0, 1, 5, 10, 20, 30, 60];
 const OPT_KEY = 'zos_jck_opts_v1';
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window._opt || {})); } catch (_) {} }
+let legendOpen = false, alertsExpanded = false;   // legenda posádek je výchozí sbalená; rozbalení upozornění nad mapou
+try { legendOpen = localStorage.getItem('zos_legend_open') === '1'; } catch (e) {}
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 // ---------- nastavení (vzhled, písmo, zvuk, hra) ----------
 const SET_KEY = 'zos_jck_settings_v1';

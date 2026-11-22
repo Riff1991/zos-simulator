@@ -6,8 +6,9 @@ const LAYOUT_NAMES = { cases: 'Případy', detail: 'Panel případu', rcom: 'Rá
 // sloupce v %, v každém sloupci zásobník panelů [id, výška v %]
 const LAYOUT_PRESETS = {
   normal: {
-    default: { cols: [41, 29.5, 29.5], stacks: [[['cases', 31], ['detail', 40], ['rcom', 29]], [['map', 37], ['radio', 63]], [['crews', 100]]] },
+    default: { cols: [24, 52, 24], stacks: [[['cases', 34], ['detail', 40], ['rcom', 26]], [['map', 62], ['radio', 38]], [['crews', 100]]] },
     widemap: { cols: [24, 52, 24], stacks: [[['cases', 34], ['detail', 40], ['rcom', 26]], [['map', 62], ['radio', 38]], [['crews', 100]]] },
+    classic: { cols: [41, 29.5, 29.5], stacks: [[['cases', 31], ['detail', 40], ['rcom', 29]], [['map', 37], ['radio', 63]], [['crews', 100]]] },
     biglist: { cols: [52, 20, 28], stacks: [[['cases', 40], ['detail', 40], ['rcom', 20]], [['map', 40], ['radio', 60]], [['crews', 100]]] },
   },
   mu: {
@@ -24,6 +25,7 @@ const LAYOUT_PRESETS = {
 const layoutFloatsFor = key => (key === 'ct' ? { spider: { x: Math.max(20, innerWidth - 440), y: 96, w: 420, h: Math.max(320, Math.min(600, innerHeight - 130)) } } : {});
 let layoutStore = { normal: null, mu: null, ct: null }, layoutZ = 60, layoutSplits = [];
 try { layoutStore = Object.assign(layoutStore, JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}')); } catch (_) {}
+{ const n = layoutStore.normal, old = LAYOUT_PRESETS.normal.classic; if (n && JSON.stringify([n.cols, n.stacks]) === JSON.stringify([old.cols, old.stacks]) && !Object.keys(n.floats || {}).length) layoutStore.normal = null; }
 const layoutKey = () => (ctModeOn() ? 'ct' : muModeOn() ? 'mu' : 'normal');
 const layoutClone = o => JSON.parse(JSON.stringify(o));
 const layoutHidden = id => (id === 'map' && mainPanelHidden.map) || (id === 'radio' && mainPanelHidden.radio) || (ctModeOn() && ((id === 'spider' && document.body.classList.contains('ct-spider-off')) || ((!document.body.classList.contains('ct-disp') || document.body.classList.contains('ct-call-focus')) && ['cases', 'detail', 'rcom', 'radio', 'crews'].includes(id))));
@@ -138,7 +140,7 @@ function layoutMenu(btn) {
   const old = $('layout-menu'); if (old) { old.remove(); return; }
   const key = layoutKey(), L = layoutGet(key), m = document.createElement('div'); m.id = 'layout-menu';
   const floating = Object.keys(L.floats);
-  m.innerHTML = `<b>Rozložení · ${key === 'mu' ? 'režim MU' : key === 'ct' ? 'režim calltaker' : 'běžný provoz'}</b><button class="btn" data-act="layout-preset" data-preset="default">Výchozí</button><button class="btn" data-act="layout-preset" data-preset="widemap">Široká mapa</button><button class="btn" data-act="layout-preset" data-preset="biglist">Velký seznam a detail</button>${floating.length ? `<button class="btn" data-act="layout-dock-all">Připnout zpět okna (${floating.length})</button>` : ''}<small>Velikost panelů měníš tažením lišt mezi nimi. Tlačítko ⧉ v záhlaví odepne panel do plovoucího okna (tažením za záhlaví, velikost za pravý dolní roh).</small>`;
+  m.innerHTML = `<b>Rozložení · ${key === 'mu' ? 'režim MU' : key === 'ct' ? 'režim calltaker' : 'běžný provoz'}</b><button class="btn" data-act="layout-preset" data-preset="default">Výchozí</button>${key === 'normal' ? '<button class="btn" data-act="layout-preset" data-preset="classic">Původní rozložení</button>' : '<button class="btn" data-act="layout-preset" data-preset="widemap">Široká mapa</button>'}<button class="btn" data-act="layout-preset" data-preset="biglist">Velký seznam a detail</button>${floating.length ? `<button class="btn" data-act="layout-dock-all">Připnout zpět okna (${floating.length})</button>` : ''}${satellitePanel ? '' : `<b style="margin-top:4px">Okna bokem</b><button class="btn" data-act="open-map">Otevřít mapu bokem</button><button class="btn" data-act="toggle-map-main">${mainPanelHidden.map ? 'Zobrazit mapu zde' : 'Skrýt mapu zde'}</button><button class="btn" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="btn" data-act="toggle-radio-main">${mainPanelHidden.radio ? 'Zobrazit přehled zde' : 'Skrýt přehled zde'}</button>`}<small>Velikost panelů měníš tažením lišt mezi nimi. Tlačítko ⧉ v záhlaví odepne panel do plovoucího okna (tažením za záhlaví, velikost za pravý dolní roh).</small>`;
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(r.left, innerWidth - 280)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
   document.body.appendChild(m);
   setTimeout(() => document.addEventListener('click', function close(e) { if (!m.contains(e.target) || e.target.closest('[data-act]')) { m.remove(); document.removeEventListener('click', close); } }), 0);

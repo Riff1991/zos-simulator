@@ -33,7 +33,16 @@ header .brand{font-weight:600;letter-spacing:.04em;font-size:12px;color:#9fb4c7;
 .speeds button{background:var(--hdr2);border:1px solid #38505f;color:#cfe0ee;padding:3px 8px;border-radius:4px;font:500 12px var(--mono)}
 .speeds button.on{background:var(--acc);border-color:#7db0f2;color:#fff}
 .speeds button.set{border:1px dashed #7db0f2;color:#9fc3e2}
-#alerts-live{flex:1 0 100%;order:10}
+#alerts-live{position:fixed;top:var(--hdr-h,48px);left:50%;transform:translateX(-50%);width:min(560px,94vw);z-index:70;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#alerts-live:empty{display:none}
+#alerts-live>*{pointer-events:auto}
+.alert-more{align-self:flex-end;background:var(--hdr);color:#cfe0ee;border:1px solid #38505f;border-radius:999px;padding:2px 11px;font-size:11px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.hbtn.legacy{display:none}
+.kpi>span{background:rgba(255,255,255,.07);border:1px solid #2f4658;border-radius:999px;padding:1px 9px;white-space:nowrap;flex:none}
+@media (min-width:1100px){header{flex-wrap:nowrap;width:100%;box-sizing:border-box;overflow:hidden}header .brand,#clock{white-space:nowrap}.kpi{flex:1 1 0;min-width:0;overflow:hidden;justify-content:flex-start;gap:6px}header .gear,header .hbtn,#multiwin,.speeds{flex:none}}
+@media (min-width:1100px) and (max-width:1439px){.kpi .k-left,.kpi .k-wx{display:none}}
+@media (min-width:1100px) and (max-width:1299px){.kpi .k-score small{display:none}}
+@media (min-width:1100px) and (max-width:1439px){header{gap:7px}.speeds button{padding:3px 5px}.kpi>span{padding:1px 7px}#clock{min-width:0}}
 #radio-live{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:5px;padding:5px;background:#0b1c2a}.rc-idle{color:#7d97ad;font-size:12px;padding:6px 4px;text-align:center}
 #w-rcom.live>h2{background:linear-gradient(#2a5f8f,#1d4568)}.rc-hearing{color:#9fc3e2;font-style:italic;flex:1 1 220px}
 .radio-call.rv{background:#4a1612;border-color:#e0453a}.radio-call.rv .rc-msg{color:#ffd9d4}.radio-call.rv.open{background:#5a1a15}.rc-red{background:#c0392b;color:#fff;border-radius:3px;padding:1px 6px;font:700 11px var(--sans);letter-spacing:.04em}
@@ -52,7 +61,7 @@ header .brand{font-weight:600;letter-spacing:.04em;font-size:12px;color:#9fb4c7;
 .tut-hl{outline:3px solid #f5c542 !important;outline-offset:2px;box-shadow:0 0 0 6px rgba(245,197,66,.25) !important;animation:tut-pulse 1.4s ease-in-out infinite}
 @keyframes tut-pulse{50%{outline-color:#ffe08a}}
 .radio-call .btn{padding:2px 9px;font-size:12px;background:#24445e;color:#eef6fd;border:1px solid #5d8db5}.radio-call .btn:hover{background:#2f5a7c}.radio-call .btn.pri{background:#2f7de1;border-color:#7db0f2;color:#fff}
-.live-alert{width:100%;background:#8f1e18;color:#fff;border:2px solid #ff756b;border-radius:4px;padding:5px 10px;text-align:left;font-weight:700;animation:alert-flash .75s steps(2,end) infinite}
+.live-alert{width:100%;background:#8f1e18;color:#fff;border:1px solid #ff756b;border-left-width:4px;border-radius:6px;padding:4px 8px;text-align:left;font-weight:700;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.45);animation:alert-flash .75s steps(2,end) infinite}
 @keyframes alert-flash{50%{background:#d9342b;color:#fff;box-shadow:0 0 12px #ff756b}}
 .kpi{display:flex;gap:12px;margin-left:auto;font-size:12px;color:#9fb4c7}
 .kpi b{color:#fff;font:500 14px var(--mono)}
@@ -91,6 +100,7 @@ main.lay>.win{margin:3px}
 .win.floating .rz{display:block}
 body.mu-mode #w-detail>h2::after{content:' · režim MU';color:#ffb4ae;font-weight:400}
 #layout-menu{position:fixed;z-index:99000;background:var(--panel);color:#1c2b3a;border:1px solid #000;border-radius:6px;padding:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:5px;width:270px}
+#layout-menu b{color:var(--ink)}
 #layout-menu small{color:#5a6a7a;font-size:11px;line-height:1.35}
 @media (max-width:1099px){.pin-btn,.split,.rz{display:none!important}}
 
@@ -389,6 +399,7 @@ td.nn small{display:block;font:400 10px var(--mono);color:var(--mut)}
 .st-activating{background:var(--c-act);color:#201040;animation:pulse 1s infinite}
 .st-second{background:var(--c-second);color:#fff}
 @keyframes pulse{50%{opacity:.55}}
+.legend-toggle{background:var(--hdr2);color:#cfe0ee;border:1px solid #38505f;border-radius:999px;padding:1px 10px;font-size:11px;cursor:pointer}
 .legend{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;padding:5px 8px;font-size:11px;color:var(--mut);border-top:1px solid var(--line);background:#dfe6ec}
 .legend-item{display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
 .legend-icon{display:inline-flex;width:36px;height:22px;align-items:center;justify-content:center;border:1px solid #0005;border-radius:3px;font-style:normal}
@@ -577,7 +588,7 @@ html[data-theme=dark] .st-transport,html[data-theme=dark] .st-handover{backgroun
     <span id="clock">--:--:--</span>
     <div class="speeds" id="speeds"></div>
     <div class="kpi" id="kpi"></div>
-    <div id="multiwin"><button class="hbtn" data-act="layout-menu">⊞ Rozložení</button><button class="hbtn" data-act="open-map">Otevřít mapu bokem</button><button class="hbtn" id="toggle-map-main" data-act="toggle-map-main">Skrýt mapu zde</button><button class="hbtn" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="hbtn" id="toggle-radio-main" data-act="toggle-radio-main">Skrýt přehled zde</button></div>
+    <div id="multiwin"><button class="hbtn" data-act="layout-menu" title="Rozložení panelů a okna bokem">⊞ Okna ▾</button><button class="hbtn legacy" data-act="open-map">Otevřít mapu bokem</button><button class="hbtn legacy" id="toggle-map-main" data-act="toggle-map-main">Skrýt mapu zde</button><button class="hbtn legacy" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="hbtn legacy" id="toggle-radio-main" data-act="toggle-radio-main">Skrýt přehled zde</button></div>
     <div id="alerts-live"></div>
     <button class="hbtn gear" id="btn-upd" data-act="check-update-hdr" title="Zkontrolovat aktualizaci" aria-label="Zkontrolovat aktualizaci">⟳</button>
     <button class="hbtn gear" data-act="settings" title="Nastavení" aria-label="Nastavení">⚙</button>
@@ -12810,6 +12821,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&am
 const SPEEDS = [0, 1, 5, 10, 20, 30, 60];
 const OPT_KEY = 'zos_jck_opts_v1';
 function saveOpts() { try { localStorage.setItem(OPT_KEY, JSON.stringify(window._opt || {})); } catch (_) {} }
+let legendOpen = false, alertsExpanded = false;   // legenda posádek je výchozí sbalená; rozbalení upozornění nad mapou
+try { legendOpen = localStorage.getItem('zos_legend_open') === '1'; } catch (e) {}
 const SAVE_KEY = 'zos_jck_save_v1' + (/\/dev\//.test(location.pathname) ? '_dev' : '');   // testovací verze ukládá zvlášť
 // ---------- nastavení (vzhled, písmo, zvuk, hra) ----------
 const SET_KEY = 'zos_jck_settings_v1';
@@ -12955,6 +12968,7 @@ const STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 
 function renderTop() {
   const s = sim.s, sm = sim.summary();
   $('clock').textContent = sim.clock();
+  { const hd = document.querySelector('header'); if (hd) document.documentElement.style.setProperty('--hdr-h', (hd.offsetHeight + 4) + 'px'); }
   const effSpeed = radioSlowActive() ? Math.min(speed, 1) : speed;
   setHTML($('speeds'), SPEEDS.map(v => `<button data-speed="${v}" class="${v === effSpeed ? 'on' : ''}${v === speed && effSpeed !== speed ? ' set' : ''}" title="${v === speed && effSpeed !== speed ? 'Nastavená rychlost – během rádiové relace hra běží 1×' : ''}">${v === 0 ? '⏸' : v + '×'}</button>`).join(''));
   const waiting = s.cases.filter(c => c.status === 'waiting' || (c.status === 'active' && missingInitialDispatch(c).length)).length;
@@ -12964,9 +12978,10 @@ function renderTop() {
   const wo = sim.wxObs(), wl = sim.wxLzs();
   const wxHtml = wo ? (() => {
     const sk = ZOS_WX.sky(wo), kt = Math.round(wo.wind), kmh = Math.round(wo.wind * 1.852), src = s.weather.src === 'real' ? 'skutečné historické počasí' : 'simulované počasí (data nejsou k dispozici)';
-    return `<span title="Datum hry">${esc(sim.dateInfo().label)}</span><span title="${esc(sk.txt + ' · ' + src + ' · dohlednost ' + Math.round(wo.vis) + ' m, základna oblačnosti ' + Math.round(wo.base) + ' ft')}">${sk.icon} <b>${wo.temp.toFixed(1).replace('.', ',')} °C</b>${s.weather.src === 'real' ? '' : ' <small>sim.</small>'}</span><span title="Vítr (odkud vane), nárazy ${Math.round(wo.gust)} kt">${ZOS_WX.dirArrow(wo.dir)} ${ZOS_WX.dirName(wo.dir)} <b>${kmh} km/h</b> · ${kt} kt</span>`;
+    return `<span class="k-wx" title="${esc(sk.txt + ' · ' + src + ' · dohlednost ' + Math.round(wo.vis) + ' m, základna oblačnosti ' + Math.round(wo.base) + ' ft · vítr ' + ZOS_WX.dirName(wo.dir) + ' ' + kmh + ' km/h (' + kt + ' kt), nárazy ' + Math.round(wo.gust) + ' kt')}">${sk.icon} <b>${wo.temp.toFixed(1).replace('.', ',')} °C</b>${s.weather.src === 'real' ? '' : ' <small>sim.</small>'} · ${ZOS_WX.dirArrow(wo.dir)} ${kmh} km/h</span>`;
   })() : '';
-  setHTML($('kpi'), wxHtml + `<span>Skóre <b>${sm.total.toFixed(1)}</b> <small title="Průběžné body za správné a opomenuté úkony">(${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints} provozních b.)</small></span><span>Pokrytí <b>${sm.covNow == null ? '–' : Math.round(sm.covNow) + ' %'}</b></span><span class="${waiting ? 'warn' : ''}">Čekající <b>${waiting}</b></span><span title="${esc(wl && wl.why.length ? wl.why.join(', ') : 'bez omezení')}">LZS <b>${wxText}</b></span><span>${left.replace(/^ · /, '')}</span>`);
+  $('clock').title = sim.dateInfo().label;
+  setHTML($('kpi'), wxHtml + `<span class="k-score">Skóre <b>${sm.total.toFixed(1)}</b> <small title="Průběžné body za správné a opomenuté úkony">(${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints} provozních b.)</small></span><span class="k-cov">Pokrytí <b>${sm.covNow == null ? '–' : Math.round(sm.covNow) + ' %'}</b></span><span class="k-wait ${waiting ? 'warn' : ''}">Čekající <b>${waiting}</b></span><span class="k-lzs" title="${esc(wl && wl.why.length ? wl.why.join(', ') : 'bez omezení')}">LZS <b>${wxText}</b></span><span class="k-left">${left.replace(/^ · /, '')}</span>`);
   if (!satellitePanel) {
     $('toggle-map-main').textContent = mainPanelHidden.map ? 'Zobrazit mapu zde' : 'Skrýt mapu zde';
     $('toggle-radio-main').textContent = mainPanelHidden.radio ? 'Zobrazit přehled zde' : 'Skrýt přehled zde';
@@ -12997,7 +13012,8 @@ function renderLiveAlerts() {
   const corReq = sim.s.cases.filter(c => c.status !== 'closed' && c.coroner && c.coroner.state === 'available' && !alertHidden.has(`cor:${c.id}`));
   const corHtml = corReq.map(c => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ KORONER K DISPOZICI · ${esc(c.num)} — klikni a přetáhni dlaždici KORONER na případ</span>${x(`cor:${c.id}`)}</div>`);
   const agencyHtml = agencyReq.map(({ c, k }) => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${c.agencies[k].fromCall ? 'VÝZVA VYŽADUJE' : 'POSÁDKA ŽÁDÁ'} ${k === 'pcr' ? 'POLICII' : 'HASIČE'} · ${esc(c.num)} · ${esc(c.agencies[k].why || '')} — klikni a přetáhni dlaždici ${k === 'pcr' ? 'PČR' : 'HZS'} na případ</span>${x(`ag:${c.id}:${k}`)}</div>`);
-  setHTML($('alerts-live'), requestHtml.concat(corHtml, agencyHtml, reportHtml).join(''));
+  const allAlerts = requestHtml.concat(corHtml, agencyHtml, reportHtml), shownAlerts = alertsExpanded ? allAlerts : allAlerts.slice(0, 2), moreN = allAlerts.length - 2;
+  setHTML($('alerts-live'), shownAlerts.join('') + (moreN > 0 ? `<button class="alert-more" data-act="alerts-more">${alertsExpanded ? '▴ méně' : '+ ' + moreN + ' další upozornění ▾'}</button>` : ''));
 }
 
 // ---------- případy ----------
@@ -13333,7 +13349,7 @@ function renderCrews() {
       }).join('') + (spec && !g._ag ? agencyTiles() : '') + '</div>';
   }
   setHTML($('crews'), h);
-  setHTML($('legend'), [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`);
+  setHTML($('legend'), `<button class="legend-toggle" data-act="legend-toggle">Legenda ${legendOpen ? '▴' : '▾'}</button>` + (!legendOpen ? '' : [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`));
   const k = sel.k && sim.crewOf(sel.k);
   if (!k) { setHTML($('crewpanel'), '<span style="color:#5a6a7a">Vyber posádku. Panel vybrané posádky.</span>'); return; }
   const cs = k.caseId && sim.caseOf(k.caseId), selCase = sel.c && sim.caseOf(sel.c);
@@ -14419,8 +14435,9 @@ const LAYOUT_NAMES = { cases: 'Případy', detail: 'Panel případu', rcom: 'Rá
 // sloupce v %, v každém sloupci zásobník panelů [id, výška v %]
 const LAYOUT_PRESETS = {
   normal: {
-    default: { cols: [41, 29.5, 29.5], stacks: [[['cases', 31], ['detail', 40], ['rcom', 29]], [['map', 37], ['radio', 63]], [['crews', 100]]] },
+    default: { cols: [24, 52, 24], stacks: [[['cases', 34], ['detail', 40], ['rcom', 26]], [['map', 62], ['radio', 38]], [['crews', 100]]] },
     widemap: { cols: [24, 52, 24], stacks: [[['cases', 34], ['detail', 40], ['rcom', 26]], [['map', 62], ['radio', 38]], [['crews', 100]]] },
+    classic: { cols: [41, 29.5, 29.5], stacks: [[['cases', 31], ['detail', 40], ['rcom', 29]], [['map', 37], ['radio', 63]], [['crews', 100]]] },
     biglist: { cols: [52, 20, 28], stacks: [[['cases', 40], ['detail', 40], ['rcom', 20]], [['map', 40], ['radio', 60]], [['crews', 100]]] },
   },
   mu: {
@@ -14437,6 +14454,7 @@ const LAYOUT_PRESETS = {
 const layoutFloatsFor = key => (key === 'ct' ? { spider: { x: Math.max(20, innerWidth - 440), y: 96, w: 420, h: Math.max(320, Math.min(600, innerHeight - 130)) } } : {});
 let layoutStore = { normal: null, mu: null, ct: null }, layoutZ = 60, layoutSplits = [];
 try { layoutStore = Object.assign(layoutStore, JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}')); } catch (_) {}
+{ const n = layoutStore.normal, old = LAYOUT_PRESETS.normal.classic; if (n && JSON.stringify([n.cols, n.stacks]) === JSON.stringify([old.cols, old.stacks]) && !Object.keys(n.floats || {}).length) layoutStore.normal = null; }
 const layoutKey = () => (ctModeOn() ? 'ct' : muModeOn() ? 'mu' : 'normal');
 const layoutClone = o => JSON.parse(JSON.stringify(o));
 const layoutHidden = id => (id === 'map' && mainPanelHidden.map) || (id === 'radio' && mainPanelHidden.radio) || (ctModeOn() && ((id === 'spider' && document.body.classList.contains('ct-spider-off')) || ((!document.body.classList.contains('ct-disp') || document.body.classList.contains('ct-call-focus')) && ['cases', 'detail', 'rcom', 'radio', 'crews'].includes(id))));
@@ -14551,7 +14569,7 @@ function layoutMenu(btn) {
   const old = $('layout-menu'); if (old) { old.remove(); return; }
   const key = layoutKey(), L = layoutGet(key), m = document.createElement('div'); m.id = 'layout-menu';
   const floating = Object.keys(L.floats);
-  m.innerHTML = `<b>Rozložení · ${key === 'mu' ? 'režim MU' : key === 'ct' ? 'režim calltaker' : 'běžný provoz'}</b><button class="btn" data-act="layout-preset" data-preset="default">Výchozí</button><button class="btn" data-act="layout-preset" data-preset="widemap">Široká mapa</button><button class="btn" data-act="layout-preset" data-preset="biglist">Velký seznam a detail</button>${floating.length ? `<button class="btn" data-act="layout-dock-all">Připnout zpět okna (${floating.length})</button>` : ''}<small>Velikost panelů měníš tažením lišt mezi nimi. Tlačítko ⧉ v záhlaví odepne panel do plovoucího okna (tažením za záhlaví, velikost za pravý dolní roh).</small>`;
+  m.innerHTML = `<b>Rozložení · ${key === 'mu' ? 'režim MU' : key === 'ct' ? 'režim calltaker' : 'běžný provoz'}</b><button class="btn" data-act="layout-preset" data-preset="default">Výchozí</button>${key === 'normal' ? '<button class="btn" data-act="layout-preset" data-preset="classic">Původní rozložení</button>' : '<button class="btn" data-act="layout-preset" data-preset="widemap">Široká mapa</button>'}<button class="btn" data-act="layout-preset" data-preset="biglist">Velký seznam a detail</button>${floating.length ? `<button class="btn" data-act="layout-dock-all">Připnout zpět okna (${floating.length})</button>` : ''}${satellitePanel ? '' : `<b style="margin-top:4px">Okna bokem</b><button class="btn" data-act="open-map">Otevřít mapu bokem</button><button class="btn" data-act="toggle-map-main">${mainPanelHidden.map ? 'Zobrazit mapu zde' : 'Skrýt mapu zde'}</button><button class="btn" data-act="open-radio">Otevřít přehled transportů bokem</button><button class="btn" data-act="toggle-radio-main">${mainPanelHidden.radio ? 'Zobrazit přehled zde' : 'Skrýt přehled zde'}</button>`}<small>Velikost panelů měníš tažením lišt mezi nimi. Tlačítko ⧉ v záhlaví odepne panel do plovoucího okna (tažením za záhlaví, velikost za pravý dolní roh).</small>`;
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(6, Math.min(r.left, innerWidth - 280)) + 'px'; m.style.top = (r.bottom + 4) + 'px';
   document.body.appendChild(m);
   setTimeout(() => document.addEventListener('click', function close(e) { if (!m.contains(e.target) || e.target.closest('[data-act]')) { m.remove(); document.removeEventListener('click', close); } }), 0);
@@ -15902,6 +15920,8 @@ function act(a, el) {
     case 'lzs-consult': { const r = sim.consultLzsPilot(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Čeká se na textové rozhodnutí pilota LZS.', 'alert'); break; }
     case 'lzs-tech': { const r = sim.requestLzsTechnicalAssist(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Technická součinnost HZS vyžádána.', 'alert'); break; }
     case 'float-toggle': layoutToggleFloat(d.win); break;
+    case 'alerts-more': alertsExpanded = !alertsExpanded; render(); break;
+    case 'legend-toggle': legendOpen = !legendOpen; try { localStorage.setItem('zos_legend_open', legendOpen ? '1' : '0'); } catch (er) {} render(); break;
     case 'layout-menu': layoutMenu(document.querySelector('[data-act="layout-menu"]')); break;
     case 'layout-preset': layoutPreset(d.preset); break;
     case 'layout-dock-all': layoutDockAll(); break;

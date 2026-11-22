@@ -3,6 +3,7 @@
 function renderTop() {
   const s = sim.s, sm = sim.summary();
   $('clock').textContent = sim.clock();
+  { const hd = document.querySelector('header'); if (hd) document.documentElement.style.setProperty('--hdr-h', (hd.offsetHeight + 4) + 'px'); }
   const effSpeed = radioSlowActive() ? Math.min(speed, 1) : speed;
   setHTML($('speeds'), SPEEDS.map(v => `<button data-speed="${v}" class="${v === effSpeed ? 'on' : ''}${v === speed && effSpeed !== speed ? ' set' : ''}" title="${v === speed && effSpeed !== speed ? 'Nastavená rychlost – během rádiové relace hra běží 1×' : ''}">${v === 0 ? '⏸' : v + '×'}</button>`).join(''));
   const waiting = s.cases.filter(c => c.status === 'waiting' || (c.status === 'active' && missingInitialDispatch(c).length)).length;
@@ -12,9 +13,10 @@ function renderTop() {
   const wo = sim.wxObs(), wl = sim.wxLzs();
   const wxHtml = wo ? (() => {
     const sk = ZOS_WX.sky(wo), kt = Math.round(wo.wind), kmh = Math.round(wo.wind * 1.852), src = s.weather.src === 'real' ? 'skutečné historické počasí' : 'simulované počasí (data nejsou k dispozici)';
-    return `<span title="Datum hry">${esc(sim.dateInfo().label)}</span><span title="${esc(sk.txt + ' · ' + src + ' · dohlednost ' + Math.round(wo.vis) + ' m, základna oblačnosti ' + Math.round(wo.base) + ' ft')}">${sk.icon} <b>${wo.temp.toFixed(1).replace('.', ',')} °C</b>${s.weather.src === 'real' ? '' : ' <small>sim.</small>'}</span><span title="Vítr (odkud vane), nárazy ${Math.round(wo.gust)} kt">${ZOS_WX.dirArrow(wo.dir)} ${ZOS_WX.dirName(wo.dir)} <b>${kmh} km/h</b> · ${kt} kt</span>`;
+    return `<span class="k-wx" title="${esc(sk.txt + ' · ' + src + ' · dohlednost ' + Math.round(wo.vis) + ' m, základna oblačnosti ' + Math.round(wo.base) + ' ft · vítr ' + ZOS_WX.dirName(wo.dir) + ' ' + kmh + ' km/h (' + kt + ' kt), nárazy ' + Math.round(wo.gust) + ' kt')}">${sk.icon} <b>${wo.temp.toFixed(1).replace('.', ',')} °C</b>${s.weather.src === 'real' ? '' : ' <small>sim.</small>'} · ${ZOS_WX.dirArrow(wo.dir)} ${kmh} km/h</span>`;
   })() : '';
-  setHTML($('kpi'), wxHtml + `<span>Skóre <b>${sm.total.toFixed(1)}</b> <small title="Průběžné body za správné a opomenuté úkony">(${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints} provozních b.)</small></span><span>Pokrytí <b>${sm.covNow == null ? '–' : Math.round(sm.covNow) + ' %'}</b></span><span class="${waiting ? 'warn' : ''}">Čekající <b>${waiting}</b></span><span title="${esc(wl && wl.why.length ? wl.why.join(', ') : 'bez omezení')}">LZS <b>${wxText}</b></span><span>${left.replace(/^ · /, '')}</span>`);
+  $('clock').title = sim.dateInfo().label;
+  setHTML($('kpi'), wxHtml + `<span class="k-score">Skóre <b>${sm.total.toFixed(1)}</b> <small title="Průběžné body za správné a opomenuté úkony">(${sm.opsPoints > 0 ? '+' : ''}${sm.opsPoints} provozních b.)</small></span><span class="k-cov">Pokrytí <b>${sm.covNow == null ? '–' : Math.round(sm.covNow) + ' %'}</b></span><span class="k-wait ${waiting ? 'warn' : ''}">Čekající <b>${waiting}</b></span><span class="k-lzs" title="${esc(wl && wl.why.length ? wl.why.join(', ') : 'bez omezení')}">LZS <b>${wxText}</b></span><span class="k-left">${left.replace(/^ · /, '')}</span>`);
   if (!satellitePanel) {
     $('toggle-map-main').textContent = mainPanelHidden.map ? 'Zobrazit mapu zde' : 'Skrýt mapu zde';
     $('toggle-radio-main').textContent = mainPanelHidden.radio ? 'Zobrazit přehled zde' : 'Skrýt přehled zde';
@@ -45,7 +47,8 @@ function renderLiveAlerts() {
   const corReq = sim.s.cases.filter(c => c.status !== 'closed' && c.coroner && c.coroner.state === 'available' && !alertHidden.has(`cor:${c.id}`));
   const corHtml = corReq.map(c => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ KORONER K DISPOZICI · ${esc(c.num)} — klikni a přetáhni dlaždici KORONER na případ</span>${x(`cor:${c.id}`)}</div>`);
   const agencyHtml = agencyReq.map(({ c, k }) => `<div class="live-alert" role="button" tabindex="0" data-case="${c.id}"><span class="alert-txt">⚠ ${c.agencies[k].fromCall ? 'VÝZVA VYŽADUJE' : 'POSÁDKA ŽÁDÁ'} ${k === 'pcr' ? 'POLICII' : 'HASIČE'} · ${esc(c.num)} · ${esc(c.agencies[k].why || '')} — klikni a přetáhni dlaždici ${k === 'pcr' ? 'PČR' : 'HZS'} na případ</span>${x(`ag:${c.id}:${k}`)}</div>`);
-  setHTML($('alerts-live'), requestHtml.concat(corHtml, agencyHtml, reportHtml).join(''));
+  const allAlerts = requestHtml.concat(corHtml, agencyHtml, reportHtml), shownAlerts = alertsExpanded ? allAlerts : allAlerts.slice(0, 2), moreN = allAlerts.length - 2;
+  setHTML($('alerts-live'), shownAlerts.join('') + (moreN > 0 ? `<button class="alert-more" data-act="alerts-more">${alertsExpanded ? '▴ méně' : '+ ' + moreN + ' další upozornění ▾'}</button>` : ''));
 }
 
 // ---------- případy ----------
@@ -381,7 +384,7 @@ function renderCrews() {
       }).join('') + (spec && !g._ag ? agencyTiles() : '') + '</div>';
   }
   setHTML($('crews'), h);
-  setHTML($('legend'), [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`);
+  setHTML($('legend'), `<button class="legend-toggle" data-act="legend-toggle">Legenda ${legendOpen ? '▴' : '▾'}</button>` + (!legendOpen ? '' : [['call', 'výzva'], ['enroute', 'výjezd'], ['onscene', 'na místě'], ['transport', 'transport'], ['free', 'volná'], ['base', 'na základně'], ['off', 'nepřihlášená'], ['second', 'sekundár']].map(([k, l]) => `<span class="legend-item"><i class="legend-icon st-${k}">${ico(k)}</i>${l}</span>`).join('') + `<span class="legend-item"><i class="legend-icon st-base">${ico('base', 'RZP')}</i>RZP</span><span class="legend-item"><i class="legend-icon st-base ty-RV">${ico('base', 'RV')}</i>RV</span><span>· vůz míří doprava = jede k události, doleva = veze pacienta / vrací se · klik = sledovat na mapě · dlaždici lze přetáhnout na případ</span>`));
   const k = sel.k && sim.crewOf(sel.k);
   if (!k) { setHTML($('crewpanel'), '<span style="color:#5a6a7a">Vyber posádku. Panel vybrané posádky.</span>'); return; }
   const cs = k.caseId && sim.caseOf(k.caseId), selCase = sel.c && sim.caseOf(sel.c);

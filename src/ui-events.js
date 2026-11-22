@@ -50,6 +50,8 @@ function act(a, el) {
     case 'lzs-consult': { const r = sim.consultLzsPilot(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Čeká se na textové rozhodnutí pilota LZS.', 'alert'); break; }
     case 'lzs-tech': { const r = sim.requestLzsTechnicalAssist(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Technická součinnost HZS vyžádána.', 'alert'); break; }
     case 'float-toggle': layoutToggleFloat(d.win); break;
+    case 'alerts-more': alertsExpanded = !alertsExpanded; render(); break;
+    case 'legend-toggle': legendOpen = !legendOpen; try { localStorage.setItem('zos_legend_open', legendOpen ? '1' : '0'); } catch (er) {} render(); break;
     case 'layout-menu': layoutMenu(document.querySelector('[data-act="layout-menu"]')); break;
     case 'layout-preset': layoutPreset(d.preset); break;
     case 'layout-dock-all': layoutDockAll(); break;
