@@ -8,7 +8,7 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
-## Nevydáno
+## v0.38.0 – 2026-11-22
 Nové:
 - **Osvěžené rozložení obrazovky dispečera.** Hlavička je na počítači v jedné řadě (asi 40 px místo dvou): okna bokem jsou schovaná v menu **⊞ Okna ▾** spolu s rozložením, ukazatele jsou čipy a počasí je jeden čip (vítr v tooltipu, datum při najetí na hodiny). Upozornění z 112 a výzvy posádek jsou plovoucí karty nad mapou (nejvýš 2, zbytek pod „+ N další upozornění ▾“) a nepřesouvají obsah. Výchozí rozložení je teď široká mapa (dřívější výchozí je v menu jako „Původní rozložení“; uložené rozložení shodné se starým výchozím se přepne samo), legenda stavů posádek je sbalená pod tlačítkem **Legenda ▾**. Opraven neviditelný nadpis menu Rozložení v tmavém motivu.
 - **Rozjetý kraj ve třech úrovních.** U startu směny je místo jedné volby „Rozjetý kraj“ **málo** (asi 5 probíhajících výjezdů), **středně** (asi 10) a **špička** (15 až 18). Kraj se před startem 80 minut „zahřívá“ automatickým dispečerem, takže posádky jsou v různých fázích (na cestě, na místě, transport, předání), a počet výjezdů se dorovná na cíl. Případy, které už mají posádku, se při startu hráči nezapočítávají do skóre. Stará volba v uložených nastaveních se bere jako „málo“.
