@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.6 – 2026-11-23
+Oprava kalibrace z 0.39.4: časy v návrháři posádek byly u některých stanic nesmyslné (Týn nad Vltavou ukazoval u 7 km vzdušnou čarou 24 minut, tedy víc než Písek na 21 km).
+- **Koeficienty stanic zdrcnuty na 0,88 až 1,15.** Původní stanicové koeficienty (0,7 až 1,4) a moje dokalibrace se násobily a u Týna, Kaplice a Opařan vznikaly extrémy (Týn 1,66×, Opařany 0,55×). Takové rozdíly nejsou rychlost silnic, ale artefakt dat (vozy, které nevyjížděly ze základny, a špatně odhadnutá poloha stanice). Zůstává jen mírná odchylka stanice.
+- **Celková korekce zůstává** +3 % a +25 s jízdy (z výjezdů 10. až 20. 11. 2026); medián skutečnost/model je po úpravě 1,00.
+- Ukázka: Týn nad Vltavou na Bechyni teď ukáže asi 17 min (router 10 min), Písek 22 min, Tábor 24 min.
+
+---
+
 ## v0.39.5 – 2026-11-23
 - **Návrhář posádek ukazuje čistou jízdu.** Čas u každé posádky je odhad jízdy od výjezdu na místo, bez prodlevy před výjezdem (ta je asi 1,5 až 2 min u posádky na základně). U vrtulníku je to jen let. Pořadí v nabídce a doporučení (hvězdička) se dál řídí celkovým časem do příjezdu včetně prodlevy, takže nejrychlejší posádka zůstává první. Stejný čas ukazuje nápověda „Nejrychlejší RZP“ a nabídka předpoplachu.
 
