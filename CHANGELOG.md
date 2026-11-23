@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.3 – 2026-11-23
+Nové:
+- **Všechny drobné obce mezi hasiči.** Jednotky SDH, jejichž dislokace není samostatná obec v adresním rejstříku (části obcí, osady), se umisťují do středu obce zřizovatele s drobným rozptylem do asi 350 m, ať jednotky téže obce nesedí přesně na sobě. Ve hře je teď 749 hasičských jednotek místo 549 a 48 policejních stanic. Bez polohy zůstává jen 5 jednotek (Políkno, Hrdlořezy, Kožlí u Orlíka, Přílepov, Sobědraž). Čtyři Dvory a Suché Vrbné (policie ČB) mají orientační polohu.
+
+---
+
 ## v0.39.2 – 2026-11-23
 Hasiči a policie podle skutečných seznamů, oprava ohledání zemřelého.
 

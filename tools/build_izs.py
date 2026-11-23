@@ -33,11 +33,27 @@ def where(name):
     k2 = re.sub(r' \d+( |$)', ' ', k).strip()
     if k2 in cent: return med(cent[k2])
     return None
-def local(name):   # „České Budějovice 5 - Suché Vrbné“ → část obce
+def prefix(name):   # obec začínající názvem (Albrechtice → Albrechtice nad Vltavou, Dobrá Voda u Č. Budějovic → …u Českých Budějovic)
+    k = key(re.sub(r'C\.', 'Ceskych', unicodedata.normalize('NFD', str(name)).encode('ascii', 'ignore').decode()))
+    for kk in (k, ' '.join(k.split()[:2])):
+        c = sorted(x for x in cent if x == kk or x.startswith(kk + ' '))
+        if c: return med(cent[c[0]])
+    return None
+FIX = {'Kostelec/ Vltavou': 'Kostelec nad Vltavou'}
+def local(name, zriz=None):
+    name = FIX.get(str(name), name)   # „České Budějovice 5 - Suché Vrbné“ → část obce; jinak střed obce zřizovatele
+    import hashlib   # „České Budějovice 5 - Suché Vrbné“ → část obce
     p = re.split(r'\s+-\s+', str(name))
     for x in reversed(p):
         w = where(x)
         if w: return w
+    for x in [str(name)] + re.split(r'\s+-\s+', str(name)) + ([str(zriz)] if zriz else []):
+        w = where(x) or prefix(x)
+        if w:
+            if x == str(zriz) or x not in (str(name),):
+                h = int(hashlib.md5((str(name) + str(zriz)).encode()).hexdigest()[:6], 16)   # drobný rozptyl (do ~350 m), ať jednotky obce nesedí přesně na sobě
+                w = [round(w[0] + ((h % 700) - 350) / 111000, 5), round(w[1] + (((h // 700) % 700) - 350) / 72800, 5)]
+            return w
     return None
 hz = []; miss = []
 wb = openpyxl.load_workbook(X, read_only=True, data_only=True)
@@ -47,7 +63,7 @@ for ws in wb:
         if not r or len(r) < 7 or not r[1] or not re.match(r'^\d{3}$', str(r[1])) or not re.match(r'^\d{3}$', str(r[2] or '')): continue
         kat = str(r[3]).strip(); nm = str(r[4] or '').strip()
         if kat.startswith('VI') or kat == 'IV' or not nm: continue   # podnikové jednotky a jednotky IV (železnice, podniky) ve hře nejedou
-        w = known(nm, ('HZS',) if kat == 'I' else ('JPO2', 'JPO3', 'JPO4')) or local(nm)
+        w = known(nm, ('HZS',) if kat == 'I' else ('JPO2', 'JPO3', 'JPO4')) or local(nm, r[5])
         if not w: miss.append(nm); continue
         tech = [t.strip() for t in str(r[6] or '').split(',') if t.strip()]
         cls = []
@@ -62,6 +78,8 @@ pc = []
 for p in POL:
     nm, g = (p.split('|') + [p])[:2] if '|' in p else (p, p)
     w = known(g, ('PCR',)) or where(g)
+    if not w and g in ('Čtyři Dvory', 'Suché Vrbné'):   # části Českých Budějovic bez vlastních adres v rejstříku: střed města s posunem (orientačně)
+        c = where('České Budějovice'); w = [round(c[0] + (0.006 if g == 'Čtyři Dvory' else -0.006), 5), round(c[1] + (0.008 if g == 'Čtyři Dvory' else 0.004), 5)]
     if not w: miss.append('PČR ' + nm); continue
     pc.append({'name': 'OOP ' + nm if 'OOP' not in nm else nm, 'lat': w[0], 'lon': w[1]})
 print('HZS/JSDH', len(hz), 'PČR', len(pc), 'nenalezeno', len(miss), miss[:40])
