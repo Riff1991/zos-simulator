@@ -8,6 +8,23 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.2 – 2026-11-23
+Hasiči a policie podle skutečných seznamů, oprava ohledání zemřelého.
+
+Opravy:
+- **Ohledání zemřelého.** K výzvě s příznakem Ohledání (koroner nedostupný) jede jen RV. Pokud tam přesto pošleš RZP, po příjezdu pacienta nevozí (dřív ho odvezla do nemocnice) a bez převozu se uvolní. RV po příjezdu zůstane asi 25 až 35 minut na ohledání ve stavu volný (odvolatelný) a pak se vrací.
+- **Poloha základny Vimperk** je 49.05438, 13.80267.
+
+Nové:
+- **Hasiči podle přílohy č. 8 (seznam JPO Jihočeského kraje 7/2025).** Místo 42 míst je ve hře 549 jednotek: stanice HZS (JPO I), jednotky SDH JPO II, III a V s dislokací v obci a s technikou ze seznamu. Poloha je střed zástavby obce z adresního rejstříku, u známých stanic dosavadní přesná poloha. Jednotky bez nalezené polohy (asi 200 drobných obcí JPO V) se zatím nepoužívají. Na trojúhelníku se po najetí ukáže skutečné vozidlo jednotky (CAS 20, CAS 30, AZ, AP, TA, DA) a stanice, odkud jede.
+- **Hasiči na transport.** Když si posádka volá hasiče na transport, jede jedna CAS z nejbližší jednotky (SDH, profesionální HZS jen když je nejbližší). Posádka ZZS nesmí odjet, čeká na hasiče a transport začne asi 5 minut po jejich příjezdu na místo.
+- **Policie podle adresáře PČR.** Místo 10 je ve hře 46 stanic a služeben ze všech sedmi územních odborů. Druh jednotky se volí podle události: nehoda SDN a DI (na dálnici DO), exitus OOP a OKT (kriminalistický technik), zbraň PSH a ZJ (zásahová jednotka), psychika a agresivní pacient PSH a OOP, ulice OHS, jinak OOP. Popisy při najetí mají plný název (obvodní hlídka, prvosledová hlídka, hlídka dopravního inspektorátu atd.).
+- **Rychlejší PČR a HZS.** Dojezd hasičů i policie je o čtvrtinu kratší (dřív byli příliš pomalí), platí pro logiku i pro pohyb trojúhelníků.
+- **Tenčí černý okraj trojúhelníků** PČR (modrý) a HZS (červený) na mapě.
+- Generátor seznamů: `tools/build_izs.py` (z přílohy č. 8 a adresáře PČR do `ZOS_DATA.izs`).
+
+---
+
 ## v0.39.1 – 2026-11-23
 Opravy:
 - **Ohledání zemřelého jede jen lékař.** Výzva s příznakem Ohledání (koroner nedostupný) už nevyžaduje RZP, požadovaný je jen RV; dispečer-bot také vysílá jen RV.

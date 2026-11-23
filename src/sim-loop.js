@@ -430,6 +430,7 @@ class SimLoop {
           }
           return this._startTransport(c, cs);
         }
+        if (c.type === 'RZP' && cs.exam0) { this.L('crew', `${c.name}: bez převozu (ohledání zemřelého), uvolněna`, cs.id, c.id); return this._release(c); }   // k ohledání RZP pacienta nevozí
         if (c.type === 'RZP' && !cs.mu) {
           const activeRvReq = cs.rvReq && !cs.rvReq.cancelled;
           const needDoc = cs.rvNeed || !!activeRvReq;
@@ -482,6 +483,8 @@ class SimLoop {
           if (cs.exitus || cs.coronerRequested) { cs.lzsTransferRequired = false; cs.lzsNoPatientTransfer = true; return this._returnLzs(c, cs); }
           return this._startLzsFlightToHeliport(c, cs);
         }
+        // ohledání zemřelého: RV zůstane na místě asi 30 min ve stavu volný (odvolatelný), pak se vrací
+        if (c.type === 'RV' && cs.exam0 && !cs.exam0Done) { cs.exam0Done = true; c.caseRole = 'exam'; c.until = t + this.rr(1500, 2100); return; }
         // RV počká na odjezd RZP s pacientem (rozhodnutí o doprovodu)
         if (c.type === 'RV' && !cs.mu && cs.trans && !cs.transported && (cs.patientCount || 1) <= 1 && t - c.arrivedAt < 3600 &&
             cs.crews.some(id => { const k = this.crewOf(id); return k && k.type === 'RZP' && k.caseId === cs.id && k.state === 'onscene' && !k.caseRole; })) { c.until = t + 30; break; }

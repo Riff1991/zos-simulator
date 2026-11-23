@@ -317,7 +317,7 @@ function glInit() {
       });
       // PČR (modrý) a HZS (červený) trojúhelník: stejný tvar, jen jiná barva; po najetí se ukáže hlídka / CAS apod.
       {
-        const triSvg = c => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 22 26"><path d="M11 2 L20 23 L2 23 Z" fill="${c}" stroke="#000" stroke-width="2" stroke-linejoin="round"/></svg>`;
+        const triSvg = c => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 22 26"><path d="M11 2 L20 23 L2 23 Z" fill="${c}" stroke="#000" stroke-width="0.9" stroke-linejoin="round"/></svg>`;
         svgIcon('zos-izs-hzs', triSvg('#ff9a9a'), 22, 26, () => svgIcon('zos-izs-pcr', triSvg('#8fd0ff'), 22, 26, () => {
           if (GL.getLayer('izs')) return;
           GL.addLayer({ id: 'izs', type: 'symbol', source: 'izs', layout: { 'icon-image': ['get', 'ico'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 13, 0.9], 'icon-rotate': ['get', 'hd'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' } }, 'cases');
@@ -498,7 +498,7 @@ function renderMapSvg() {
   }
   if (layers.crews) for (const v of sim.izsVisible(sim.s.t)) {   // PČR (modrý) / HZS (červený) trojúhelník, po najetí popis
     const x = X(v.lon), y = Y(v.lat), r = 5.5 * sc;
-    h += `<path d="M${x} ${y - r}L${x + r * 0.85} ${y + r * 0.8}H${x - r * 0.85}Z" fill="${v.u.kind === 'pcr' ? '#8fd0ff' : '#ff9a9a'}" stroke="#000" stroke-width="${1.3 * sc}" stroke-linejoin="round" transform="rotate(${Math.round(v.hd)} ${x} ${y})"><title>${esc(v.u.label)} · ${esc(v.u.who)} · ${esc(v.cs.num)}</title></path>`;
+    h += `<path d="M${x} ${y - r}L${x + r * 0.85} ${y + r * 0.8}H${x - r * 0.85}Z" fill="${v.u.kind === 'pcr' ? '#8fd0ff' : '#ff9a9a'}" stroke="#000" stroke-width="${0.6 * sc}" stroke-linejoin="round" transform="rotate(${Math.round(v.hd)} ${x} ${y})"><title>${esc(v.u.label)} · ${esc(v.u.who)} · ${esc(v.cs.num)}</title></path>`;
   }
   if (layers.crews) for (const kk of sim.s.crews) {
     if (kk.state === 'off') continue;

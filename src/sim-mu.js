@@ -733,8 +733,9 @@ class SimMU {
     const town = D.towns.reduce((best, x) => !best || hav(x.lat, x.lon, from.lat, from.lon) < hav(best.lat, best.lon, from.lat, from.lon) ? x : best, null);
     const rlp = over.rlp != null ? over.rlp : this.rnd() < (A.rlp[n] || 0);
     const intake = Math.round(Math.max(60, this._logn(A.intakeQ, 1)));
+    const sy = this._symptomSet('Převoz', n), gyn = sy.some(x => /porod|gravid|plodov|těhot/i.test(x));   // gynekologické příznaky jen u ženy
     const c = this._spawn({ indObj: A.ind, n, where: 'zz', at: { lat: from.lat, lon: from.lon, addr: from.name, town: town.n, okres: null },
-      symptoms: this._symptomSet('Převoz', n), extKinds: null, intake, rvLater: false });
+      symptoms: sy, sex: gyn ? 'Ž' : undefined, extKinds: null, intake, rvLater: false });
     c.acuteSec = true; c.ind = A.ind.id; c.klasif = 'Převoz';
     c.charakter = this.wpick(A.charakter, x => x[1])[0];
     c.hospType = 'okresni'; c.targetHospitalId = to.id; c.originHospitalId = from.id; c.trans = true;

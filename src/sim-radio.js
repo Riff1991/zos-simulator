@@ -204,54 +204,73 @@ class SimRadio {
   // Jen mapa: v logu ani v rádiu se pohyb neukazuje. Jednotky vyjíždějí z nejbližší hasičské / policejní stanice (hlídky PČR někdy z terénu),
   // na místě zůstanou dobu zásahu (u nehod déle než ZZS) a pak zmizí. Zkratky: CAS = cisternová automobilová stříkačka, AZ = automobilový žebřík,
   // TA = technický automobil, DA = dopravní automobil (JSDH); OOP = obvodní oddělení Policie ČR, DI = dopravní inspektorát, SKPV = služba kriminální policie a vyšetřování.
-  _izsSpecs(cs, kind) {
+  // Policie: OOP obvodní hlídka, OHS hlídková služba, PSH prvosledová hlídka, PEO pohotovostní a eskortní oddělení, DI dopravní inspektorát, DO dálniční hlídka,
+  // OSD silniční dohled, SDN výjezd k dopravní nehodě, SKPV kriminalistická výjezdová skupina, OKT kriminalistický technik, ZJ zásahová jednotka, OSK psovod, PYRO pyrotechnici.
+  // Hasiči: konkrétní vozidlo se bere ze seznamu techniky jednotky (CAS, AZ, AP, TA, DA).
+  _izsSpecs(cs, kind, a) {
     const up = String(cs.up || '') + ' ' + String(cs.poznamka || ''), dn = ['dn_poly', 'dn_lehke'].includes(cs.ind), trapped = /UVĚZN|ZAKLÍN|VYPROŠT/i.test(up);
     if (kind === 'hzs') {
+      if (a && a.why === 'na transport') return [{ cls: 'CAS', one: true }];   // na transport jede jedna CAS z nejbližší jednotky
       const fire = cs.ind === 'popal' || /POŽÁR|OXID UHELNAT/i.test(up), terrain = cs.where === 'priroda' || cs.ind === 'tonuti';
-      if (dn) return trapped ? [{ cls: 'CAS 20', after: true }, { cls: 'TA', after: true }] : [{ cls: 'CAS 20', after: true }];
-      if (fire) return [{ cls: 'CAS 30' }, { cls: 'AZ 30' }];
+      if (dn) return trapped ? [{ cls: 'CAS', after: true }, { cls: 'TA', after: true }] : [{ cls: 'CAS', after: true }];
+      if (fire) return [{ cls: 'CAS' }, { cls: 'AZ' }];
       if (terrain) return [{ cls: 'TA' }, { cls: 'DA' }];
-      if (cs.ind === 'asist') return [{ cls: this.rnd() < 0.4 ? 'AZ 30' : 'CAS 20', after: true }];
-      return [{ cls: 'CAS 20' }];
+      if (cs.ind === 'asist') return [{ cls: this.rnd() < 0.4 ? 'AZ' : 'CAS', after: true }];
+      return [{ cls: 'CAS' }];
     }
-    if (dn) return [{ cls: 'Hlídka OOP', after: true }, { cls: 'Hlídka DI', after: true }];
-    if (cs.exitus || ['obeseni', 'resus', 'nzo'].includes(cs.ind)) return [{ cls: 'Hlídka OOP' }, { cls: 'SKPV' }];
-    if (cs.ind === 'asist') return [{ cls: 'Hlídka OOP', after: true }];
-    return [{ cls: 'Hlídka OOP' }];
+    const hw = cs.where === 'silnice' && /D3|dálnice/i.test(cs.addr || '');
+    if (dn) return [{ cls: 'SDN', after: true }, { cls: hw ? 'DO' : 'DI', after: true }];
+    if (cs.exitus || ['obeseni', 'resus', 'nzo'].includes(cs.ind)) return [{ cls: 'OOP' }, { cls: 'OKT' }];
+    if (/ZBRAŇ|STŘELN|BODN|SEKER/i.test(up)) return [{ cls: 'PSH' }, { cls: 'ZJ' }];
+    if (cs.ind === 'psych' || /AGRES|NAPADEN/i.test(up)) return [{ cls: 'PSH' }, { cls: 'OOP' }];
+    if (cs.ind === 'asist') return [{ cls: 'OOP', after: true }];
+    if (['ulice', 'verejne'].includes(cs.where)) return [{ cls: 'OHS' }];
+    return [{ cls: 'OOP' }];
   }
   _izsLabel(cls) {
-    return { 'CAS 20': 'CAS 20 – cisternová automobilová stříkačka', 'CAS 30': 'CAS 30 – cisternová automobilová stříkačka', 'AZ 30': 'AZ 30 – automobilový žebřík', TA: 'TA – technický automobil (vyprošťování)', DA: 'DA – dopravní automobil jednotky SDH',
-      'Hlídka OOP': 'Hlídka OOP – obvodní oddělení Policie ČR', 'Hlídka DI': 'Hlídka DI – dopravní inspektorát Policie ČR', SKPV: 'SKPV – služba kriminální policie a vyšetřování' }[cls] || cls;
+    const base = String(cls).split(' ')[0];
+    const T = { CAS: 'cisternová automobilová stříkačka', AZ: 'automobilový žebřík', AP: 'automobilová plošina', TA: 'technický automobil (vyprošťování)', DA: 'dopravní automobil', PPS: 'přenosná požární stříkačka',
+      OOP: 'obvodní hlídka Policie ČR', OHS: 'hlídková služba Policie ČR', PSH: 'prvosledová hlídka Policie ČR', PEO: 'pohotovostní a eskortní oddělení', DI: 'hlídka dopravního inspektorátu', DO: 'dálniční hlídka', OSD: 'silniční dohled',
+      SDN: 'výjezd k dopravní nehodě', SKPV: 'kriminalistická výjezdová skupina', OKT: 'kriminalistický technik', ZJ: 'zásahová jednotka', OSK: 'policejní psovod', PYRO: 'pyrotechnická skupina', PJ: 'pořádková jednotka', AKT: 'antikonfliktní tým' }[base];
+    return T ? `${cls} – ${T}` : cls;
   }
-  _izsMake(cs, kind, spec, from, who, t0, t1, idx, fromField) {
+  _izsMake(cs, kind, spec, from, who, t0, t1, idx, fromField, label) {
     t1 = Math.max(t1, t0 + 60);
     let path = null, frac = null;
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) { try { const r = ROUTER.route(from[0], from[1], cs.lat, cs.lon); if (r && r.pts && r.pts.length >= 4) { path = r.pts; frac = r.frac; } } catch (_) { path = null; } }
-    const hzs = kind === 'hzs', stay = hzs ? (spec.cls === 'TA' ? this.rr(2400, 4500) : this.rr(900, 2400)) : this.rr(900, 2400);
-    return { id: `iz${cs.id}-${kind}${idx}`, kind, cls: spec.cls, label: this._izsLabel(spec.cls), who, fromField: !!fromField, from, t0, t1, mv: { a: from, b: [cs.lat, cs.lon], t0, t1, dw: 0, path, frac }, stay, after: !!spec.after, extra: this.rr(300, 1500), off: [(idx % 3) * 0.00022 - 0.00022, (idx >> 1) * 0.00018 + 0.00012] };
+    const stay = kind === 'hzs' ? (spec.cls === 'TA' ? this.rr(2400, 4500) : this.rr(900, 2400)) : this.rr(900, 2400);
+    return { id: `iz${cs.id}-${kind}${idx}`, kind, cls: spec.cls, label: label || this._izsLabel(spec.cls), who, fromField: !!fromField, from, t0, t1, mv: { a: from, b: [cs.lat, cs.lon], t0, t1, dw: 0, path, frac }, stay, after: !!spec.after, extra: this.rr(300, 1500), off: [(idx % 3) * 0.00022 - 0.00022, (idx >> 1) * 0.00018 + 0.00012] };
+  }
+  // vozidlo jednotky: první kus techniky požadovaného druhu, jinak první technika; bez seznamu techniky obecný druh
+  _izsVehicle(u, want) {
+    const T = (u && u.tech) || [], w = String(want).split(' ')[0];
+    return T.find(t => t.split(' ')[0] === w) || (w === 'CAS' && T.find(t => t.split(' ')[0] === 'DA')) || T[0] || want;
   }
   _izsSync(cs) {
     const A = cs.agencies, FRs = cs.frs, U = cs.izs || (cs.izs = []);
-    const F = ZOS_DATA.fr || [];
-    const near = (types, k) => F.filter(f => types.includes(f.type)).map(f => [f, hav(f.lat, f.lon, cs.lat, cs.lon)]).sort((a, b) => a[1] - b[1]).slice(0, k).map(x => x[0]);
+    const Z = ZOS_DATA.izs || { hzs: [], pcr: [] };
+    const nearest = (list, k) => list.map(f => [f, hav(f.lat, f.lon, cs.lat, cs.lon)]).sort((x, y) => x[1] - y[1]).slice(0, k).map(x => x[0]);
     for (const kind of ['pcr', 'hzs']) {
       const a = A && A[kind]; if (!a || a.izsDone || !(a.state === 'sent' || a.state === 'onscene') || a.arriveAt == null) continue;
       a.izsDone = true;
-      const specs = this._izsSpecs(cs, kind), st = near(kind === 'pcr' ? ['PCR'] : ['HZS'], 3);
-      const t1 = a.arriveAt, t0 = Math.min(t1 - 60, (a.sentAt != null ? a.sentAt : this.s.t) + (kind === 'hzs' ? this.rr(60, 150) : this.rr(30, 120)));
+      const specs = this._izsSpecs(cs, kind, a);
+      const transport = kind === 'hzs' && a.why === 'na transport';
+      // hasiči: na transport vždy nejbližší jednotka (SDH, profesionální jen když je nejbližší); jinak profesionální HZS z nejbližší stanice (další vozidla z dalších stanic)
+      const st = kind === 'pcr' ? nearest(Z.pcr, 3) : transport ? nearest(Z.hzs, 1) : nearest(Z.hzs.filter(h => h.kat === 'I' || h.kat === 'II'), 3);
+      const t1 = a.arriveAt, t0 = Math.min(t1 - 60, (a.sentAt != null ? a.sentAt : this.s.t) + (kind === 'hzs' ? this.rr(45, 110) : this.rr(25, 90)));
       specs.forEach((sp, i) => {
         const field = kind === 'pcr' && i === 0 && this.rnd() < 0.4;   // hlídka PČR vyráží z terénu, ne ze stanice
-        let from, who;
+        let from, who, label;
         if (field) { const ang = this.rnd() * Math.PI * 2, km = this.rr(3, 12); from = [cs.lat + Math.sin(ang) * km / 111, cs.lon + Math.cos(ang) * km / 72.8]; who = 'z terénu'; }
-        else { const s0 = st[Math.min(i, st.length - 1)]; if (!s0) return; from = [s0.lat, s0.lon]; who = s0.name; }
-        U.push(this._izsMake(cs, kind, sp, from, who, t0 + i * this.rr(0, 90), t1 + i * this.rr(20, 240), U.length, field));
+        else { const s0 = st[Math.min(i, st.length - 1)]; if (!s0) return; from = [s0.lat, s0.lon]; who = s0.name; if (kind === 'hzs') { const veh = this._izsVehicle(s0, sp.cls); sp = Object.assign({}, sp, { cls: veh }); label = this._izsLabel(veh); } }
+        U.push(this._izsMake(cs, kind, sp, from, who, t0 + i * this.rr(0, 90), t1 + i * this.rr(20, 240), U.length, field, label));
       });
     }
     for (const f of FRs || []) {
       if (f.izsDone || !['HZS', 'JPO2', 'JPO3', 'JPO4', 'PCR'].includes(f.type)) continue;
       f.izsDone = true;
       const kind = f.type === 'PCR' ? 'pcr' : 'hzs';
-      U.push(this._izsMake(cs, kind, { cls: kind === 'pcr' ? 'Hlídka OOP' : f.type === 'HZS' ? 'CAS 20' : 'DA' }, [f.lat, f.lon], f.name, f.sentAt, f.arriveAt, U.length, false));
+      U.push(this._izsMake(cs, kind, { cls: kind === 'pcr' ? 'OOP' : 'CAS' }, [f.lat, f.lon], f.name, f.sentAt, f.arriveAt, U.length, false));
     }
   }
   // kdy jednotka z místa odjede: u nehod a asistencí až po odjezdu ZZS (a ještě chvíli), jinak po době zásahu
@@ -288,7 +307,7 @@ class SimRadio {
     if (kind === 'hzs' && cs.lzsTechRequired && !cs.lzsTechRequested) this.requestLzsTechnicalAssist(cs.id);
     const a = A[kind], nm = kind === 'pcr' ? 'PČR' : 'HZS';
     if (a && (a.state === 'sent' || a.state === 'onscene')) return { ok: true, msg: nm + ' už je vyrozuměna.' };
-    const eta = this.rr(kind === 'pcr' ? 300 : 360, kind === 'pcr' ? 900 : 1000);
+    const eta = this.rr(kind === 'pcr' ? 300 : 360, kind === 'pcr' ? 900 : 1000) * 0.75;   // PČR i hasiči jedou o čtvrtinu rychleji
     const wasReq = a && a.reqAt != null;
     A[kind] = Object.assign(a || {}, { state: 'sent', sentAt: this.s.t, arriveAt: this.s.t + eta });
     if (wasReq && !A[kind].scored) { A[kind].scored = true; if (this.s.t - A[kind].reqAt <= 360) this._opsScore(1, `včas vyrozuměna ${nm} u ${cs.num}`, cs.id); }
@@ -304,7 +323,8 @@ class SimRadio {
       if (a.state === 'requested' && !a.penal && t - a.reqAt > 360) { a.penal = true; this._opsScore(-1, `nevyrozuměná ${nm} ${a.fromCall ? 'dle výzvy' : 'na žádost posádky'} u ${cs.num}`, cs.id); }
     }
   }
-  _agencyHold(cs) { const A = cs.agencies || {}; return ['pcr', 'hzs'].some(k => A[k] && A[k].reqAt != null && !A[k].fromCall && (A[k].state === 'requested' || A[k].state === 'sent') && this.s.t - A[k].reqAt < 2400); }
+  // posádka čeká na vyrozuměnou složku; u hasičů na transport ještě asi 5 min po jejich příjezdu na místo
+  _agencyHold(cs) { const A = cs.agencies || {}, t = this.s.t; return ['pcr', 'hzs'].some(k => A[k] && A[k].reqAt != null && !A[k].fromCall && (((A[k].state === 'requested' || A[k].state === 'sent') && t - A[k].reqAt < 2400) || (k === 'hzs' && A[k].state === 'onscene' && A[k].why === 'na transport' && t < (A[k].arriveAt || 0) + 300))); }
   // posádka žádá součinnost (rádiem)
   _requestAgency(crew, cs, kind, why) {
     const A = cs.agencies || (cs.agencies = {});
