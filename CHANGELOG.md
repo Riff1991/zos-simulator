@@ -8,6 +8,11 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.7 – 2026-11-23
+- **Koeficienty stanic zrušeny.** Doba jízdy už se neliší podle stanoviště, jen podle trasy z routeru, naléhavosti a denní doby. Stanicové koeficienty z kalibrace na lednových a červencových výjezdech nebyly čistou rychlostí silnic, ale zachycovaly i to, odkud vůz skutečně vyjel a jak přesná je poloha stanice. Společná korekce zůstává (+3 % a +25 s), optimální hodnota vyšla z dat 10. až 20. 11. 2026 stejná i bez koeficientů (medián skutečnost/model 1,00). Čas jízdy je tak předvídatelný a rozumně seřazený podle vzdálenosti.
+
+---
+
 ## v0.39.6 – 2026-11-23
 Oprava kalibrace z 0.39.4: časy v návrháři posádek byly u některých stanic nesmyslné (Týn nad Vltavou ukazoval u 7 km vzdušnou čarou 24 minut, tedy víc než Písek na 21 km).
 - **Koeficienty stanic zdrcnuty na 0,88 až 1,15.** Původní stanicové koeficienty (0,7 až 1,4) a moje dokalibrace se násobily a u Týna, Kaplice a Opařan vznikaly extrémy (Týn 1,66×, Opařany 0,55×). Takové rozdíly nejsou rychlost silnic, ale artefakt dat (vozy, které nevyjížděly ze základny, a špatně odhadnutá poloha stanice). Zůstává jen mírná odchylka stanice.
