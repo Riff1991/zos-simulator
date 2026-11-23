@@ -290,6 +290,13 @@ class SimRadio {
     }
     return out;
   }
+  // doba výjezdu policie k místu: z nejbližší policejní stanice rychlostí jako naše posádky na N1 (včetně vyjetí ze stanice)
+  _policeEta(lat, lon) {
+    const P = (ZOS_DATA.izs && ZOS_DATA.izs.pcr) || [];
+    let st = null, bd = 1e9; for (const p of P) { const d = hav(p.lat, p.lon, lat, lon); if (d < bd) { bd = d; st = p; } }
+    if (!st) return this.rr(300, 700);
+    return Math.max(90, driveSec(this._eta(st.lat, st.lon, lat, lon), 'N1') * this.rr(0.95, 1.1));
+  }
   // ---------- součinnost PČR / HZS (dlaždice jako koroner) ----------
   sendAgency(caseId, kind, viaRadio) {
     if (kind === 'fr') return this.sendFr(caseId);
@@ -307,7 +314,7 @@ class SimRadio {
     if (kind === 'hzs' && cs.lzsTechRequired && !cs.lzsTechRequested) this.requestLzsTechnicalAssist(cs.id);
     const a = A[kind], nm = kind === 'pcr' ? 'PČR' : 'HZS';
     if (a && (a.state === 'sent' || a.state === 'onscene')) return { ok: true, msg: nm + ' už je vyrozuměna.' };
-    const eta = this.rr(kind === 'pcr' ? 300 : 360, kind === 'pcr' ? 900 : 1000) * 0.75;   // PČR i hasiči jedou o čtvrtinu rychleji
+    const eta = kind === 'pcr' ? this._policeEta(cs.lat, cs.lon) : this.rr(360, 1000) * 0.75;   // policie jede jako my na N1 (z nejbližší stanice po silnici), hasiči o čtvrtinu rychleji než dřív
     const wasReq = a && a.reqAt != null;
     A[kind] = Object.assign(a || {}, { state: 'sent', sentAt: this.s.t, arriveAt: this.s.t + eta });
     if (wasReq && !A[kind].scored) { A[kind].scored = true; if (this.s.t - A[kind].reqAt <= 360) this._opsScore(1, `včas vyrozuměna ${nm} u ${cs.num}`, cs.id); }

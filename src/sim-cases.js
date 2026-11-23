@@ -516,7 +516,7 @@ class SimCases {
       const ag = Object.assign({}, eo.ag);
       if (/PČR/.test(up)) ag.pcr = true;
       if (/HZS/.test(up)) ag.hzs = true;
-      if (Object.keys(ag).length) { c.agencies = {}; for (const k of Object.keys(ag)) c.agencies[k] = { state: 'sent', sentAt: t + 20, arriveAt: t + intake + this.rr(240, 840) * 0.75, auto: true }; }
+      if (Object.keys(ag).length) { c.agencies = {}; for (const k of Object.keys(ag)) c.agencies[k] = { state: 'sent', sentAt: t + 20, arriveAt: k === 'pcr' ? t + 20 + this._policeEta(lat, lon) : t + intake + this.rr(240, 840) * 0.75, auto: true }; }
     } else if (!extKinds && over.extKinds === undefined && !over.symptoms) {
       const need = [];
       if (/PČR/.test(up)) need.push('pcr');

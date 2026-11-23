@@ -8,6 +8,11 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.8 – 2026-11-23
+- **Policie jede jako my na N1.** Příjezd policie se počítá z nejbližší policejní stanice po silnici rychlostí jako naše posádky na N1 (včetně vyjetí ze stanice, asi 1,7 min), místo dřívějších 4 až 11 minut náhodně. Platí pro policii přivolanou dispečerem i pro tu, která přišla s datovou zprávou; trojúhelníky na mapě jedou stejným časem. Hasiči zůstávají o čtvrtinu rychlejší než původně.
+
+---
+
 ## v0.39.7 – 2026-11-23
 - **Koeficienty stanic zrušeny.** Doba jízdy už se neliší podle stanoviště, jen podle trasy z routeru, naléhavosti a denní doby. Stanicové koeficienty z kalibrace na lednových a červencových výjezdech nebyly čistou rychlostí silnic, ale zachycovaly i to, odkud vůz skutečně vyjel a jak přesná je poloha stanice. Společná korekce zůstává (+3 % a +25 s), optimální hodnota vyšla z dat 10. až 20. 11. 2026 stejná i bez koeficientů (medián skutečnost/model 1,00). Čas jízdy je tak předvídatelný a rozumně seřazený podle vzdálenosti.
 

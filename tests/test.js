@@ -1391,3 +1391,17 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (!l.length || l.some(x => !(x.drive > 0) || x.drive >= x.eta - 20)) throw new Error('návrhář: čistá jízda = ETA − prodleva před výjezdem');
   console.log('návrhář posádek: čistá jízda bez prodlevy true');
 }
+
+// policie jede jako my na N1 (z nejbližší stanice), ne pomaleji než pozemní posádky
+{
+  const sim = new Sim({ seed: 91, mode: 'shift', startHour: 12, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nextMU = null; sim.s.ev.nbPlan = [];
+  const at = { lat: 49.2603, lon: 14.6636, addr: 'Test', town: 'Tábor' };
+  const cs = sim._spawn({ ind: 'dn_lehke', n: 2, where: 'ulice', intake: 0, at }); cs.status = 'waiting'; cs.agencies = {};
+  sim.sendAgency(cs.id, 'pcr');
+  const e = cs.agencies.pcr.arriveAt - sim.s.t;
+  if (e < 90 || e > 900) throw new Error('policie: příjezd z nejbližší stanice ' + e);
+  const near = ZOS_DATA.izs.pcr.reduce((b, p) => (!b || hav(p.lat, p.lon, at.lat, at.lon) < hav(b.lat, b.lon, at.lat, at.lon) ? p : b), null);
+  const b0 = sim._eta(near.lat, near.lon, at.lat, at.lon), n1 = 100 * Math.min(1, b0 / 150) + b0 * 0.92;   // rychlost N1: DRIVE.N1
+  if (e < n1 * 0.9 || e > n1 * 1.12) throw new Error('policie jede jako N1: ' + e + ' vs ' + n1);
+  console.log('policie: rychlost jako N1 true');
+}
