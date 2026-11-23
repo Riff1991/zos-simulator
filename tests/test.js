@@ -1382,3 +1382,12 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     if (!sim._agencyHold(cs)) throw new Error('posádka čeká na hasiče 5 min po příjezdu'); sim.s.t = a.arriveAt + 310; if (sim._agencyHold(cs)) throw new Error('po 5 min po příjezdu hasičů se transport uvolní'); }
   console.log('v0.39.2: ohledání bez RZP, seznamy hasičů a policie, CAS na transport, čekání na hasiče true');
 }
+
+// návrhář posádek ukazuje čistou jízdu bez prodlevy před výjezdem
+{
+  const sim = new Sim({ seed: 81, mode: 'shift', startHour: 12, radio: 'auto' }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nextMU = null; sim.s.ev.nbPlan = [];
+  const cs = sim._spawn({ ind: 'bolest', n: 3, where: 'byt', intake: 0 }); cs.status = 'waiting';
+  const l = sim.suggest(cs.id, 'RZP').filter(x => sim.crewOf(x.crewId).state === 'base');
+  if (!l.length || l.some(x => !(x.drive > 0) || x.drive >= x.eta - 20)) throw new Error('návrhář: čistá jízda = ETA − prodleva před výjezdem');
+  console.log('návrhář posádek: čistá jízda bez prodlevy true');
+}

@@ -9914,6 +9914,15 @@ class Sim {
     }
     return (c.state === 'base' ? 78 : 25) + driveSec(sec, mode) * this._wxMul(mode);
   }
+  // čistá jízda od výjezdu na místo (bez prodlevy před výjezdem; u LZS jen let): to ukazuje návrhář posádek
+  driveFor(c, lat, lon, n) {
+    const p = this.pos(c), mode = 'N' + Math.min(4, Math.max(1, n || 2));
+    if (c.type === 'LZS') return heliSec(p.lat, p.lon, lat, lon);
+    if (c.type === 'MU') return driveSec(this._eta(p.lat, p.lon, lat, lon), 'N2');
+    const sec = this._eta(p.lat, p.lon, lat, lon), was = c.fromBase; c.fromBase = c.state === 'base';
+    const cal = this._driveCal(sec, mode, c); c.fromBase = was;
+    return (cal && (c.type === 'RZP' || c.type === 'RV') ? cal.mean : driveSec(sec, mode)) * this._wxMul(mode);
+  }
   _eta(a, b, c, d) {
     if (typeof ROUTER !== 'undefined' && ROUTER.ready) { const v = ROUTER.eta(a, b, c, d); if (v != null) return v; }
     return travelSec(a, b, c, d);
@@ -10097,7 +10106,7 @@ class Sim {
       const target = role === 'heli-transfer' ? this._heliportForCase(c) : { lat: c.lat, lon: c.lon };
       const eta = this.etaFor(k, target.lat, target.lon, c.n);
       const p = this.pos(k);
-      out.push({ crewId: k.id, eta, km: roadKm(p.lat, p.lon, target.lat, target.lon) });
+      out.push({ crewId: k.id, eta, drive: this.driveFor(k, target.lat, target.lon, c.n), km: roadKm(p.lat, p.lon, target.lat, target.lon) });
     }
     out.sort((a, b) => a.eta - b.eta);
     return out;

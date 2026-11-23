@@ -8,6 +8,11 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.5 – 2026-11-23
+- **Návrhář posádek ukazuje čistou jízdu.** Čas u každé posádky je odhad jízdy od výjezdu na místo, bez prodlevy před výjezdem (ta je asi 1,5 až 2 min u posádky na základně). U vrtulníku je to jen let. Pořadí v nabídce a doporučení (hvězdička) se dál řídí celkovým časem do příjezdu včetně prodlevy, takže nejrychlejší posádka zůstává první. Stejný čas ukazuje nápověda „Nejrychlejší RZP“ a nabídka předpoplachu.
+
+---
+
 ## v0.39.4 – 2026-11-23
 Dojezdy posádek podle skutečných výjezdů z 10. až 20. 11. 2026.
 - **Dokalibrace doby jízdy.** Z exportu výjezdů (2 688 řádků, z toho 2 257 primárních pozemních výjezdů ze základny s nalezenou adresou) jsem porovnal skutečnou dobu od výjezdu po status na místě s modelem. Adresy se hledaly v adresním rejstříku, vozy, které byly v době výzvy ještě na cestě z předchozího výjezdu, jsem vyřadil a stejně tak zjevně nezákladnové dlouhé trasy. Model byl v mediánu o 10 % rychlejší než skutečnost (u krátkých tras do 7 km o 15 %, u tras nad 20 km o 0 %). Doba jízdy má teď navíc +3 % a +25 s a upravené koeficienty stanic (například Kaplice, Týn nad Vltavou, ČB Vltava a ČB Pražská jedou pomaleji, Opařany a JH rychleji). Po úpravě je medián skutečná/model 1,00 ve všech skupinách podle naléhavosti, vzdálenosti i denní doby.
