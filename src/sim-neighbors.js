@@ -84,9 +84,26 @@ class SimNeighbors {
     }
     const rq = { id: 'nq' + (s.nbSeq = (s.nbSeq || 0) + 1), kind, region, rtype: kind === 'ground' ? (this.rnd() < 0.25 ? 'RV' : 'RZP') : 'LZS', place, lat, lon,
       indik: this.pick(['bolest na hrudi, N1', 'dušnost, N2', 'trauma, N2', 'porucha vědomí, N2', 'křečové stavy, N2', 'dopravní nehoda, N1']), t, state: 'open', expireAt: t + this.rr(180, 300), recallAt: null };
+    rq.state = 'case';
     (s.nbq || (s.nbq = [])).push(rq);
     if (s.nbq.length > 40) s.nbq.shift();
-    this._nbCall(rq, true);
+    this._nbCase(rq);
+  }
+  // Žádost sousedního kraje o výpomoc přijde jen datovou zprávou a naberou se jako samostatný výjezd (nehodnocený případ); vyžaduje jen tu složku, kterou kraj chce
+  // (RZP, nebo RV, nebo LZS), i když jde o N1. Vyslání jedné posádky stačí, druhá se nevyžaduje.
+  _nbCase(rq) {
+    const s = this.s, t = s.t, nb = ZOS_DATA.neighbors[rq.region];
+    const n = Number((/N(\d)/.exec(rq.indik) || [])[1]) || 2;
+    const ind = ([['bolest na hrudi', 'hrudnik'], ['dušnost', 'dusnost'], ['trauma', 'trauma'], ['porucha vědomí', 'porucha'], ['křečové', 'kreceU'], ['dopravní nehoda', 'dn_lehke']].find(x => rq.indik.startsWith(x[0])) || [0, 'trauma'])[1];
+    const what = rq.rtype === 'LZS' ? 'LZS Planá' : rq.rtype === 'RV' ? 'lékař (RV)' : 'RZP';
+    const cs = this._spawn({ ind, n, dyn: false, where: ind === 'dn_lehke' ? 'silnice' : 'byt', intake: 0, extKinds: null, symptoms: undefined,
+      at: { lat: rq.lat, lon: rq.lon, addr: `${rq.place} (${nb.short})`, town: nb.short, okres: nb.short },
+      patch: { nbHelp: { rq: rq.id, region: rq.region, short: nb.short, sign: nb.sign, rtype: rq.rtype, expireAt: t + this.rr(300, 600) }, carried: true, rvNeed: false, rvLater: false, rvP: 0, trans: false, fate: null,
+        initialDispatchRequired: [rq.rtype], initialDispatchSent: [], src: nb.sign, ozn: nb.sign, oznRel: 'operační středisko', poznamka: `výpomoc ${nb.short}: požadují jen ${what}`, place: '' } });
+    (cs.radioReports = cs.radioReports || []).push({ id: 'nb-1', at: t, received: false, acknowledged: false, source: `${nb.sign} (výpomoc)`, text: `žádost o výpomoc: ${what} do lokality ${rq.place}, ${rq.indik}. Druhou složku nepožadujeme, stačí vyslat jen ${what}.`, red: true });
+    this.L('alert', `${nb.sign} žádá o ${what} – ${rq.place}. Datová zpráva, případ ${cs.num}.`, cs.id);
+    rq.caseId = cs.id;
+    return cs;
   }
   _nbCall(rq, first) {
     const s = this.s, D = ZOS_DATA, nb = D.neighbors[rq.region], pseudo = { id: 'nbop-' + rq.region, code: rq.region, name: nb.sign }, opts = [];
@@ -166,6 +183,7 @@ class SimNeighbors {
       if (weather === 'neletovo') return { ok: false, msg: 'LZS nelze vyslat: neletové počasí.' };
       if (weather === 'consult' && !(cs.lzsPilotApproved && cs.lzsConsult && cs.lzsConsult.status === 'approved' && cs.lzsConsult.weatherStatus === weather)) return { ok: false, msg: 'LZS je na konzultaci. Vyžádej rozhodnutí pilota.' };
     }
+    if (cs.nbHelp && c.type !== cs.nbHelp.rtype) return { ok: false, msg: `${cs.nbHelp.sign} žádá jen ${cs.nbHelp.rtype === 'LZS' ? 'LZS' : cs.nbHelp.rtype === 'RV' ? 'lékaře (RV)' : 'RZP'}; druhou posádku nevysílej.` };
     if (c.type !== 'MU' && cs.n === 3 && this._muDeclaredOpen()) return { ok: false, msg: 'Během vyhlášené MU se výjezdy N3 odkládají.' };
     if (cs.typ === 'sekundární' && this._muDeclaredOpen()) return { ok: false, msg: 'Během vyhlášené MU se sekundární převozy odkládají.' };
     if (cs.mu && cs.mu.ended) return { ok: false, msg: 'MU je ukončena.' };
@@ -183,15 +201,42 @@ class SimNeighbors {
     // efektivita volby (první pozemní posádka)
     if (c.type === 'RZP' && !c.ext && role !== 'heli-transfer' && cs.effRatio == null) {
       let best = eta, bestK = c;
-      for (const k of s.crews) if (k.type === 'RZP' && !k.ext && this.avail(k)) { const e = this.etaFor(k, cs.lat, cs.lon, cs.n); if (e < best) { best = e; bestK = k; } }
-      // vzdálenější posádka je v pořádku, pokud by nejbližší nechala svou oblast bez volné RZP
-      const justified = bestK.id !== c.id && this._freeRzp(bestK.oblast, bestK.id) === 0 && this._freeRzp(c.oblast, c.id) >= 1;
+      // RZP ČB Planá je primárně sekundární posádka: pokud jsou volné ostatní ČB RZP (1, 2, 3, Vltava, Pražská), nevybrání Plané se nepenalizuje
+      const cbOthers = s.crews.some(k => k.type === 'RZP' && !k.ext && this.avail(k) && ['cb', 'cbpr', 'cbvl'].includes(k.st));
+      for (const k of s.crews) if (k.type === 'RZP' && !k.ext && this.avail(k)) { if (k.st === 'cbpl' && k.id !== c.id && cbOthers) continue; const e = this.etaFor(k, cs.lat, cs.lon, cs.n); if (e < best) { best = e; bestK = k; } }
+      // vzdálenější posádka je v pořádku, pokud by nejbližší nechala svou oblast bez volné RZP; u N3 má přednost pokrytí kraje (nejbližší posádka je jediná volná v okolí své základny)
+      let justified = bestK.id !== c.id && this._freeRzp(bestK.oblast, bestK.id) === 0 && this._freeRzp(c.oblast, c.id) >= 1;
+      if (!justified && cs.n === 3 && bestK.id !== c.id && this._thinArea(bestK)) justified = true;
+      // dispečer počkal na posádku, která se za pár minut uvolní z předání, a ušetřil tím víc než 5 min proti nejbližší volné (N3)
+      const w = cs.waitSnap && !role ? cs.waitSnap.soon.find(x => x.id === c.id) : null;
+      if (w && !justified && cs.waitSnap.bestAvail - (w.availIn + w.eta) >= 300 && t - cs.readyAt >= w.availIn - 90) {
+        justified = true; cs.waitExcused = Math.min(600, w.availIn);
+        this._opsScore(1, `počkáno na uvolnění blízké posádky ${c.name} místo vyslání vzdálenější (${cs.num})`, cs.id);
+      }
       cs.pick = { best, chosen: eta, justified };
       cs.effRatio = justified ? 1 : best / eta;
+      if (cs.noCrewSec == null) cs.noCrewSec = Math.max(0, (cs.noCrewUntil != null ? cs.noCrewUntil : cs.readyAt) - cs.readyAt);   // doba, kdy nebyla volná žádná RZP (dojezd ani vyslání hráč neovlivní)
     }
-    if (c.type === 'RZP' && role !== 'heli-transfer' && c.zzum && cs.n === 2 && !cs.dyn && cs.zzumInd && !cs.docAssigned && !cs.zzumOk) {
+    // posádka ze ZZUM stanoviště smí na statickou N2 jet sama (bez RV): lékař se nevyžaduje, případ se hned počítá jako splněný
+    if (c.type === 'RZP' && role !== 'heli-transfer' && c.zzum && cs.n === 2 && !cs.dyn && !cs.docAssigned && !cs.zzumOk && !cs.mu && cs.typ !== 'sekundární') {
       cs.zzumOk = true; cs.rvNeed = false;
-      cs.rvLater = this.rnd() < cs.rvP;
+      cs.rvLater = this.rnd() < (cs.rvP || 0);
+      if (cs.initialDispatchRequired) cs.initialDispatchRequired = cs.initialDispatchRequired.filter(x => x !== 'RV');
+    }
+    // střídání posádek: bonus, když dostane výjezd posádka s nejméně výjezdy na stanovišti / v oblasti s podobným dojezdem (ne víc než 1× za hodinu na stanoviště)
+    if (c.type === 'RZP' && !c.ext && !c.res && !role && !cs.mu && cs.typ !== 'sekundární' && !cs.rotBonus) {
+      const peers = s.crews.filter(k => k !== c && k.type === 'RZP' && !k.ext && !k.res && this.avail(k) && (k.st === c.st || (k.oblast === c.oblast && Math.abs(this.etaFor(k, cs.lat, cs.lon, cs.n) - eta) <= 240)));
+      const last = (s.rotAt || {})[c.st];
+      if (peers.length && (c.callsCompleted || 0) < Math.min(...peers.map(k => k.callsCompleted || 0)) && (last == null || t - last >= 3600)) {
+        cs.rotBonus = true; (s.rotAt || (s.rotAt = {}))[c.st] = t;
+        this._opsScore(1, `střídání posádek: ${c.name} měla nejméně výjezdů (${c.callsCompleted || 0}) (${cs.num})`, cs.id);
+      }
+    }
+    if (c.type === 'RZP' && c.rlp && c.liberoId && !role) this._liberoLastBonus(c, cs);
+    if (cs.nbHelp && !cs.nbHelp.scored && c.type !== 'LZS') {
+      cs.nbHelp.scored = true;
+      const others = s.crews.filter(x => !x.ext && x.type === c.type && x.oblast === c.oblast && x.id !== c.id && this.avail(x)).length;
+      this._opsScore(others >= 1 ? 1 : -1, others >= 1 ? `výpomoc sousednímu kraji, v oblasti zůstává volná posádka (${c.name})` : `výpomoc sousednímu kraji, oblast ${c.oblast} zůstala bez volné posádky (${c.name})`, cs.id);
     }
     if (!cs.exitus) {
       if (cs.prealertCrewIds && cs.prealertCrewIds.includes(c.id) && !cs.prealertBonus) { cs.prealertBonus = true; this._opsScore(1, `předpoplach využit u ${cs.num}`, cs.id); }
@@ -206,6 +251,8 @@ class SimNeighbors {
     if (!rolling) c.mv = null;
     c.fromBase = c.state === 'base';
     c.turn = rolling ? this.rr(5, 15) : this._turnout(c, cs.n); // vůz na cestě (vrací se) jede rovnou, bez zastavení
+    // předpoplach N1: posádka je připravená, výjezd se výrazně zkrátí (LZS aktivace na polovinu)
+    if (cs.n === 1 && cs.prealertCrewIds && cs.prealertCrewIds.includes(c.id)) c.turn = Math.min(c.turn, c.type === 'LZS' ? c.turn * 0.5 : rolling ? this.rr(3, 8) : this.rr(8, 22));
     c.dispatchAt = t; c.turnoutAlerted = false;
     c.state = 'call'; c.until = t + c.turn; c.caseId = cs.id; c.arrivedAt = null; c.dest = null; c.hospitalRun = null; c.relayHold = false;
     c.caseRole = role || null;

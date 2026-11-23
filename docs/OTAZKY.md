@@ -420,3 +420,11 @@ Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repoz
 - Těžký režim má mít vyšší podíl naléhavostí N1 a N2.
 - Potřebná PČR/HZS, která nebyla označena během hovoru, se při příjezdu posádky automaticky přivolá bez bodového postihu.
 - Calltaker mapa: z `poi.json` zobrazit orientační body (kostely/kaple, školy, pojmenované obchody a provozovny přednostně; ordinace, domovy, ubytování, ostatní pojmenovaná místa a sport až při větším přiblížení) jen v okolí posledního AML, s limity podle vzdálenosti a přiblížení. Body jsou neutrální: výběr nezávisí na skutečné poloze případu a ta se nijak nezvýrazňuje.
+
+### Sběr oprav 0.39.0 (2026-11-23): rozhodnutí a otevřené body
+- **Rádio:** každá hláška začíná volačkou. Posádka vlastní („ZCB413, pacienta máme…“), dispečer volačkou posádky („ZCB413, vracejte se prosím v režimu N3.“). Řádky logu nesou `who` ('zos' / 'crew'), podle něj se rozlišuje mluvčí.
+- **HZS ve výzvě:** příznak „+ HZS“ jen s věrohodným důvodem (DN, uvěznění, požár/CO, terén, tonutí, popálení, KPR, asistence); jinak se z losované sady příznaků vyřadí. „+ PČR“ se nemění.
+- **Výpomoc jinému kraji:** jen datovka, samostatný nehodnocený výjezd, vyžaduje jen požadovanou složku (RZP nebo RV nebo LZS).
+- **Dojezd v hodnocení:** nebodují se doba bez volné RZP, čekání na blízkou posádku (N3) a část dojezdu, kterou nezkrátí ani nejbližší volná posádka.
+- **OTEVŘENO – dynamika N2 u CZS a alergie:** podle exportů leden a červenec 2026 není u CZS N2 žádná sada s dynamickou indikací (dva případy z 43 mají Paliativně relevantní pacient) a alergie „AVPU-A, kožní projevy, dospělý, volání z třetí ruky“ je v datech statická. Uživatel očekává u CZS N2 dynamiku, pokud není paliativní příznak. Vyžádat statistiky z excelů; zatím se nic nemění.
+- **OTEVŘENO – pavilony nemocnice ČB:** souřadnice pracovišť v `ZOS_DATA.hospDepts` jsou orientační (do ~150 m od hlavního bodu); doplnit skutečné polohy pavilonů.

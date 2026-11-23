@@ -165,23 +165,28 @@ const ZOS_EXTMSG = (function () {
     return [{ src: 'pcr', dt: ri(r, 20, 90), text: join([`${ctx.addr}`, pickF(r, ['zadržená osoba udává bolest na hrudi', 'osoba po zákroku hlídky, krvácí z obočí', 'řidič při silniční kontrole zkolaboval', 'osoba v cele, křeče', 'nalezen bezdomovec, podchlazený', 'žádost o asistenci při převozu osoby', 'nalezen senior bloudící v noci'])]) }];
   }
 
+  // postižená část těla podle příznaků případu (datovka s ní nesmí být v rozporu): hlava | krk | záda | hrudník | ruka | noha | null
+  const bodyPart = sym => { const s = String(sym || ''); return /HLAVA|OBLIČEJ/.test(s) ? 'hlava' : /KRK/.test(s) ? 'krk' : /ZÁDA|PÁTEŘ/.test(s) ? 'záda' : /HRUD/.test(s) ? 'hrudník' : /HORNÍ KONČ|HKK|RUKA/.test(s) ? 'ruka' : /DOLNÍ KONČ|DKK|NOHA|STEHN|KYČL/.test(s) ? 'noha' : null; };
+  const partTxt = { hlava: ['osoba při vědomí, krvácí z hlavy', 'osoba nereaguje, dýchá, rána na hlavě', 'osoba nehybná, krvácí z hlavy'], krk: ['osoba při vědomí, bolest krku', 'osoba po úderu do krku, dýchá'], záda: ['osoba při vědomí, bolest zad', 'osoba leží, bolest zad, nesmí hýbat'], hrudník: ['osoba při vědomí, bolest na hrudi', 'osoba po úderu do hrudníku, dušnost'], ruka: ['poranění ruky, krvácí', 'osoba při vědomí, bolest ruky'], noha: ['osoba nemůže stát, bolest nohy', 'osoba leží, bolest nohy'] };
   // ---------- pád z výšky ----------
   function padVyska(ctx) {
     const r = ctx.r, out = [];
+    const part = bodyPart(ctx.sym);
     const odkud = pickF(r, ['ze střechy', 'z lešení', 'z žebříku', 'ze stromu při prořezávce', 'z okna v patře', 'ze stohu', 'z ložné plochy nákladního vozidla', 'ze zdi při opravě']);
-    out.push({ src: r() < 0.55 ? 'tctv' : 'hzs', dt: ri(r, 25, 90), text: join([`Pád ${odkud} – ${ctx.addr}`, pickF(r, ['výška asi 2 m', 'výška asi 3 m', 'výška asi 5 m', 'výška přes 6 m']), pickF(r, ['osoba při vědomí, bolest zad', 'osoba nereaguje, dýchá', 'osoba nehybná, krvácí z hlavy', 'osoba nemůže hýbat nohama', 'osoba leží, komunikuje'])]) });
-    out.push({ src: r() < 0.5 ? 'hzs' : 'pcr', dt: ri(r, 150, 330), text: pickF(r, ['podezření na poranění páteře, osoba nesmí hýbat', 'zraněný ošetřován kolegy, přístup bezpečný', 'osoba dýchá, krvácí z ucha', 'přístup k pacientovi po žebříku, zajištěno', 'osoba leží na zádech, bolest pánve']) });
+    out.push({ src: r() < 0.55 ? 'tctv' : 'hzs', dt: ri(r, 25, 90), text: join([`Pád ${odkud} – ${ctx.addr}`, pickF(r, ['výška asi 2 m', 'výška asi 3 m', 'výška asi 5 m', 'výška přes 6 m']), pickF(r, partTxt[part] || ['osoba při vědomí, bolest zad', 'osoba nereaguje, dýchá', 'osoba nehybná, krvácí z hlavy', 'osoba nemůže hýbat nohama', 'osoba leží, komunikuje'])]) });
+    out.push({ src: r() < 0.5 ? 'hzs' : 'pcr', dt: ri(r, 150, 330), text: pickF(r, part && part !== 'záda' ? ['zraněný ošetřován kolegy, přístup bezpečný', 'přístup k pacientovi po žebříku, zajištěno', 'osoba leží, komunikuje, přístup bezpečný'] : ['podezření na poranění páteře, osoba nesmí hýbat', 'zraněný ošetřován kolegy, přístup bezpečný', 'přístup k pacientovi po žebříku, zajištěno']) });
     return out;
   }
 
   // ---------- pracovní úraz ----------
   function pracUraz(ctx) {
     const r = ctx.r, out = [];
-    ctx.trappedWork = r() < 0.2;
-    out.push({ src: r() < 0.6 ? 'tctv' : 'pcr', dt: ri(r, 25, 90), text: join([`Pracovní úraz – ${ctx.addr}`, pickF(r, ['pila', 'lis', 'vysokozdvižný vozík', 'soustruh', 'řetězová pila', 'zemědělský stroj', 'pás dopravníku']), ctx.trappedWork ? pickF(r, ['ruka zaklíněná ve stroji, nutné vyproštění', 'noha zaklíněná pod strojem', 'zavalení břemenem, osoba zaklíněná']) : pickF(r, (ctx.n && ctx.n > 2 ? [] : ['amputace prstů']).concat(['rozsáhlé řezné poranění ruky', 'poranění oka', 'popálení horkým olejem', 'zasažení elektrickým proudem', 'zavalení břemenem, osoba vyprostěna kolegy']))]) });
+    const part = bodyPart(ctx.sym);
+    ctx.trappedWork = (!part || part === 'ruka' || part === 'noha') && r() < 0.2;   // uvěznění jen u končetiny, ne u poranění hlavy či zad
+    out.push({ src: r() < 0.6 ? 'tctv' : 'pcr', dt: ri(r, 25, 90), text: join([`Pracovní úraz – ${ctx.addr}`, pickF(r, ['pila', 'lis', 'vysokozdvižný vozík', 'soustruh', 'řetězová pila', 'zemědělský stroj', 'pás dopravníku']), ctx.trappedWork ? pickF(r, part === 'ruka' ? ['ruka zaklíněná ve stroji, nutné vyproštění'] : part === 'noha' ? ['noha zaklíněná pod strojem'] : ['ruka zaklíněná ve stroji, nutné vyproštění', 'noha zaklíněná pod strojem', 'zavalení břemenem, osoba zaklíněná']) : part && part !== 'ruka' ? pickF(r, partTxt[part] || ['osoba při vědomí, komunikuje']) : pickF(r, (ctx.n && ctx.n > 2 ? [] : ['amputace prstů']).concat(['rozsáhlé řezné poranění ruky', 'poranění oka', 'popálení horkým olejem', 'zasažení elektrickým proudem', 'zavalení břemenem, osoba vyprostěna kolegy']))]) });
     out.push({ src: 'hzs', dt: ri(r, 140, 340), text: ctx.trappedWork ? pickF(r, ['stroj vypnut, zahájeno vyproštění, odhad ' + ri(r, 10, 30) + ' min', 'vyproštění probíhá, osoba při vědomí']) : pickF(r, ['stroj vypnut, přístup bezpečný', 'kolegové zastavili krvácení, přístup bezpečný', 'osoba při vědomí, komunikuje', (ctx.n && ctx.n > 2 ? 'osoba při vědomí, komunikuje' : 'amputát zajištěn ve sterilním obalu')]) });
     // po nabrání jako N3 přijde upřesnění: amputace prstů → vždy změna naléhavosti na N2 (dynamickou nebo plnou), posádce se oznámí rádiem
-    if (ctx.n === 3 && !ctx.trappedWork && r() < 0.5) out.push({ src: r() < 0.5 ? 'tctv' : 'hzs', dt: ri(r, 170, 330), upgrade: { n: 2, symptom: '´Amputace prstů' }, red: true, text: join([`Pracovní úraz – ${ctx.addr}`, 'upřesnění: amputace prstů, amputát zajištěn', 'masivní krvácení zastaveno tlakovým obvazem']) });
+    if (ctx.n === 3 && !ctx.trappedWork && (!part || part === 'ruka') && r() < 0.5) out.push({ src: r() < 0.5 ? 'tctv' : 'hzs', dt: ri(r, 170, 330), upgrade: { n: 2, symptom: '´Amputace prstů' }, red: true, text: join([`Pracovní úraz – ${ctx.addr}`, 'upřesnění: amputace prstů, amputát zajištěn', 'masivní krvácení zastaveno tlakovým obvazem']) });
     return out;
   }
 
@@ -307,7 +312,7 @@ const ZOS_EXTMSG = (function () {
         if (where === 'priroda') return out(['zachrana'], 0.4);
         // druh datovky musí odpovídat symptomům případu (cyklista jen s cyklistou venku, napadení jen s napadením…)
         if (street) return mix([[['napadeni'], has(/NAPADENÍ(?! ZVÍŘETEM)|BODNÉ|STŘELNÉ/) ? 0.5 : 0], [['cyklista'], where === 'ulice' && has(/CYKLIST|KOLOBĚŽ/) ? 0.5 : 0], [['pokousani'], has(/NAPADENÍ ZVÍŘETEM/) ? 0.5 : 0]]);
-        if (where === 'prov') return mix([[['pracUraz'], has(/ZAVALENÍ|ELEKTRICK|AMPUTAC|OTEVŘEN|ZLOMENIN/) ? 0.3 : 0], [['padVyska'], has(/PÁD Z VÝŠE/) ? 0.4 : 0]]);
+        if (where === 'prov') return mix([[['pracUraz'], has(/ZAVALENÍ|ELEKTRICK|AMPUTAC|STROJ|PRACOVNÍ ÚRAZ/) || (has(/OTEVŘEN|ZLOMENIN/) && has(/HORNÍ KONČ|DOLNÍ KONČ|HKK|DKK|RUKA|NOHA|PRST/)) ? 0.3 : 0], [['padVyska'], has(/PÁD Z VÝŠE/) ? 0.4 : 0]]);
         if (where === 'rd') return mix([[['padVyska'], has(/PÁD Z VÝŠE/) ? 0.4 : 0], [['domNasili'], has(/NAPADENÍ(?! ZVÍŘETEM)/) ? 0.4 : 0], [['pokousani'], has(/NAPADENÍ ZVÍŘETEM/) ? 0.4 : 0]]);
         if (where === 'byt') return out(['domNasili'], has(/NAPADENÍ(?! ZVÍŘETEM)/) ? 0.4 : 0);
         return null;

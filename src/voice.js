@@ -51,7 +51,7 @@ const ZOS_VOICE = (function () {
   }
   function setTempo(t) { tempo = Math.max(0.55, Math.min(1.2, Number(t) || 0.75)); }
   // text pro čtení: volací znaky, zkratky, nemocnice
-  const ABBR = { RZP: 'er zet pé', RV: 'er vé', RLP: 'er el pé', LZS: 'el zet es', KPR: 'ká pé er', ARO: 'ááro', ORL: 'orl', KCC: 'ká cé cé', PČR: 'policie', HZS: 'hasiči', ZZ: 'zdravotnické zařízení', DN: 'dopravní nehoda', RD: 'rodinný dům', NEM: 'nemocnice', ZOS: 'zet ó es', LIBERO: 'libero', TANR: 'tanr', UPV: 'úpévé', METHANE: 'metan', JIP: 'jip', DPS: 'dé pé es', LSPP: 'pohotovost', CB: 'Budějovice', ČB: 'Budějovice', JH: 'Jindřichův Hradec', TA: 'Tábor', PT: 'Prachatice', ST: 'Strakonice', CK: 'Krumlov', ČK: 'Krumlov', PI: 'Písek' };
+  const ABBR = { RZP: 'er zet pé', RV: 'er vé', RLP: 'er el pé', LZS: 'el zet es', KPR: 'ká pé er', ARO: 'ááro', ORL: 'orl', KCC: 'ká cé cé', CZS: 'celkové zhoršení stavu', PČR: 'policie', HZS: 'hasiči', ZZ: 'zdravotnické zařízení', DN: 'dopravní nehoda', RD: 'rodinný dům', NEM: 'nemocnice', ZOS: 'zet ó es', LIBERO: 'libero', TANR: 'tanr', UPV: 'úpévé', METHANE: 'metan', JIP: 'jip', DPS: 'dé pé es', LSPP: 'pohotovost', CB: 'Budějovice', ČB: 'Budějovice', JH: 'Jindřichův Hradec', TA: 'Tábor', PT: 'Prachatice', ST: 'Strakonice', CK: 'Krumlov', ČK: 'Krumlov', PI: 'Písek' };
   // čísla slovy; jednička vždy „jedna“ (rádiový úzus: „zecébé dvacet jedna“, ne „jeden“)
   const NU = ['nula', 'jedna', 'dva', 'tři', 'čtyři', 'pět', 'šest', 'sedm', 'osm', 'devět'];
   const NT = ['deset', 'jedenáct', 'dvanáct', 'třináct', 'čtrnáct', 'patnáct', 'šestnáct', 'sedmnáct', 'osmnáct', 'devatenáct'];
@@ -183,7 +183,7 @@ const ZOS_VOICE = (function () {
   // fronta relací – poloduplex, jedna relace za druhou
   function say(text, key, id) {
     if (!text) return;
-    if (queue.length > 6) { for (const d of queue.splice(0, queue.length - 4)) emitSpeak(d.key, 'drop', d.id); }
+    if (queue.length > 400) { for (const d of queue.splice(0, queue.length - 300)) emitSpeak(d.key, 'drop', d.id); }   // jen pojistka proti nekonečné frontě; běžně se odbaví vše
     queue.push({ text, key, id, p: null, at: performance.now() });
     pump();
   }
@@ -192,7 +192,6 @@ const ZOS_VOICE = (function () {
     try {
       while (queue.length) {
         const it = queue.shift();
-        if (performance.now() - it.at > 45000) { emitSpeak(it.key, 'drop', it.id); continue; }
         const c = audioCtx(); if (!c) break;
         const v = voiceOf(it.key);
         if (state === 'ready' && !it.p) it.p = synth(it.text, it.key);

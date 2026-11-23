@@ -283,7 +283,7 @@ function glInit() {
     GL.on('error', e => { if (window.console) console.warn('map', e && e.error && e.error.message); });
     GL.on('load', () => {
       const empty = { type: 'FeatureCollection', features: [] };
-      for (const s of ['routes', 'stations', 'hosp', 'heliport', 'fr', 'nb', 'cases', 'crews']) GL.addSource(s, { type: 'geojson', data: empty });
+      for (const s of ['routes', 'stations', 'hosp', 'heliport', 'fr', 'nb', 'cases', 'crews', 'izs']) GL.addSource(s, { type: 'geojson', data: empty });
       GL.addSource('selroute', { type: 'geojson', data: empty });
       { const cg = covGeom(); GL.addSource('cov', { type: 'image', url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', coordinates: [[cg.w, cg.n], [cg.e, cg.n], [cg.e, cg.s], [cg.w, cg.s]] }); GL.addSource('covgaps', { type: 'geojson', data: empty }); }
       GL.addLayer({ id: 'routes', type: 'line', source: 'routes', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'col'], 'line-width': ['interpolate', ['linear'], ['zoom'], 7, 3, 14, 6], 'line-opacity': 0.85 } });
@@ -315,6 +315,17 @@ function glInit() {
         if (GL.getLayer('stations-house')) return;
         GL.addLayer({ id: 'stations-house', type: 'symbol', source: 'stations', layout: { 'icon-image': 'zos-house', 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.48, 13, 0.78], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.base ? 'visible' : 'none' }, paint: { 'icon-opacity': 1 } }, 'crews-base');
       });
+      // PČR (modrý) a HZS (červený) trojúhelník: stejný tvar, jen jiná barva; po najetí se ukáže hlídka / CAS apod.
+      {
+        const triSvg = c => `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 22 26"><path d="M11 2 L20 23 L2 23 Z" fill="${c}" stroke="#000" stroke-width="2" stroke-linejoin="round"/></svg>`;
+        svgIcon('zos-izs-hzs', triSvg('#ff9a9a'), 22, 26, () => svgIcon('zos-izs-pcr', triSvg('#8fd0ff'), 22, 26, () => {
+          if (GL.getLayer('izs')) return;
+          GL.addLayer({ id: 'izs', type: 'symbol', source: 'izs', layout: { 'icon-image': ['get', 'ico'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 13, 0.9], 'icon-rotate': ['get', 'hd'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'visibility': layers.crews ? 'visible' : 'none' } }, 'cases');
+          const pop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14 });
+          GL.on('mousemove', 'izs', e => { const p = e.features[0].properties; GL.getCanvas().style.cursor = 'pointer'; pop.setLngLat(e.lngLat).setHTML(`<b>${esc(p.label)}</b><br>${esc(p.who)} · ${esc(p.num)}`).addTo(GL); });
+          GL.on('mouseleave', 'izs', () => { pop.remove(); GL.getCanvas().style.cursor = ''; });
+        }));
+      }
       const aedSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><rect x="1.500" y="1.500" width="25" height="25" rx="4.500" fill="#1a9b4b" stroke="#fff" stroke-width="2"/><path d="M14 23C14 23 5 17 5 11 5 8 7.400 6.200 9.800 6.200 11.600 6.200 13.200 7.200 14 8.800 14.800 7.200 16.400 6.200 18.200 6.200 20.600 6.200 23 8 23 11 23 17 14 23 14 23Z" fill="#fff"/><path d="M15.400 9 11 15H13.600L12.600 20 17 13.600H14.400Z" fill="#1a9b4b"/></svg>';
       svgIcon('zos-aed', aedSvg, 28, 28, () => {
         if (GL.getLayer('fr-aed')) return;
@@ -376,7 +387,7 @@ function glApplyLayers() {
   if (!glReady) return;
   const vis = (ids, on) => ids.forEach(id => GL.getLayer(id) && GL.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
   vis(['stations', 'stations-l', 'stations-house', 'nb', 'nb-l'], layers.base); vis(['hosp', 'hosp-t', 'hosp-l', 'heliport', 'heliport-l'], layers.hosp);
-  vis(['cov', 'cov-gaps'], layers.cov); vis(['fr-aed', 'fr-l'], layers.fr); vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
+  vis(['cov', 'cov-gaps'], layers.cov); vis(['fr-aed', 'fr-l'], layers.fr); vis(['crews', 'crews-base', 'crews-ico', 'crews-mu', 'crews-heli', 'crews-l', 'crews-base-l', 'izs'], layers.crews); vis(['cases', 'cases-t', 'cases-l'], layers.cases);
 }
 function glRoute(kk, col) {
   const m = kk.mv; if (!m) return null;
@@ -419,6 +430,7 @@ function glUpdate(force) {
   }
   GL.getSource('cases').setData({ type: 'FeatureCollection', features: cases });
   GL.getSource('crews').setData({ type: 'FeatureCollection', features: crews });
+  if (GL.getSource('izs')) GL.getSource('izs').setData({ type: 'FeatureCollection', features: sim.izsVisible(sim.s.t).map(v => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [v.lon, v.lat] }, properties: { ico: v.u.kind === 'pcr' ? 'zos-izs-pcr' : 'zos-izs-hzs', hd: Math.round(v.hd), label: v.u.label, who: v.u.who, num: v.cs.num } })) });
   GL.getSource('routes').setData({ type: 'FeatureCollection', features: routes });
 }
 function glCaseAt(x, y) {
@@ -430,6 +442,16 @@ function glCaseAt(x, y) {
   return f.length ? f[0].properties.id : null;
 }
 
+// heliport pod ukazatelem (pro přetažení RZP na heliport)
+function glHeliAt(x, y) {
+  if (!glReady) return null;
+  const r = GL.getCanvas().getBoundingClientRect();
+  if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
+  const px = x - r.left, py = y - r.top;
+  const f = GL.queryRenderedFeatures([[px - 12, py - 12], [px + 12, py + 12]], { layers: ['heliport'] });
+  if (!f.length) return null;
+  const c = f[0].geometry.coordinates; return { lat: c[1], lon: c[0] };
+}
 function renderMap() { if (GL) { glUpdate(); return; } renderMapSvg(); }
 function renderMapSvg() {
   const svg = $('map');
@@ -473,6 +495,10 @@ function renderMapSvg() {
     const x = X(cs.lon), y = Y(cs.lat), col = cs.n === 1 ? '#d9342b' : cs.n === 2 ? '#ee8a1b' : cs.n === 4 ? '#7892a6' : '#e8c02a', r = 8 * sc;
     const rvPending = cs.rvReq && !cs.rvReq.cancelled && cs.rvReq.satT == null && !cs.docAssigned;
     h += `<g class="mk ${cs.status === 'waiting' || rvPending ? 'pulse' : ''}" data-case="${cs.id}">${rvPending ? `<circle cx="${x}" cy="${y}" r="${r + 8 * sc}" fill="none" stroke="#d9342b" stroke-width="${3 * sc}"/>` : ''}${sel.c === cs.id ? `<circle cx="${x}" cy="${y}" r="${r + 5 * sc}" fill="none" stroke="#111" stroke-width="${2 * sc}"/>` : ''}<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" stroke="${rvPending ? '#d9342b' : '#111'}" stroke-width="${rvPending ? 3 * sc : 1.2 * sc}"/><text x="${x}" y="${y + 3.5 * sc}" text-anchor="middle" font-size="${10 * sc}" font-weight="700" fill="#111">${cs.mu ? 'MU' : cs.n}</text></g>`;
+  }
+  if (layers.crews) for (const v of sim.izsVisible(sim.s.t)) {   // PČR (modrý) / HZS (červený) trojúhelník, po najetí popis
+    const x = X(v.lon), y = Y(v.lat), r = 5.5 * sc;
+    h += `<path d="M${x} ${y - r}L${x + r * 0.85} ${y + r * 0.8}H${x - r * 0.85}Z" fill="${v.u.kind === 'pcr' ? '#8fd0ff' : '#ff9a9a'}" stroke="#000" stroke-width="${1.3 * sc}" stroke-linejoin="round" transform="rotate(${Math.round(v.hd)} ${x} ${y})"><title>${esc(v.u.label)} · ${esc(v.u.who)} · ${esc(v.cs.num)}</title></path>`;
   }
   if (layers.crews) for (const kk of sim.s.crews) {
     if (kk.state === 'off') continue;

@@ -8,6 +8,49 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.0 – 2026-11-23
+Sběrná verze oprav a změn z provozu. Body 1 a 10 ze sběru (dynamika N2 u alergie a CZS) se vědomě nemění, čeká se na statistiky.
+
+Rádio a hlas:
+- **Volačky v rádiové komunikaci.** Každá hláška začíná volacím znakem: posádka mluví vlastní volačkou („ZCB413, pacienta máme na palubě a jedeme…“), dispečer oslovuje posádku její volačkou („ZCB117, vracejte se prosím v režimu N3.“). Výměna je tedy celá: „ZCB101, zde ZCB117, příjem“ → „ZCB117 na příjmu“ → „ZCB117, vracejte se prosím…“ → „ZCB117 rozumí, vracíme se v režimu N3“ → „ZCB101 díky, konec“. Platí pro všechny relace posádek (hlášení transportu, kruháč, LZS, vstřícná jízda, prohlídka, žádosti o součinnost…) i pro relace dispečera (zrušení výjezdu, návrat v N3, ukončení před novým výjezdem, změna naléhavosti). V záznamu logu je u rádiových hlášek uloženo, kdo mluví, takže se hlas i panel Rádio nespletou, i když začínají stejně.
+- **Hlasová fronta se vždy odbaví celá.** Při zrychleném čase (30×, 60×) se dřív zahazovaly starší relace a slyšet byly jen některé odpovědi. Fronta už nic nezahazuje a nic nepřeskakuje (jen nouzová pojistka u extrémně dlouhé fronty nad 400 hlášek).
+- **CZS se říká „celkové zhoršení stavu“.** Hlas zkratku CZS čte plným názvem, stejně jako relace o novém výjezdu pro vracející se posádku.
+- **Vstřícná jízda: méně hlášení, přesnější místo.** Zmizelo hlášení posádky o předání pacienta a o dokončení vstřícné jízdy; zůstává, kdo jede naproti a kam. Místo setkání se píše podle skutečně nejbližší obce z adresního rejstříku („u obce Lásenice“, „v obci Chlum“), dřív se psalo jen největší blízké město (třeba Jindřichův Hradec i u setkání mimo něj).
+- **Prohlídka zemřelého mimo rádio.** Posádka už nehlásí, že zůstává na prohlídku, ani že ji ukončila. Stav (koroner není k dispozici, RV provádí prohlídku) je v detailu výjezdu. Posádka má status volná, na místě zůstane asi 20 až 35 minut a dá se odvolat k jinému výjezdu.
+- **LZS hlásí včas a správně.** Hlášení po vzletu přichází do 30 s od vzletu (dřív za minutu), čas do přistání je ve správném tvaru („za 3 minuty“, „za 1 minutu“, „za 7 minut“; dřív „za 3 minut“). Stav „bez omezení / na konzultaci“ (zkouška spojení v 8:00 a 20:00) se nehlásí, když je LZS ve vzduchu; ohlásí se asi 10 minut po návratu na základnu.
+- **Datovky odpovídají výjezdu.** Pracovní úraz a pád z výšky teď respektují postiženou část těla v upřesnění: pacient s poraněním hlavy, krku nebo zad už nemá v datovce „ruku zaklíněnou ve stroji“ a upřesnění s amputací prstů se nabízí jen u ruky. Pracovní úraz se k obecným příznakům (otevřená rána, zlomenina) přiřadí jen u končetin nebo při zmínce stroje, zavalení či elektrického proudu.
+
+Hodnocení a bonusy:
+- **RZP Planá je primárně sekundární posádka.** Pokud jsou volné ostatní ČB RZP (RZP1, 2, 3, Vltava, Pražská), nevybrání Plané se nepenalizuje, ani když je nejblíž. Když ji vyšleš, nic se neodebírá.
+- **Střídání posádek.** Bonus +1, když výjezd dostane posádka s nejméně výjezdy na stanovišti, nebo v oblasti s podobným dojezdem (rozdíl do 4 minut). Nejvýš jednou za hodinu na stanoviště. Cíl je, aby třeba RZP1 Tábor neměla dva výjezdy a ostatní čtyři.
+- **LIBERO.** Bonus +1, když LIBERO vyšleš s posledním RZP, které bylo na základně (lékař nezůstane sám bez vozu). Použití LIBERO místo RV má bonus +2, pokud je v poznámce ZOS „+libero“ (jinak +1 jako dřív).
+- **„+libero“ v poznámce jen když dává smysl.** Poznámka výjezdu se zmínkou o LIBERO se generuje jen tehdy, když je v okolí (do 35 km) LIBERO ve hře opravdu ve službě.
+- **Počkat na blízkou posádku (N3).** Když u N3 počkáš na posádku, která se do 10 minut uvolní z předání, a ušetříš tím aspoň 5 minut proti nejbližší volné, dostaneš +1 b., nepenalizuje se volba posádky a čekání se nepočítá do zpoždění vyslání ani do dojezdu.
+- **Pokrytí kraje u N3.** Nejbližší posádka, která je jediná volná v okolí své základny (do 15 km), se u N3 nemusí vysílat: její nevyslání se nepenalizuje.
+- **Návrat v režimu N3 do oblasti se zhoršeným pokrytím.** Bonus +1, když posádce po předání nařídíš návrat v N3 (na majáky) do oblasti, kde je v okolí základny nejvýš jedna jiná volná RZP. Samotný návrat bez N3 bonus nedává.
+- **Dojezd se nebodue, když ho dispečer neovlivní.** Z hodnocení dojezdu i vyslání se vyřazuje doba, kdy nebyla volná žádná RZP, čekání na blízkou posádku a ta část dojezdu, kterou nezkrátí ani nejbližší volná posádka (nad asi 7 až 8 minut). Plná váha zůstává u volby posádky a u reálného zdržení způsobeného dispečerem.
+- **Samotná RZP ze ZZUM na statickou N2.** Posádka ze ZZUM stanoviště smí jet na nedynamickou N2 sama, bez RV (dřív to platilo jen u CMP a diabetu a případ pak dál „chtěl“ RV a posádka se zdržovala na místě). Požadavek na RV se při vyslání zruší a případ se počítá jako splněný.
+- **Výpomoc jinému kraji.** Žádost sousedního kraje už nejde přes rádio. Přijde datová zpráva a my si ji naberem jako samostatný výjezd (do hodnocení případů se nepočítá), i když jde o N1. Vyžaduje se jen složka, kterou chtějí (jen RZP, nebo jen RV, nebo jen LZS Planá), druhá se vyslat nedá. Za vyslání je +1 b., když v oblasti zůstane volná posádka, −1 b., když ne; nevyslaná žádost po 5 až 10 minutách zaniká (−1 b.).
+- **Datové zprávy bez zbytečné žádosti o HZS.** Příznak „+ HZS“ ve výzvě se losuje jen s věrohodným důvodem (dopravní nehoda, uvěznění, požár nebo CO, terén, tonutí, popálení, KPR, asistence). U běžné výzvy z bytu už nevyvolá „výzva vyžaduje HZS“.
+
+Plánované převozy a předpoplach:
+- **Plánované sekundární N4 převozy** jsou vždy na celou hodinu nebo půlhodinu, nikdy na minuty. Při zapnuté volbě sekundárních převozů se na začátku denní směny vytvoří 1 až 4 převozy (dřív přesně dva).
+- **Odpočet u plánovaného převozu.** Vpravo u plánovaného N4 převozu už není červeně uplynulý čas čekání, ale odpočet do přistavení (−52:10, po termínu +03:20 červeně).
+- **Předpoplach N1.** Vybereš, kterým posádkám ho dáš (nejbližší RZP a RV jsou předvybrané, přidat jde i další RZP, RV nebo LZS; po dání jde přidávat další). Předpoplachnutá posádka po vyslání vyjede výrazně dřív: místo 50 až 110 s na základně vyjede za 8 až 22 s (LZS má aktivaci na polovinu).
+
+Mapa a ovládání:
+- **Pohyb PČR a HZS na mapě.** Modrý trojúhelník je policie, červený hasiči, oba stejný tvar a rotují ve směru jízdy. Vyjíždějí z nejbližší stanice podle skutečného rozmístění (20 stanic HZS, JSDH jednotek II až IV, 10 policejních), hlídky PČR někdy z terénu. Po najetí myší se ukáže, co to je (hlídka OOP, hlídka DI, SKPV, CAS 20 / 30 cisterna, AZ 30 žebřík, TA technický automobil, DA jednotka SDH) a u kterého případu. Na místě zůstanou dobu zásahu, u nehod déle než ZZS, a pak zmizí. V logu se nic neukazuje. Vykreslují se u případů, kde PČR nebo HZS přišla datovkou, nebo kde jsi je vyslal dlaždicí nebo vysláním FR.
+- **Pavilony nemocnice ČB.** Posádky nejedou do jednoho bodu: urgentní příjem, chirurgie, KCC, iktové centrum, kardiocentrum, ARO, traumacentrum, dětské oddělení, gynekologie, ORL a psychiatrie mají každé vlastní bod. Souřadnice jsou zatím orientační (rozptyl do 150 m), upřesní se podle skutečných pavilonů.
+- **Klik na dlaždici posádky s výjezdem** otevře ten výjezd v panelu vybraného případu (a přepne správnou záložku).
+- **RZP na heliport přetažením.** Převozní RZP pro předání pacienta od LZS jde vyslat i přetažením její dlaždice na dlaždici LZS, nebo na bod heliportu na mapě (vedle dosavadního způsobu).
+- **Kalkulátor LZS u případu s přiřazenou LZS** se neukazuje rovnou, jen volitelně pod šipkou (platí i pro N1).
+- **Poloha základny LHENICE** je 48.99077, 14.14813.
+
+Opravy a interní:
+- Testy upraveny pro nový tvar rádia (volačka, mluvčí v logu), nový rozvrh sekundárních převozů a nové výpomoci jinému kraji.
+
+---
+
 ## v0.38.0 – 2026-11-22
 Nové:
 - **Osvěžené rozložení obrazovky dispečera.** Hlavička je na počítači v jedné řadě (asi 40 px místo dvou): okna bokem jsou schovaná v menu **⊞ Okna ▾** spolu s rozložením, ukazatele jsou čipy a počasí je jeden čip (vítr v tooltipu, datum při najetí na hodiny). Upozornění z 112 a výzvy posádek jsou plovoucí karty nad mapou (nejvýš 2, zbytek pod „+ N další upozornění ▾“) a nepřesouvají obsah. Výchozí rozložení je teď široká mapa (dřívější výchozí je v menu jako „Původní rozložení“; uložené rozložení shodné se starým výchozím se přepne samo), legenda stavů posádek je sbalená pod tlačítkem **Legenda ▾**. Opraven neviditelný nadpis menu Rozložení v tmavém motivu.

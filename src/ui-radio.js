@@ -110,8 +110,11 @@ function voiceSay(text, key, isCall, id) {
   voiceSay0(text, key, isCall, id);
 }
 // rozpoznání rádiové hlášky podle textu: kdo mluví (ZOS / posádka), hlas a mluvený text; null = není to rádiový hovor
-function radioParse(txt) {
+function radioParse(txt, who) {
   let m;
+  // hláška s označením mluvčího (nový tvar: každý začíná volačkou; posádka vlastní, dispečer volačkou posádky)
+  if (who === 'zos') return { who: 'zos', key: 'zos', text: txt, call: /^ZCB\d+, zde ZCB101\b/.test(txt) };
+  if (who === 'crew' && (m = /^(?:ZCB(\d+)|Kryštof (\d+))(?: a \d+)?, /.exec(txt))) return { who: 'crew', key: m[1] || 'K' + m[2], text: txt };
   if ((m = /^ZCB101, zde (?:ZCB(\d+)|Kryštof (\d+))/.exec(txt))) return { who: 'crew', key: m[1] || 'K' + m[2], text: txt, call: true };
   if ((m = /^ZCB101, zde (ZOS [^,]+)/.exec(txt))) return { who: 'crew', key: 'nb-' + m[1], text: txt, call: true };
   if (/^ZCB\d+, (?:zde )?ZCB101\b/.test(txt)) return { who: 'zos', key: 'zos', text: txt, call: /^ZCB\d+, zde ZCB101\b|^ZCB\d+, ZCB101\.$/.test(txt) };
@@ -122,8 +125,8 @@ function radioParse(txt) {
   if ((m = /^ZCB(\d+) (?:rozumí|na příjmu)/.exec(txt))) return { who: 'crew', key: m[1], text: txt };
   return null;
 }
-function radioSpeak(txt, id) {
-  const r = radioParse(txt);
+function radioSpeak(txt, id, who) {
+  const r = radioParse(txt, who);
   if (r) return voiceSay(r.text, r.key, !!r.call, id);
 }
 // zda se hlášky skutečně přehrají hlasem (pak se v panelu ukážou ve chvíli, kdy je hlas začne říkat)
@@ -209,13 +212,13 @@ function pollLog() {
     if (e.id <= seenLog) continue;
     seenLog = e.id;
     if (e.kind === 'crew') {
-      const now = performance.now(), rp = radioParse(e.txt);
+      const now = performance.now(), rp = radioParse(e.txt, e.who);
       if (rp) {
         // hlas: řádek se ukáže, až ho hlas začne říkat; bez hlasu se řádky ukazují postupně podle délky věty
-        const item = { id: e.id, who: rp.who, key: rp.key, txt: e.txt, text: rp.who === 'zos' ? e.txt.replace(/^ZCB101: /, '').replace(/^ZCB\d+, ZCB101: /, '') : rp.text, crid: e.crid, cid: e.cid, t0: now, shownAt: null };
+        const item = { id: e.id, who: rp.who, key: rp.key, txt: e.txt, text: rp.who === 'zos' && !e.who ? e.txt.replace(/^ZCB101: /, '').replace(/^ZCB\d+, ZCB101: /, '') : rp.text, crid: e.crid, cid: e.cid, t0: now, shownAt: null };
         if (!voiceWillSpeak()) { const at = Math.max(now + 150, radioLastAt + 600 + Math.min(2600, item.text.length * 30)); radioLastAt = at; item.shownAt = at; }
         radioFeed.push(item); if (radioFeed.length > 80) radioFeed.shift();
-        if (!satellitePanel) radioSpeak(e.txt, e.id);
+        if (!satellitePanel) radioSpeak(e.txt, e.id, e.who);
       } else logDueAt.set(e.id, now + 200);
       if (logDueAt.size > 400) logDueAt.delete(logDueAt.keys().next().value);
     }

@@ -41,7 +41,8 @@ function act(a, el) {
     case 'cancel': { const r = sim.cancelAssignment(d.case, d.crew); if (!r.ok) toast(r.msg, 'warn'); else toast('Posádka odvolána.', ''); break; }
     case 'vj-decline': { const r = sim.declineVstricna(d.case); if (!r.ok) toast(r.msg, 'warn'); break; }
     case 'rules': rulesModal(el && el.dataset.back); break;
-    case 'prealert': { const r = sim.prealert(d.case); if (!r.ok) toast(r.msg, 'warn'); else toast('Předpoplach: ' + r.crews.join(', ') + '. Posádky nevyjíždějí.', 'alert'); break; }
+    case 'pa-toggle': { const L = paSel[d.case] || (paSel[d.case] = []), i = L.indexOf(d.crew); if (i >= 0) L.splice(i, 1); else L.push(d.crew); break; }
+    case 'prealert': { const r = sim.prealert(d.case, paSel[d.case] && paSel[d.case].length ? paSel[d.case] : undefined); if (!r.ok) toast(r.msg, 'warn'); else { paSel[d.case] = []; toast('Předpoplach: ' + r.crews.join(', ') + '. Posádky nevyjíždějí, po vyslání vyjedou rychleji.', 'alert'); } break; }
     case 'send-fr': { const r = sim.sendFr(d.case, d.fr); toast(r.msg, r.ok ? '' : 'warn'); break; }
     case 'zzum-flag': { const cs = sim.caseOf(d.case), r = sim.setZzumFlag(d.case, !(cs && cs.zzumFlag)); if (!r.ok) toast(r.msg, 'warn'); break; }
     case 'drive-n': { const r = sim.setDriveUrgency(d.crew, d.n); if (!r.ok) toast(r.msg, 'warn'); break; }
@@ -100,11 +101,28 @@ function dropTarget(x, y) {
   if (e && e.closest('[data-drop-case]')) { const el = e.closest('[data-drop-case]'); return { dataset: { case: el.dataset.dropCase }, classList: el.classList }; }
   const ct = e && e.closest('.tile[data-crew]');
   if (ct && !ct.closest('#modal') && !/^x-/.test(ct.dataset.crew)) return { dataset: { crew: ct.dataset.crew }, classList: ct.classList };
-  const id = glCaseAt(x, y); return id ? { dataset: { case: id }, classList: { add() {}, remove() {} } } : null;
+  const id = glCaseAt(x, y); if (id) return { dataset: { case: id }, classList: { add() {}, remove() {} } };
+  const hp = glHeliAt(x, y); return hp ? { dataset: { heli: hp.lat + ',' + hp.lon }, classList: { add() {}, remove() {} } } : null;
+}
+// RZP přetažená na bod heliportu na mapě: převoz pacienta od LZS, která na tento heliport letí
+function dropOnHeliport(crewId, key) {
+  const k = sim.crewOf(crewId); if (!k || k.type !== 'RZP') { toast('Na heliport lze přetáhnout jen RZP.', 'warn'); return; }
+  const [la, lo] = key.split(',').map(Number);
+  const cs = sim.s.cases.find(c => c.status !== 'closed' && c.lzsPatientToHospital && !c.exitus && !c.coronerRequested && !c.lzsTransferCrewId && (() => { const h = sim._heliportForCase(c); return hav(h.lat, h.lon, la, lo) < 1; })());
+  if (!cs) { toast('K tomuto heliportu právě nelétá LZS s pacientem, který čeká na převoz.', 'warn'); return; }
+  const r = sim.assign(cs.id, k.id, 'heli-transfer'); sel.c = cs.id; sel.k = k.id;
+  toast(r.ok ? `${k.name} → heliport (převoz od LZS, ${cs.num})` : r.msg, r.ok ? '' : 'warn'); render();
 }
 // vstřícná jízda přetažením: periferní RZP s pacientem ↔ volná RZP z oblasti u nemocnice
 function dropOnCrew(aId, bId) {
   const a = sim.crewOf(aId), b = sim.crewOf(bId); if (!a || !b || a.id === b.id) return;
+  // RZP přetažená na dlaždici LZS (nebo naopak): převozní RZP na heliport pro předání pacienta z vrtulníku
+  for (const [rz, lz] of [[a, b], [b, a]]) if (rz.type === 'RZP' && lz.type === 'LZS') {
+    const lc = lz.caseId && sim.caseOf(lz.caseId);
+    if (!lc || !lc.lzsPatientToHospital) { toast('LZS právě nelétá s pacientem na heliport; převozní RZP lze vyslat až při letu s pacientem.', 'warn'); return; }
+    const r = sim.assign(lc.id, rz.id, 'heli-transfer'); sel.c = lc.id; sel.k = rz.id;
+    toast(r.ok ? `${rz.name} → heliport (převoz od LZS, ${lc.num})` : r.msg, r.ok ? '' : 'warn'); render(); return;
+  }
   for (const [pri, hlp] of [[a, b], [b, a]]) {
     const cs = pri.caseId && sim.caseOf(pri.caseId);
     if (cs && cs.vstricna && cs.vstricna.state === 'offered' && cs.vstricna.primaryCrewId === pri.id) {
@@ -148,6 +166,7 @@ function dragEnd(ev, cancel) {
     const r = sim.sendAgency(acs.id, d.id.slice(2)); sel.c = acs.id;
     toast(r.ok ? (r.msg || `${{ cor: 'Koroner', pcr: 'PČR', hzs: 'HZS', fr: 'FR' }[d.id.slice(2)]} → ${acs.num}`) : r.msg, r.ok ? '' : 'warn'); render(); return;
   }
+  if (tg.dataset.heli) { dropOnHeliport(d.id, tg.dataset.heli); return; }
   const k = sim.crewOf(d.id), cs = sim.caseOf(tg.dataset.case || tg.dataset.dropCase); if (!k || !cs) return;
   sel.k = k.id; sel.c = cs.id;
   if (k.ext && k.state === 'off') { const rr = sim.requestNeighbor(cs.id, k.id); toast(rr.msg, rr.ok ? '' : 'warn'); if (rr.ok) beep(660); render(); return; }
@@ -207,7 +226,8 @@ document.addEventListener('click', ev => {
     ev.preventDefault();
     if (/^x-/.test(ck.dataset.crew)) { toast('Přetáhni dlaždici na případ – ZOS vyrozumí ' + ({ 'x-cor': 'koronera', 'x-pcr': 'PČR', 'x-hzs': 'HZS', 'x-fr': 'nejbližšího first respondera' }[ck.dataset.crew]) + '.', ''); return; }
     sel.k = ck.dataset.crew;
-    { const kk = sim.crewOf(sel.k); if (kk && kk.type === 'LZS' && sel.c) toolState[sel.c + ':lzs'] = true; }   // klik na dlaždici LZS rozbalí kalkulátor LZS
+    { const kk = sim.crewOf(sel.k), sc = sel.c && sim.caseOf(sel.c); if (kk && kk.type === 'LZS' && sc && !sc.lzsActive) toolState[sel.c + ':lzs'] = true; }   // klik na dlaždici LZS rozbalí kalkulátor LZS (ne u případu s už přiřazenou LZS)
+    { const kk = sim.crewOf(sel.k); if (kk && kk.caseId && t.closest('.tile') && sim.caseOf(kk.caseId)) { sel.c = kk.caseId; const kc = sim.caseOf(kk.caseId); tabCase = kc.status === 'closed' ? 'closed' : kc.status === 'waiting' ? 'waiting' : 'active'; } }   // klik na dlaždici posádky s výjezdem ukáže ten výjezd v panelu vybraného případu
     if (t.closest('.tile')) { followK = followK === sel.k ? null : sel.k; followLast = 0; if (followK) { const fk = sim.crewOf(followK); toast(`Sleduji ${fk.name} na mapě (posunutím mapy nebo dalším klikem zrušíš).`, ''); } }
     syncSelectionToMain();
     if (ck.dataset.ptt) { const k = sim.crewOf(sel.k); toast(`${k.name}: spojení v pořádku, ${STLAB[k.state].toLowerCase()}.`, ''); }

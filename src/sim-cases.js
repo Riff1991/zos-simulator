@@ -286,7 +286,7 @@ class SimCases {
     };
     const used = new Set(), segs = [];
     const pool = (list, pred) => list.filter(pred);
-    const xs = (m.X.length >= 12 ? m.X : m.X.concat(PM.model._glob.X)).filter(x => this._facOk(x[0], ctx));
+    const xs = (m.X.length >= 12 ? m.X : m.X.concat(PM.model._glob.X)).filter(x => this._facOk(x[0], ctx) && (!/libero/i.test(x[0]) || !!(ctx && ctx.liberoOk)));
     // typ objektu (O) musí sedět na budovu u adresy (dům / bytový dům) a na zařízení jen u skutečného místa
     let oList = (m.O.length ? m.O : [['RD', 1]]).filter(x => this._facOk(x[0], ctx));
     if (ctx && ctx.bld && !ctx.poi) {
@@ -305,7 +305,7 @@ class SimCases {
         const fl = this.wpick(m.F.length ? m.F : PM.model.byt.F, x => x[1])[0]; segs.push({ t: floor(fl), loc: true });
       } else if (kd === 'I') segs.push({ t: ind.klasif, loc: false });
       else if (kd === 'S') {
-        const list = pool(m.S, x => (x[2] === 'G' || police) && this._facOk(x[0], ctx));
+        const list = pool(m.S, x => (x[2] === 'G' || police) && this._facOk(x[0], ctx) && (!/libero/i.test(x[0]) || !!(ctx && ctx.liberoOk)));
         if (list.length) segs.push({ t: this.wpick(list, x => x[1])[0], loc: false });
       } else if (kd === 'X') {
         const list = pool(xs, x => !used.has(x[0]));
@@ -423,6 +423,11 @@ class SimCases {
     const outdoorVeh = /CYKLISTA|CHODEC|MOTOCYKLISTA|OSOBNÍ AUTOMOBIL|NÁKLADNÍ AUTOMOBIL|DOPRAVNÍ NEHODA|AUTOBUS|VLAK/.test(symptomText);
     let whKey = over.where || (coCase ? this.pick(['byt', 'rd']) : this._pickWhere(ind, age));   // otrava CO jen v budově
     if (outdoorVeh && !over.where && !['ulice', 'silnice', 'priroda'].includes(whKey)) whKey = 'ulice';
+    // příznak „+ HZS“ ve výzvě jen s věrohodným důvodem (nehoda, uvěznění, požár/CO, terén, voda, popálení, KPR); u běžné výzvy z bytu ho zbytečně nevyvolává
+    if (!over.symptoms && symptoms.some(x => /^[+]\s*HZS/i.test(x))) {
+      const why = ['dn_poly', 'dn_lehke', 'asist', 'tonuti', 'popal', 'amput', 'obeseni', 'resus', 'nzo'].includes(ind.id) || ['silnice', 'priroda'].includes(whKey) || /UVĚZN|ZAKLÍN|POŽÁR|OXID UHELNAT|VYPROŠT|ZAVAL|PÁD Z|VÝŠK|STROM|TECHNICK/.test(symptomText);
+      if (!why) { symptoms = symptoms.filter(x => !/^[+]\s*HZS/i.test(x)); up = symptoms.join(', '); symptomText = up.toLocaleUpperCase('cs-CZ'); }
+    }
     // veřejná místa pod „ulicí“: nádraží, úřady, obchody, sport, ubytování (reálná místa z OSM)
     let poiKey = whKey;
     if (whKey === 'ulice' && !outdoorVeh && typeof ZOS_POI !== 'undefined' && ZOS_POI && ZOS_POI.poi) {
@@ -474,7 +479,9 @@ class SimCases {
     const ownIntake = n === 1 ? this.ri(70, 150) : this.ri(90, 200);
     const dzDur = dzFirst ? (over.intake != null ? Math.round(over.intake * 0.6) : this.ri(180, 300)) : 0;
     const intake = over.intake != null ? over.intake : dzFirst ? dzDur + (n === 1 ? this.ri(70, 150) : this.ri(70, 150)) : ownIntake;
-    const tail = this._tail(ind, D.tailMix[poiKey] ? poiKey : whKey, up, age, sex, { bld, poi: fromPoi, poiName, key: poiKey });   // popis místa + poznámka ZOS (model skutečných zápisů)
+    // „+libero“ do poznámky ZOS jen když je LIBERO v okolí (do 35 km) skutečně obsazené (ve službě) ve hře
+    const liberoOk = this.s.crews.some(k => k.libero && k.state !== 'off' && hav(k.home.lat, k.home.lon, lat, lon) < 35);
+    const tail = this._tail(ind, D.tailMix[poiKey] ? poiKey : whKey, up, age, sex, { bld, poi: fromPoi, poiName, key: poiKey, liberoOk });   // popis místa + poznámka ZOS (model skutečných zápisů)
     const poznamka = tail.note;
     const eo = { t, intake, patientCount, n, up, addr, town: townN, okres, where: whKey, sex, lat, lon };
     const radioReports = extKinds ? this._extReports(extKinds, eo) : [];

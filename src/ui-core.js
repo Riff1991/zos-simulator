@@ -83,6 +83,7 @@ const COL = { base: '#9aa5b1', free: '#3cb54a', call: '#2f7de1', enroute: '#d937
 const X = lon => (lon - 13.55) / 1.95 * 1000, Y = lat => (49.78 - lat) / 1.28 * 1000;
 
 const toolState = {};
+const paSel = {};   // předpoplach: vybrané posádky podle případu (id → pole id posádek); výchozí je nejbližší RZP a RV
 let sim = null, speed = 0, savedSpeed = 5, sel = { c: null, k: null };
 const requestedPanel = new URLSearchParams(location.search).get('zosPanel');
 const satellitePanel = ['map', 'radio'].includes(requestedPanel) ? requestedPanel : null;

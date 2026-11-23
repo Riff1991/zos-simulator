@@ -9,13 +9,17 @@ class SimScore {
     const n = c.nOrig;
     const tgtD = { 1: 60, 2: 120, 3: 300 }[n], T = { 1: 720, 2: 960, 3: 1500 }[n];
     const fa = c.asg.length ? c.asg[0].t : t;
-    const delay = 20 * clamp01(1 - ((fa - c.readyAt) - tgtD) / (2 * tgtD));
+    // co hráč neovlivní, se nebodujeme: doba bez volné RZP a čekání na blízkou posádku, která se uvolňovala z předání
+    const forced0 = (c.noCrewSec || 0) + (c.waitExcused || 0);
+    const delay = 20 * clamp01(1 - (Math.max(0, (fa - c.readyAt) - forced0) - tgtD) / (2 * tgtD));
     // příjezd: hodnotí se volba posádky proti nejrychlejší dostupné (ne absolutní čas, ten dispečer vždy neovlivní)
     // Dojezd (50 b.): 25 b. za volbu posádky proti nejrychlejší dostupné a 25 b. za skutečný čas od převzetí: plné body do reálného mediánu
     // (ZOS_DATA.scoreAbs), plynule klesá k nule u reálného p90. Bez zvolené první RZP (c.pick) platí celých 50 b. za skutečný čas.
     let arrive;
     const [aLo, aHi] = ZOS_DATA.scoreAbs[n] || [520, 1100];
-    const absF = clamp01(1 - (((c.firstArrive != null ? c.firstArrive : t) - c.readyAt) - aLo) / (aHi - aLo));
+    // vlastní doba dojezdu se neboduje, kde ji dispečer nemohl ovlivnit: žádná volná posádka, čekání na blízkou a vzdálenost i nejbližší volné RZP (nad ~aLo − 2 min)
+    const forced = forced0 + (c.pick ? Math.max(0, c.pick.best - Math.max(60, aLo - 120)) : 0);
+    const absF = clamp01(1 - ((Math.max(0, ((c.firstArrive != null ? c.firstArrive : t) - c.readyAt) - forced)) - aLo) / (aHi - aLo));
     if (c.pick) { const over = c.pick.justified ? 0 : Math.max(0, c.pick.chosen - c.pick.best - (n === 3 ? 480 : 120)); arrive = 25 * clamp01(1 - over / (T * 0.6)) + 25 * absF; }
     else arrive = c.firstArrive != null ? 50 * absF : 0;
     const rv = this._rvScore(c);

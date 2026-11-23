@@ -687,6 +687,10 @@ class SimMU {
       from = this.pick(near); to = this.pick(near.filter(h => h.id !== from.id));
     }
     scheduledAt = scheduledAt == null ? t + this.rr(3600, 7200) : scheduledAt;
+    if (!(over && over.exactTime)) {   // plánovaný převoz je vždy na celou nebo půlhodinu, nikdy na minuty
+      const sod = (this.s.startHour * 3600 + scheduledAt) % 86400;
+      scheduledAt += Math.ceil(sod / 1800 - 1e-9) * 1800 - sod;
+    }
     const town = D.towns.reduce((best, x) => !best || hav(x.lat, x.lon, from.lat, from.lon) < hav(best.lat, best.lon, from.lat, from.lon) ? x : best, null);
     const age = this.ri(18, 90), sex = this.rnd() < 0.5 ? 'M' : 'Ž';
     const symptoms = this._symptomSet('Převoz', 4), up = symptoms.join(', ');

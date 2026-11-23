@@ -174,20 +174,22 @@ function renderCases() {
       ? `${c.op} nabírá výzvu · ${c.src}`
       : `Událost ${c.num} · ${sim.clockAt(c.createdAt)} · ${esc(c.src)} · volající ${esc(c.ozn)} · ${esc(c.phone)}`;
     const nTag = `N${c.n}${c.nDopl ? '<small>DOPL</small>' : c.dyn ? '<small>DYN</small>' : ''}`;
+    // plánovaný sekundární převoz: místo uplynulé doby čekání odpočet do plánovaného přistavení (−mm:ss; po termínu +mm:ss)
+    const ageB = (c.status === 'waiting' || missing.length) ? (c.typ === 'sekundární' && Number.isFinite(c.scheduledAt) ? ` <b class="case-age" data-until="${c.scheduledAt}"></b>` : ` <b class="case-age" data-since="${c.waitSince}"></b>`) : '';
     if (sel.c !== c.id) {
       const who = [c.patientName || patient, c.klasif, c.ageText || (c.age != null ? c.age + ' let' : '')].filter(Boolean).join(', ');
       const what = [c.place, c.poznamka].filter(Boolean).join(' · ');
       const chips = c.crews.map(id => sim.crewOf(id)).filter(Boolean).map(k => `${k.dest ? `<span class="cchip dest" data-crew="${k.id}">${esc(k.dest.name)}</span>` : ''}<span class="cchip" data-crew="${k.id}" style="background:${COL[k.state]};color:${k.state !== 'base' && k.state !== 'free' ? '#fff' : '#111'}">${esc(k.name)}</span>`).join('') + agencyChips(c);
       return `<article class="case-card case-row n${c.n} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
       <span class="case-priority">${nTag}</span><b class="cr-addr"><span class="cr-at">${esc(c.town && !String(c.addr).includes(c.town) ? c.town + ', ' : '')}${esc(c.addr)}</span><span class="okr">${esc(okrAbbr(c))}</span></b>
-      <span class="cr-cls">${esc(c.klasif)}</span><span class="cr-up">${esc(symptomsOf(c).map(x => String(x).replace(/^[^0-9A-Za-zÀ-ž]+/, '')).slice(0, 5).join(', '))}</span><span class="cr-what">${esc(what)}</span><span class="cr-time">${esc(sim.clockAt(c.createdAt))}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
+      <span class="cr-cls">${esc(c.klasif)}</span><span class="cr-up">${esc(symptomsOf(c).map(x => String(x).replace(/^[^0-9A-Za-zÀ-ž]+/, '')).slice(0, 5).join(', '))}</span><span class="cr-what">${esc(what)}</span><span class="cr-time">${esc(sim.clockAt(c.createdAt))}${ageB}</span>
       <span class="cr-who">${esc(who)}</span><span class="cr-crews">${chips || `<span class="wait">${esc(status)}</span>`}${chips && (rvPending || missing.length || agMissing.length) ? `<span class="wait urgent">${esc(status)}</span>` : ''}</span>
     </article>`;
     }
     return `<article class="case-card n${c.n} ${sel.c === c.id ? 'sel' : ''} ${rvPending ? 'rv-pending' : ''} ${intk ? 'is-intake' : ''}" data-case="${c.id}" tabindex="0" aria-label="N${c.n}, ${esc(c.klasif)}, ${esc(c.addr)}">
       <div class="case-top"><span class="case-priority">${nTag}</span>
         <div class="case-address"><strong>${esc(c.addr)} <span class="okr">${esc(okrAbbr(c))}</span></strong><small>${esc(c.town || '')}${c.okres ? ` · okres ${esc(c.okres)}` : ''} · ${esc(c.typ || 'primární')}</small></div>
-        <span class="case-status ${rvPending || missing.length || agMissing.length ? 'urgent' : ''}">${esc(status)}${c.status === 'waiting' || missing.length ? ` <b class="case-age" data-since="${c.waitSince}"></b>` : ''}</span>
+        <span class="case-status ${rvPending || missing.length || agMissing.length ? 'urgent' : ''}">${esc(status)}${ageB}</span>
       </div>
       <div class="case-main"><div class="case-class"><b>${esc(c.klasif)}</b><small>${esc(c.charakter || '')}</small></div>
         <div class="case-up"><span class="field-label">Upřesnění</span>${esc(symptomsOf(c).join(', ') || '–')}</div>
@@ -205,6 +207,7 @@ function renderCases() {
 function patchWait() {
   const t = sim.s.t;
   document.querySelectorAll('#cases [data-since]').forEach(el => { const w = t - Number(el.dataset.since); el.textContent = `· ${mmss(w)}`; el.classList.toggle('late', w > 300); });
+  document.querySelectorAll('#cases [data-until]').forEach(el => { const w = Number(el.dataset.until) - t; el.textContent = w >= 0 ? `· −${mmss(w)}` : `· +${mmss(-w)}`; el.classList.toggle('late', w < 0); });
 }
 
 function nameFor(k) { const p = k.split(' '); return p[1].toUpperCase() + ' ' + p[0][0] + '.'; }
@@ -222,11 +225,14 @@ function renderDetail() {
   if (intk) {
     const prealerted = (c.prealertCrewIds || []).map(id => sim.crewOf(id)).filter(Boolean);
     const iv = c.phase === 'dz' ? null : intakeView(c);
-    const prealert = c.n === 1 && c.phase !== 'dz' && iv.addr
-      ? `<div class="prealert-panel"><p>Probíhá nabírání N1. Posádkám můžeš dát předpoplach ještě před dokončením výzvy. Posádky zatím nevyjíždějí.</p>${prealerted.length
-        ? `<b>Předpoplach přijat: ${prealerted.map(k => esc(k.name)).join(', ')}</b>`
-        : `<button class="btn red" data-act="prealert" data-case="${c.id}">Předpoplach posádkám</button>`}</div>`
-      : '';
+    let paHtml = '';
+    if (c.n === 1 && c.phase !== 'dz' && iv.addr) {
+      const cand = [...sim.suggest(c.id, 'RZP').slice(0, 4), ...sim.suggest(c.id, 'RV').slice(0, 3), ...sim.suggest(c.id, 'LZS').slice(0, 1)].filter(x => !(c.prealertCrewIds || []).includes(x.crewId));
+      if (!paSel[c.id]) paSel[c.id] = ['RZP', 'RV'].map(ty => cand.find(x => (sim.crewOf(x.crewId) || {}).type === ty)).filter(Boolean).map(x => x.crewId);
+      const chosen = paSel[c.id];
+      paHtml = `<div class="prealert-panel"><p>Probíhá nabírání N1. Posádkám můžeš dát předpoplach ještě před dokončením výzvy: vyber posádky, které se po vyslání rozjedou výrazně rychleji. Zatím nevyjíždějí.</p>${prealerted.length ? `<b>Předpoplach přijat: ${prealerted.map(k => esc(k.name)).join(', ')}</b><br>` : ''}${cand.length ? `<div class="pa-list">${cand.map(x => { const k = sim.crewOf(x.crewId); return `<button class="pa-chip${chosen.includes(x.crewId) ? ' on' : ''}" data-act="pa-toggle" data-case="${c.id}" data-crew="${x.crewId}" title="Vybrat / zrušit posádku pro předpoplach">${esc(k.name)} · ${k.type} · ${Math.max(1, Math.round(x.eta / 60))} min</button>`; }).join('')}</div><button class="btn red" data-act="prealert" data-case="${c.id}"${chosen.length ? '' : ' disabled'}>Dát předpoplach vybraným (${chosen.length})</button>` : '<small>Žádná další volná posádka.</small>'}</div>`;
+    }
+    const prealert = paHtml;
     const dr = dzOf(c);
     const what = c.phase === 'dz' ? `<p><b>Datová zpráva</b><br>${dr ? `${esc(dr.source || '')}: ${esc(dr.text)}` : ''}</p><p>Událost se zatím předává na naši linku.</p>` : `<p>${esc(c.op)} nabírá výzvu · ${esc(iv.src)}</p><dl>${iv.addr ? `<dt>Adresa</dt><dd>${esc(c.addr)}<br><small>${esc(c.town || '')}${c.okres ? ' · okres ' + esc(c.okres) : ''}</small></dd>` : ''}${iv.klasif ? `<dt>Klasifikace</dt><dd>${esc(c.klasif)}</dd>` : ''}${iv.syms.length ? `<dt>Upřesnění</dt><dd>${esc(iv.syms.join(', '))}</dd>` : ''}${iv.tail ? `<dt>Naléhavost</dt><dd>N${c.n}</dd><dt>Pacient</dt><dd>${esc(c.patientName || c.desc || '')}</dd>${c.poznamka ? `<dt>Poznámka</dt><dd>${esc(c.poznamka)}</dd>` : ''}` : ''}</dl><p>Calltaker ještě nabírá výzvu…</p>`;
     const earlyReports = (c.radioReports || []).filter(r => r.received && r.id !== 'dz-in').map(r => `<li><time>${esc(sim.clockAt(r.receivedAt))}</time> ${esc(r.source || 'Linka 112')}: ${esc(r.text)}</li>`).join('');
@@ -250,7 +256,9 @@ function renderDetail() {
   lzsBlock = `<div class="multi-patient"><b>LZS · ${wxLabel}</b>${wx === 'consult' ? `<br>${c.lzsConsult?.status === 'pending' ? 'Čeká se na rozhodnutí pilota.' : c.lzsConsult?.status === 'approved' ? 'Pilot let povolil.' : c.lzsConsult?.status === 'declined' ? 'Pilot let nedoporučil.' : `<button class="btn" data-act="lzs-consult" data-case="${c.id}">Konzultovat s pilotem</button>`}` : ''}</div>`;
   lzsBlock += lzsAdviceHtml(c);
   if (c.typ !== 'sekundární' && !c.mu && c.status !== 'closed') { const adv = sim.lzsAdvice(c.id), top = adv && adv.rows.find(r => r.level === 'ano') || adv && adv.rows.find(r => r.level === 'mozna'); if (top) lzsHint = ` · ${top.name.replace(/^NEM /, '')} ${top.saving > 0 ? '+' : ''}${top.saving} min ${top.level === 'ano' ? 'Ano' : 'Možná'}`; }
-  if (c.n === 1) h += frBlock + lzsBlock;
+  // kalkulátor LZS se u případu s už přiřazenou LZS neukazuje rovnou, jen volitelně pod šipkou
+  const lzsAssigned = !!c.lzsActive || c.crews.some(id => { const k = sim.crewOf(id); return k && k.type === 'LZS'; });
+  if (c.n === 1 && !lzsAssigned) h += frBlock + lzsBlock;
   else {
     const fo = !!toolState[c.id + ':fr'], lo = !!toolState[c.id + ':lzs'], hot = wx === 'consult' && !c.lzsConsult;
     const nFr = (c.frs || []).length, tgl = (k, open, label, extra) => `<button class="btn" data-act="tool-toggle" data-case="${c.id}" data-tool="${k}" style="padding:2px 8px;font-size:12px;${extra || ''}">${open ? '▾' : '▸'} ${label}</button>`;

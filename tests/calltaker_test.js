@@ -420,8 +420,8 @@ const ringKind = (sim, kind, extra) => { sim._ringCall(kind, extra); return sim.
   sim._nbSpawn('ground'); sim._nbSpawn('ground');
   for (let i = 0; i < 160; i++) step(sim);
   const rqs = sim.s.nbq.slice(0, 2);
-  ok(rqs.length === 2 && rqs.every(r => r.state === 'accepted' || r.state === 'declined'), 'bot vyřídil žádosti sousedního kraje: ' + rqs.map(r => r.state).join(', '));
-  ok(!sim.s.log.some(e => /bez odpovědi, žádost zrušena/.test(e.txt)), 'žádná žádost sousedního kraje nezůstala bez odpovědi');
+  ok(rqs.length === 2 && rqs.every(r => { const c = sim.caseOf(r.caseId); return c && c.nbHelp && (c.crews.length > 0 || c.status === 'closed'); }), 'bot vyřídil výpomoc sousednímu kraji (samostatný výjezd, jen požadovaná složka): ' + rqs.map(r => (sim.caseOf(r.caseId) || {}).status).join(', '));
+  ok(!sim.s.log.some(e => /žádost sousedního kraje .* zůstala bez odpovědi/.test(e.txt)) && !sim.s.agg.opsLog.some(e => /bez odpovědi/.test(e.reason)), 'žádná výpomoc sousednímu kraji nezůstala bez odpovědi');
 }
 { // bot s částečně obsazeným případem (chybí lékař) neposílá další RZP a po 2 min převede N2 na dynamickou indikaci
   const sim = new Sim({ seed: 51, mode: 'free', startHour: 10 }); sim.enableLiveCalls({ mode: 'training', gapSec: 3600, bot: true, level: 'bezne' });

@@ -76,7 +76,7 @@ const ZOS_TUTORIAL = (() => {
       }, done: (sim, T) => hasType(sim, T.d, 'RV') },
     ] },
     { title: 'Sekundární převoz', setup(sim, T) {
-      T.c = sim.spawnScriptedSecondary(sim.s.t + 1800, { from: 'h-ta', to: 'h-cb' });
+      T.c = sim.spawnScriptedSecondary(sim.s.t + 1800, { from: 'h-ta', to: 'h-cb', exactTime: true });
     }, steps: [
       { t: 'Plánovaný převoz N4 z Tábora do ČB, přistavení do 30 min (±15 min). Vyslat příliš brzy znamená blokovat posádku a pokrytí. Vyber RZP a pošli ji tak, aby dojela kolem termínu (ETA vidíš v nabídce, hra běží).', fast: 5, done: (sim, T) => hasType(sim, T.c, 'RZP') },
       { t: (s, T) => T.c.timeScore == null ? 'Posádka jede, čekej na přistavení.' : `Přistaveno ${Math.round(Math.abs(T.c.scheduleDelta) / 60)} min ${T.c.scheduleDelta < 0 ? 'před' : 'po'} termínu, ${T.c.timeScore}/100 b.`, fast: 30, done: (s, T) => T.c.status === 'closed' },

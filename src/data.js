@@ -39,7 +39,7 @@ const ZOS_DATA = {
     { id: 'vimperk', oblast: 'PT', name: 'Vimperk', short: 'Vimperk', lat: 49.0561, lon: 13.7708, day: { rzp: 2, rv: 0 }, night: { rzp: 2, rv: 0 }, flexRlp: true },
     { id: 'volary', oblast: 'PT', name: 'Volary', short: 'Volary', lat: 48.9094, lon: 13.8947, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, zzum: true, zzumConfirmed: false },
     { id: 'vacov', oblast: 'PT', name: 'Vacov', short: 'Vacov', lat: 49.1467, lon: 13.6797, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
-    { id: 'lhenice', oblast: 'PT', name: 'Lhenice', short: 'Lhenice', lat: 49.0042, lon: 14.1665, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
+    { id: 'lhenice', oblast: 'PT', name: 'Lhenice', short: 'Lhenice', lat: 48.99077189376434, lon: 14.148132311860344, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 } },
 
     { id: 'st', oblast: 'ST', name: 'Strakonice', short: 'ST', lat: 49.2614, lon: 13.9022, day: { rzp: 3, rv: 1 }, night: { rzp: 2, rv: 1 } },
     { id: 'blatna', oblast: 'ST', name: 'Blatná', short: 'Blatná', lat: 49.4247, lon: 13.8844, day: { rzp: 1, rv: 0 }, night: { rzp: 1, rv: 0 }, flexRlp: true },
@@ -467,6 +467,15 @@ const ZOS_DATA = {
 // w = váha (podíl událostí ‰), n = podíl naléhavosti, dyn = podíl DYNAMICKÉ INDIKACE mezi N2 (jen N2, u CMP prakticky nikdy),
 // rvInit = pravděpodobnost lékaře hned u N2 bez dynamické, rvPd = lékař později u dynamické N2, rvP = lékař později u N3,
 // ageQ = kvantily věku dospělých [p5, p25, p50, p75, p95], pF = podíl žen, sceneQ = čas na místě [p10, p50, p90] v minutách, trans = podíl převozu.
+// Pracoviště / pavilony nemocnic: posádky nejedou na jeden bod, ale k pavilonu podle oddělení (lat, lon). Souřadnice Nemocnice České Budějovice jsou ORIENTAČNÍ
+// (rozptyl do ~150 m kolem hlavního bodu), upřesní se podle skutečného rozmístění pavilonů.
+ZOS_DATA.hospDepts = {
+  'h-cb': {
+    'Urgentní příjem': [48.95910, 14.46590], 'Chirurgická ambulance': [48.95918, 14.46625], 'KCC – komplexní cerebrovaskulární centrum': [48.95985, 14.46615], 'Iktové centrum': [48.95978, 14.46630],
+    'Kardiocentrum – katetrizační sál': [48.95990, 14.46700], 'ARO': [48.95945, 14.46705], 'Traumacentrum': [48.95905, 14.46665], 'Dětské oddělení': [48.95870, 14.46600],
+    'Gynekologicko-porodnické oddělení': [48.95860, 14.46690], 'ORL': [48.95950, 14.46560], 'Psychiatrické oddělení': [48.95840, 14.46620],
+  },
+};
 ZOS_DATA.indCal = {
   porucha: { w: 92.47, n: { '1': 0.115, '2': 0.309, '3': 0.575 }, dyn: 0.231, rvInit: 1, rvPd: 0.12, rvP: 0.046, ageQ: [23, 50, 70, 80, 90], pF: 0.532, sceneQ: [8.7, 19.7, 37.3], trans: 0.79 },
   dusnost: { w: 83.95, n: { '1': 0.058, '2': 0.625, '3': 0.317 }, dyn: 0.615, rvInit: 1, rvPd: 0.077, rvP: 0.006, ageQ: [36.1, 66, 75, 83, 91], pF: 0.499, sceneQ: [9.4, 19.5, 33.3], trans: 0.95 },

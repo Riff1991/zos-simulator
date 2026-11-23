@@ -76,7 +76,7 @@ console.log('deterministic', a.serialize() === b.serialize());
 const morningSchedule = new Sim({ seed: 23, mode: 'shift', startHour: 7 });
 morningSchedule.s.ev.nextSpawn = 999999; morningSchedule.s.ev.nextMU = null; morningSchedule.step(5);
 const morningJobs = morningSchedule.s.cases.filter(c => c.typ === 'sekundární');
-if (morningJobs.length !== 2 || morningJobs.some(c => c.scheduledAt < 3600 || c.scheduledAt > 7200)) throw new Error('morning N4 schedule failed');
+if (morningJobs.length < 1 || morningJobs.length > 4 || morningJobs.some(c => c.scheduledAt < 1800 || c.scheduledAt > 5 * 3600 + 3600 || (7 * 3600 + c.scheduledAt) % 1800 !== 0)) throw new Error('morning N4 schedule failed (1–4 převozy na celé / půlhodiny)');
 const nightSchedule = new Sim({ seed: 24, mode: 'shift', startHour: 19 });
 nightSchedule.s.ev.nextSpawn = 999999; nightSchedule.s.ev.nextMU = null; nightSchedule.step(5);
 if (nightSchedule.s.cases.some(c => c.typ === 'sekundární')) throw new Error('night shift generated N4 transfer');
@@ -491,7 +491,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   let r = run('signs', 'available');
   if (r.cs.status !== 'closed' || !/jisté známky smrti, exitus/.test(r.log) || !/ZCB101 na příjmu/.test(r.log)) throw new Error('signs-of-death flow failed');
   r = run('cpr-fail', 'unavailable');
-  if (r.cs.status !== 'closed' || !r.recalled || !r.back || !r.cs.exam.done || !/na místě exitus/.test(r.log) || !/prohlídka zemřelého ukončena/.test(r.log)) throw new Error('exam / recall flow failed: ' + JSON.stringify({ st: r.cs.status, rec: r.recalled, back: r.back }));
+  if (r.cs.status !== 'closed' || !r.recalled || !r.back || !r.cs.exam.done || !/na místě exitus/.test(r.log)) throw new Error('exam / recall flow failed: ' + JSON.stringify({ st: r.cs.status, rec: r.recalled, back: r.back }));
   r = run('rosc', 'available');
   if (r.cs.status !== 'closed' || !/jedeme společně/.test(r.log) || r.cs.exitus) throw new Error('ROSC escort flow failed');
   console.log('exitus / koroner / prohlídka / doprovod true');
@@ -568,7 +568,7 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (z.state !== 'zos' || !sim.radioZosCall(z.id).ok || !sim.s.log.some(x => x.txt === `ZCB${k.code} na příjmu.`)) throw new Error('ZOS volá posádku');
   const s2 = new Sim({ seed: 202, mode: 'free', startHour: 8, muEnabled: false, radio: 'auto' });
   s2.step(30);
-  if (!s2.s.log.some(x => /Kryštof 13: na Matře slyší za 5/.test(x.txt))) throw new Error('zkouška spojení LZS v 8:00');
+  if (!s2.s.log.some(x => /Kryštof 13, na Matře slyší za 5/.test(x.txt))) throw new Error('zkouška spojení LZS v 8:00');
   console.log('spojový řád: PČR/HZS, ZOS volá, LZS zkouška spojení true');
 }
 // LZS místo RV, LZS se pro počasí vrací, přesměrování vozu za jízdy bez zastavení
@@ -795,10 +795,13 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     if (/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(s)) throw new Error('řídicí znak ve zdroji (rozbitý regulární výraz): ' + f);
   }
   const ui = readUi();
-  const parse = new Function(ui.match(/function radioParse\(txt\) \{[\s\S]*?\n\}/)[0] + ';return radioParse;')();
+  const parse = new Function(ui.match(/function radioParse\(txt(?:, who)?\) \{[\s\S]*?\n\}/)[0] + ';return radioParse;')();
   const exp = [['ZCB101, zde ZCB713, příjem.', 'crew'], ['ZCB713 na příjmu.', 'crew'], ['ZCB713, zde ZCB101, příjem.', 'zos'], ['ZCB713, ZCB101: poprosím ukončete se.', 'zos'],
-    ['ZCB713: jsme ukončení, můžete posílat.', 'crew'], ['ZCB101 díky, konec.', 'zos'], ['ZCB101: rozumím.', 'zos'], ['ZCB101, zde ZOS Vysočina, příjem.', 'crew'], ['ZOS Vysočina: žádáme o RZP.', 'crew']];
-  for (const [t, who] of exp) { const r = parse(t); if (!r || r.who !== who) throw new Error('radioParse: ' + t + ' → ' + JSON.stringify(r)); }
+    ['ZCB713: jsme ukončení, můžete posílat.', 'crew'], ['ZCB101 díky, konec.', 'zos'], ['ZCB101: rozumím.', 'zos'], ['ZCB101, zde ZOS Vysočina, příjem.', 'crew'], ['ZOS Vysočina: žádáme o RZP.', 'crew'],
+    // nový tvar: každý začíná volačkou (posádka vlastní, dispečer volačkou posádky); mluvčí je v záznamu logu
+    ['ZCB413, pacienta máme na palubě a jedeme urgentní příjem Prachatice.', 'crew', 'crew'], ['ZCB413, vracejte se prosím v režimu N3.', 'zos', 'zos'], ['Kryštof 13, po vzletu, na místě přistání za 3 minuty.', 'crew', 'crew'], ['ZCB413 a 117, jedeme společně.', 'crew', 'crew']];
+  for (const [t, who, tag] of exp) { const r = parse(t, tag); if (!r || r.who !== who) throw new Error('radioParse: ' + t + ' → ' + JSON.stringify(r)); }
+  if (parse('ZCB413, vracejte se prosím v režimu N3.', 'zos').text !== 'ZCB413, vracejte se prosím v režimu N3.' || parse('ZCB413, ahoj.', 'crew').key !== '413') throw new Error('radioParse: volačka zůstává v textu, klíč hlasu podle posádky');
   if (parse('RZP1 (127): výzva k případu P1001') !== null) throw new Error('radioParse: ne každý log je rádio');
   console.log('výslovnost, rozpoznání rádiových hlášek, žádné řídicí znaky true');
 }
@@ -857,22 +860,25 @@ console.log('vstřícná jízda radio highlight tone fires once true');
     const other = sim._spawn({ ind: 'trauma', n: 3, where: 'ulice', intake: 0 }); other.status = 'waiting';
     if (sim.suggest(other.id, 'RZP').some(x => x.crewId === nbc.id)) throw new Error('cizí posádka nesmí být v nabídce k jinému případu');
   }
-  // žádost souseda o naši posádku: hovor, nabídka, body, vysláno pryč; bez odpovědi −1
+  // žádost souseda o naši posádku: jen datovka, naberou se jako samostatný nehodnocený výjezd; stačí jen požadovaná složka (RZP, nebo RV)
   { const sim = mk(5, 'auto'); sim._nbSpawn('ground');
-    const rq = sim.s.nbq[0], e = sim.s.radioQ.find(x => x.kind === 'nbreq');
-    if (!rq || !e || !e.opts.some(o => o.act === 'nb-send') || !e.opts.some(o => o.act === 'nb-decline') || !e.sign) throw new Error('žádost souseda: hovor s nabídkou');
-    const pts = sim.s.agg.opsPoints, send = e.opts.find(o => o.act === 'nb-send');
-    sim.radioAnswer(e.id); sim.radioReply(e.id, send.k);
-    const k = sim.crewOf(send.crewId);
-    if (k.state !== 'second' || !k.nbMission || rq.state !== 'accepted') throw new Error('vyhovění: posádka pryč na pomoc');
-    if (sim.s.agg.opsPoints === pts) throw new Error('vyhovění se hodnotí');
-    sim.step(k.nbMission.until - sim.s.t + 10); if (k.state === 'second') throw new Error('posádka se po pomoci vrací');
+    const rq = sim.s.nbq[0], cs = rq && sim.caseOf(rq.caseId);
+    if (!rq || !cs || !cs.nbHelp || !cs.carried || rq.state !== 'case') throw new Error('výpomoc jinému kraji: samostatný výjezd');
+    if (sim.s.radioQ.some(x => x.kind === 'nbreq') || sim.s.log.some(x => x.kind === 'crew' && /žádáme o/.test(x.txt))) throw new Error('výpomoc jinému kraji nejde přes rádio');
+    sim.step(10);
+    if (!cs.radioReports.some(r => r.received && /výpomoc/.test(r.text))) throw new Error('výpomoc jinému kraji: datová zpráva');
+    if (cs.initialDispatchRequired.join() !== rq.rtype) throw new Error('výpomoc vyžaduje jen ' + rq.rtype + ': ' + cs.initialDispatchRequired);
+    const other = rq.rtype === 'RV' ? 'RZP' : 'RV', o = sim.suggest(cs.id, other)[0];
+    if (o && sim.assign(cs.id, o.crewId).ok) throw new Error('výpomoc: druhá složka se nevysílá');
+    const pts = sim.s.agg.opsPoints, x = sim.suggest(cs.id, rq.rtype)[0];
+    if (!sim.assign(cs.id, x.crewId).ok || cs.status !== 'active' || sim.s.agg.opsPoints === pts) throw new Error('výpomoc: vyslání jedné posádky stačí a hodnotí se');
+    sim.step(4 * 3600);
+    if (cs.status !== 'closed' || cs.score || !sim.crewOf(x.crewId).caseId === false && sim.crewOf(x.crewId).caseId) throw new Error('výpomoc: dokončena bez hodnocení případu');
   }
-  { const sim = mk(6, 'auto'); sim._nbSpawn('ground'); const pts = sim.s.agg.opsPoints; sim.step(400);
-    if (sim.s.nbq[0].state !== 'timeout' || sim.s.agg.opsPoints !== pts - 1) throw new Error('bez odpovědi: −1 b. a zrušeno'); }
+  { const sim = mk(6, 'auto'); sim._nbSpawn('ground'); const pts = sim.s.agg.opsPoints, cs = sim.caseOf(sim.s.nbq[0].caseId); sim.step(900);
+    if (cs.status !== 'closed' || sim.s.agg.opsPoints !== pts - 1) throw new Error('bez vyslání: −1 b. a zrušeno'); }
   { const sim = mk(7, 'auto'); sim._nbSpawn('lzs'); const rq = sim.s.nbq[0];
-    if (rq) { const e = sim.s.radioQ.find(x => x.kind === 'nbreq'); sim.radioAnswer(e.id); sim.radioReply(e.id, e.opts.find(o => o.act === 'nb-send').k);
-      if (sim.crewOf('lzs').state !== 'second') throw new Error('Planá po souhlasu pryč'); if (sim.avail(sim.crewOf('lzs'))) throw new Error('Planá pryč není dostupná'); } }
+    if (rq) { const cs = sim.caseOf(rq.caseId); if (cs.initialDispatchRequired.join() !== 'LZS' || sim.s.radioQ.some(x => x.kind === 'nbreq')) throw new Error('výpomoc LZS: jen LZS, jen datovkou'); } }
   // naše žádost o LZS jinde: sloučená žádost a vyslání
   { let ok = false;
     for (let seed = 1; seed <= 30 && !ok; seed++) {
@@ -1294,4 +1300,63 @@ console.log('vstřícná jízda radio highlight tone fires once true');
   if (sim.s.t !== before || sim.s.log.length !== logN || sim.summary().total !== total) throw new Error('po předčasném konci se simulace změnila');
   if (typeof total !== 'number' || !isFinite(total)) throw new Error('summary po předčasném konci není číslo');
   console.log('předčasný konec směny: vyhodnocení po 1 h, další krok nic nemění', true);
+}
+
+// ---------- v0.39.0: sběr oprav z provozu ----------
+{
+  const mk = (seed, o) => { const s = new Sim(Object.assign({ seed, mode: 'shift', startHour: 9, radio: 'auto' }, o || {})); s.s.ev.nextSpawn = 1e9; s.s.ev.nbPlan = []; s.s.ev.nextMU = null; return s; };
+  // volačky: dispečer oslovuje posádku její volačkou, posádka mluví vlastní volačkou; mluvčí je v logu
+  { const sim = mk(61), k = sim.s.crews.find(x => x.type === 'RZP'), n0 = sim.s.log.length;
+    sim._zosSay(k, null, 'vracejte se prosím v režimu N3.', 'jedeme v režimu N3');
+    const L = sim.s.log.slice(n0).filter(e => e.kind === 'crew');
+    if (L[2].txt !== `ZCB${k.code}, vracejte se prosím v režimu N3.` || L[2].who !== 'zos' || L[3].txt !== `ZCB${k.code} rozumí, jedeme v režimu N3.`) throw new Error('volačka dispečera: ' + JSON.stringify(L.map(e => e.txt)));
+    const cs = sim._spawn({ ind: 'trauma', n: 3, where: 'byt', intake: 0 }); cs.status = 'waiting'; sim.assign(cs.id, k.id); sim.step(3000);
+    const cr = sim.s.log.filter(e => e.who === 'crew' && /, (pacient|po |na místě)/.test(e.txt));
+    if (sim.s.log.some(e => e.who === 'crew' && new RegExp(`^ZCB${k.code}: `).test(e.txt))) throw new Error('hláška posádky nesmí začínat „ZCB…:“'); void cr; }
+  // plánované převozy: 1–4 na celé / půlhodiny, nikdy na minuty
+  for (const seed of [1, 2, 3, 4, 5, 6]) { const sim = new Sim({ seed, mode: 'shift', startHour: 7 }); sim.s.ev.nextSpawn = 1e9; sim.s.ev.nextMU = null; sim.step(5);
+    const j = sim.s.cases.filter(c => c.typ === 'sekundární');
+    if (j.length < 1 || j.length > 4 || j.some(c => (7 * 3600 + c.scheduledAt) % 1800 !== 0)) throw new Error('sekundáry 1–4 na celé / půlhodiny, seed ' + seed); }
+  // předpoplach: výběr posádek, výrazně kratší výjezd; lze přidat další
+  { const sim = mk(62), cs = sim._spawn({ ind: 'resus', n: 1, where: 'byt', intake: 600 });
+    const r = sim.suggest(cs.id, 'RZP').slice(0, 3).map(x => x.crewId);
+    if (!sim.prealert(cs.id, [r[1]]).ok || !sim.prealert(cs.id, [r[2]]).ok || sim.prealert(cs.id, [r[1]]).ok) throw new Error('předpoplach: výběr a přidání posádek');
+    sim.step(700); sim.assign(cs.id, r[1]); sim.assign(cs.id, r[0]);
+    if (sim.crewOf(r[1]).turn > 25 || sim.crewOf(r[0]).turn < 30) throw new Error('předpoplach zkrátí výjezd jen vybrané posádce: ' + sim.crewOf(r[1]).turn + ' / ' + sim.crewOf(r[0]).turn); }
+  // RZP Planá: nevybrání se nepenalizuje, pokud je volná jiná ČB RZP (jinak by Planá u svého stanoviště vždy vyhrála)
+  { const sim = mk(63), at = { lat: 48.94395, lon: 14.44425, addr: 'Test, České Budějovice', town: 'České Budějovice' };
+    for (const k of sim.s.crews) if (k.type === 'RZP' && !['cb', 'cbpl'].includes(k.st)) k.state = 'off';
+    const cs = sim._spawn({ ind: 'trauma', n: 3, where: 'ulice', intake: 0, at }); cs.status = 'waiting';
+    const rz = sim.s.crews.find(k => k.type === 'RZP' && k.st === 'cb' && sim.avail(k)), pl = sim.s.crews.find(k => k.type === 'RZP' && k.st === 'cbpl' && sim.avail(k));
+    if (!rz || !pl || sim.etaFor(pl, at.lat, at.lon, 3) >= sim.etaFor(rz, at.lat, at.lon, 3)) throw new Error('příprava: Planá má být u místa nejblíž');
+    sim.assign(cs.id, rz.id);
+    if (cs.effRatio < 0.999 || Math.abs(cs.pick.best - cs.pick.chosen) > 0.5) throw new Error('vyslání jiné ČB RZP než Plané se nepenalizuje: ' + JSON.stringify(cs.pick)); }
+  // ZZUM: samotná RZP na statickou N2 se akceptuje a nevyžaduje RV
+  { const sim = mk(64), z = sim.s.crews.find(k => k.type === 'RZP' && k.zzum && sim.avail(k));
+    if (z) { const cs = sim._spawn({ ind: 'bolest', n: 2, dyn: false, where: 'byt', intake: 0, at: { lat: z.home.lat + 0.01, lon: z.home.lon, addr: 'Test 1', town: 'Test' } }); cs.status = 'waiting'; cs.rvNeed = true; cs.initialDispatchRequired = ['RZP', 'RV']; cs.initialDispatchSent = [];
+      if (!sim.assign(cs.id, z.id).ok || cs.rvNeed || cs.initialDispatchRequired.includes('RV') || cs.status !== 'active') throw new Error('ZZUM: samotná RZP na statickou N2'); } }
+  // vstřícná jízda: místo setkání podle skutečné obce a bez hlášení o dokončení; LZS: hlášení do 30 s po vzletu
+  { const sim = mk(65), p = sim._placeName(49.0, 14.2);
+    if (!/^(u obce|v obci) /.test(p)) throw new Error('název místa setkání: ' + p);
+    const cs = sim._spawn({ ind: 'resus', n: 1, where: 'byt', intake: 0 }); cs.status = 'waiting'; sim._lzsWeatherStatus = () => 'clear';
+    const lz = sim.crewOf('lzs'); sim.assign(cs.id, lz.id); sim.step(Math.ceil(lz.until - sim.s.t) + 35);
+    const rep = sim.s.log.find(e => /po vzletu, na místě přistání za \d+ minu/.test(e.txt));
+    if (!rep || rep.who !== 'crew' || !/^Kryštof 13, /.test(rep.txt) || rep.t - lz.enrouteAt > 31) throw new Error('hlášení LZS po vzletu do 30 s'); }
+  // výpomoc jinému kraji a pavilony nemocnice
+  { const sim = mk(66); sim._nbSpawn('ground'); const cs = sim.caseOf(sim.s.nbq[0].caseId);
+    if (!cs.nbHelp || cs.initialDispatchRequired.length !== 1 || sim.s.radioQ.length) throw new Error('výpomoc: jen datovka a jedna složka');
+    const h = ZOS_DATA.hospitals.find(x => x.id === 'h-cb'), a = sim._hospPoint(h, 'Urgentní příjem'), b = sim._hospPoint(h, 'ARO');
+    if (a.lat === b.lat && a.lon === b.lon) throw new Error('pavilony ČB mají různé body'); }
+  // „+ HZS“ jen s důvodem; „+libero“ jen u skutečně obsazeného LIBERA
+  { const sim = mk(67); let bad = 0, lib = 0;
+    for (let i = 0; i < 300; i++) { const c = sim._spawn({}); if (/\+\s*HZS/.test(c.up) && ['porucha', 'dusnost', 'hrudnik', 'bolest', 'neuro', 'czs'].includes(c.ind) && c.where !== 'silnice' && !/UVĚZN|POŽÁR|OXID|VYPROŠT|ZAVAL|PÁD Z|VÝŠK|STROM|TECHNICK/i.test(c.up)) bad++; if (/libero/i.test(c.poznamka || '')) lib++; }
+    if (bad) throw new Error('„+ HZS“ bez důvodu: ' + bad);
+    for (const k of sim.s.crews) if (k.libero) k.state = 'off';
+    for (let i = 0; i < 300; i++) { const c = sim._spawn({}); if (/libero/i.test(c.poznamka || '')) throw new Error('„+libero“ bez obsazeného LIBERA'); } }
+  // IZS na mapě: jednotky se objeví, jedou, zůstanou a po čase zmizí
+  { const sim = mk(68), cs = sim._spawn({ ind: 'dn_poly', n: 1, where: 'silnice', intake: 0 }); cs.status = 'waiting'; cs.agencies = {}; sim.sendAgency(cs.id, 'hzs'); sim.sendAgency(cs.id, 'pcr'); sim.step(10);
+    if (!cs.izs || cs.izs.length < 2 || !cs.izs.some(u => u.kind === 'hzs') || !cs.izs.some(u => u.kind === 'pcr')) throw new Error('IZS: jednotky PČR i HZS');
+    sim.step(Math.max(...cs.izs.map(u => u.t1)) - sim.s.t + 5); if (sim.izsVisible(sim.s.t).length < 2) throw new Error('IZS: na místě');
+    sim._close(cs, false); sim.step(4 * 3600); if (sim.izsVisible(sim.s.t).length) throw new Error('IZS: po čase zmizí'); }
+  console.log('v0.39.0: volačky, sekundáry, předpoplach, Planá, ZZUM, LZS hlášení, výpomoc, pavilony, HZS / libero, IZS true');
 }

@@ -29,8 +29,9 @@ class SimLoop {
         if (!s.ev.daySecondariesCreated) {
           s.ev.daySecondariesCreated = true;
           const dayStart = t - (((s.startHour * 3600 + t) % 86400 - 7 * 3600 + 86400) % 86400);
-          this._spawnSecondary(dayStart + this.rr(3600, 5400));
-          this._spawnSecondary(dayStart + this.rr(5400, 7200));
+          // na začátku směny (zapnuté sekundáry) 1–4 plánované převozy; časy se v _spawnSecondary zaokrouhlí na celé / půlhodiny
+          const first = Math.max(dayStart, t) + 1800;
+          for (let i = this.ri(1, 4); i > 0; i--) this._spawnSecondary(first + this.rr(0, 5 * 3600));
         } else if (open < 3 && this.hour() < 16.5) this._spawnSecondary(t + this.rr(3600, 7200));
         s.ev.nextSecond = t + this.rr(9000, 14400);
       } else {
@@ -72,6 +73,7 @@ class SimLoop {
 
   _caseStep(c) {
     const s = this.s, t = s.t;
+    if (c.agencies || c.frs) this._izsSync(c);   // jednotky PČR / HZS pro mapu
     for (const report of c.radioReports || []) {
       if (!report.received && t >= report.at) {
         report.received = true; report.receivedAt = t;
@@ -95,6 +97,7 @@ class SimLoop {
       if (t >= c.readyAt) {
         c.status = 'waiting'; c.wxAtCall = this._lzsWeatherStatus();
         this._muAdjustN2(c);
+        this._waitSnap(c);
         this.L('case', `Nový případ ${c.num}: N${c.n}${c.dyn ? ' dyn.' : ''} – ${c.klasif}, ${c.addr}`, c.id);
         // výzva obsahuje příznak PČR / HZS, ale nepřišla datovkou: složku musí přiřadit dispečer
         if (c.agNeed) {
@@ -117,6 +120,13 @@ class SimLoop {
     this._muAdjustN2(c);
     // Plánovaný N4 převoz neeskaluje jako akutní tísňová výzva.
     if (c.typ === 'sekundární') return;
+    // doba, kdy nebyla volná žádná RZP: dojezd ani vyslání v ní hráč neovlivní (nebodují se)
+    if (c.status === 'waiting' && c.firstAssign == null && !c.mu && c.noCrewSec == null && !this.s.crews.some(k => k.type === 'RZP' && !k.ext && this.avail(k))) c.noCrewUntil = t;
+    // výpomoc jinému kraji: nevyslaná žádost po lhůtě zaniká (−1 b.)
+    if (c.nbHelp && c.status === 'waiting' && !c.arrived && !(c.crews && c.crews.length) && t > c.nbHelp.expireAt) {
+      this._opsScore(-1, `žádost sousedního kraje (${c.nbHelp.short}) o výpomoc zůstala bez odpovědi (${c.num})`, c.id);
+      this._close(c, true); return;
+    }
     if (c.mu) this._muStep(c);
     if (c.exitus) { this._deathCaseStep(c); return; }
     if (c.agencies) this._agencyStep(c);
@@ -245,15 +255,13 @@ class SimLoop {
     if (c.type === 'LZS') return false; // LZS se vrací vlastní logikou
     if (c.caseRole === 'exam') {
       cs.exam.done = true; cs.exam.remaining = 0; cs.exam.crewId = null;
-      this._radio(c, cs, 'prohlídka zemřelého ukončena, jsme volní, vracíme se na základnu.', true);
-      this._release(c); return true;
+      this._release(c); return true;   // bez rádiové relace; stav prohlídky je jen v detailu výjezdu
     }
     const cor = cs.coroner;
     if (!cor || cor.state === 'pending') { c.until = t + 20; return true; }
     if (cor.state === 'unavailable' && c.type === 'RV' && cs.exam && !cs.exam.done && !cs.exam.crewId) {
       c.caseRole = 'exam'; cs.exam.crewId = c.id; c.until = t + cs.exam.remaining; cs.exam.startedAt = t;
-      this._radio(c, cs, 'zůstáváme na prohlídku zemřelého, jsme odvolatelní.', true);
-      return true;
+      return true;   // bez rádiové relace; posádka je volná, ale zůstává na místě (odvolatelná)
     }
     this._release(c); return true;
   }
@@ -411,6 +419,7 @@ class SimLoop {
           if (cs.lzsReadyAt != null && t < cs.lzsReadyAt) { c.until = cs.lzsReadyAt; break; }
           return this._startLzsGroundTransfer(c, cs);
         }
+        if (cs && cs.nbHelp) { this.L('crew', `${c.name}: výpomoc v ${cs.nbHelp.short} u konce, vracíme se`, cs.id, c.id); return this._release(c); }
         if (cs && cs.mu) { if (cs.mu.ended || cs.status === 'closed') return this._release(c); c.until = t + 20; break; }
         if ((cs.fate || cs.exitus) && !cs.mu && this._deathStep(c, cs)) break;
         if (cs.typ === 'sekundární') {
@@ -574,7 +583,7 @@ class SimLoop {
       const mins = Math.max(1, Math.ceil(dur / 60)), hosp = ZOS_DATA.hospitals.find(h => h.id === (cs.lzsTargetHospitalId || 'h-cb')) || {};
       const poly = ['dn_poly', 'amput'].includes(cs.ind) || (['trauma', 'dn_lehke'].includes(cs.ind) && cs.nOrig === 1);
       const tail = poly ? this._centreTail(cs, mins).replace(/, dojezd \d+ minut$/, '') : '';
-      this._crewCall(c, cs, `směřujeme ${hosp.id === 'h-fnkv' ? 'popáleninové centrum Vinohrady' : 'ARO ' + (hosp.name || 'Nemocnice České Budějovice')}, přílet na heliport za ${mins} minut${tail}.`, [{ k: 'ok', label: 'Rozumí, nahlásíme', say: 'ZCB101 rozumí, nahlásíme.', ok: true, act: 'ack', def: true }], 'info', 'K' + String(c.code).replace(/\D/g, ''));
+      this._crewCall(c, cs, `směřujeme ${hosp.id === 'h-fnkv' ? 'popáleninové centrum Vinohrady' : 'ARO ' + (hosp.name || 'Nemocnice České Budějovice')}, přílet na heliport za ${this._min(mins)}${tail}.`, [{ k: 'ok', label: 'Rozumí, nahlásíme', say: 'ZCB101 rozumí, nahlásíme.', ok: true, act: 'ack', def: true }], 'info', 'K' + String(c.code).replace(/\D/g, ''));
     }
     if ((cs.patientsRemaining || 1) > 0) {
       cs.patientsHandled = (cs.patientsHandled || 0) + 1;
@@ -623,7 +632,8 @@ class SimLoop {
     const t = this.s.t, D = ZOS_DATA;
     const h = D.hospitals.find(x => x.id === cs.lzsTargetHospitalId) || D.hospitals.find(x => x.id === 'h-cb');
     const dept = cs.lzsTargetHospitalId === 'h-fnkv' ? 'Popáleninové centrum' : this._deptFor(h, cs, cs.hospType);
-    const dur = this._go(c, h.lat, h.lon, 'P2');
+    const hpt = this._hospPoint(h, dept);
+    const dur = this._go(c, hpt.lat, hpt.lon, 'P2');
     c.dest = { hid: h.id, name: `${h.short} – ${dept}`, type: cs.hospType };
     const handoverEstimate = 700;
     c.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', handoverSec: null, availableAt: t + dur + handoverEstimate };
@@ -677,8 +687,8 @@ class SimLoop {
     }
     best = best || D.hospitals[0];
     const pmode = cs.n <= 2 || cs.fate === 'rosc' ? 'P2' : 'P3'; // NACA IV–VI v režimu N2, jinak N3
-    const dur = this._go(c, best.lat, best.lon, pmode);
-    const dept = this._deptFor(best, cs, type);
+    const dept = this._deptFor(best, cs, type), dpt = this._hospPoint(best, dept);   // cíl je pracoviště / pavilon, ne jeden bod nemocnice
+    const dur = this._go(c, dpt.lat, dpt.lon, pmode);
     const dsay = this._destSay(best, dept);
     c.dest = { hid: best.id, name: best.short + ' – ' + dept, type, say: dsay.text };
     const handoverEstimate = 700;
@@ -699,7 +709,7 @@ class SimLoop {
     for (const rv of escorts) {
       rv.caseRole = 'escort'; rv.escortFree = cs.script && cs.script.escortFree != null ? cs.script.escortFree : cs.fate !== 'rosc' && cs.n >= 2 && this.rnd() < 0.6;
       rv.dest = { hid: best.id, name: c.dest.name, type };
-      this._go(rv, best.lat, best.lon, pmode); rv.state = 'transport'; rv.until = t + dur;
+      this._go(rv, dpt.lat, dpt.lon, pmode); rv.state = 'transport'; rv.until = t + dur;
       rv.hospitalRun = { hospitalName: c.dest.name, phase: 'transport', escort: true, handoverSec: null, availableAt: t + dur }; // doprovod je volný hned po příjezdu
     }
     if (primaryRun && escorts.length) {
@@ -837,9 +847,26 @@ class SimLoop {
       if (d < bd) { bd = d; best = p; }
     }
     if (!best) return null;
-    let place = '';
-    try { let tw = null, tdist = 1e9; for (const x of ZOS_DATA.towns || []) { const dd = hav(best.lat, best.lon, x.lat, x.lon); if (dd < tdist) { tdist = dd; tw = x; } } if (tw) place = tdist < 2 ? `v obci ${tw.n}` : `u obce ${tw.n}`; } catch (_) {}
-    return { lat: best.lat, lon: best.lon, f: best.f, place };
+    return { lat: best.lat, lon: best.lon, f: best.f, place: this._placeName(best.lat, best.lon) };
+  }
+  // nejbližší obec z adresního rejstříku (i malé obce jako Lásenice); bez rejstříku nejbližší větší město
+  _placeName(lat, lon) {
+    let name = '', dist = 1e9;
+    try {
+      const A = typeof ZOS_ADDR !== 'undefined' && ZOS_ADDR && ZOS_ADDR.a ? ZOS_ADDR : null;
+      if (A) {
+        const a = A.a, S = A.s, cosl = Math.cos(lat * Math.PI / 180);
+        let bi = -1, bd = 1e18;
+        for (let i = 0; i < a.length; i += 8) {
+          const dy = a[i] / 1e5 - lat; if (dy > 0.05 || dy < -0.05) continue;
+          const dx = (a[i + 1] / 1e5 - lon) * cosl, d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; bi = i; }
+        }
+        if (bi >= 0) { name = S[a[bi + 3]]; dist = Math.sqrt(bd) * 111.2; }
+      }
+      if (!name) for (const x of ZOS_DATA.towns || []) { const dd = hav(lat, lon, x.lat, x.lon); if (dd < dist) { dist = dd; name = x.n; } }
+    } catch (_) {}
+    return name ? (dist < 0.8 ? `v obci ${name}` : `u obce ${name}`) : 'na trase';
   }
   _completeVstricna(cs) {
     const plan = cs && cs.vstricna, primary = plan && this.crewOf(plan.primaryCrewId), helper = plan && this.crewOf(plan.helperCrewId);
@@ -851,15 +878,13 @@ class SimLoop {
     if (plan.handoverEnd == null) {
       plan.handoverEnd = t + this.rr(120, 300);
       primary.until = helper.until = plan.handoverEnd;
-      this.L('crew', `ZCB${primary.code} a ZCB${helper.code} na místě setkání, probíhá předání pacienta.`, cs.id, primary.id);
       return true;
     }
     if (t < plan.handoverEnd) { primary.until = helper.until = plan.handoverEnd; return true; }
     plan.state = 'completed';
-    this.L('crew', `ZCB${primary.code}: pacient předán posádce ZCB${helper.code}, vstřícná jízda dokončena.`, cs.id, primary.id);
     this._release(primary);
     helper.caseRole = 'vstricna-destination'; helper.dest = { hid: hospital.id, name: plan.hospitalName, type: cs.hospType };
-    const dur = this._go(helper, hospital.lat, hospital.lon, 'P3'); helper.state = 'transport'; helper.until = this.s.t + dur;
+    const hpt = this._hospPoint(hospital, this._deptFor(hospital, cs, cs.hospType)), dur = this._go(helper, hpt.lat, hpt.lon, 'P3'); helper.state = 'transport'; helper.until = this.s.t + dur;
     cs.transported = true; cs.dest = plan.hospitalName;
     this.L('crew', `${helper.name}: pokračuje s pacientem do ${plan.hospitalName}`, cs.id, helper.id);
     return true;
@@ -931,6 +956,7 @@ class SimLoop {
       this.L(cs.unserved ? 'warn' : 'case', cs.unserved ? `${cs.num}: sekundární převoz neobsloužen` : `${cs.num}: sekundární převoz dokončen`, cs.id);
       return;
     }
+    if (cs.nbHelp) { this.L('case', `${cs.num}: výpomoc sousednímu kraji dokončena`, cs.id); return; }
     if (cs.unserved) this._opsScore(-8, `neobsloužený případ ${cs.num}`, cs.id);
     cs.score = this._scoreCase(cs);
     this._lzsEval(cs);

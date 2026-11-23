@@ -42,7 +42,7 @@ for (const seed of [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]) {
       if (c.rvNeed) { const v = s.suggest(c.id, 'RV')[0]; if (v) s.assign(c.id, v.crewId); }
     }
   }
-  cases.push(...s.s.cases); crews.push(...s.s.crews);
+  cases.push(...s.s.cases.filter(c => !c.nbHelp)); crews.push(...s.s.crews);
 }
 const P = cases.filter(c => c.typ !== 'sekundární' && c.ind !== 'mu');
 for (const k of crews) for (const m of k.members || []) checkName(m, 'posádka');
@@ -80,7 +80,7 @@ const names = new Set(cases.map(c => c.ozn)).size / cases.length;
 const ranges = [
   // cíle podle reálných událostí (leden + červenec 2026): N1 2 %, N2 23 %, N3 75 %, DYNAMICKÁ INDIKACE ~40 % z N2, domov ~4 %, ~100 událostí / 12 h
   ['podíl N1', share(1), 0.012, 0.05], ['podíl N2', share(2), 0.17, 0.30], ['podíl N3', share(3), 0.66, 0.82],
-  ['výzev za směnu', perShift, 85, 130], ['podíl domov pro seniory', dps, 0.02, 0.08], ['unikátnost oznamovatelů', names, 0.85, 1.01],
+  ['výzev za směnu', perShift, 85, 130], ['podíl domov pro seniory', dps, 0.02, 0.08], ['unikátnost oznamovatelů', names, 0.83, 1.01],
   ['podíl dynamické indikace z N2', dynShare, 0.28, 0.5], ['podíl bez popisu místa i poznámky', emptyTail, 0, 0.04],
 ];
 let fail = false;

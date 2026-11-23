@@ -7,7 +7,7 @@ class SimRadio {
     const s = this.s, q = s.radioQ || (s.radioQ = []);
     const e = Object.assign({ id: 'rq' + (s.rqSeq = (s.rqSeq || 0) + 1), t: s.t, crewId: crew.id, code: crew.code, callCodes: crew.code, name: crew.name, caseId: cs ? cs.id : null, msg, opts, kind, state: 'calling', tries: 1, nextAt: s.t + 45 }, extra || {});
     q.push(e); if (q.length > 50) q.splice(0, q.length - 50);
-    this.L('crew', `ZCB101, zde ${this._esign(e)}, příjem.`, e.caseId, crew.id);
+    this.L('crew', `ZCB101, zde ${this._esign(e)}, příjem.`, e.caseId, crew.id, 'crew');
     return e;
   }
   _esign(e) { return e.sign || this._csign(e.callCodes || e.code); }
@@ -17,10 +17,10 @@ class SimRadio {
     // forceInteractive: rozhodnutí patří dispečerovi (např. „je schopen překladu“), čeká na něj i v automatickém režimu
     if (this.s.radioMode === 'interactive' || forceInteractive) return this._rq(crew, cs, msg, opts, kind, Object.assign(callCodes ? { callCodes } : {}, forceInteractive ? { forceInteractive: true, noPenalty: true } : {}));
     const id = cs ? cs.id : null, sign = this._csign(callCodes || crew.code), lines = [];
-    const say = (who, txt) => { this.L('crew', txt, id, crew.id); lines.push({ who, text: txt }); };
+    const say = (who, txt) => { this.L('crew', txt, id, crew.id, who); lines.push({ who, text: txt }); };
     say('crew', `ZCB101, zde ${sign}, příjem.`);
     say('zos', 'ZCB101 na příjmu.');
-    say('crew', `${sign}: ${msg}`);
+    say('crew', `${sign}, ${msg}`);   // posádka začíná vlastní volačkou
     if (kind === 'vj') { this._autoRadio(crew, cs, lines); return null; } // vstřícnou rozhoduje dispečer přetažením posádky / vyprší
     const o = (opts || []).find(x => x.def) || (opts || []).find(x => x.ok !== false) || (opts || [])[0];
     if (o) {
@@ -50,17 +50,17 @@ class SimRadio {
   }
   _zosSay(crew, cs, msg, reply, thanks) {
     const id = cs ? cs.id : null, lines = [];
-    const say = (who, txt) => { this.L('crew', txt, id, crew.id); lines.push({ who, text: txt }); };
+    const say = (who, txt) => { this.L('crew', txt, id, crew.id, who); lines.push({ who, text: txt }); };
     say('zos', `ZCB${crew.code}, zde ZCB101, příjem.`);
     say('crew', `ZCB${crew.code} na příjmu.`);
-    say('zos', `ZCB101: ${msg}`);
+    say('zos', `ZCB${crew.code}, ${msg}`);   // dispečer osloví posádku její volačkou
     say('crew', `ZCB${crew.code} rozumí${reply ? ', ' + reply : ''}.`);
     say('zos', 'ZCB101 díky, konec.');
     this._autoRadio(crew, cs, lines);
   }
   // ---------- relace při vyslání posádky, která se vrací na základnu ----------
   // ZCB101 zavolá → příjem → „ukončete se, mám pro vás další výjezd“ → „jsme ukončení“ → díky, konec; výjezd začíná až po relaci
-  _relayMsg(cs) { return `ukončete se, mám pro vás další výjezd, ${cs.town || cs.addr}, ${cs.klasif} N${cs.n}`; }
+  _relayMsg(cs) { return `ukončete se, mám pro vás další výjezd, ${cs.town || cs.addr}, ${cs.klasif === 'CZS' ? 'celkové zhoršení stavu' : cs.klasif} N${cs.n}`; }
   _relayStart(c, cs) {
     c.relayHold = true; c.relayCase = cs.id;
     if (this.s.radioMode === 'auto') { this._relayRun(c, cs); return; }
@@ -70,11 +70,11 @@ class SimRadio {
   }
   _relayRun(c, cs) {
     const t = this.s.t, lines = [], sign = `ZCB${c.code}`;
-    const say = (who, txt) => { this.L('crew', txt, cs.id, c.id); lines.push({ who, text: txt }); };
+    const say = (who, txt) => { this.L('crew', txt, cs.id, c.id, who); lines.push({ who, text: txt }); };
     say('zos', `${sign}, zde ZCB101, příjem.`);
     say('crew', `${sign} na příjmu.`);
-    say('zos', `${sign}, ZCB101: poprosím ${this._relayMsg(cs)}.`);
-    say('crew', `${sign}: jsme ukončení, můžete posílat.`);
+    say('zos', `${sign}, poprosím ${this._relayMsg(cs)}.`);
+    say('crew', `${sign}, jsme ukončení, můžete posílat.`);
     say('zos', 'ZCB101 díky, konec.');
     this._autoRadio(c, cs, lines);
     this._relayRelease(c, cs, this.ri(20, 40));
@@ -200,6 +200,77 @@ class SimRadio {
       }
     }
   }
+  // ---------- vizualizace pohybu PČR / HZS na mapě (trojúhelníky) ----------
+  // Jen mapa: v logu ani v rádiu se pohyb neukazuje. Jednotky vyjíždějí z nejbližší hasičské / policejní stanice (hlídky PČR někdy z terénu),
+  // na místě zůstanou dobu zásahu (u nehod déle než ZZS) a pak zmizí. Zkratky: CAS = cisternová automobilová stříkačka, AZ = automobilový žebřík,
+  // TA = technický automobil, DA = dopravní automobil (JSDH); OOP = obvodní oddělení Policie ČR, DI = dopravní inspektorát, SKPV = služba kriminální policie a vyšetřování.
+  _izsSpecs(cs, kind) {
+    const up = String(cs.up || '') + ' ' + String(cs.poznamka || ''), dn = ['dn_poly', 'dn_lehke'].includes(cs.ind), trapped = /UVĚZN|ZAKLÍN|VYPROŠT/i.test(up);
+    if (kind === 'hzs') {
+      const fire = cs.ind === 'popal' || /POŽÁR|OXID UHELNAT/i.test(up), terrain = cs.where === 'priroda' || cs.ind === 'tonuti';
+      if (dn) return trapped ? [{ cls: 'CAS 20', after: true }, { cls: 'TA', after: true }] : [{ cls: 'CAS 20', after: true }];
+      if (fire) return [{ cls: 'CAS 30' }, { cls: 'AZ 30' }];
+      if (terrain) return [{ cls: 'TA' }, { cls: 'DA' }];
+      if (cs.ind === 'asist') return [{ cls: this.rnd() < 0.4 ? 'AZ 30' : 'CAS 20', after: true }];
+      return [{ cls: 'CAS 20' }];
+    }
+    if (dn) return [{ cls: 'Hlídka OOP', after: true }, { cls: 'Hlídka DI', after: true }];
+    if (cs.exitus || ['obeseni', 'resus', 'nzo'].includes(cs.ind)) return [{ cls: 'Hlídka OOP' }, { cls: 'SKPV' }];
+    if (cs.ind === 'asist') return [{ cls: 'Hlídka OOP', after: true }];
+    return [{ cls: 'Hlídka OOP' }];
+  }
+  _izsLabel(cls) {
+    return { 'CAS 20': 'CAS 20 – cisternová automobilová stříkačka', 'CAS 30': 'CAS 30 – cisternová automobilová stříkačka', 'AZ 30': 'AZ 30 – automobilový žebřík', TA: 'TA – technický automobil (vyprošťování)', DA: 'DA – dopravní automobil jednotky SDH',
+      'Hlídka OOP': 'Hlídka OOP – obvodní oddělení Policie ČR', 'Hlídka DI': 'Hlídka DI – dopravní inspektorát Policie ČR', SKPV: 'SKPV – služba kriminální policie a vyšetřování' }[cls] || cls;
+  }
+  _izsMake(cs, kind, spec, from, who, t0, t1, idx, fromField) {
+    t1 = Math.max(t1, t0 + 60);
+    let path = null, frac = null;
+    if (typeof ROUTER !== 'undefined' && ROUTER.ready) { try { const r = ROUTER.route(from[0], from[1], cs.lat, cs.lon); if (r && r.pts && r.pts.length >= 4) { path = r.pts; frac = r.frac; } } catch (_) { path = null; } }
+    const hzs = kind === 'hzs', stay = hzs ? (spec.cls === 'TA' ? this.rr(2400, 4500) : this.rr(900, 2400)) : this.rr(900, 2400);
+    return { id: `iz${cs.id}-${kind}${idx}`, kind, cls: spec.cls, label: this._izsLabel(spec.cls), who, fromField: !!fromField, from, t0, t1, mv: { a: from, b: [cs.lat, cs.lon], t0, t1, dw: 0, path, frac }, stay, after: !!spec.after, extra: this.rr(300, 1500), off: [(idx % 3) * 0.00022 - 0.00022, (idx >> 1) * 0.00018 + 0.00012] };
+  }
+  _izsSync(cs) {
+    const A = cs.agencies, FRs = cs.frs, U = cs.izs || (cs.izs = []);
+    const F = ZOS_DATA.fr || [];
+    const near = (types, k) => F.filter(f => types.includes(f.type)).map(f => [f, hav(f.lat, f.lon, cs.lat, cs.lon)]).sort((a, b) => a[1] - b[1]).slice(0, k).map(x => x[0]);
+    for (const kind of ['pcr', 'hzs']) {
+      const a = A && A[kind]; if (!a || a.izsDone || !(a.state === 'sent' || a.state === 'onscene') || a.arriveAt == null) continue;
+      a.izsDone = true;
+      const specs = this._izsSpecs(cs, kind), st = near(kind === 'pcr' ? ['PCR'] : ['HZS'], 3);
+      const t1 = a.arriveAt, t0 = Math.min(t1 - 60, (a.sentAt != null ? a.sentAt : this.s.t) + (kind === 'hzs' ? this.rr(60, 150) : this.rr(30, 120)));
+      specs.forEach((sp, i) => {
+        const field = kind === 'pcr' && i === 0 && this.rnd() < 0.4;   // hlídka PČR vyráží z terénu, ne ze stanice
+        let from, who;
+        if (field) { const ang = this.rnd() * Math.PI * 2, km = this.rr(3, 12); from = [cs.lat + Math.sin(ang) * km / 111, cs.lon + Math.cos(ang) * km / 72.8]; who = 'z terénu'; }
+        else { const s0 = st[Math.min(i, st.length - 1)]; if (!s0) return; from = [s0.lat, s0.lon]; who = s0.name; }
+        U.push(this._izsMake(cs, kind, sp, from, who, t0 + i * this.rr(0, 90), t1 + i * this.rr(20, 240), U.length, field));
+      });
+    }
+    for (const f of FRs || []) {
+      if (f.izsDone || !['HZS', 'JPO2', 'JPO3', 'JPO4', 'PCR'].includes(f.type)) continue;
+      f.izsDone = true;
+      const kind = f.type === 'PCR' ? 'pcr' : 'hzs';
+      U.push(this._izsMake(cs, kind, { cls: kind === 'pcr' ? 'Hlídka OOP' : f.type === 'HZS' ? 'CAS 20' : 'DA' }, [f.lat, f.lon], f.name, f.sentAt, f.arriveAt, U.length, false));
+    }
+  }
+  // kdy jednotka z místa odjede: u nehod a asistencí až po odjezdu ZZS (a ještě chvíli), jinak po době zásahu
+  izsLeaveAt(cs, u) {
+    const base = u.t1 + u.stay;
+    if (!u.after) return base;
+    if (cs.status === 'closed') return Math.max(base, (cs.closedAt != null ? cs.closedAt : this.s.t) + u.extra);
+    return Infinity;
+  }
+  // viditelné jednotky: [{ u, cs, lat, lon, moving, from }] v čase t (jen pro mapu)
+  izsVisible(t) {
+    const out = [];
+    for (const cs of this.s.cases) for (const u of cs.izs || []) {
+      if (t < u.t0 || t >= this.izsLeaveAt(cs, u)) continue;
+      if (t < u.t1) { const p = this.pos({ mv: u.mv, lat: u.from[0], lon: u.from[1] }, t), q = this.pos({ mv: u.mv, lat: u.from[0], lon: u.from[1] }, Math.min(u.t1, t + 8)); out.push({ u, cs, lat: p.lat, lon: p.lon, hd: Math.atan2((q.lon - p.lon) * 0.66, q.lat - p.lat) * 180 / Math.PI, moving: true }); }
+      else out.push({ u, cs, lat: cs.lat + u.off[1], lon: cs.lon + u.off[0], hd: 0, moving: false });
+    }
+    return out;
+  }
   // ---------- součinnost PČR / HZS (dlaždice jako koroner) ----------
   sendAgency(caseId, kind, viaRadio) {
     if (kind === 'fr') return this.sendFr(caseId);
@@ -251,7 +322,7 @@ class SimRadio {
     this.s.radioMode = mode === 'interactive' ? 'interactive' : 'auto';
     if (this.s.radioMode === 'auto') for (const e of this.s.radioQ || []) if ((e.state === 'calling' || e.state === 'open' || e.state === 'zos') && !e.forceInteractive) {
       if (e.state === 'zos') { const k = this.crewOf(e.crewId); e.state = 'done'; if (k) this._zosSay(k, e.caseId ? this.caseOf(e.caseId) : null, e.msg, e.reply); continue; }
-      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId); this.L('crew', `${this._esign(e)}: ${e.msg}`, e.caseId, e.crewId); }
+      if (e.state === 'calling') { this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId, 'zos'); this.L('crew', `${this._esign(e)}, ${e.msg}`, e.caseId, e.crewId, 'crew'); }
       e.state = 'open'; const def = (e.opts || []).find(x => x.def) || (e.opts || [])[0]; this.radioReply(e.id, def ? def.k : null, true);
     }
   }
@@ -259,8 +330,8 @@ class SimRadio {
   radioAnswer(id) {
     const e = this.radioEntry(id); if (!e || e.state !== 'calling') return { ok: false };
     e.state = 'open'; e.openedAt = this.s.t; e.nextAt = this.s.t + 120;
-    this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId);
-    this.L('crew', `${this._esign(e)}: ${e.msg}`, e.caseId, e.crewId);
+    this.L('crew', 'ZCB101 na příjmu.', e.caseId, e.crewId, 'zos');
+    this.L('crew', `${this._esign(e)}, ${e.msg}`, e.caseId, e.crewId, 'crew');
     return { ok: true };
   }
   radioReply(id, k, auto) {
