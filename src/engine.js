@@ -488,7 +488,7 @@ class Sim {
     let k = (n === 1 ? (rv ? C.c1.rv : C.c1.rzp) : 1) * C.hour[Math.floor(this.hour())];
     k *= (c.fromBase && C.baseMul[c.st]) || 1;
     const fixed = p[0] * k * (c.fromBase === false ? (C.roadA != null ? C.roadA : 1) : 1);
-    const mean = Math.max(25, fixed + k * (p[1] * Math.min(sec, C.sk) + p[2] * Math.max(0, sec - C.sk)));
+    const mean = Math.max(25, (fixed + k * (p[1] * Math.min(sec, C.sk) + p[2] * Math.max(0, sec - C.sk))) * (C.mul || 1) + (C.add || 0));   // mul + add: dokalibrace na výjezdy 10.–20. 11. 2026
     return { mean, sg: p[3], fixed };
   }
   // pevná část jízdy se rozloží po trase: pomalejší rozjezd a hlavně dojezd (hledání adresy), vozidlo se hýbe až do „na místě“, bez čekání

@@ -8,6 +8,15 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.4 – 2026-11-23
+Dojezdy posádek podle skutečných výjezdů z 10. až 20. 11. 2026.
+- **Dokalibrace doby jízdy.** Z exportu výjezdů (2 688 řádků, z toho 2 257 primárních pozemních výjezdů ze základny s nalezenou adresou) jsem porovnal skutečnou dobu od výjezdu po status na místě s modelem. Adresy se hledaly v adresním rejstříku, vozy, které byly v době výzvy ještě na cestě z předchozího výjezdu, jsem vyřadil a stejně tak zjevně nezákladnové dlouhé trasy. Model byl v mediánu o 10 % rychlejší než skutečnost (u krátkých tras do 7 km o 15 %, u tras nad 20 km o 0 %). Doba jízdy má teď navíc +3 % a +25 s a upravené koeficienty stanic (například Kaplice, Týn nad Vltavou, ČB Vltava a ČB Pražská jedou pomaleji, Opařany a JH rychleji). Po úpravě je medián skutečná/model 1,00 ve všech skupinách podle naléhavosti, vzdálenosti i denní doby.
+- **Prodleva před výjezdem se nemění**: skutečný medián 104 až 110 s (N1 87 s) odpovídá modelu.
+- **Čas v návrháři posádek** je součet prodlevy před výjezdem a jízdy (u TA_RZP1 na Krátošice asi 14,5 min, z toho jízda asi 12,5 min). Výjezd ze základny se do skutečné jízdy nepočítá.
+- Vozy, které nevyjíždějí ze základny, mají model rychlejší (prodleva 24 s); u nich je skutečnost opět o pár procent delší, proto tam zůstalo +3 %.
+
+---
+
 ## v0.39.3 – 2026-11-23
 Nové:
 - **Všechny drobné obce mezi hasiči.** Jednotky SDH, jejichž dislokace není samostatná obec v adresním rejstříku (části obcí, osady), se umisťují do středu obce zřizovatele s drobným rozptylem do asi 350 m, ať jednotky téže obce nesedí přesně na sobě. Ve hře je teď 749 hasičských jednotek místo 549 a 48 policejních stanic. Bez polohy zůstává jen 5 jednotek (Políkno, Hrdlořezy, Kožlí u Orlíka, Přílepov, Sobědraž). Čtyři Dvory a Suché Vrbné (policie ČB) mají orientační polohu.
