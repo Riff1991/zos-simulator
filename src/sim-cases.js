@@ -510,6 +510,8 @@ class SimCases {
       src: extKinds && (dzFirst || this.rnd() < 0.6) ? EXTMSG.SRC_CALL[extKinds[0]] : this.pick(['Linka 155', 'Linka 155', 'Linka 155', 'Linka 112', '112 – přeposláno']), op,
       intake, phase: dzFirst ? 'dz' : 'intake', dzUntil: dzFirst ? t + dzDur : null,
     });
+    // ohledání zemřelého (koroner nedostupný): jede jen lékař (RV), RZP se nevyžaduje
+    if (!over.symptoms && /OHLEDÁNÍ/.test(symptomText)) { c.initialDispatchRequired = ['RV']; c.rvNeed = true; c.rvLater = false; c.exam0 = true; }
     if (dzFirst) {
       const ag = Object.assign({}, eo.ag);
       if (/PČR/.test(up)) ag.pcr = true;

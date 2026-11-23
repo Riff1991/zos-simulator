@@ -530,7 +530,7 @@ class SimCalltaker {
         if (t < c.botAt) continue;
         if (c.exitus) { if (c.examPending) { const v = this.suggest(c.id, 'RV')[0]; if (v) this.assign(c.id, v.crewId); } continue; }
         // nový případ: RZP (a RV, je-li potřeba); částečně obsazený čekající případ: jen chybějící typy z požadavku (nikdy znovu RZP)
-        const first = c.firstAssign == null, miss = this._missingTypes(c), want = c.nbHelp ? (first ? [c.nbHelp.rtype] : []) : first ? [...new Set(['RZP'].concat(c.rvNeed ? ['RV'] : []).concat(miss))] : miss;   // výpomoc jinému kraji: jen požadovaná složka
+        const first = c.firstAssign == null, miss = this._missingTypes(c), want = c.nbHelp ? (first ? [c.nbHelp.rtype] : []) : c.exam0 ? (c.docAssigned ? [] : ['RV']) : first ? [...new Set(['RZP'].concat(c.rvNeed ? ['RV'] : []).concat(miss))] : miss;   // výpomoc jinému kraji: jen požadovaná složka
         for (const type of want) { const x = this.suggest(c.id, type)[0]; if (x) this.assign(c.id, x.crewId); }
         // bez volného lékaře dispečer po 2 min převede N2 na dynamickou indikaci (RZP už jede)
         if (!first && c.status === 'waiting' && c.n === 2 && !c.dyn && this._missingTypes(c).includes('RV') && t - c.firstAssign > 120 && !this.suggest(c.id, 'RV')[0]) this.convertN2Dynamic(c.id);

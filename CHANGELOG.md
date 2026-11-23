@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.39.1 – 2026-11-23
+Opravy:
+- **Ohledání zemřelého jede jen lékař.** Výzva s příznakem Ohledání (koroner nedostupný) už nevyžaduje RZP, požadovaný je jen RV; dispečer-bot také vysílá jen RV.
+
+---
+
 ## v0.39.0 – 2026-11-23
 Sběrná verze oprav a změn z provozu. Body 1 a 10 ze sběru (dynamika N2 u alergie a CZS) se vědomě nemění, čeká se na statistiky.
 
