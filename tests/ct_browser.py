@@ -35,7 +35,7 @@ def run(p, w, h, tag):
     shot = lambda n: SHOTS and pg.screenshot(path=os.path.join(SHOTS, f'{tag}-{n}.png'))
     check(pg.query_selector('[data-act=ct-menu]') is not None, f'{tag}: menu úvodní obrazovky má volbu Calltaker')
     pg.click('[data-act=ct-menu]'); pg.wait_for_timeout(300); shot('menu')
-    pg.fill('#ctm-key', 'sk-test'); pg.check('input[name=ctm-flow][value=training]'); pg.fill('#ctm-gapMin', '1'); pg.uncheck('#ctm-rec')
+    pg.click('.ctm-ai > summary'); pg.fill('#ctm-key', 'sk-test'); pg.check('input[name=ctm-flow][value=training]'); pg.fill('#ctm-gapMin', '1'); pg.uncheck('#ctm-rec')
     pg.click('[data-act=ct-start]'); pg.wait_for_timeout(1500)
     check(pg.evaluate("document.body.classList.contains('ct-mode')"), f'{tag}: režim calltaker zapnut')
     vis = lambda sel: pg.evaluate("(s)=>{const e=document.querySelector(s);return !!e&&getComputedStyle(e).display!=='none'}", sel)
@@ -131,7 +131,9 @@ def run_manual(p):
     b = p.chromium.launch(args=args); pg = b.new_page(viewport={'width': 1440, 'height': 900}); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.goto(URL, wait_until='domcontentloaded'); pg.wait_for_timeout(3500)
-    pg.click('[data-act=ct-menu]'); pg.uncheck('#ctm-bot'); pg.check('#ctm-disp'); pg.click('[data-act=ct-start]'); pg.wait_for_timeout(1500)
+    pg.click('[data-act=ct-menu]'); pg.uncheck('#ctm-bot'); pg.check('#ctm-disp'); pg.click('[data-act=ct-start]'); pg.wait_for_timeout(400)
+    check('nebude mluvit' in pg.inner_text('#ctm-novoice') and not pg.evaluate("document.body.classList.contains('ct-mode')"), 'ručně: bez klíče první klik jen varuje')
+    pg.click('[data-act=ct-start]'); pg.wait_for_timeout(1500)
     vis = lambda sel: pg.evaluate("(s)=>{const e=document.querySelector(s);return !!e&&getComputedStyle(e).display!=='none'}", sel)
     check(vis('#w-cases') and vis('#w-crews') and vis('#w-intake') and vis('#w-map'), 'ručně: dispečerská okna jsou zapnutá')
     check(pg.evaluate('window.__zos.sim.s.liveCalls.bot') is False, 'ručně: bot dispečer je vypnutý')
@@ -142,11 +144,22 @@ GEM_STUB = """
 (() => {
   navigator.mediaDevices.getUserMedia = async () => { const c = new AudioContext(); return c.createMediaStreamDestination().stream; };
   // OpenAI odmítne klíč → hovor se má spojit přes zálohu Gemini
-  const of = window.fetch; window.fetch = (u, o) => /api\\.openai\\.com\\/v1\\/live\\/sessions/.test(String(u)) ? Promise.resolve(new Response(JSON.stringify({ error: { message: 'Incorrect API key provided' } }), { status: 401, headers: { 'content-type': 'application/json' } })) : of(u, o);
-  const G = window.__gem = { setups: [], urls: [], audio: 0, socks: [] }, RealWS = window.WebSocket;
+  const G = window.__gem = { setups: [], urls: [], audio: 0, socks: [], tokens: [], openai: [] }, RealWS = window.WebSocket;
+  const json = (o, status) => Promise.resolve(new Response(JSON.stringify(o), { status: status || 200, headers: { 'content-type': 'application/json' } }));
+  const of = window.fetch; window.fetch = (u, o) => {
+    if (/generativelanguage.*:generateContent/.test(String(u))) { G.chat = { url: String(u), key: o.headers['x-goog-api-key'], body: JSON.parse(o.body) }; return json({ candidates: [{ content: { parts: [{ text: 'Manžel nedýchá!' }] } }] }); }
+    if (/generativelanguage.*[/]models\\?/.test(String(u))) return json({ models: [{ name: 'models/gemini-2.5-flash-lite', supportedGenerationMethods: ['generateContent'] }, { name: 'models/gemini-3.8-live', supportedGenerationMethods: ['bidiGenerateContent'] }] });
+    if (/api\\.openai\\.com/.test(String(u))) { G.openai.push(JSON.stringify(o && o.headers)); return json({ error: { message: 'Incorrect API key provided' } }, 401); }
+    if (/generativelanguage.*auth_tokens/.test(String(u))) { const k = o.headers['x-goog-api-key']; if (/Bad/.test(k)) return json({ error: { message: 'API key not valid.' } }, 401); G.tokens.push(k); return json({ name: 'auth_tokens/t' + G.tokens.length }); }
+    return of(u, o);
+  };
   const pcm = () => { const a = new Int16Array(4800); for (let i = 0; i < a.length; i++) a[i] = Math.sin(i / 8) * 8000; let s = ''; const u = new Uint8Array(a.buffer); for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); };
   window.WebSocket = class {
-    constructor(u) { if (!/generativelanguage/.test(u)) return new RealWS(u); this.readyState = 0; G.urls.push(u); G.socks.push(this); setTimeout(() => { this.readyState = 1; if (this.onopen) this.onopen(); }, 30); }
+    constructor(u) {
+      if (!/generativelanguage/.test(u)) return new RealWS(u); this.readyState = 0; G.urls.push(u);
+      // nový klíč (AQ.) i špatný klíč hlasový kanál napřímo odmítne; AQ pak projde s dočasným tokenem
+      if (/\\?key=(AQ|Bad)/.test(u)) { setTimeout(() => { this.readyState = 3; if (this.onclose) this.onclose({ code: 1008, reason: 'API key not valid. Please pass a valid API key.' }); }, 30); return; }
+      G.socks.push(this); setTimeout(() => { this.readyState = 1; if (this.onopen) this.onopen(); }, 30); }
     _rx(o) { if (this.readyState === 1 && this.onmessage) this.onmessage({ data: new TextEncoder().encode(JSON.stringify(o)).buffer }); }
     send(d) {
       const m = JSON.parse(d);
@@ -171,7 +184,22 @@ def run_gemini(p):
     pg.add_init_script(GEM_STUB)
     pg.goto(URL, wait_until='domcontentloaded'); pg.wait_for_timeout(3500)
     pg.click('[data-act=ct-menu]'); pg.wait_for_timeout(300)
-    pg.fill('#ctm-key', 'sk-test'); pg.fill('#ctm-gkey', 'AIzaTest'); pg.check('input[name=ctm-flow][value=training]'); pg.fill('#ctm-gapMin', '1'); pg.uncheck('#ctm-rec')
+    shot = lambda n: SHOTS and pg.screenshot(path=os.path.join(SHOTS, f'gemini-{n}.png'))
+    st = lambda: pg.inner_text('#ctm-gstatus')
+    check(pg.query_selector('#ctm-guide') is not None and pg.query_selector('#ctm-guide a[href="https://aistudio.google.com/apikey"]') is not None and pg.is_visible('#ctm-gkey'), 'první spuštění: průvodce se třemi kroky je vidět')
+    shot('guide')
+    pg.fill('#ctm-gkey', 'Bad' + 'x' * 36); pg.wait_for_timeout(1500)
+    check('Klíč neplatí' in st(), 'první spuštění: špatný klíč se sám ověří a řekne proč: ' + st())
+    pg.evaluate("window.__gum = navigator.mediaDevices.getUserMedia; navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('x', 'NotAllowedError'); }; 0")
+    pg.click('[data-act=ct-gem-test]'); pg.wait_for_timeout(500)
+    check('Mikrofon je zakázaný' in st(), 'první spuštění: zakázaný mikrofon má návod: ' + st())
+    pg.evaluate("navigator.mediaDevices.getUserMedia = window.__gum; 0")
+    pg.fill('#ctm-gkey', ' AQ.' + 'k' * 40 + ' '); pg.wait_for_timeout(1800)
+    check('Hlas funguje' in st(), 'první spuštění: nový klíč projde přes dočasný token: ' + st())
+    check(pg.evaluate("JSON.parse(localStorage.getItem('zos_ct_settings_v1')).gkey") == 'AQ.' + 'k' * 40, 'první spuštění: ověřený klíč je uložený bez mezer')
+    shot('ok')
+    pg.click('.ctm-ai > summary'); pg.fill('#ctm-key', 'sk-test'); pg.check('input[name=ctm-flow][value=training]'); pg.fill('#ctm-gapMin', '1'); pg.uncheck('#ctm-rec')
+    pg.evaluate("(()=>{const g=window.__gem;g.setups.length=0;g.socks.length=0;g.urls.length=0;g.audio=0})()")
     pg.click('[data-act=ct-start]'); pg.wait_for_timeout(1500)
     for i in range(60):
         pg.evaluate('window.__zos.step(30)')
@@ -181,7 +209,8 @@ def run_gemini(p):
     pg.evaluate("window.__zos.sim.s.liveCalls.gap = 100000; window.__zos.sim.s.ev.nextSpawn = window.__zos.sim.s.t + 100000")
     ph = pg.inner_text('#ct-phone'); g = pg.evaluate('window.__gem')
     check('(Gemini)' in ph, 'gemini: po odmítnutí OpenAI spojeno přes Gemini: ' + ph[:120].replace('\n', ' '))
-    check(len(g['setups']) == 1 and g['setups'][0]['model'] == 'models/gemini-3.8-live' and 'AIzaTest' in g['urls'][0], 'gemini: setup s modelem a klíčem')
+    check(len(g['setups']) == 1 and g['setups'][0]['model'] == 'models/gemini-3.8-live' and 'access_token=auth_tokens%2F' in g['urls'][-1], 'gemini: setup s modelem a dočasným tokenem')
+    check(all('AQ.' not in h for h in g['openai']), 'gemini: klíč Gemini se nikdy neposílá na OpenAI')
     vn = g['setups'][0]['generationConfig']['speechConfig']['voiceConfig']['prebuiltVoiceConfig']['voiceName'] if g['setups'] else ''
     check(vn in ('Kore', 'Charon', 'Leda', 'Puck', 'Gacrux', 'Algenib'), 'gemini: hlas podle volajícího: ' + vn)
     check('pošlete sanitku' in pg.evaluate("document.getElementById('ct-tr').textContent"), 'gemini: přepis volajícího se plní')
@@ -196,9 +225,26 @@ def run_gemini(p):
     pg.click('[data-act=ct-hangup]'); pg.wait_for_timeout(800)
     check(pg.evaluate('window.__gem.socks.every(s=>s.readyState===3)'), 'gemini: po zavěšení jsou spojení zavřená')
     check(not errs, 'gemini: bez chyb v konzoli ' + '; '.join(errs)[:400])
+    pg.reload(wait_until='domcontentloaded'); pg.wait_for_timeout(3000); pg.click('[data-act=ct-menu]'); pg.wait_for_timeout(300)
+    check(pg.query_selector('#ctm-guide') is None, 'gemini: s uloženým klíčem se průvodce už neukazuje')
+    # textový režim jen s klíčem Gemini
+    pg.click('.ctm-ai > summary'); pg.fill('#ctm-key', ''); pg.check('input[name=ctm-mode][value=text]'); pg.check('input[name=ctm-flow][value=training]'); pg.fill('#ctm-gapMin', '1')
+    pg.click('[data-act=ct-start]'); pg.wait_for_timeout(1500)
+    for i in range(60):
+        pg.evaluate('window.__zos.step(30)')
+        if pg.evaluate("window.__zos.sim.s.calls.some(c=>c.state==='ringing')"): break
+    pg.evaluate("(()=>{const c=window.__zos.sim.s.calls.find(x=>x.state==='ringing');if(c){c.kind='vyjezd';c.scn=null;}})()")
+    pg.wait_for_timeout(500); pg.click('[data-act=ct-pickup]'); pg.wait_for_timeout(800)
+    pg.fill('#ct-say', 'Záchranka, co se stalo?'); pg.press('#ct-say', 'Enter'); pg.wait_for_timeout(1000)
+    ch = pg.evaluate('window.__gem.chat')
+    check(ch and 'gemini-2.5-flash-lite:generateContent' in ch['url'] and ch['key'].startswith('AQ.') and ch['body']['contents'][0]['role'] == 'user', 'gemini text: dotaz jde na Gemini s klíčem v hlavičce')
+    check('Manžel nedýchá' in pg.evaluate("document.getElementById('ct-tr').textContent"), 'gemini text: odpověď volajícího v přepisu')
+    check(pg.evaluate('window.__gem.openai.length') == 0, 'gemini text: na OpenAI nic neodešlo')
+    check(not errs, 'gemini text: bez chyb v konzoli ' + '; '.join(errs)[:400])
     b.close()
 
 with sync_playwright() as p:
     if os.environ.get('ONLY') == 'gemini': run_gemini(p)
+    elif os.environ.get('ONLY') == 'manual': run_manual(p)
     else: run(p, 1440, 900, 'desktop'); run(p, 390, 800, 'mobil'); run_manual(p); run_gemini(p)
 print('SELHALO: ' + str(len(fails)) if fails else 'ct_browser OK'); sys.exit(1 if fails else 0)

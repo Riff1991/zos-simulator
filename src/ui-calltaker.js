@@ -12,9 +12,32 @@ const ctProvName = p => (p === 'gemini' ? 'Gemini' : 'OpenAI');
 // textový model (analýza hovoru, textový režim) u hlavního poskytovatele; když není vybraný, zvolí se sám
 async function ctText() {
   const p = ctProvs()[0], gem = p === 'gemini', mk = gem ? 'gTextModel' : 'textModel', key = gem ? cts.gkey : cts.key;
-  if (key && !cts[mk]) { try { const r = await ZOS_LIVE.models(key); cts[mk] = r.best || ''; ctSaveSettings(); } catch (e) { /* chyba se ukáže při volání */ } }
-  return { key, model: cts[mk] };
+  if (key && !cts[mk]) { try { const r = await ZOS_LIVE.models(key, gem); cts[mk] = r.best || ''; ctSaveSettings(); } catch (e) { /* chyba se ukáže při volání */ } }
+  return { key, gem, model: cts[mk] };
 }
+// ---------- první spuštění: klíč Gemini ve třech krocích a zkouška jedním tlačítkem ----------
+let ctGemBad = false, ctGemSeq = 0, ctGemTimer = null, ctNoVoiceOk = false;
+const ctGemInput = c => `<input id="ctm-gkey" type="password" autocomplete="off" spellcheck="false" placeholder="sem vlož klíč (Ctrl+V)" value="${esc(c.gkey)}">`;
+const ctGemTestRow = () => '<div class="ctm-gt"><button class="btn pri" type="button" data-act="ct-gem-test">Ověřit klíč a mikrofon</button><span id="ctm-gstatus" class="ctm-gst" role="status"></span></div>';
+const ctGuide = c => `<fieldset class="ctm-guide" id="ctm-guide"><legend>🎙 Aby volající mluvil (zdarma, asi 2 minuty, jen poprvé)</legend>
+  <div class="ctm-step"><b>1</b><div><a class="btn pri" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Získat klíč zdarma ↗</a><small>Otevře se Google AI Studio. Přihlas se svým Google účtem, odsouhlas podmínky a klikni na <b>Create API key</b> (Vytvořit klíč API).</small></div></div>
+  <div class="ctm-step"><b>2</b><div><small>Klíč zkopíruj (ikona kopírování vedle klíče), vrať se sem a vlož ho:</small>${ctGemInput(c)}</div></div>
+  <div class="ctm-step"><b>3</b><div>${ctGemTestRow()}<small>Prohlížeč se zeptá na mikrofon: klikni <b>Povolit</b>. Nejlépe se sluchátky, v Chrome nebo Edge.</small></div></div>
+  <p class="ct-note">Klíč je jen tvůj, zůstane v tomto prohlížeči a nikomu ho neposílej. Musí ti být aspoň 18 let. Hovory zpracovává Google, proto do nich neříkej skutečné osobní údaje.</p></fieldset>`;
+async function ctGemTest() {
+  const inp = $('ctm-gkey'), st = $('ctm-gstatus'); if (!inp || !st) return;
+  clearTimeout(ctGemTimer); inp.value = inp.value.replace(/[\s"']/g, '');
+  const seq = ++ctGemSeq; st.className = 'ctm-gst'; st.textContent = '⏳ Ověřuji… Když se prohlížeč zeptá na mikrofon, klikni Povolit.';
+  const r = await ZOS_LIVE.testGemini(inp.value, ctVal('ctm-gModel') || cts.gModel);
+  if (seq !== ctGemSeq || !st.isConnected) return;
+  ctGemBad = !r.ok; st.className = 'ctm-gst ' + (r.ok ? 'ok' : 'bad'); st.textContent = (r.ok ? '✔ ' : '✖ ') + r.msg;
+  if (r.ok) { ctReadMenu(); ctNoVoiceOk = false; const w = $('ctm-novoice'); if (w) w.hidden = true; const b = document.querySelector('[data-act=ct-start]'); if (b) b.textContent = '▶ Spustit směnu calltakera'; }
+}
+document.addEventListener('input', ev => {
+  const t = ev.target; if (!t || t.id !== 'ctm-gkey') return;
+  clearTimeout(ctGemTimer); ctGemSeq++; ctGemBad = false; const st = $('ctm-gstatus'); if (st) st.textContent = '';
+  if (t.value.trim().length >= 30) ctGemTimer = setTimeout(ctGemTest, 700);   // po vložení se ověří samo
+});
 const CT_STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 'Výjezd', onscene: 'Na místě', transport: 'Transport', handover: 'U ZZ', off: 'Nepřihlášena', activating: 'Aktivace', second: 'Sekundár', attached: 'Ve voze RZP' };
 let ct = { spiderDrawn: false, was: false, call: null, facts: {}, tab: 'intake', ringId: null, ringCtx: null, ringT: null, voice: null, vstatus: '', vbad: false, muted: false, transcript: [], curRole: null, curEl: null, pt: null, addrAuto: false, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, tanr: null, dropAt: null, kindNote: '', lastRes: null, wavs: [], usage: 0, hash: '', mapHash: '', built: false, lastCases: 0, spider: null, msgs: [], busy: false, wav: null, spiderOpen: false, phoneKey: '', layersSaved: null };
 
@@ -52,8 +75,11 @@ function ctMenu() {
   const cb = (k, l) => `<label class="ctm-o"><input type="checkbox" id="ctm-${k}"${c[k] ? ' checked' : ''}> ${l}</label>`;
   const hrs = Array.from({ length: 24 }, (_, h) => `<option value="${h}"${Number(c.hour) === h ? ' selected' : ''}>${h}:00</option>`).join('');
   const pre = [['Ranní špička', 8], ['Poledne', 12], ['Odpoledne', 15], ['Večer', 19], ['Noc', 2]].map(x => `<button class="btn" type="button" data-act="ct-when-preset" data-h="${x[1]}" style="margin:0">${x[0]} ${x[1]}:00</button>`).join(' ');
+  const first = !c.key && !c.gkey; ctNoVoiceOk = false; ctGemBad = false; ctGemSeq++;
   modal(`<div class="card home ct-form ct-card ctm" style="max-width:660px"><h2 style="margin:0">☎ Calltaker – příjem hovorů</h2>
     <p class="ct-note">Zvedneš telefon, vyslechneš AI volajícího, zadáš adresu, klasifikaci, naléhavost a posádku a předáš případ dispečerovi. Osoby, adresy a telefony jsou generované.</p>
+    <div id="ctm-novoice" class="ctm-gst bad" role="alert" hidden></div>
+    ${first ? ctGuide(c) : ''}
     <fieldset><legend>1 · Kdy směna začíná</legend>
       <div>${rb('when', 'now', 'Teď (aktuální datum a hodina)')}${rb('when', 'custom', 'Zvolit datum a hodinu')}</div>
       <div class="ct-g" id="ctm-whenrow"><label>Datum<input type="date" id="ctm-date" value="${kiTxt(c.date || today)}" max="${today}"></label><label>Hodina začátku<select id="ctm-hour">${hrs}</select></label></div>
@@ -67,9 +93,9 @@ function ctMenu() {
       <label>Rychlost mezi hovory<select id="ctm-fast">${[1, 5, 10, 20].map(v => `<option value="${v}"${Number(c.fast) === v ? ' selected' : ''}>${v}×</option>`).join('')}</select></label></div></fieldset>
     <fieldset><legend>3 · Dispečer a mapa</legend>
       ${cb('bot', 'Bot dispečer vysílá posádky (vypni, chceš-li případy obsluhovat ručně)')}${cb('disp', 'Zobrazit dispečerská okna (případy, posádky, rádio)')}${cb('crewsOnMap', 'Posádky a případy na mapě')}</fieldset>
-    <details class="ctm-ai"${c.key || c.gkey ? '' : ' open'}><summary><b>4 · Hlas a AI (OpenAI, záloha Gemini)</b> <span class="ct-note">${c.key && c.gkey ? 'oba klíče zadány' : c.key ? 'klíč OpenAI zadán' : c.gkey ? 'klíč Gemini zadán' : 'klíč nezadán: hovor bude bez hlasu'}</span></summary><fieldset style="margin-top:6px"><legend>Spojení</legend>
+    <details class="ctm-ai"><summary><b>4 · Hlas a AI – pokročilé</b> <span class="ct-note">${c.key && c.gkey ? 'oba klíče zadány' : c.key ? 'klíč OpenAI zadán' : c.gkey ? 'klíč Gemini zadán' : 'volitelné: klíč OpenAI, hlasy, modely'}</span></summary><fieldset style="margin-top:6px"><legend>Spojení</legend>
       <label style="font-size:11px;color:var(--mut)">API klíč OpenAI (platform.openai.com → API keys; není to předplatné ChatGPT). Zůstává jen v tomto prohlížeči.<input id="ctm-key" type="password" autocomplete="off" placeholder="sk-…" value="${esc(c.key)}"></label>
-      <label style="font-size:11px;color:var(--mut)">API klíč Gemini (aistudio.google.com → Get API key; bezplatný tarif, jen pro vlastní potřebu). Použije se, když OpenAI nejde.<input id="ctm-gkey" type="password" autocomplete="off" placeholder="AIza…" value="${esc(c.gkey)}"></label>
+      ${first ? '' : `<label style="font-size:11px;color:var(--mut)">API klíč Gemini (zdarma na <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>)${ctGemInput(c)}</label>${ctGemTestRow()}`}
       ${cb('remember', 'zapamatovat klíče v tomto prohlížeči (jen na svém zařízení)')}
       <div class="ctm-r"><b>Hlavní</b>${rb('prov', 'openai', 'OpenAI (záloha Gemini)')}${rb('prov', 'gemini', 'Gemini (záloha OpenAI)')}</div>
       <div class="ctm-r">${rb('mode', 'voice', 'Hlas (mikrofon + sluchátka)')}${rb('mode', 'text', 'Jen text')}</div>
@@ -109,15 +135,22 @@ async function ctLoadModels() {
   ctReadMenu(); const st = $('ctm-status');
   if (!ctHasAi()) { st.textContent = 'Nejdřív vlož API klíč.'; return; }
   st.textContent = 'Načítám modely…'; const out = [];
-  for (const [key, list, field, name] of [[cts.key, 'ctm-models', 'ctm-textModel', 'OpenAI'], [cts.gkey, 'ctm-gmodels', 'ctm-gTextModel', 'Gemini']]) {
+  for (const [key, list, field, name, gem] of [[cts.key, 'ctm-models', 'ctm-textModel', 'OpenAI', false], [cts.gkey, 'ctm-gmodels', 'ctm-gTextModel', 'Gemini', true]]) {
     if (!key) continue;
-    try { const r = await ZOS_LIVE.models(key); $(list).innerHTML = r.ids.map(i => `<option value="${esc(i)}">`).join(''); if (!ctVal(field)) ctSet(field, r.best); out.push(name + ': ' + r.ids.length + (r.best ? ', vybrán ' + r.best : '')); } catch (e) { out.push(name + ': klíč nebo síť – ' + e.message); }
+    try { const r = await ZOS_LIVE.models(key, gem); $(list).innerHTML = r.ids.map(i => `<option value="${esc(i)}">`).join(''); if (!ctVal(field)) ctSet(field, r.best); out.push(name + ': ' + r.ids.length + (r.best ? ', vybrán ' + r.best : '')); } catch (e) { out.push(name + ': klíč nebo síť – ' + e.message); }
   }
   st.textContent = out.join(' · ');
   ctReadMenu();
 }
 async function ctStart() {
   ctReadMenu();
+  // bez fungujícího klíče se napoprvé nespustí: hráč se dozví, že volající nebude mluvit
+  if (cts.mode === 'voice' && (!ctHasAi() || (ctGemBad && !cts.key)) && !ctNoVoiceOk) {
+    ctNoVoiceOk = true; const w = $('ctm-novoice'), b = document.querySelector('[data-act=ct-start]');
+    if (w) { w.hidden = false; w.textContent = '✖ Volající zatím nebude mluvit, chybí fungující klíč. ' + ($('ctm-guide') ? 'Udělej tři kroky níže' : 'Zkontroluj klíč v části 4') + ', nebo klikni znovu a spusť bez hlasu.'; w.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    if (b) b.textContent = '▶ Spustit i bez hlasu';
+    return;
+  }
   if (!window.ZOS_ADDR || !ROUTER.ready) { toast('Mapová data se ještě načítají, zkus to za chvíli.', 'warn'); return; }
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) { /* zvuk není nutný */ }
   const seed = (Math.random() * 1e9) | 0, w = ctWhen();
@@ -534,7 +567,7 @@ async function ctSay() {
   const inp = $('ct-say'), t = inp.value.trim(); if (!t || ct.busy || !ct.call || ct.ended) return;
   const facts = ct.facts[ct.call.id]; inp.value = ''; ctTrAdd('me', t); ct.transcript.push({ role: 'calltaker', text: t }); ct.msgs.push({ role: 'user', content: t }); ct.busy = true;
   try {
-    const tx = await ctText(), rep = await ZOS_LIVE.chat(tx.key, tx.model, window.CT_PROMPTS.callerSystem(facts.view), ct.msgs);
+    const tx = await ctText(), rep = await ZOS_LIVE.chat(tx.key, tx.model, window.CT_PROMPTS.callerSystem(facts.view), ct.msgs, null, tx.gem);
     ct.msgs.push({ role: 'assistant', content: rep });
     const end = /\[KONEC\]/.test(rep), shown = rep.replace(/\[KONEC\]/g, '').trim();
     ct.transcript.push({ role: 'volajici', text: shown }); ctTrAdd('them', shown);
@@ -728,7 +761,7 @@ async function ctAnalyza() {
   const P = window.CT_PROMPTS, f = rec.facts, txt = rec.transcript.map(t => (t.role === 'calltaker' ? 'CALLTAKER: ' : 'VOLAJÍCÍ: ') + t.text).join('\n');
   const user = 'LIST FAKTŮ:\n' + JSON.stringify(f.view, null, 1) + '\n\nKEY:\n' + JSON.stringify(f.key, null, 1) + '\n\nFORMULÁŘ OD CALLTAKERA:\n' + JSON.stringify(rec.form) + '\n\nPŘEPIS:\n' + txt;
   let s;
-  try { const o = await ZOS_LIVE.chat(tx.key, tx.model, P.analyzaSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } }); const m = o.match(/\{[\s\S]*\}/); s = JSON.parse(m ? m[0] : o); } catch (e) { s = { chyba: e.message }; }
+  try { const o = await ZOS_LIVE.chat(tx.key, tx.model, P.analyzaSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } }, tx.gem); const m = o.match(/\{[\s\S]*\}/); s = JSON.parse(m ? m[0] : o); } catch (e) { s = { chyba: e.message }; }
   rec.analyza = s;
   const list = o => '<ul style="margin:2px 0;padding-left:18px">' + Object.keys(o).filter(x => x !== 'komentar').map(x => `<li>${esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' '))}: ${Array.isArray(o[x]) ? esc(o[x].join('; ') || '–') : o[x] === true ? '✔' : o[x] === false ? '✘' : esc(o[x])}</li>`).join('') + '</ul>';
   out.innerHTML = s.chyba ? `<p class="ct-note bad">Analýza selhala: ${esc(s.chyba)}</p>` : (s.calltaker ? `<h3 style="font-size:13px;margin:4px 0">Analýza: calltaker</h3>${list(s.calltaker)}<p class="ct-note">${esc(s.calltaker.komentar || '')}</p>` : '') + (s.realismus_volajiciho ? `<h3 style="font-size:13px;margin:4px 0">Analýza: realismus volajícího</h3>${list(s.realismus_volajiciho)}<p class="ct-note">${esc(s.realismus_volajiciho.komentar || '')}</p>` : '');
@@ -844,6 +877,7 @@ function ctAct(a, el) {
   switch (a) {
     case 'ct-menu': ctMenu(); break;
     case 'ct-models': ctLoadModels(); break;
+    case 'ct-gem-test': ctGemTest(); break;
     case 'ct-start': ctStart(); break;
     case 'ct-when-preset': ctWhenCustom(); ctSet('ctm-hour', d.h); ctMenuSync(); break;
     case 'ct-home': homeModal(); break;

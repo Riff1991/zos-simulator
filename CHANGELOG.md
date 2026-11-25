@@ -8,6 +8,14 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.40.1 – 2026-11-25
+- **Hlas zdarma pro každého, tři kroky při prvním spuštění.** Menu Calltaker ukáže bez uloženého klíče průvodce: tlačítko „Získat klíč zdarma“ (Google AI Studio), pole pro vložení klíče a „Ověřit klíč a mikrofon“. Po vložení se ověří samo skutečným hlasovým spojením a chybu popíše srozumitelně (neplatný klíč, zakázaný nebo chybějící mikrofon, vyčerpaný limit, síť). Ověřený klíč se uloží a průvodce se už neukazuje.
+- **Bez klíče se směna nespustí omylem němá:** první klik jen upozorní, že volající nebude mluvit.
+- **Oprava pro nové klíče Gemini** (formát `AQ.…`): textový režim a analýza hovoru je mohly poslat na OpenAI. Teď rozhoduje pole, do kterého se klíč vloží; když hlasový kanál klíč napřímo odmítne, použije se dočasný token.
+- Nastavení hlasu (OpenAI, modely, hlasy) je sbalené v části „4 · Hlas a AI – pokročilé“.
+
+---
+
 ## v0.40.0 – 2026-11-25
 - **Záložní hlas calltakera: Gemini Live.** V menu Calltaker → Hlas a AI jde vložit i klíč Gemini (AI Studio, bezplatný tarif, jen pro vlastní potřebu). Když se hovor nespojí přes OpenAI (špatný klíč, vyčerpaný kredit, výpadek), spojí se sám přes Gemini; přepínačem „Hlavní“ jde Gemini zvolit i jako první volbu. Telefonní filtr, šum linky, nahrávka WAV a přepis fungují stejně. Spojení Gemini se asi po 10 minutách samo obnoví bez přerušení hovoru. Hlasy podle volajícího: Kore (žena), Charon (muž), Leda a Puck (mladí), Gacrux a Algenib (senioři); dají se přepsat v nastavení.
 - **Analýza hovoru a textový režim i jen s klíčem Gemini** (textový model se zvolí sám, výchozí Flash-Lite).

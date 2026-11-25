@@ -434,3 +434,10 @@ Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repoz
 - **Jen pro vlastní potřebu autora, jeho klíč.** Podmínky Gemini API (od 23. 3. 2026) dovolují zpřístupnit aplikaci uživatelům v EU, Švýcarsku a UK jen přes placené služby, proto se sdílený bezplatný klíč přes server nedělá. Klíč nepatří do kódu (web je veřejný), zůstává v localStorage jako klíč OpenAI.
 - Bezplatné ukázky hlasů (Azure Vlasta/Antonín, Piper Jirka) uživatel slyšel; jako hlas volajícího se nepoužívají (jen dva, resp. jeden český hlas, bez rozhovoru).
 - **Neověřeno:** skutečný hovor s Gemini (čeština, latence, hlasy) – test jen s atrapou WebSocketu v `tests/ct_browser.py`.
+
+### Calltaker: hlas zdarma pro každého (25. 11. 2026, rozhodnutí uživatele; mění předchozí „jen pro vlastní potřebu“)
+- **Každý si vloží vlastní bezplatný klíč Gemini**; hra ho tím provede (tři kroky, ověření jedním tlačítkem) a musí to být blbuvzdorné pro první spuštění. Žádný sdílený klíč a žádný server.
+- **Přihlášení Googlem místo klíče zamítnuto:** OAuth účtuje projektu aplikace, per-user scope je zastaralý a bez dokumentace, sdílené aplikace AI Studia čerpají limit autora.
+- **Riziko k vědomí:** podmínky Gemini API (od 23. 3. 2026) říkají, že při zpřístupnění aplikace uživatelům v EU, Švýcarsku a UK se smí používat jen placené služby; dál požadují 18+ a profesní použití. Vlastní klíč uživatele toto ustanovení výslovně neřeší.
+- **Neověřeno:** skutečný klíč a hovor (jen atrapa a odpovědi Googlu na smyšlený klíč).
+

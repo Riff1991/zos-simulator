@@ -1,26 +1,31 @@
 // Živý hlas pro režim calltaker: OpenAI GPT-Live přes WebRTC (volající), záloha Gemini Live přes WebSocket, telefonní filtr a šum linky přes hlas, nahrávka WAV, přepis.
 // Bez DOM: UI předává zpětná volání (onStatus, onTranscript, onReady, onClosed). Klíče OpenAI i Gemini zůstávají jen v prohlížeči.
 const ZOS_LIVE = (function () {
-  // klíč Gemini (AIza…) jde na endpoint Googlu kompatibilní s OpenAI, ostatní na api.openai.com
-  async function oa(key, path, body) {
-    const base = /^AIza/.test(String(key || '').trim()) ? 'https://generativelanguage.googleapis.com/v1beta/openai' : 'https://api.openai.com/v1';
-    const r = await fetch(base + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: body ? JSON.stringify(body) : undefined });
+  async function api(url, headers, body) {
+    const r = await fetch(url, { method: body ? 'POST' : 'GET', headers: Object.assign({ 'content-type': 'application/json' }, headers), body: body ? JSON.stringify(body) : undefined });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
     return j;
   }
-  // textový model (analyza, textový režim hovoru)
-  async function chat(key, model, system, history, opts) {
-    const gem = /^AIza/.test(String(key || '').trim());
-    const body = Object.assign({ model, messages: [{ role: 'system', content: system }].concat(history) }, gem ? { max_tokens: 1500 } : { max_completion_tokens: 1500 }, opts || {});
-    if (gem) delete body.response_format;   // JSON se z odpovědi vybírá i tak
-    const j = await oa(key, '/chat/completions', body);
+  const oa = (key, path, body) => api('https://api.openai.com/v1' + path, { authorization: 'Bearer ' + key }, body);
+  // Gemini: klíč jde v hlavičce jen na Google; poskytovatele určuje pole, do kterého se klíč vložil, ne jeho tvar (klíče mají víc formátů)
+  const gm = (key, path, body) => api('https://generativelanguage.googleapis.com/v1beta' + path, { 'x-goog-api-key': String(key).trim() }, body);
+  // textový model (analyza, textový režim hovoru); gem = klíč a model Gemini
+  async function chat(key, model, system, history, opts, gem) {
+    if (gem) {
+      const cfg = { maxOutputTokens: 6000 };
+      if (opts && opts.response_format) cfg.responseMimeType = 'application/json';
+      const j = await gm(key, '/models/' + encodeURIComponent(String(model).replace(/^models\//, '')) + ':generateContent', { systemInstruction: { parts: [{ text: system }] }, contents: history.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: cfg });
+      const c = j.candidates && j.candidates[0], parts = (c && c.content && c.content.parts) || [];
+      return parts.filter(p => !p.thought).map(p => p.text || '').join('').trim();
+    }
+    const j = await oa(key, '/chat/completions', Object.assign({ model, messages: [{ role: 'system', content: system }].concat(history), max_completion_tokens: 1500 }, opts || {}));
     return ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
   }
-  async function models(key) {
-    if (/^AIza/.test(String(key || '').trim())) {
-      const g = await oa(key, '/models');
-      const ids = [...new Set(g.data.map(m => String(m.id).replace(/^models\//, '')))].filter(id => /^gemini-/.test(id) && !/live|audio|tts|transcribe|translate|image|embedding|robotics|computer/.test(id)).sort();
+  async function models(key, gem) {
+    if (gem) {
+      const g = await gm(key, '/models?pageSize=1000');
+      const ids = (g.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, '')).filter(id => /^gemini-/.test(id) && !/live|audio|tts|transcribe|translate|image|embedding|robotics|computer/.test(id)).sort();
       const pref = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
       return { ids, best: pref.find(p => ids.includes(p)) || ids.find(i => /flash-lite/.test(i)) || ids[0] || '' };
     }
@@ -184,10 +189,26 @@ const ZOS_LIVE = (function () {
   }
 
   // ---------- Gemini Live (záloha za OpenAI): WebSocket, mikrofon jako PCM 16 kHz, odpověď PCM 24 kHz ----------
-  // Klíč (AIza…) jde jen z prohlížeče přímo na generativelanguage.googleapis.com. Spojení se asi po 10 min obnovuje (goAway + sessionResumption).
-  const GWS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
+  // Klíč jde jen z prohlížeče přímo na generativelanguage.googleapis.com. Spojení se asi po 10 min obnovuje (goAway + sessionResumption).
+  const GWS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.';
   const CAP_SRC = "class ZosCap extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('zos-cap',ZosCap);";
-  const isGemKey = k => /^AIza/.test(String(k || '').trim());
+  // srozumitelný důvod chyby pro hráče, který klíč nastavuje poprvé
+  function gemWhy(msg) {
+    const m = String(msg || '');
+    if (/quota|429|exhausted|rate.?limit/i.test(m)) return 'Bezplatný limit Gemini je teď vyčerpaný. Zkus to za chvíli, nejpozději zítra.';
+    if (/location|region|country/i.test(m)) return 'Google Gemini z této země nebo sítě nepouští. (' + m + ')';
+    if (/api.?key|unauthenticated|auth token|credential/i.test(m)) return 'Klíč neplatí. V AI Studiu ho zkopíruj znovu celý (ikona kopírování) a vlož sem.';
+    if (/permission|denied|forbidden|blocked|403/i.test(m)) return 'Google tomuto klíči přístup nepovolil. Vytvoř v AI Studiu nový klíč. (' + m + ')';
+    if (/failed to fetch|vypršel|1006|network/i.test(m)) return 'Nejde se spojit s Googlem: zkontroluj internet, firemní síť nebo blokovač reklam. (' + m + ')';
+    return m;
+  }
+  function micWhy(e) {
+    const n = (e && e.name) || '';
+    if (/NotAllowed|Security/.test(n)) return 'Mikrofon je zakázaný. Klikni na ikonu vlevo od adresy stránky → Mikrofon → Povolit a zkus to znovu.';
+    if (/NotFound|Overconstrained/.test(n)) return 'Není připojený žádný mikrofon. Zapoj sluchátka s mikrofonem a zkus to znovu.';
+    if (/NotReadable|Abort/.test(n)) return 'Mikrofon používá jiný program (Teams, Zoom…). Zavři ho a zkus to znovu.';
+    return 'Mikrofon nejde zapnout: ' + ((e && e.message) || e);
+  }
   function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return window.btoa(s); }
   function unb64(str) { const bin = window.atob(str), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
   function gemSetup(o, voice, handle) {
@@ -246,10 +267,10 @@ const ZOS_LIVE = (function () {
     if (m.goAway) gemReconnect(c, o, st);   // server brzy spojení ukončí: předem se otevře nové a hovor pokračuje
   }
   // jedno WebSocket spojení; slib se splní po setupComplete, jinak skončí chybou (s důvodem od serveru)
-  function gemSocket(c, o, st, voice, handle) {
+  function gemSocket(c, o, st, voice, handle, path) {
     return new Promise((resolve, reject) => {
       let ok = false, ws;
-      try { ws = new window.WebSocket(GWS + encodeURIComponent(String(o.key).trim())); } catch (e) { reject(e); return; }
+      try { ws = new window.WebSocket(GWS + path); } catch (e) { reject(e); return; }
       ws.binaryType = 'arraybuffer';
       const t = setTimeout(() => { if (ok) return; try { ws.close(); } catch (e) { /* ignore */ } reject(new Error('Vypršel čas spojení s Gemini.')); }, 15000);
       ws.onopen = () => { try { ws.send(JSON.stringify({ setup: gemSetup(o, voice, handle) })); } catch (e) { /* zavře se */ } };
@@ -268,10 +289,36 @@ const ZOS_LIVE = (function () {
       ws.onerror = () => { /* následuje onclose s důvodem */ };
     });
   }
+  // nejdřív přímo s klíčem; když ho hlasový kanál odmítne (některé nové klíče), vyžádá se jednorázový dočasný token
+  async function gemOpen(c, o, st, voice, handle) {
+    let keyErr = null;
+    if (!c.useToken) {
+      try { return await gemSocket(c, o, st, voice, handle, 'BidiGenerateContent?key=' + encodeURIComponent(String(o.key).trim())); } catch (e) {
+        if (!/api.?key|auth|token|credential|permission/i.test(e.message)) throw e;
+        keyErr = e;
+      }
+    }
+    let tok;
+    try { tok = (await gm(o.key, '/auth_tokens', { uses: 1, expireTime: new Date(Date.now() + 36e5).toISOString(), newSessionExpireTime: new Date(Date.now() + 12e4).toISOString() })).name; } catch (e) { throw keyErr || e; }
+    const ws = await gemSocket(c, o, st, voice, handle, 'BidiGenerateContentConstrained?access_token=' + encodeURIComponent(tok));
+    c.useToken = true; return ws;
+  }
+  // zkouška pro první spuštění: mikrofon a skutečné hlasové spojení s Gemini (hned se zavře)
+  async function testGemini(key, model) {
+    const k = String(key || '').trim();
+    if (!k) return { ok: false, msg: 'Nejdřív vlož klíč.' };
+    if (/^sk-/.test(k)) return { ok: false, msg: 'Tohle je klíč OpenAI. Sem patří klíč z Google AI Studia.' };
+    if (!navigator.mediaDevices || !window.WebSocket || !window.AudioWorkletNode) return { ok: false, msg: 'Tenhle prohlížeč hlas neumí. Otevři hru v Chrome nebo Edge.' };
+    try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(t => t.stop()); } catch (e) { return { ok: false, msg: micWhy(e) }; }
+    try {
+      const ws = await gemOpen({ stopped: true }, { key: k, model, instructions: 'Zkouška spojení.' }, () => {}, 'Kore', null);
+      ws.close(1000); return { ok: true, msg: 'Hlas funguje, klíč i mikrofon jsou v pořádku. Můžeš spustit směnu.' };
+    } catch (e) { return { ok: false, msg: gemWhy(e.message) }; }
+  }
   function gemReconnect(c, o, st) {
     if (c.reconn || c.stopped || c.closing || !c.handle) return;
     c.reconn = true;
-    gemSocket(c, o, st, c.voice, c.handle).then(ws => {
+    gemOpen(c, o, st, c.voice, c.handle).then(ws => {
       const old = c.ws; c.ws = ws; c.reconn = false; c.retries = 0;
       if (c.stopped || c.closing) { try { ws.close(1000); } catch (e) { /* ignore */ } }
       try { if (old) old.close(1000); } catch (e) { /* ignore */ }
@@ -309,7 +356,7 @@ const ZOS_LIVE = (function () {
       await gemCapture(c);
       const chain = [...new Set((o.voices && o.voices.length ? o.voices : [o.voice]).concat(['Kore']).filter(Boolean))];
       for (let i = 0; i < chain.length && !c.ws; i++) {
-        try { c.ws = await gemSocket(c, o, st, chain[i], null); c.voice = chain[i]; } catch (e) {
+        try { c.ws = await gemOpen(c, o, st, chain[i], null); c.voice = chain[i]; } catch (e) {
           if (c.stopped) return h;
           if (!/voice|speaker/i.test(e.message) || i === chain.length - 1) throw e;
           st('Hlas „' + chain[i] + '“ nelze použít, zkouším „' + chain[i + 1] + '“…');
@@ -319,7 +366,7 @@ const ZOS_LIVE = (function () {
       c.mark('connected'); c.mark('api'); c.mark('session');
       c.ready = true; c.tReady = performance.now();
       if (o.onReady) o.onReady(c.diag); st('Hovor spojen (Gemini).');
-    } catch (e) { c.failed = true; c.err = e.message; st('Hlas Gemini se nepodařilo spojit: ' + e.message, true); stopAll(c); }
+    } catch (e) { c.failed = true; c.err = /NotAllowed|NotFound|NotReadable|Security|Overconstrained|Abort/.test(e.name) ? micWhy(e) : gemWhy(e.message); st('Hlas Gemini se nepodařilo spojit: ' + c.err, true); stopAll(c); }
     return h;
   }
   // měření: kdy dorazí první slyšitelný zvuk volajícího do Web Audio (c.diag.zvuk) a kdy přišel první text jeho odpovědi (c.diag.text);
@@ -382,5 +429,5 @@ const ZOS_LIVE = (function () {
       try { c.dc.send(JSON.stringify({ type: 'session.close' })); } catch (e) { fin(); }
     });
   }
-  return { connect, connectGemini, isGemKey, chat, models, phoneLine, loadCodec, lineProfile };   // linka je vystavená i pro zkoušku řetězce bez mikrofonu
+  return { connect, connectGemini, testGemini, chat, models, phoneLine, loadCodec, lineProfile };   // linka je vystavená i pro zkoušku řetězce bez mikrofonu
 })();
