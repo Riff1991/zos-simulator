@@ -1,10 +1,20 @@
 // UI – Režim calltaker: telefon, okno Nabírání (+ Moje případy), Pavouk, AML a výběr místa na mapě, výsledek hovoru (části se v build.py skládají do jedné IIFE).
 // Hlas je v src/live-voice.js (ZOS_LIVE), pavouk v calltaker/spider.js (CT_SPIDER), engine v src/sim-calltaker.js (za s.liveCalls).
 const CTS_KEY = 'zos_ct_settings_v1';
-const CTS_DEF = { when: 'now', date: '', hour: 7, wx: true, key: '', remember: true, textModel: '', vModel: 'gpt-live-1', vF: 'marin', vM: 'cedar', vFy: 'coral', vMy: 'ash', vFs: 'sage', vMs: 'echo', voiceAge: true, level: 'bezne', mode: 'voice', filt: true, rec: true, flow: 'realistic', gapMin: 3, fast: 10, bot: true, disp: false, crewsOnMap: false };
+const CTS_DEF = { when: 'now', date: '', hour: 7, wx: true, key: '', remember: true, textModel: '', vModel: 'gpt-live-1', vF: 'marin', vM: 'cedar', vFy: 'coral', vMy: 'ash', vFs: 'sage', vMs: 'echo', prov: 'openai', gkey: '', gModel: 'gemini-3.8-live', gTextModel: '', gF: 'Kore', gM: 'Charon', gFy: 'Leda', gMy: 'Puck', gFs: 'Gacrux', gMs: 'Algenib', voiceAge: true, level: 'bezne', mode: 'voice', filt: true, rec: true, flow: 'realistic', gapMin: 3, fast: 10, bot: true, disp: false, crewsOnMap: false };
 let cts = Object.assign({}, CTS_DEF);
 try { cts = Object.assign(cts, JSON.parse(localStorage.getItem(CTS_KEY) || '{}')); } catch (_) {}
-const ctSaveSettings = () => { try { localStorage.setItem(CTS_KEY, JSON.stringify(cts.remember ? cts : Object.assign({}, cts, { key: '' }))); } catch (_) {} };
+const ctSaveSettings = () => { try { localStorage.setItem(CTS_KEY, JSON.stringify(cts.remember ? cts : Object.assign({}, cts, { key: '', gkey: '' }))); } catch (_) {} };
+// hlas a text: zvolený hlavní poskytovatel, druhý je záloha (jen když má klíč); klíče zůstávají jen v prohlížeči
+const ctHasAi = () => !!(cts.key || cts.gkey);
+const ctProvs = () => (cts.prov === 'gemini' ? ['gemini', 'openai'] : ['openai', 'gemini']).filter(p => (p === 'gemini' ? cts.gkey : cts.key));
+const ctProvName = p => (p === 'gemini' ? 'Gemini' : 'OpenAI');
+// textový model (analýza hovoru, textový režim) u hlavního poskytovatele; když není vybraný, zvolí se sám
+async function ctText() {
+  const p = ctProvs()[0], gem = p === 'gemini', mk = gem ? 'gTextModel' : 'textModel', key = gem ? cts.gkey : cts.key;
+  if (key && !cts[mk]) { try { const r = await ZOS_LIVE.models(key); cts[mk] = r.best || ''; ctSaveSettings(); } catch (e) { /* chyba se ukáže při volání */ } }
+  return { key, model: cts[mk] };
+}
 const CT_STLAB = { base: 'Na základně', free: 'Volný', call: 'Výzva', enroute: 'Výjezd', onscene: 'Na místě', transport: 'Transport', handover: 'U ZZ', off: 'Nepřihlášena', activating: 'Aktivace', second: 'Sekundár', attached: 'Ve voze RZP' };
 let ct = { spiderDrawn: false, was: false, call: null, facts: {}, tab: 'intake', ringId: null, ringCtx: null, ringT: null, voice: null, vstatus: '', vbad: false, muted: false, transcript: [], curRole: null, curEl: null, pt: null, addrAuto: false, cls: null, sp: { ans: [], n: null, dyn: null }, amlN: 0, tanr: null, dropAt: null, kindNote: '', lastRes: null, wavs: [], usage: 0, hash: '', mapHash: '', built: false, lastCases: 0, spider: null, msgs: [], busy: false, wav: null, spiderOpen: false, phoneKey: '', layersSaved: null };
 
@@ -57,13 +67,18 @@ function ctMenu() {
       <label>Rychlost mezi hovory<select id="ctm-fast">${[1, 5, 10, 20].map(v => `<option value="${v}"${Number(c.fast) === v ? ' selected' : ''}>${v}×</option>`).join('')}</select></label></div></fieldset>
     <fieldset><legend>3 · Dispečer a mapa</legend>
       ${cb('bot', 'Bot dispečer vysílá posádky (vypni, chceš-li případy obsluhovat ručně)')}${cb('disp', 'Zobrazit dispečerská okna (případy, posádky, rádio)')}${cb('crewsOnMap', 'Posádky a případy na mapě')}</fieldset>
-    <details class="ctm-ai"${c.key ? '' : ' open'}><summary><b>4 · Hlas a AI (OpenAI)</b> <span class="ct-note">${c.key ? 'klíč zadán' : 'klíč nezadán: hovor bude bez hlasu'}</span></summary><fieldset style="margin-top:6px"><legend>Spojení</legend>
+    <details class="ctm-ai"${c.key || c.gkey ? '' : ' open'}><summary><b>4 · Hlas a AI (OpenAI, záloha Gemini)</b> <span class="ct-note">${c.key && c.gkey ? 'oba klíče zadány' : c.key ? 'klíč OpenAI zadán' : c.gkey ? 'klíč Gemini zadán' : 'klíč nezadán: hovor bude bez hlasu'}</span></summary><fieldset style="margin-top:6px"><legend>Spojení</legend>
       <label style="font-size:11px;color:var(--mut)">API klíč OpenAI (platform.openai.com → API keys; není to předplatné ChatGPT). Zůstává jen v tomto prohlížeči.<input id="ctm-key" type="password" autocomplete="off" placeholder="sk-…" value="${esc(c.key)}"></label>
-      ${cb('remember', 'zapamatovat klíč v tomto prohlížeči (jen na svém zařízení)')}
+      <label style="font-size:11px;color:var(--mut)">API klíč Gemini (aistudio.google.com → Get API key; bezplatný tarif, jen pro vlastní potřebu). Použije se, když OpenAI nejde.<input id="ctm-gkey" type="password" autocomplete="off" placeholder="AIza…" value="${esc(c.gkey)}"></label>
+      ${cb('remember', 'zapamatovat klíče v tomto prohlížeči (jen na svém zařízení)')}
+      <div class="ctm-r"><b>Hlavní</b>${rb('prov', 'openai', 'OpenAI (záloha Gemini)')}${rb('prov', 'gemini', 'Gemini (záloha OpenAI)')}</div>
       <div class="ctm-r">${rb('mode', 'voice', 'Hlas (mikrofon + sluchátka)')}${rb('mode', 'text', 'Jen text')}</div>
       <div class="ct-g"><label>Hlasový model<input id="ctm-vModel" value="${esc(c.vModel)}"></label><label>Hlas: volající žena<input id="ctm-vF" value="${esc(c.vF)}"></label><label>Hlas: volající muž<input id="ctm-vM" value="${esc(c.vM)}"></label>
       <label>Hlas: mladá žena / dítě<input id="ctm-vFy" value="${esc(c.vFy)}"></label><label>Hlas: mladý muž / chlapec<input id="ctm-vMy" value="${esc(c.vMy)}"></label><label>Hlas: seniorka<input id="ctm-vFs" value="${esc(c.vFs)}"></label><label>Hlas: senior<input id="ctm-vMs" value="${esc(c.vMs)}"></label>
       <label>Textový model (analýza hovoru, textový režim)<input id="ctm-textModel" list="ctm-models" value="${esc(c.textModel)}"><datalist id="ctm-models"></datalist></label></div>
+      <details style="margin:6px 0"><summary class="ct-note">Gemini: model a hlasy</summary><div class="ct-g"><label>Hlasový model Gemini<input id="ctm-gModel" value="${esc(c.gModel)}"></label><label>Hlas: volající žena<input id="ctm-gF" value="${esc(c.gF)}"></label><label>Hlas: volající muž<input id="ctm-gM" value="${esc(c.gM)}"></label>
+      <label>Hlas: mladá žena / dítě<input id="ctm-gFy" value="${esc(c.gFy)}"></label><label>Hlas: mladý muž / chlapec<input id="ctm-gMy" value="${esc(c.gMy)}"></label><label>Hlas: seniorka<input id="ctm-gFs" value="${esc(c.gFs)}"></label><label>Hlas: senior<input id="ctm-gMs" value="${esc(c.gMs)}"></label>
+      <label>Textový model Gemini<input id="ctm-gTextModel" list="ctm-gmodels" value="${esc(c.gTextModel)}"><datalist id="ctm-gmodels"></datalist></label></div></details>
       <button class="btn" data-act="ct-models">Načíst modely</button> <span id="ctm-status" class="ct-note"></span>
       ${cb('voiceAge', 'volit hlas podle věku volajícího (senioři, mladí; nedostupný hlas se nahradí jiným)')}${cb('filt', 'telefonní filtr a šum linky přes hlas')}${cb('rec', 'nahrávat hovor (WAV ke stažení po hovoru)')}</fieldset></details>
     <div class="foot"><button class="btn" data-act="home">‹ Zpět</button><button class="btn pri" data-act="ct-start">▶ Spustit směnu calltakera</button></div></div>`);
@@ -83,18 +98,23 @@ document.addEventListener('change', ev => { const t = ev.target; if (t && (t.id 
 document.addEventListener('input', ev => { const t = ev.target; if (t && t.id === 'ctm-date') { ctWhenCustom(); ctMenuSync(); } });
 function ctReadMenu() {
   const g = k => document.querySelector(`input[name=ctm-${k}]:checked`);
-  for (const k of ['flow', 'mode', 'level', 'when']) if (g(k)) cts[k] = g(k).value;
+  for (const k of ['flow', 'mode', 'level', 'when', 'prov']) if (g(k)) cts[k] = g(k).value;
   cts.date = ctVal('ctm-date') || ''; cts.hour = Math.min(23, Math.max(0, Number(ctVal('ctm-hour')) || 0));
   for (const k of ['bot', 'disp', 'crewsOnMap', 'remember', 'filt', 'rec', 'voiceAge', 'wx']) if ($('ctm-' + k)) cts[k] = $('ctm-' + k).checked;
-  for (const k of ['key', 'vModel', 'vF', 'vM', 'vFy', 'vMy', 'vFs', 'vMs', 'textModel']) if ($('ctm-' + k)) cts[k] = ctVal('ctm-' + k);
+  for (const k of ['key', 'vModel', 'vF', 'vM', 'vFy', 'vMy', 'vFs', 'vMs', 'textModel', 'gkey', 'gModel', 'gF', 'gM', 'gFy', 'gMy', 'gFs', 'gMs', 'gTextModel']) if ($('ctm-' + k)) cts[k] = ctVal('ctm-' + k);
   cts.gapMin = Math.max(1, Number(ctVal('ctm-gapMin')) || 3); cts.fast = Number(ctVal('ctm-fast')) || 5;
   ctSaveSettings();
 }
 async function ctLoadModels() {
   ctReadMenu(); const st = $('ctm-status');
-  if (!cts.key) { st.textContent = 'Nejdřív vlož API klíč.'; return; }
-  st.textContent = 'Načítám modely…';
-  try { const r = await ZOS_LIVE.models(cts.key); $('ctm-models').innerHTML = r.ids.map(i => `<option value="${esc(i)}">`).join(''); if (!ctVal('ctm-textModel')) ctSet('ctm-textModel', r.best); st.textContent = 'Modelů: ' + r.ids.length + (r.best ? '. Vybrán ' + r.best + '.' : '.'); } catch (e) { st.textContent = 'Klíč nebo síť: ' + e.message; }
+  if (!ctHasAi()) { st.textContent = 'Nejdřív vlož API klíč.'; return; }
+  st.textContent = 'Načítám modely…'; const out = [];
+  for (const [key, list, field, name] of [[cts.key, 'ctm-models', 'ctm-textModel', 'OpenAI'], [cts.gkey, 'ctm-gmodels', 'ctm-gTextModel', 'Gemini']]) {
+    if (!key) continue;
+    try { const r = await ZOS_LIVE.models(key); $(list).innerHTML = r.ids.map(i => `<option value="${esc(i)}">`).join(''); if (!ctVal(field)) ctSet(field, r.best); out.push(name + ': ' + r.ids.length + (r.best ? ', vybrán ' + r.best : '')); } catch (e) { out.push(name + ': klíč nebo síť – ' + e.message); }
+  }
+  st.textContent = out.join(' · ');
+  ctReadMenu();
 }
 async function ctStart() {
   ctReadMenu();
@@ -429,11 +449,11 @@ function ctDrop() {
 }
 // shrnutí dosavadního hovoru pro návrat po přerušení a pro kontrolní hovory
 function ctTrSummary() { return ct.transcript.slice(-14).map(t => (t.role === 'calltaker' ? 'Calltaker: ' : 'Ty: ') + t.text).join('\n').slice(-1800) || '(zatím nic)'; }
-function ctVoiceChain(facts) {
-  const v = facts.view, f = facts.view.volajici.pohlavi ? facts.view.volajici.pohlavi === 'žena' : ctFemale(v), band = (v.persona && v.persona.pasmo) || 'stredni';
-  const base = f ? cts.vF : cts.vM;
+function ctVoiceChain(facts, gem) {
+  const v = facts.view, f = facts.view.volajici.pohlavi ? facts.view.volajici.pohlavi === 'žena' : ctFemale(v), band = (v.persona && v.persona.pasmo) || 'stredni', g = k => cts[(gem ? 'g' : 'v') + k];
+  const base = f ? g('F') : g('M');
   if (!cts.voiceAge) return [base];
-  const aged = ['dite', 'teen', 'mlady'].includes(band) ? (f ? cts.vFy : cts.vMy) : ['senior1', 'senior2', 'senior3'].includes(band) ? (f ? cts.vFs : cts.vMs) : base;
+  const aged = ['dite', 'teen', 'mlady'].includes(band) ? (f ? g('Fy') : g('My')) : ['senior1', 'senior2', 'senior3'].includes(band) ? (f ? g('Fs') : g('Ms')) : base;
   return [aged, base];
 }
 const ctFemale = v => /á$/.test(String(v.volajici.jmeno).trim().split(/\s+/).pop());
@@ -450,10 +470,10 @@ function ctReadyBeep() {
 const ctLineOf = f => (f && f.aml && f.aml.typ === 'pevná' ? 'pevna' : Math.random() < (sim.s.liveCalls.level === 'tezke' ? 0.4 : 0.08) ? 'slaby' : 'mobil');
 async function ctVoiceStart(facts, opts) {
   opts = opts || {};
-  ct.vready = !!opts.tanr || !cts.key || cts.mode === 'text'; ct.vdiag = null; ct.phoneKey = '';   // do spojení hlasu se čeká („Spojuji hlas“)
+  ct.vready = !!opts.tanr || !ctHasAi() || cts.mode === 'text'; ct.vdiag = null; ct.phoneKey = '';   // do spojení hlasu se čeká („Spojuji hlas“)
   const P = window.CT_PROMPTS, v = facts.view, tr = $('ct-textrow');
   tr.style.display = cts.mode === 'text' ? 'flex' : 'none'; $('ct-trwrap').hidden = cts.mode !== 'text'; if (!opts.resume && !opts.tanr) $('ct-trwrap').open = cts.mode === 'text';
-  if (!cts.key) { ct.vstatus = 'bez klíče OpenAI – hovor bez hlasu (nastavení v menu Calltaker)'; ct.vbad = true; return; }
+  if (!ctHasAi()) { ct.vstatus = 'bez klíče OpenAI ani Gemini – hovor bez hlasu (nastavení v menu Calltaker)'; ct.vbad = true; return; }
   if (cts.mode === 'text') { ct.vstatus = 'textový režim'; if (!opts.tanr) ctTrAdd('sys', opts.resume ? 'Spojení obnoveno.' : 'Hovor spojen. Pozdrav a nabírej (píšeš do pole níže).'); return; }
   let instr = P.callerSystem(v, true);
   if (opts.resume) instr += '\n\nPOKRAČOVÁNÍ HOVORU\n- Spojení se přerušilo a voláš zpět. Dosavadní hovor:\n' + ctTrSummary() + '\n- Navaž na to, nezačínej od začátku.';
@@ -461,13 +481,21 @@ async function ctVoiceStart(facts, opts) {
     const st = ['pořád dělá masáž a bolí ho ruce', 'pacient pořád nereaguje a nedýchá', 'asi se mu zlepšila barva, ale pořád nereaguje', 'pochybuješ, jestli masáž děláš dobře', 'jsi unavený a ptáš se, jestli můžeš na chvilku přestat', 'něco se změnilo: pacient teď slabě dýchá'][Math.floor(Math.random() * 6)];
     instr += `\n\nKONTROLNÍ HOVOR (TANR)\n- Od posledních pokynů uplynulo ${opts.tanr.min} minut a calltaker ti volá zpět zkontrolovat stav. Aktuální stav: ${st}. Stručně to řekneš a ptáš se, kdy už dojedou.\n- Dosavadní hovor:\n${ctTrSummary()}`;
   }
-  const call = ct.call, h = await ZOS_LIVE.connect({
-    key: cts.key, model: cts.vModel, voices: ctVoiceChain(facts), instructions: instr, filter: cts.filt, line: ctLineOf(facts), record: cts.rec,
-    onStatus: (t, bad) => { if (ct.call === call) { ct.vstatus = t; ct.vbad = !!bad; if (bad) { ct.vready = true; ct.phoneKey = ''; } } },
-    onReady: d => { if (ct.call === call) { ct.vready = true; call.talkAt = sim.s.t; ct.vdiag = d || null; ct.vstatus = '● spojeno za ' + (d && d.session != null ? String(d.session).replace('.', ',') + ' s' : ''); ct.vbad = false; ct.phoneKey = ''; ctReadyBeep(); } },
-    onTranscript: (role, d) => { if (ct.call === call) ctTrDelta(role, d); },
-    onLost: () => { if (ct.call === call) { ct.vstatus = 'spojení se přerušilo'; ct.vbad = true; ct.vready = true; ct.phoneKey = ''; } },
-  });
+  // hlavní poskytovatel, a když se nespojí, záloha (OpenAI ↔ Gemini)
+  const call = ct.call, provs = ctProvs(), line = ctLineOf(facts); let h = null;
+  for (let i = 0; i < provs.length; i++) {
+    const p = provs[i], gem = p === 'gemini', last = i === provs.length - 1;
+    if (ct.call !== call || ct.ended) break;
+    if (i > 0) { ct.vstatus = ctProvName(provs[i - 1]) + ' nejde (' + ((h && h.error) || 'chyba') + '), zkouším ' + ctProvName(p) + '…'; ct.vbad = false; ct.vready = !!opts.tanr; ct.phoneKey = ''; }
+    h = await ZOS_LIVE[gem ? 'connectGemini' : 'connect']({
+      key: gem ? cts.gkey : cts.key, model: gem ? cts.gModel : cts.vModel, voices: ctVoiceChain(facts, gem), instructions: instr, filter: cts.filt, line, record: cts.rec,
+      onStatus: (t, bad) => { if (ct.call !== call) return; ct.vstatus = t; ct.phoneKey = ''; if (bad && !last && !(h && h.ready)) return; ct.vbad = !!bad; if (bad) ct.vready = true; },
+      onReady: d => { if (ct.call === call) { ct.vready = true; call.talkAt = sim.s.t; ct.vdiag = d || null; ct.vstatus = '● spojeno za ' + (d && d.session != null ? String(d.session).replace('.', ',') + ' s' : '') + (gem ? ' (Gemini)' : ''); ct.vbad = false; ct.phoneKey = ''; ctReadyBeep(); } },
+      onTranscript: (role, d) => { if (ct.call === call) ctTrDelta(role, d); },
+      onLost: () => { if (ct.call === call) { ct.vstatus = 'spojení se přerušilo'; ct.vbad = true; ct.vready = true; ct.phoneKey = ''; } },
+    });
+    if (h && !h.failed) break;
+  }
   if (ct.call === call && !ct.ended) ct.voice = h; else if (h) h.stop();
 }
 // ---------- TANR: předání s kontrolními hovory ----------
@@ -485,7 +513,7 @@ function ctTanrCheck() {
   ct.tanr.nextCheck = sim.s.t + 180; ct.tanr.checkUntil = performance.now() + 50000; ct.vstatus = 'kontrolní hovor…'; ct.phoneKey = '';
   ctTrAdd('sys', `Kontrolní hovor po ${min} min.`);
   ctVoiceStart(facts, { tanr: { min } });
-  if (cts.mode === 'text' || !cts.key) ct.tanr.checkUntil = 0;
+  if (cts.mode === 'text' || !ctHasAi()) ct.tanr.checkUntil = 0;
 }
 function ctTanrEndCheck() {
   const v = ct.voice; ct.voice = null; ct.vstatus = 'hlas zavřen'; ct.phoneKey = '';
@@ -506,7 +534,7 @@ async function ctSay() {
   const inp = $('ct-say'), t = inp.value.trim(); if (!t || ct.busy || !ct.call || ct.ended) return;
   const facts = ct.facts[ct.call.id]; inp.value = ''; ctTrAdd('me', t); ct.transcript.push({ role: 'calltaker', text: t }); ct.msgs.push({ role: 'user', content: t }); ct.busy = true;
   try {
-    const rep = await ZOS_LIVE.chat(cts.key, cts.textModel, window.CT_PROMPTS.callerSystem(facts.view), ct.msgs);
+    const tx = await ctText(), rep = await ZOS_LIVE.chat(tx.key, tx.model, window.CT_PROMPTS.callerSystem(facts.view), ct.msgs);
     ct.msgs.push({ role: 'assistant', content: rep });
     const end = /\[KONEC\]/.test(rep), shown = rep.replace(/\[KONEC\]/g, '').trim();
     ct.transcript.push({ role: 'volajici', text: shown }); ctTrAdd('them', shown);
@@ -691,16 +719,16 @@ function ctResultModal(rec) {
     <h3 style="margin:8px 0 2px;font-size:13px">Následky v simulaci</h3>${cons}
     <h3 style="margin:8px 0 2px;font-size:13px">Zadaný a skutečný bod</h3>${ctMiniMap({ lat: k.lat, lon: k.lon }, typedPt, aml)}
     <div id="ct-analyza" style="margin-top:8px"></div>
-    <div class="foot" style="margin-top:10px;flex-wrap:wrap"><button class="btn" data-act="ct-analyza"${cts.key ? '' : ' disabled title="Potřebuje OpenAI API klíč v menu Calltaker"'}>Analýza hovoru (AI)</button><button class="btn" data-act="ct-dl-json">Stáhnout hovor (JSON)</button>${wavBtns}<button class="btn pri" data-act="close">Zavřít</button></div></div>`);
+    <div class="foot" style="margin-top:10px;flex-wrap:wrap"><button class="btn" data-act="ct-analyza"${ctHasAi() ? '' : ' disabled title="Potřebuje klíč OpenAI nebo Gemini v menu Calltaker"'}>Analýza hovoru (AI)</button><button class="btn" data-act="ct-dl-json">Stáhnout hovor (JSON)</button>${wavBtns}<button class="btn pri" data-act="close">Zavřít</button></div></div>`);
 }
 async function ctAnalyza() {
   const rec = window._ctRes, out = $('ct-analyza'); if (!rec) return;
   out.innerHTML = '<p class="ct-note">Vyhodnocuji…</p>';
-  if (!cts.textModel) { try { const r = await ZOS_LIVE.models(cts.key); cts.textModel = r.best || ''; ctSaveSettings(); } catch (e) { /* chyba se ukáže při volání */ } }   // textový model se zvolí sám, když není vybraný
+  const tx = await ctText();   // textový model se zvolí sám, když není vybraný
   const P = window.CT_PROMPTS, f = rec.facts, txt = rec.transcript.map(t => (t.role === 'calltaker' ? 'CALLTAKER: ' : 'VOLAJÍCÍ: ') + t.text).join('\n');
   const user = 'LIST FAKTŮ:\n' + JSON.stringify(f.view, null, 1) + '\n\nKEY:\n' + JSON.stringify(f.key, null, 1) + '\n\nFORMULÁŘ OD CALLTAKERA:\n' + JSON.stringify(rec.form) + '\n\nPŘEPIS:\n' + txt;
   let s;
-  try { const o = await ZOS_LIVE.chat(cts.key, cts.textModel, P.analyzaSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } }); const m = o.match(/\{[\s\S]*\}/); s = JSON.parse(m ? m[0] : o); } catch (e) { s = { chyba: e.message }; }
+  try { const o = await ZOS_LIVE.chat(tx.key, tx.model, P.analyzaSystem(), [{ role: 'user', content: user }], { response_format: { type: 'json_object' } }); const m = o.match(/\{[\s\S]*\}/); s = JSON.parse(m ? m[0] : o); } catch (e) { s = { chyba: e.message }; }
   rec.analyza = s;
   const list = o => '<ul style="margin:2px 0;padding-left:18px">' + Object.keys(o).filter(x => x !== 'komentar').map(x => `<li>${esc(x.replace(/_0_5$/, ' (0–5)').replace(/_/g, ' '))}: ${Array.isArray(o[x]) ? esc(o[x].join('; ') || '–') : o[x] === true ? '✔' : o[x] === false ? '✘' : esc(o[x])}</li>`).join('') + '</ul>';
   out.innerHTML = s.chyba ? `<p class="ct-note bad">Analýza selhala: ${esc(s.chyba)}</p>` : (s.calltaker ? `<h3 style="font-size:13px;margin:4px 0">Analýza: calltaker</h3>${list(s.calltaker)}<p class="ct-note">${esc(s.calltaker.komentar || '')}</p>` : '') + (s.realismus_volajiciho ? `<h3 style="font-size:13px;margin:4px 0">Analýza: realismus volajícího</h3>${list(s.realismus_volajiciho)}<p class="ct-note">${esc(s.realismus_volajiciho.komentar || '')}</p>` : '');

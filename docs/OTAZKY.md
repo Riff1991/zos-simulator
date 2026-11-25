@@ -428,3 +428,9 @@ Podklad: 7 334 + 8 262 výjezdů posádek (surová data se nekopírují do repoz
 - **Dojezd v hodnocení:** nebodují se doba bez volné RZP, čekání na blízkou posádku (N3) a část dojezdu, kterou nezkrátí ani nejbližší volná posádka.
 - **OTEVŘENO – dynamika N2 u CZS a alergie:** podle exportů leden a červenec 2026 není u CZS N2 žádná sada s dynamickou indikací (dva případy z 43 mají Paliativně relevantní pacient) a alergie „AVPU-A, kožní projevy, dospělý, volání z třetí ruky“ je v datech statická. Uživatel očekává u CZS N2 dynamiku, pokud není paliativní příznak. Vyžádat statistiky z excelů; zatím se nic nemění.
 - **OTEVŘENO – pavilony nemocnice ČB:** souřadnice pracovišť v `ZOS_DATA.hospDepts` jsou orientační (do ~150 m od hlavního bodu); doplnit skutečné polohy pavilonů.
+
+### Calltaker: záložní hlas Gemini (25. 11. 2026, rozhodnutí uživatele)
+- **Záloha za OpenAI je Gemini Live** (`gemini-3.8-live`, WebSocket přímo z prohlížeče). Volí se automaticky, když se nespojí OpenAI; přepínač „Hlavní“ umožní pořadí obrátit.
+- **Jen pro vlastní potřebu autora, jeho klíč.** Podmínky Gemini API (od 23. 3. 2026) dovolují zpřístupnit aplikaci uživatelům v EU, Švýcarsku a UK jen přes placené služby, proto se sdílený bezplatný klíč přes server nedělá. Klíč nepatří do kódu (web je veřejný), zůstává v localStorage jako klíč OpenAI.
+- Bezplatné ukázky hlasů (Azure Vlasta/Antonín, Piper Jirka) uživatel slyšel; jako hlas volajícího se nepoužívají (jen dva, resp. jeden český hlas, bez rozhovoru).
+- **Neověřeno:** skutečný hovor s Gemini (čeština, latence, hlasy) – test jen s atrapou WebSocketu v `tests/ct_browser.py`.

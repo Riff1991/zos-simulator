@@ -138,6 +138,67 @@ def run_manual(p):
     pg.screenshot(path=os.path.join(SHOTS, 'rucne.png')) if SHOTS else None
     check(not errs, 'ručně: bez chyb ' + '; '.join(errs)[:200]); b.close()
 
+GEM_STUB = """
+(() => {
+  navigator.mediaDevices.getUserMedia = async () => { const c = new AudioContext(); return c.createMediaStreamDestination().stream; };
+  // OpenAI odmítne klíč → hovor se má spojit přes zálohu Gemini
+  const of = window.fetch; window.fetch = (u, o) => /api\\.openai\\.com\\/v1\\/live\\/sessions/.test(String(u)) ? Promise.resolve(new Response(JSON.stringify({ error: { message: 'Incorrect API key provided' } }), { status: 401, headers: { 'content-type': 'application/json' } })) : of(u, o);
+  const G = window.__gem = { setups: [], urls: [], audio: 0, socks: [] }, RealWS = window.WebSocket;
+  const pcm = () => { const a = new Int16Array(4800); for (let i = 0; i < a.length; i++) a[i] = Math.sin(i / 8) * 8000; let s = ''; const u = new Uint8Array(a.buffer); for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); };
+  window.WebSocket = class {
+    constructor(u) { if (!/generativelanguage/.test(u)) return new RealWS(u); this.readyState = 0; G.urls.push(u); G.socks.push(this); setTimeout(() => { this.readyState = 1; if (this.onopen) this.onopen(); }, 30); }
+    _rx(o) { if (this.readyState === 1 && this.onmessage) this.onmessage({ data: new TextEncoder().encode(JSON.stringify(o)).buffer }); }
+    send(d) {
+      const m = JSON.parse(d);
+      if (m.setup) { G.setups.push(m.setup); this._rx({ setupComplete: {} }); if (!m.setup.sessionResumption.handle) setTimeout(() => {
+        this._rx({ serverContent: { inputTranscription: { text: 'Záchranka, co se stalo?' } } });
+        this._rx({ serverContent: { outputTranscription: { text: 'Prosím vás, pošlete sanitku!' }, modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: pcm() } }] } } });
+        this._rx({ sessionResumptionUpdate: { resumable: true, newHandle: 'h1' } });
+      }, 150); }
+      else if (m.realtimeInput && m.realtimeInput.audio) G.audio++;
+    }
+    close(code) { if (this.readyState === 3) return; this.readyState = 3; setTimeout(() => { if (this.onclose) this.onclose({ code: code || 1000, reason: '' }); }, 0); }
+  };
+  window.WebSocket.OPEN = 1;
+})();
+"""
+
+def run_gemini(p):
+    # OpenAI nejde (401) → záloha Gemini Live (atrapa WebSocketu): spojení, přepis, zvuk z mikrofonu, obnova spojení po goAway, zavěšení
+    b = p.chromium.launch(args=args); pg = b.new_page(viewport={'width': 1440, 'height': 900}); errs = []
+    pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.on('console', lambda m: errs.append('console: ' + m.text) if m.type == 'error' and 'Failed to load resource' not in m.text and 'fonts' not in m.text else None)
+    pg.add_init_script(GEM_STUB)
+    pg.goto(URL, wait_until='domcontentloaded'); pg.wait_for_timeout(3500)
+    pg.click('[data-act=ct-menu]'); pg.wait_for_timeout(300)
+    pg.fill('#ctm-key', 'sk-test'); pg.fill('#ctm-gkey', 'AIzaTest'); pg.check('input[name=ctm-flow][value=training]'); pg.fill('#ctm-gapMin', '1'); pg.uncheck('#ctm-rec')
+    pg.click('[data-act=ct-start]'); pg.wait_for_timeout(1500)
+    for i in range(60):
+        pg.evaluate('window.__zos.step(30)')
+        if pg.evaluate("window.__zos.sim.s.calls.some(c=>c.state==='ringing')"): break
+    pg.evaluate("(()=>{const c=window.__zos.sim.s.calls.find(x=>x.state==='ringing');if(c){c.kind='vyjezd';c.scn=null;}})()")
+    pg.wait_for_timeout(500); pg.click('[data-act=ct-pickup]'); pg.wait_for_timeout(1800)
+    pg.evaluate("window.__zos.sim.s.liveCalls.gap = 100000; window.__zos.sim.s.ev.nextSpawn = window.__zos.sim.s.t + 100000")
+    ph = pg.inner_text('#ct-phone'); g = pg.evaluate('window.__gem')
+    check('(Gemini)' in ph, 'gemini: po odmítnutí OpenAI spojeno přes Gemini: ' + ph[:120].replace('\n', ' '))
+    check(len(g['setups']) == 1 and g['setups'][0]['model'] == 'models/gemini-3.8-live' and 'AIzaTest' in g['urls'][0], 'gemini: setup s modelem a klíčem')
+    vn = g['setups'][0]['generationConfig']['speechConfig']['voiceConfig']['prebuiltVoiceConfig']['voiceName'] if g['setups'] else ''
+    check(vn in ('Kore', 'Charon', 'Leda', 'Puck', 'Gacrux', 'Algenib'), 'gemini: hlas podle volajícího: ' + vn)
+    check('pošlete sanitku' in pg.evaluate("document.getElementById('ct-tr').textContent"), 'gemini: přepis volajícího se plní')
+    check(g['audio'] > 5, f"gemini: mikrofon se posílá jako PCM ({g['audio']} bloků)")
+    pg.evaluate("window.__gem.socks[0]._rx({ goAway: { timeLeft: '10s' } })"); pg.wait_for_timeout(600)
+    g = pg.evaluate('window.__gem')
+    check(len(g['setups']) == 2 and g['setups'][1]['sessionResumption'].get('handle') == 'h1', 'gemini: po goAway nové spojení s obnovou relace')
+    check(pg.evaluate('window.__gem.socks[0].readyState') == 3 and pg.evaluate('window.__gem.socks[1].readyState') == 1, 'gemini: staré spojení zavřeno, nové otevřené')
+    check('přerušilo' not in pg.inner_text('#ct-phone'), 'gemini: obnova spojení hovor nepřeruší')
+    a0 = g['audio']; pg.wait_for_timeout(400)
+    check(pg.evaluate('window.__gem.audio') > a0, 'gemini: mikrofon jde dál novým spojením')
+    pg.click('[data-act=ct-hangup]'); pg.wait_for_timeout(800)
+    check(pg.evaluate('window.__gem.socks.every(s=>s.readyState===3)'), 'gemini: po zavěšení jsou spojení zavřená')
+    check(not errs, 'gemini: bez chyb v konzoli ' + '; '.join(errs)[:400])
+    b.close()
+
 with sync_playwright() as p:
-    run(p, 1440, 900, 'desktop'); run(p, 390, 800, 'mobil'); run_manual(p)
+    if os.environ.get('ONLY') == 'gemini': run_gemini(p)
+    else: run(p, 1440, 900, 'desktop'); run(p, 390, 800, 'mobil'); run_manual(p); run_gemini(p)
 print('SELHALO: ' + str(len(fails)) if fails else 'ct_browser OK'); sys.exit(1 if fails else 0)

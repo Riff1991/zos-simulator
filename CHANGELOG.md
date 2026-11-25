@@ -8,6 +8,12 @@ Formát: nejnovější verze nahoře. Každá verze má balíček pro Mac v sekc
 
 ---
 
+## v0.40.0 – 2026-11-25
+- **Záložní hlas calltakera: Gemini Live.** V menu Calltaker → Hlas a AI jde vložit i klíč Gemini (AI Studio, bezplatný tarif, jen pro vlastní potřebu). Když se hovor nespojí přes OpenAI (špatný klíč, vyčerpaný kredit, výpadek), spojí se sám přes Gemini; přepínačem „Hlavní“ jde Gemini zvolit i jako první volbu. Telefonní filtr, šum linky, nahrávka WAV a přepis fungují stejně. Spojení Gemini se asi po 10 minutách samo obnoví bez přerušení hovoru. Hlasy podle volajícího: Kore (žena), Charon (muž), Leda a Puck (mladí), Gacrux a Algenib (senioři); dají se přepsat v nastavení.
+- **Analýza hovoru a textový režim i jen s klíčem Gemini** (textový model se zvolí sám, výchozí Flash-Lite).
+
+---
+
 ## v0.39.8 – 2026-11-23
 - **Policie jede jako my na N1.** Příjezd policie se počítá z nejbližší policejní stanice po silnici rychlostí jako naše posádky na N1 (včetně vyjetí ze stanice, asi 1,7 min), místo dřívějších 4 až 11 minut náhodně. Platí pro policii přivolanou dispečerem i pro tu, která přišla s datovou zprávou; trojúhelníky na mapě jedou stejným časem. Hasiči zůstávají o čtvrtinu rychlejší než původně.
 

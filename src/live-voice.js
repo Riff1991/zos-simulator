@@ -1,18 +1,29 @@
-// Živý hlas pro režim calltaker: OpenAI GPT-Live přes WebRTC (volající), telefonní filtr a šum linky přes hlas, nahrávka WAV, přepis.
-// Bez DOM: UI předává zpětná volání (onStatus, onTranscript, onReady, onClosed). Klíč OpenAI zůstává jen v prohlížeči.
+// Živý hlas pro režim calltaker: OpenAI GPT-Live přes WebRTC (volající), záloha Gemini Live přes WebSocket, telefonní filtr a šum linky přes hlas, nahrávka WAV, přepis.
+// Bez DOM: UI předává zpětná volání (onStatus, onTranscript, onReady, onClosed). Klíče OpenAI i Gemini zůstávají jen v prohlížeči.
 const ZOS_LIVE = (function () {
+  // klíč Gemini (AIza…) jde na endpoint Googlu kompatibilní s OpenAI, ostatní na api.openai.com
   async function oa(key, path, body) {
-    const r = await fetch('https://api.openai.com/v1' + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: body ? JSON.stringify(body) : undefined });
+    const base = /^AIza/.test(String(key || '').trim()) ? 'https://generativelanguage.googleapis.com/v1beta/openai' : 'https://api.openai.com/v1';
+    const r = await fetch(base + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key }, body: body ? JSON.stringify(body) : undefined });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
     return j;
   }
   // textový model (analyza, textový režim hovoru)
   async function chat(key, model, system, history, opts) {
-    const j = await oa(key, '/chat/completions', Object.assign({ model, messages: [{ role: 'system', content: system }].concat(history), max_completion_tokens: 1500 }, opts || {}));
+    const gem = /^AIza/.test(String(key || '').trim());
+    const body = Object.assign({ model, messages: [{ role: 'system', content: system }].concat(history) }, gem ? { max_tokens: 1500 } : { max_completion_tokens: 1500 }, opts || {});
+    if (gem) delete body.response_format;   // JSON se z odpovědi vybírá i tak
+    const j = await oa(key, '/chat/completions', body);
     return ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
   }
   async function models(key) {
+    if (/^AIza/.test(String(key || '').trim())) {
+      const g = await oa(key, '/models');
+      const ids = [...new Set(g.data.map(m => String(m.id).replace(/^models\//, '')))].filter(id => /^gemini-/.test(id) && !/live|audio|tts|transcribe|translate|image|embedding|robotics|computer/.test(id)).sort();
+      const pref = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+      return { ids, best: pref.find(p => ids.includes(p)) || ids.find(i => /flash-lite/.test(i)) || ids[0] || '' };
+    }
     const j = await oa(key, '/models');
     const ids = j.data.map(m => m.id).filter(id => /^(gpt-|o\d|chatgpt)/.test(id) && !/realtime|audio|tts|transcribe|image|embedding|search|moderation|codex|instruct|preview|dall|whisper|\d{4}-\d{2}-\d{2}$/.test(id)).sort();
     const pref = ['gpt-4.1-mini', 'gpt-4o-mini', 'gpt-5-mini', 'gpt-4.1', 'gpt-4o', 'gpt-5'];
@@ -109,29 +120,16 @@ const ZOS_LIVE = (function () {
     const h = {
       get usage() { return c.usage; },
       get ready() { return c.ready; },
+      get failed() { return !!c.failed; },
+      get error() { return c.err || ''; },
+      provider: 'openai',
       mute() { const t = c.mic && c.mic.getAudioTracks()[0]; if (!t) return true; t.enabled = !t.enabled; return t.enabled; },
       stop() { stopAll(c); },
       close() { return closeAll(c, o, st); },
     };
     c.h = h;
     try {
-      c.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      c.mark('mic');
-      if (c.stopped) { c.mic.getTracks().forEach(t => t.stop()); return h; }
-      const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); try { await c.ctx.resume(); } catch (e) { /* zkusí se znovu při přehrání */ }
-      c.mark('ctx');
-      const msrc = c.ctx.createMediaStreamSource(c.mic);
-      c.prof = lineProfile(o.line); c.codec = o.filter ? await loadCodec(c.ctx) : false; c.mark('codec');
-      c.micTap = o.filter ? phoneLine(c.ctx, msrc, c.prof, c.codec) : msrc;
-      if (o.record && window.MediaRecorder) {
-        const ctx = c.ctx, merger = ctx.createChannelMerger(2), dst = ctx.createMediaStreamDestination(); merger.connect(dst);
-        const mix = ctx.createGain(); mix.gain.value = 0.8; mix.connect(merger, 0, 0); mix.connect(merger, 0, 1);
-        c.micTap.connect(mix); c.rx = ctx.createGain(); c.rx.connect(mix);
-        const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported(t));
-        c.rec = new MediaRecorder(dst.stream, mt ? { mimeType: mt } : undefined);
-        c.rec.ondataavailable = e => { if (e.data && e.data.size) c.chunks.push(e.data); };
-        c.rec.start(1000);
-      }
+      if (!(await setupAudio(c, o))) return h;
       c.pc = new RTCPeerConnection();
       c.pc.addEventListener('iceconnectionstatechange', () => { if (/connected|completed/.test(c.pc.iceConnectionState)) c.mark('connected'); });
       c.pc.addEventListener('track', ev => {
@@ -160,7 +158,168 @@ const ZOS_LIVE = (function () {
         }
       }
       c.mark('api'); await c.pc.setRemoteDescription({ type: 'answer', sdp: res.transport.sdp });
-    } catch (e) { st('Hlas se nepodařilo spojit: ' + e.message, true); stopAll(c); }
+    } catch (e) { c.failed = true; c.err = e.message; st('Hlas se nepodařilo spojit: ' + e.message, true); stopAll(c); }
+    return h;
+  }
+  // mikrofon, AudioContext 24 kHz, telefonní linka na mikrofon (jen pro nahrávku) a nahrávání; false = hovor mezitím ukončen
+  async function setupAudio(c, o) {
+    c.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    c.mark('mic');
+    if (c.stopped) { c.mic.getTracks().forEach(t => t.stop()); return false; }
+    const AC = window.AudioContext || window.webkitAudioContext; c.ctx = new AC({ sampleRate: 24000 }); try { await c.ctx.resume(); } catch (e) { /* zkusí se znovu při přehrání */ }
+    c.mark('ctx');
+    c.msrc = c.ctx.createMediaStreamSource(c.mic);
+    c.prof = lineProfile(o.line); c.codec = o.filter ? await loadCodec(c.ctx) : false; c.mark('codec');
+    c.micTap = o.filter ? phoneLine(c.ctx, c.msrc, c.prof, c.codec) : c.msrc;
+    if (o.record && window.MediaRecorder) {
+      const ctx = c.ctx, merger = ctx.createChannelMerger(2), dst = ctx.createMediaStreamDestination(); merger.connect(dst);
+      const mix = ctx.createGain(); mix.gain.value = 0.8; mix.connect(merger, 0, 0); mix.connect(merger, 0, 1);
+      c.micTap.connect(mix); c.rx = ctx.createGain(); c.rx.connect(mix);
+      const mt = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(t => MediaRecorder.isTypeSupported(t));
+      c.rec = new MediaRecorder(dst.stream, mt ? { mimeType: mt } : undefined);
+      c.rec.ondataavailable = e => { if (e.data && e.data.size) c.chunks.push(e.data); };
+      c.rec.start(1000);
+    }
+    return !c.stopped;
+  }
+
+  // ---------- Gemini Live (záloha za OpenAI): WebSocket, mikrofon jako PCM 16 kHz, odpověď PCM 24 kHz ----------
+  // Klíč (AIza…) jde jen z prohlížeče přímo na generativelanguage.googleapis.com. Spojení se asi po 10 min obnovuje (goAway + sessionResumption).
+  const GWS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
+  const CAP_SRC = "class ZosCap extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('zos-cap',ZosCap);";
+  const isGemKey = k => /^AIza/.test(String(k || '').trim());
+  function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return window.btoa(s); }
+  function unb64(str) { const bin = window.atob(str), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+  function gemSetup(o, voice, handle) {
+    return {
+      model: 'models/' + String(o.model || 'gemini-3.8-live').replace(/^models\//, ''),
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } },
+      systemInstruction: { parts: [{ text: 'Mluvíš výhradně česky (pokud pokyny níže neurčují jiný jazyk nebo přízvuk).\n\n' + o.instructions }] },
+      inputAudioTranscription: {}, outputAudioTranscription: {},
+      contextWindowCompression: { slidingWindow: {} },
+      sessionResumption: handle ? { handle } : {},
+    };
+  }
+  // mikrofon (čistý, bez telefonního filtru) → dolní propust → AudioWorklet → převzorkování na 16 kHz → 40ms bloky do WebSocketu
+  async function gemCapture(c) {
+    const url = URL.createObjectURL(new Blob([CAP_SRC], { type: 'application/javascript' }));
+    try { await c.ctx.audioWorklet.addModule(url); } finally { URL.revokeObjectURL(url); }
+    const lp = c.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7200;
+    c.cap = new window.AudioWorkletNode(c.ctx, 'zos-cap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+    const mute = c.ctx.createGain(); mute.gain.value = 0;
+    c.msrc.connect(lp); lp.connect(c.cap); c.cap.connect(mute); mute.connect(c.ctx.destination);
+    const OUT = 640, N = Math.round(OUT * c.ctx.sampleRate / 16000);
+    let acc = new Float32Array(N * 4), len = 0;
+    c.cap.port.onmessage = e => {
+      if (c.stopped) return;
+      const d = e.data; if (len + d.length > acc.length) { const a = new Float32Array((len + d.length) * 2); a.set(acc.subarray(0, len)); acc = a; }
+      acc.set(d, len); len += d.length;
+      while (len >= N) {
+        const pcm = new Int16Array(OUT);
+        for (let j = 0; j < OUT; j++) { const p = j * N / OUT, i = Math.floor(p), f = p - i, s = acc[i] * (1 - f) + acc[Math.min(i + 1, N - 1)] * f, v = Math.max(-1, Math.min(1, s)); pcm[j] = v < 0 ? v * 0x8000 : v * 0x7fff; }
+        acc.copyWithin(0, N, len); len -= N;
+        const ws = c.ws;
+        if (c.ready && ws && ws.readyState === 1) { try { ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } })); } catch (err) { /* spojení se právě obnovuje */ } }
+      }
+    };
+  }
+  function gemPlay(c, data, mime) {
+    const m = /rate=(\d+)/.exec(mime || ''), rate = m ? Number(m[1]) : 24000;
+    const u = unb64(data), n = u.length >> 1; if (!n) return;
+    const dv = new DataView(u.buffer), buf = c.ctx.createBuffer(1, n, rate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = dv.getInt16(i * 2, true) / 32768;
+    const s = c.ctx.createBufferSource(); s.buffer = buf; s.connect(c.rxIn);
+    const t = Math.max(c.ctx.currentTime + 0.04, c.nextT || 0); s.start(t); c.nextT = t + buf.duration;
+    c.srcs.add(s); s.onended = () => c.srcs.delete(s);
+  }
+  function gemFlush(c) { for (const s of c.srcs) { try { s.stop(); } catch (e) { /* už skončil */ } } c.srcs.clear(); c.nextT = 0; }
+  function gemMsg(c, o, st, m) {
+    const sc = m.serverContent;
+    if (sc) {
+      if (sc.interrupted) gemFlush(c);   // calltaker skočil do řeči: volající ztichne
+      const parts = (sc.modelTurn && sc.modelTurn.parts) || [];
+      for (const p of parts) if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || 'audio')) gemPlay(c, p.inlineData.data, p.inlineData.mimeType);
+      if (sc.inputTranscription && sc.inputTranscription.text && o.onTranscript) o.onTranscript('calltaker', sc.inputTranscription.text);
+      if (sc.outputTranscription && sc.outputTranscription.text) { c.mark('text'); if (o.onTranscript) o.onTranscript('volajici', sc.outputTranscription.text); }
+    }
+    if (m.sessionResumptionUpdate && m.sessionResumptionUpdate.resumable && m.sessionResumptionUpdate.newHandle) c.handle = m.sessionResumptionUpdate.newHandle;
+    if (m.goAway) gemReconnect(c, o, st);   // server brzy spojení ukončí: předem se otevře nové a hovor pokračuje
+  }
+  // jedno WebSocket spojení; slib se splní po setupComplete, jinak skončí chybou (s důvodem od serveru)
+  function gemSocket(c, o, st, voice, handle) {
+    return new Promise((resolve, reject) => {
+      let ok = false, ws;
+      try { ws = new window.WebSocket(GWS + encodeURIComponent(String(o.key).trim())); } catch (e) { reject(e); return; }
+      ws.binaryType = 'arraybuffer';
+      const t = setTimeout(() => { if (ok) return; try { ws.close(); } catch (e) { /* ignore */ } reject(new Error('Vypršel čas spojení s Gemini.')); }, 15000);
+      ws.onopen = () => { try { ws.send(JSON.stringify({ setup: gemSetup(o, voice, handle) })); } catch (e) { /* zavře se */ } };
+      ws.onmessage = ev => {
+        let m; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : new window.TextDecoder().decode(ev.data)); } catch (e) { return; }
+        if (m.setupComplete && !ok) { ok = true; clearTimeout(t); resolve(ws); return; }
+        gemMsg(c, o, st, m);
+      };
+      ws.onclose = ev => {
+        clearTimeout(t);
+        if (!ok) { reject(new Error(ev.reason || ('spojení odmítnuto (kód ' + ev.code + ')'))); return; }
+        if (ws !== c.ws || c.stopped || c.closing || c.reconn) return;
+        if (c.handle) { gemReconnect(c, o, st); return; }
+        c.closed = true; st('Spojení s Gemini skončilo' + (ev.reason ? ': ' + ev.reason : '.'), true); if (o.onLost) o.onLost();
+      };
+      ws.onerror = () => { /* následuje onclose s důvodem */ };
+    });
+  }
+  function gemReconnect(c, o, st) {
+    if (c.reconn || c.stopped || c.closing || !c.handle) return;
+    c.reconn = true;
+    gemSocket(c, o, st, c.voice, c.handle).then(ws => {
+      const old = c.ws; c.ws = ws; c.reconn = false; c.retries = 0;
+      if (c.stopped || c.closing) { try { ws.close(1000); } catch (e) { /* ignore */ } }
+      try { if (old) old.close(1000); } catch (e) { /* ignore */ }
+    }).catch(e => {
+      c.reconn = false;
+      if (c.stopped || c.closing) return;
+      if (++c.retries < 3) { setTimeout(() => gemReconnect(c, o, st), 600); return; }
+      c.closed = true; st('Spojení s Gemini se nepodařilo obnovit: ' + e.message, true); if (o.onLost) o.onLost();
+    });
+  }
+  // stejné rozhraní jako connect(): o.key je klíč Gemini (AIza…), o.model např. gemini-3.8-live, o.voices hlasy Gemini (Kore, Charon…)
+  async function connectGemini(o) {
+    const st = (t, bad) => { if (o.onStatus) o.onStatus(t, bad); };
+    if (!navigator.mediaDevices || !window.WebSocket || !window.AudioWorkletNode) { st('Prohlížeč nepodporuje mikrofon nebo AudioWorklet (zkus Chrome nebo Edge).', true); return null; }
+    st('Připojuji hovor (Gemini)…');
+    const c = { gem: true, ready: false, closed: false, usage: 0, stopped: false, rec: null, chunks: [], srcs: new Set(), nextT: 0, handle: null, retries: 0 };
+    const t0 = performance.now(); c.diag = {}; c.mark = k => { if (c.diag[k] == null) c.diag[k] = Math.round(performance.now() - t0) / 1000; };
+    const h = {
+      get usage() { return c.tReady ? ((c.tEnd || performance.now()) - c.tReady) / 1000 : 0; },
+      get ready() { return c.ready; },
+      get failed() { return !!c.failed; },
+      get error() { return c.err || ''; },
+      provider: 'gemini',
+      mute() { const t = c.mic && c.mic.getAudioTracks()[0]; if (!t) return true; t.enabled = !t.enabled; return t.enabled; },
+      stop() { stopAll(c); },
+      close() { return closeAll(c, o, st); },
+    };
+    c.h = h;
+    try {
+      if (!(await setupAudio(c, o))) return h;
+      c.rxIn = c.ctx.createGain();
+      if (o.filter) { const out = phoneLine(c.ctx, c.rxIn, c.prof, c.codec); out.connect(c.ctx.destination); if (c.rx) out.connect(c.rx); }
+      else { c.rxIn.connect(c.ctx.destination); if (c.rx) c.rxIn.connect(c.rx); }
+      watchRx(c, c.rxIn, st);
+      await gemCapture(c);
+      const chain = [...new Set((o.voices && o.voices.length ? o.voices : [o.voice]).concat(['Kore']).filter(Boolean))];
+      for (let i = 0; i < chain.length && !c.ws; i++) {
+        try { c.ws = await gemSocket(c, o, st, chain[i], null); c.voice = chain[i]; } catch (e) {
+          if (c.stopped) return h;
+          if (!/voice|speaker/i.test(e.message) || i === chain.length - 1) throw e;
+          st('Hlas „' + chain[i] + '“ nelze použít, zkouším „' + chain[i + 1] + '“…');
+        }
+      }
+      if (c.stopped) { try { c.ws.close(1000); } catch (e) { /* ignore */ } return h; }
+      c.mark('connected'); c.mark('api'); c.mark('session');
+      c.ready = true; c.tReady = performance.now();
+      if (o.onReady) o.onReady(c.diag); st('Hovor spojen (Gemini).');
+    } catch (e) { c.failed = true; c.err = e.message; st('Hlas Gemini se nepodařilo spojit: ' + e.message, true); stopAll(c); }
     return h;
   }
   // měření: kdy dorazí první slyšitelný zvuk volajícího do Web Audio (c.diag.zvuk) a kdy přišel první text jeho odpovědi (c.diag.text);
@@ -193,6 +352,9 @@ const ZOS_LIVE = (function () {
     c.stopped = true;
     try { c.mic && c.mic.getTracks().forEach(t => t.stop()); } catch (e) { /* ignore */ }
     try { c.dc && c.dc.close(); } catch (e) { /* ignore */ }
+    try { if (c.cap) { c.cap.port.onmessage = null; c.cap.disconnect(); } } catch (e) { /* ignore */ }
+    try { if (c.srcs) gemFlush(c); } catch (e) { /* ignore */ }
+    try { if (c.ws && c.ws.readyState <= 1) c.ws.close(1000); } catch (e) { /* ignore */ }
     try { c.pc && c.pc.close(); } catch (e) { /* ignore */ }
     try { if (c.audio) c.audio.srcObject = null; } catch (e) { /* ignore */ }
     try { c.ctx && c.ctx.close(); } catch (e) { /* ignore */ }
@@ -209,11 +371,16 @@ const ZOS_LIVE = (function () {
   function closeAll(c, o, st) {
     return new Promise(res => {
       let done = false;
-      const fin = async () => { if (done) return; done = true; const wav = await finishRec(c); const u = c.usage; stopAll(c); st(u ? 'Hovor trval ' + Math.round(u) + ' s, hlas ≈ ' + (u / 60 * 0.05).toFixed(3) + ' $.' : ''); res({ usage: u, wav }); };
-      if (!c.ready || c.closed || !c.dc || c.dc.readyState !== 'open') return fin();
+      const fin = async () => {
+        if (done) return; done = true;
+        if (c.gem) { c.closing = true; c.tEnd = c.tEnd || performance.now(); c.usage = c.h.usage; }
+        const wav = await finishRec(c); const u = c.usage; stopAll(c);
+        st(u ? 'Hovor trval ' + Math.round(u) + ' s' + (c.gem ? ' (Gemini).' : ', hlas ≈ ' + (u / 60 * 0.05).toFixed(3) + ' $.') : ''); res({ usage: u, wav, provider: c.gem ? 'gemini' : 'openai' });
+      };
+      if (c.gem || !c.ready || c.closed || !c.dc || c.dc.readyState !== 'open') return fin();
       c.onClosed = fin; setTimeout(fin, 6000);
       try { c.dc.send(JSON.stringify({ type: 'session.close' })); } catch (e) { fin(); }
     });
   }
-  return { connect, chat, models, phoneLine, loadCodec, lineProfile };   // linka je vystavená i pro zkoušku řetězce bez mikrofonu
+  return { connect, connectGemini, isGemKey, chat, models, phoneLine, loadCodec, lineProfile };   // linka je vystavená i pro zkoušku řetězce bez mikrofonu
 })();
